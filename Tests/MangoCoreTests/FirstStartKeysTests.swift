@@ -62,4 +62,17 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertEqual(p.config.tagRules.first?.layoutName, "scroller")
         XCTAssertEqual(p.config.keyBindings.first?.dispatch.name, "spawn")
     }
+
+    /// The first start's "Caps Lock is Hyper" choice removes or puts back these lines in the
+    /// config it wrote (config-mac.conf); both must be there to find.
+    func testCapsLockChoiceFindsItsLines() throws {
+        let mac = try resource("config-mac.conf")
+        XCTAssertTrue(mac.contains(ConfigFiles.capsHyperLines))
+        XCTAssertTrue(mac.contains(ConfigFiles.hyperComment))
+        let off = mac.replacingOccurrences(of: ConfigFiles.capsHyperLines, with: "")
+        let p = ConfigParser.parse(text: off, baseDirectory: resources, fileName: "config.conf")
+        XCTAssertEqual(p.config.xkbRulesOptions, "", "Caps Lock left alone")
+        let on = off.replacingOccurrences(of: ConfigFiles.hyperComment, with: ConfigFiles.hyperComment + ConfigFiles.capsHyperLines)
+        XCTAssertEqual(on, mac)
+    }
 }

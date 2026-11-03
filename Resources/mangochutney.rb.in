@@ -43,7 +43,7 @@ cask "mangochutney" do
     Stop AeroSpace, yabai or any other tiling window manager first.
 
     Remember two keys: Hyper K lists every key, Hyper L picks a layout.
-    Hyper is Control+Option+Command, or Caps Lock if you choose macOS's keys.
+    Hyper is Caps Lock held: it acts as Control+Option+Command.
     Getting Started: https://github.com/kim-raaschou/mangochutney/blob/main/docs/chutney/getting-started.md
   EOS
 end

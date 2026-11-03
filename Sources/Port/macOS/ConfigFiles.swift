@@ -3,9 +3,9 @@ import Mango
 
 /// Not in mango: the port's default config. mango reads /etc/mango/config.conf when the
 /// user has none; a Mac app has no /etc config, so the first start writes the shipped
-/// config.conf: mango's own, then the port's keys from its marker line to the end
-/// (docs/afvigelser.md), and start.conf beside it, the first lines to try (read by
-/// config.conf with source_optional). The only files the app writes besides are its own,
+/// config-mac.conf as config.conf: mango's own config with mango's keys on Hyper, so that
+/// macOS's shortcuts stay as they are (script/mac-config.swift, docs/afvigelser.md), and
+/// start.conf beside it, the first lines to try (read by config.conf with source_optional). The only files the app writes besides are its own,
 /// read last (chutney_theme.conf, chutney_menu.conf).
 public enum ConfigFiles {
     /// The line where the port's keys begin in the shipped config.conf.
@@ -16,7 +16,7 @@ public enum ConfigFiles {
         let fm = FileManager.default
         guard !fm.fileExists(atPath: configURL.path) else { return }
         try? fm.createDirectory(at: configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let def = bundled("config") {
+        if let def = bundled("config-mac") {
             try? fm.copyItem(at: def, to: configURL)
             Log.info("wrote default config to \(configURL.path)")
         }
@@ -31,27 +31,9 @@ public enum ConfigFiles {
         configURL.deletingLastPathComponent().appendingPathComponent("start.conf")
     }
 
-    /// A first start: there is no config yet, so the permissions window offers the keys.
+    /// A first start: there is no config yet, so the permissions window offers its choices.
     static func isFirstStart(_ configURL: URL) -> Bool {
         !FileManager.default.fileExists(atPath: configURL.path)
-    }
-
-    /// The first start's "macOS" keys: the shipped config-mac.conf (mango's keys on Hyper,
-    /// Caps Lock held; script/mac-config.swift) in place of the default config, and only
-    /// while that is as the first start wrote it; mango reloads when it is saved.
-    static func useMacKeys(configURL: URL) {
-        ensure(configURL)
-        func text(_ url: URL?) -> String? { url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } }
-        guard text(configURL) == text(bundled("config")), let mac = text(bundled("config-mac")) else {
-            Log.info("keys: the config is no longer the default; left as it is")
-            return
-        }
-        do {
-            try mac.write(to: configURL, atomically: true, encoding: .utf8)
-            Log.info("keys: mango's keys on Hyper, in \(configURL.path)")
-        } catch {
-            Log.info("keys: could not write the config: \(error)")
-        }
     }
 
     /// Opens a config file in its app, or in TextEdit when no app opens .conf files.
@@ -62,7 +44,30 @@ public enum ConfigFiles {
         ws.open([url], withApplicationAt: textEdit, configuration: NSWorkspace.OpenConfiguration())
     }
 
-    /// A bundled default config file (`config.conf`, `config-mac.conf`, `start.conf`).
+    /// The first start's Caps Lock choice: Hyper (mango's xkb_rules_options caps:hyper,
+    /// macOS's own key mapping) or left alone, in the config the first start wrote, and only
+    /// while it is as written.
+    static let capsHyperLines = "# Caps Lock is Hyper. Hyper from Karabiner-Elements or a keyboard of its own: delete this line.\r\nxkb_rules_options=caps:hyper\r\n"
+    static let hyperComment = "# chutney_hyper_modifier=super+ctrl+alt\r\n"
+
+    static func setCapsLockHyper(_ on: Bool, configURL: URL) {
+        func text(_ url: URL?) -> String? { url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } }
+        guard let current = text(configURL),
+              current == text(bundled("config")) || current == text(bundled("config-mac")) else { return }
+        let has = current.contains(capsHyperLines)
+        guard on != has else { return }
+        let new = on ? current.replacingOccurrences(of: hyperComment, with: hyperComment + capsHyperLines)
+                     : current.replacingOccurrences(of: capsHyperLines, with: "")
+        do {
+            try new.write(to: configURL, atomically: true, encoding: .utf8)
+            Log.info("keys: Caps Lock \(on ? "is Hyper" : "left alone"), in \(configURL.path)")
+        } catch {
+            Log.info("keys: could not write the config: \(error)")
+        }
+    }
+
+    /// A bundled config file (`config-mac.conf`, written on a first start; `config.conf`,
+    /// mango's own keys; `start.conf`).
     static func bundled(_ name: String) -> URL? {
         if let u = Bundle.main.url(forResource: name, withExtension: "conf") { return u }
         // Development: Resources/<name>.conf next to the package.

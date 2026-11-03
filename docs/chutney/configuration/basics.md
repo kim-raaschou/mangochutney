@@ -7,9 +7,9 @@ description: The port's config files, and apps mango leaves alone.
 
 mango reads `~/.config/mango/config.conf`, and with `source=` and `source_optional=` the files it
 names, relative to `config.conf`'s folder (see mango's
-[Basics](https://mangowm.github.io/docs/configuration/basics)). Mango Chutney ships one,
-`config.conf`: mango's own default config, unchanged, and then the port's keys from their marker
-line to the end. Its last lines read `chutney_theme.conf`, written by Mango Chutney, then
+[Basics](https://mangowm.github.io/docs/configuration/basics)). The first start writes
+one: mango's own default config with its bindings on Hyper (`config-mac.conf`), and then the
+port's keys from their marker line to the end. Its last lines read `chutney_theme.conf`, written by Mango Chutney, then
 `start.conf`, the first lines to try from the welcome window (yours), then `chutney_menu.conf`,
 written by the menu, so the menu's choices win.
 

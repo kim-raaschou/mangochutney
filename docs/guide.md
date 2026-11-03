@@ -75,35 +75,62 @@ A permissions window says what Mango Chutney needs and opens the right page of S
 The window comes back from the menu bar (Permissions…). If Accessibility is on in the list but
 does not take (an old build, or the old `mango` app), remove the row with − and allow it again.
 
-On the first start the default config is written to `~/.config/mango/config.conf`. The
-permissions window then also asks which keys to start with:
+On the first start the default config is written to `~/.config/mango/config.conf`: mango's own
+config with mango's keys on the [Hyper](#the-hyper-key) key, so macOS's shortcuts stay as they
+are (`config-mac.conf`: mango's bindings commented out, with
+[`mac-bindings.conf`](../Resources/mac-bindings.conf) in their place among the port's keys at its
+end). The permissions window then shows the two keys to remember, Hyper K and Hyper L, and offers:
 
-- **mango:** mango's own keys, as in mango.
-- **macOS:** macOS's shortcuts stay as they are, and mango's keys are on the
-  [Hyper](#the-hyper-key) key, Caps Lock held. `config.conf` is then `config-mac.conf`:
-  mango's bindings commented out, with [`mac-bindings.conf`](../Resources/mac-bindings.conf) in
-  their place among the port's keys at its end. Hyper from Karabiner-Elements or a keyboard of
-  its own instead of Caps Lock: delete the `xkb_rules_options=caps:hyper` line.
-
-Below the keys, **Start Mango Chutney at login** (off unless ticked) installs the login service on
-Continue. Later it is Start at Login in the menu bar, or:
+- **Caps Lock is Hyper (⌃⌥⌘)**, on unless unticked: `xkb_rules_options=caps:hyper`, done with
+  macOS's own key mapping. Untick it for Hyper from Karabiner-Elements or a keyboard of its own,
+  or delete the line later.
+- **Start Mango Chutney at login**, off unless ticked: installs the login service on Continue.
+  Later it is Start at Login in the menu bar, or:
 
 ```bash
 mmsg service install
 ```
 
-Continue then turns the window into a welcome: Hyper K lists every key, Hyper L picks a layout,
-and **Open Your Config** opens `start.conf`, the first lines to try. Each is commented out: take
-away the `#`, save, and the change shows at once. "Coming from macOS" opens
-[that guide](chutney/from-macos.md).
+Continue opens [Getting Started](chutney/getting-started.md) in your browser and turns the window
+into a welcome: the two keys again, and **Open Your Config**, which opens `start.conf`, the first
+lines to try. Each is commented out: take away the `#`, save, and the change shows at once.
 
 Stop AeroSpace, yabai, rift or any other tiling window manager first: two managers fight over the
 same windows.
 
 ## Default keys
 
-The default config is mango's own, so are its bindings: `SUPER` is ⌘, `ALT` is ⌥, `CTRL` is ⌃.
+mango's keys are on Hyper (Caps Lock held, or ⌃⌥⌘); macOS's shortcuts stay as they are.
 **Hyper K** lists them all.
+
+| Keys | Does |
+|---|---|
+| Hyper K, Hyper L | every key, the layouts |
+| Hyper R | reload the config |
+| Hyper Return | a terminal (Ghostty, else Terminal) |
+| Hyper M, Hyper Q | quit mango, close the window |
+| Hyper Tab, Hyper ⇧ Tab | next window, jump to a window by its letter |
+| Hyper ← ↑ → ↓ | focus the window in that direction |
+| Hyper ⇧ ← ↑ → ↓ | move the window that way |
+| Hyper 1–9, Hyper ⇧ 1–9 | view a tag, send the window to a tag |
+| Hyper , / . | previous / next tag with windows; with ⇧ the window goes along |
+| Hyper N | next layout |
+| Hyper F, Hyper ⇧ F, Hyper A | fullscreen, fake fullscreen, maximize |
+| Hyper \ | floating on/off |
+| Hyper G, Hyper O | show on all tags, always on top |
+| Hyper I, Hyper ⇧ I | minimize, restore |
+| Hyper Z | scratchpad |
+| Hyper E, Hyper X | scroller: full width, next width preset |
+| Hyper [ / ] | focus the monitor left / right; with ⇧ the window goes there |
+| Hyper W, then arrows | resize the window (⇧: move it); Escape or Return leaves |
+| Hyper + drag, Hyper + right-drag | move, resize a window |
+| Hyper + scroll | previous / next tag |
+
+### mango's own keys
+
+The shipped `Resources/config.conf` is mango's default config with mango's own bindings:
+`SUPER` is ⌘, `ALT` is ⌥, `CTRL` is ⌃. To use them, replace the `bind`, `mousebind` and
+`axisbind` lines of your config with its.
 
 | Keys | Does |
 |---|---|
@@ -132,9 +159,8 @@ The default config is mango's own, so are its bindings: `SUPER` is ⌘, `ALT` is
 On a Mac these keys belong to apps and to macOS too: ⌘M, ⌘N, ⌘R, ⌘Tab, ⌘ with arrows (start and
 end of a line), ⌥ with letters and digits (the characters it types, such as @ and { on many
 layouts), ⌃ with arrows (Spaces), the middle click (a link in a new tab) and the trackpad's
-swipes (Spaces, Mission Control). [`mac-bindings.conf`](../Resources/mac-bindings.conf) has the same bindings
-on the Hyper layer: replace the `bind`, `mousebind`, `axisbind` and `gesturebind` lines of your
-config with it.
+swipes (Spaces, Mission Control). That is why the default config has them on Hyper
+([`mac-bindings.conf`](../Resources/mac-bindings.conf)).
 
 ## The Hyper key
 
@@ -226,7 +252,7 @@ The config is mango's: the same file, format and names. You edit `config.conf`, 
 
 | File | Who writes it | What |
 |---|---|---|
-| `~/.config/mango/config.conf` | you | Your config. The default is mango's own `assets/config.conf`, unchanged, and then Mango Chutney's own keys from their marker line to the end: the menu bar, the palettes on Hyper K and Hyper L, the macOS look (the rest, with their defaults, are in `docs/chutney`). Your own settings and bindings go above the lines at its end that read the files below. Delete the port's keys for plain mango. What does nothing on macOS (blur, shadows, opacity, trackpad, …) is read and ignored; `mango -p` lists it. |
+| `~/.config/mango/config.conf` | you | Your config. The default is mango's own `assets/config.conf` with its bindings moved to Hyper (`config-mac.conf`), and then Mango Chutney's own keys from their marker line to the end: the menu bar, the palettes on Hyper K and Hyper L, the macOS look (the rest, with their defaults, are in `docs/chutney`). Your own settings and bindings go above the lines at its end that read the files below. Delete the port's keys for plain mango. What does nothing on macOS (blur, shadows, opacity, trackpad, …) is read and ignored; `mango -p` lists it. |
 | `~/.config/mango/chutney_theme.conf` | Mango Chutney | With `chutney_style=1`, mango's colours in macOS's: `focus_color` your accent colour, `border_color` and `root_color` the system's grey and window background, the others its red, green, blue, purple and teal. Written at start and again when you change the accent colour or light/dark (then the config is reloaded, as mango's `reload_config`, so `exec` lines run again). Read after mango's example colours; a colour of your own goes after the `source_optional=chutney_theme.conf` line. `mango -p` lists the colours it draws. |
 | `~/.config/mango/start.conf` | you | The first lines to try, all commented out: gaps, border width and colour, a tag's layout, a key for an app. Written on the first start and opened from the welcome window; read after `chutney_theme.conf`, so a colour there wins. Delete it if you like; `source_optional` skips a missing file. |
 | `~/.config/mango/chutney_menu.conf` | Mango Chutney | The layout panel's changes, read last, so they win. Delete a line to give the key back to `config.conf`. |

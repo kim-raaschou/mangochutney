@@ -10,9 +10,10 @@ description: Remember two keys. Everything else is found from them.
 | **Hyper K** | Every key binding, in a list you search by what you want to do: "float", "tag", "layout". When you do not know how, press Hyper K. |
 | **Hyper L** | The layouts, as pictures: pick how the windows are arranged with the arrows and Return. |
 
-**Hyper** is Caps Lock held, if you chose macOS's keys on the first start. Otherwise it is
-Control, Option and Command held together (⌃⌥⌘). The [guide](../guide.md#the-hyper-key) shows how
-to make Caps Lock your Hyper key later.
+**Hyper** is Caps Lock held: it acts as Control, Option and Command (⌃⌥⌘). If you unticked
+"Caps Lock is Hyper" on the first start, hold ⌃⌥⌘ instead; the
+[guide](../guide.md#the-hyper-key) shows how to make Caps Lock your Hyper key later. mango's keys
+are all on Hyper, so macOS's own shortcuts stay as they are.
 
 Everything else, you can find from these two. You do not need to learn the rest by heart.
 

@@ -49,22 +49,23 @@ menu bar or with `mmsg service install`.
 
 ## Keys
 
-The defaults are mango's:
+mango's keys are on **Hyper**: Caps Lock held, which acts as ⌃⌥⌘. macOS's own shortcuts stay as
+they are.
 
 | Keys | Does |
 |---|---|
-| ⌥ ← ↑ → ↓ | focus left, up, right, down |
-| ⌃ 1–9 | go to tag 1–9 (⌥ 1–9 moves the window there) |
-| ⌘ N | next layout |
-| ⌥ \ | toggle floating |
-| ⌥ F | fullscreen |
-| ⌥ Q | close window |
-| ⌘ drag | move window (right-drag resizes) |
-| ⌃⌥⌘ K | list all keys |
+| Hyper K | list all keys |
+| Hyper L | pick a layout |
+| Hyper ← ↑ → ↓ | focus left, up, right, down |
+| Hyper 1–9 | go to tag 1–9 (Hyper ⇧ 1–9 moves the window there) |
+| Hyper N | next layout |
+| Hyper \ | toggle floating |
+| Hyper F | fullscreen |
+| Hyper Q | close window |
+| Hyper drag | move window (right-drag resizes) |
 
-Some of these clash with Mac shortcuts, ⌘M for example quits Mango Chutney. On the first start
-you can choose macOS's keys instead: mango's are then on one Hyper key, such as Caps Lock; the
-[guide](docs/guide.md#the-hyper-key) has more.
+mango's own keys (⌥ arrows, ⌃ 1–9, ⌘ N …) clash with Mac shortcuts; the
+[guide](docs/guide.md#default-keys) says how to use them anyway.
 
 ## Config
 

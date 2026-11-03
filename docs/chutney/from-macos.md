@@ -8,8 +8,9 @@ new window takes a place next to the others, and when one closes the rest fill t
 takes a few days to get used to. You do not need to learn it all at once, and the mouse keeps
 working the whole time.
 
-The keys below are mango's defaults. **Hyper K** (⌃⌥⌘K) lists every key and lets you search for
-one by what it does, so when you forget a key, search for "float" or "tag".
+The keys below are on **Hyper**: Caps Lock held (it acts as ⌃⌥⌘), so macOS's own shortcuts stay
+as they are. **Hyper K** lists every key and lets you search for one by what it does, so when you
+forget a key, search for "float" or "tag".
 
 ## 1. Let it place your windows
 
@@ -18,7 +19,7 @@ on the left and stacks the others on the right.
 
 Try:
 
-- **⌘ N** goes to the next layout. Press it a few times.
+- **Hyper N** goes to the next layout. Press it a few times.
 - **Hyper L** shows the layouts as icons. Pick one with the arrows and Return.
 - **The menu bar item** has the same layouts, plus gaps and borders, to change with the mouse.
 
@@ -26,11 +27,11 @@ Try:
 
 | Keys | Does |
 |---|---|
-| ⌥ ← ↑ → ↓ | focus the window in that direction |
-| ⌘ ⇧ ← ↑ → ↓ | move the window that way |
-| ⌥ Q | close the window |
+| Hyper ← ↑ → ↓ | focus the window in that direction |
+| Hyper ⇧ ← ↑ → ↓ | move the window that way |
+| Hyper Q | close the window |
 
-Holding ⌘ and dragging moves a window with the mouse. Right-drag resizes it.
+Holding Hyper and dragging moves a window with the mouse. Right-drag resizes it.
 
 ## 3. Tags
 
@@ -39,9 +40,9 @@ layout. Put your mail on one, your editor on another.
 
 | Keys | Does |
 |---|---|
-| ⌃ 1–9 | go to a tag |
-| ⌥ 1–9 | send the window to a tag |
-| ⌃ ← / → | the previous or next tag that has windows |
+| Hyper 1–9 | go to a tag |
+| Hyper ⇧ 1–9 | send the window to a tag |
+| Hyper , / . | the previous or next tag that has windows |
 
 They do not use macOS Spaces, so you can leave Spaces as they are.
 
@@ -51,11 +52,11 @@ Some windows are better left alone: a calculator, a settings window, a video.
 
 | Keys | Does |
 |---|---|
-| ⌥ \ | float the window, or tile it again |
-| ⌥ A | maximize |
-| ⌥ F | fullscreen |
-| ⌘ O | keep it on top |
-| ⌘ G | show it on every tag |
+| Hyper \ | float the window, or tile it again |
+| Hyper A | maximize |
+| Hyper F | fullscreen |
+| Hyper O | keep it on top |
+| Hyper G | show it on every tag |
 
 Dialogs open floating by themselves.
 
@@ -65,25 +66,21 @@ The scratchpad is a place to put windows you need now and then, such as a termin
 
 | Keys | Does |
 |---|---|
-| ⌘ I | send the window to the scratchpad |
-| ⌥ Z | show or hide the scratchpad |
-| ⌘ ⇧ I | take the window back |
+| Hyper I | send the window to the scratchpad |
+| Hyper Z | show or hide the scratchpad |
+| Hyper ⇧ I | take the window back |
 
 ## 6. Find a window
 
-- **⌥ Tab** puts a letter on every window. Press the letter to go there.
+- **Hyper ⇧ Tab** puts a letter on every window. Press the letter to go there.
 - **Swipe up with four fingers** for the overview: all your windows, side by side.
 - **Hyper K** also lists your open windows. Type part of a title.
 
-## 7. Move the keys to Hyper
+## 7. Caps Lock is Hyper
 
-After a while you will notice that some of mango's keys are also Mac shortcuts: ⌘ ← no longer goes
-to the start of a line, ⌥ with a letter no longer types a character, and ⌘ M quits Mango Chutney.
-
-The fix is a Hyper key: one key that means ⌃⌥⌘ held together. With
-`xkb_rules_options=caps:hyper` Caps Lock becomes Hyper, and mango's keys can move there, out of the
-way of your apps. If you chose macOS's keys on the first start, this is already done. Otherwise the
-[guide](../guide.md#the-hyper-key) explains how.
+Every key above starts with Hyper, Caps Lock held, so ⌘, ⌥ and ⌃ keep doing what they do in your
+apps. If you would rather have Caps Lock back, delete the `xkb_rules_options=caps:hyper` line in
+`config.conf` and hold ⌃⌥⌘ instead; the [guide](../guide.md#the-hyper-key) has more.
 
 ## Next
 

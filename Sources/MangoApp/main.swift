@@ -22,7 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Permissions.shared.restart = { [weak self] in self?.restart() }
         Permissions.shared.quit = { [weak self] in self?.quit() }
         Permissions.shared.installLoginService = { [weak self] in self?.service("install") }
-        Permissions.shared.offerKeysOnFirstStart(configPath ?? ConfigParser.defaultConfigURL())
+        Permissions.shared.prepareFirstStart(configPath ?? ConfigParser.defaultConfigURL())
         Permissions.shared.showIfNeeded()
         if AX.isTrusted {
             startWM()

@@ -106,11 +106,11 @@ public struct PermissionState: Equatable {
 @MainActor
 final class PermissionsModel: ObservableObject {
     @Published var state: PermissionState
-    /// The keys to start with, offered on a first start only: mango's, or the Mac set
-    /// (config-mac.conf).
-    @Published var offerKeys = false
-    @Published var macKeys = false
-    /// Offered with the keys on a first start: `mmsg service install` on Continue.
+    /// A first start: the window also offers Caps Lock as Hyper and Start at Login.
+    @Published var firstStart = false
+    /// Offered on a first start: Caps Lock held is Hyper (⌃⌥⌘).
+    @Published var capsHyper = true
+    /// Offered on a first start: `mmsg service install` on Continue.
     @Published var startAtLogin = false
     /// After a first start's Continue: the welcome, with the first lines of config to try.
     @Published var welcome = false
@@ -157,8 +157,8 @@ public final class Permissions {
     }
 
     /// At launch, before mango writes its default config: on a first start the window also
-    /// offers the keys to start with.
-    public func offerKeysOnFirstStart(_ configURL: URL) {
+    /// offers Caps Lock as Hyper and Start at Login.
+    public func prepareFirstStart(_ configURL: URL) {
         guard ConfigFiles.isFirstStart(configURL) else { return }
         firstStartConfig = configURL
     }
@@ -179,7 +179,7 @@ public final class Permissions {
     public func show() {
         let model = self.model ?? PermissionsModel(state: state)
         model.state = state
-        model.offerKeys = firstStartConfig != nil
+        model.firstStart = firstStartConfig != nil
         model.onContinue = { [weak self] in self?.continueOn() }
         model.onRestart = { [weak self] in self?.restart() }
         model.onQuit = { [weak self] in self?.quit() }
@@ -214,11 +214,12 @@ public final class Permissions {
     private func continueOn() {
         if !state.screenRecording { UserDefaults.standard.set(true, forKey: Self.skipKey) }
         if let url = firstStartConfig, let model {
-            if model.macKeys { ConfigFiles.useMacKeys(configURL: url) } else { ConfigFiles.ensure(url) }
+            ConfigFiles.ensure(url)
+            ConfigFiles.setCapsLockHyper(model.capsHyper, configURL: url)
             if model.startAtLogin { installLoginService() }
             firstStartConfig = nil
             startConfig = ConfigFiles.startURL(url)
-            model.offerKeys = false
+            model.firstStart = false
             model.welcome = true
             window?.title = "Welcome to Mango Chutney"
             // The docs open behind the welcome, which floats above them.
@@ -288,7 +289,7 @@ struct PermissionsView: View {
             Divider()
 
             if model.welcome {
-                Welcome(macKeys: model.macKeys)
+                Welcome(capsHyper: model.capsHyper)
                     .padding(20)
 
                 Divider()
@@ -308,9 +309,9 @@ struct PermissionsView: View {
                 }
                 .padding(20)
 
-                if model.offerKeys {
+                if model.firstStart {
                     Divider()
-                    KeysChoice(model: model)
+                    FirstStartChoices(model: model)
                         .padding(20)
                 }
 
@@ -319,7 +320,7 @@ struct PermissionsView: View {
                 HStack(spacing: 10) {
                     Button("Quit Mango Chutney", action: model.onQuit)
                     Spacer()
-                    Button(model.state.allGranted ? (model.offerKeys ? "Continue" : "Done")
+                    Button(model.state.allGranted ? (model.firstStart ? "Continue" : "Done")
                            : model.state.accessibility ? "Continue without Screen Recording" : "Waiting for Accessibility…",
                            action: model.onContinue)
                         .keyboardShortcut(.defaultAction)
@@ -332,24 +333,25 @@ struct PermissionsView: View {
     }
 }
 
-/// The keys to start with, on a first start: mango's, or macOS's with mango's on Hyper.
-private struct KeysChoice: View {
+/// A first start's choices: Caps Lock as Hyper, and Start at Login.
+private struct FirstStartChoices: View {
     @ObservedObject var model: PermissionsModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Keys to start with").font(.headline)
-            Picker("", selection: $model.macKeys) {
-                option("mango", "mango's own keys: ⌥ arrows, ⌃ 1–9, ⌘ N … Some of them are also macOS shortcuts.")
-                    .tag(false)
-                option("macOS", "macOS's shortcuts stay as they are; mango's keys are on Hyper, Caps Lock held.")
-                    .tag(true)
-            }
-            .pickerStyle(.radioGroup)
-            .labelsHidden()
-            Text("Written to ~/.config/mango/config.conf when you continue. Hyper K lists every key.")
+            Text("Remember two keys").font(.headline)
+            TwoKeys(capsHyper: model.capsHyper)
+            Text("macOS's shortcuts stay as they are; mango's keys are on Hyper. Written to ~/.config/mango/config.conf when you continue.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6)
+            Toggle("Caps Lock is Hyper (⌃⌥⌘)", isOn: $model.capsHyper)
+                .padding(.top, 6)
+            Text("Hyper K and Hyper L are then Caps Lock K and Caps Lock L. Caps Lock no longer types capitals. Untick for Hyper from Karabiner-Elements or a keyboard of its own.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.leading, 20)
             Toggle("Start Mango Chutney at login", isOn: $model.startAtLogin)
                 .padding(.top, 6)
@@ -360,31 +362,15 @@ private struct KeysChoice: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
-    private func option(_ title: String, _ detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-            Text(detail).font(.caption).foregroundStyle(.secondary)
-        }
-    }
 }
 
 /// After a first start's Continue: the two keys to remember, then the config.
 private struct Welcome: View {
-    let macKeys: Bool
-
-    private var hyper: String { macKeys ? "⇪" : "⌃⌥⌘" }
+    let capsHyper: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            key("K", "Every key, searched by what you want to do",
-                "Float, tag, layout: type it and press Return. When you do not know how, press Hyper K.")
-            key("L", "The layouts",
-                "Pick how the windows are arranged, with the arrows and Return.")
-            Text(macKeys ? "Hyper is Caps Lock held." : "Hyper is Control, Option and Command held together.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
+            TwoKeys(capsHyper: capsHyper)
             Divider().padding(.vertical, 6)
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "doc.text")
@@ -400,6 +386,28 @@ private struct Welcome: View {
                 }
             }
             .padding(.horizontal, 14)
+        }
+    }
+}
+
+/// The two keys to remember, Hyper K and Hyper L, as key caps; on the first start and in
+/// the welcome.
+private struct TwoKeys: View {
+    let capsHyper: Bool
+
+    private var hyper: String { capsHyper ? "⇪" : "⌃⌥⌘" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            key("K", "Every key, searched by what you want to do",
+                "Float, tag, layout: type it and press Return. When you do not know how, press Hyper K.")
+            key("L", "The layouts",
+                "Pick how the windows are arranged, with the arrows and Return.")
+            Text(capsHyper ? "Hyper is Caps Lock held: it acts as Control, Option and Command (⌃⌥⌘)."
+                 : "Hyper is Control, Option and Command held together (⌃⌥⌘).")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
         }
     }
 
