@@ -294,7 +294,11 @@ class MacWindowSystem: WindowSystem {
     var keyMappings: [KeyboardOptions.Mapping] = []
 
     func setKeyboardOptions(_ options: String) {
-        let m = KeyboardOptions.mappings(MangoServer.xkbOptions(options))
+        var m = KeyboardOptions.mappings(MangoServer.xkbOptions(options))
+        // Port extension: not in mango (chutney_hyper_key), unless an xkb option moved that key.
+        if let h = KeyboardOptions.hyperKeyMapping(server.config.chutneyHyperKey), !m.contains(where: { $0.src == h.src }) {
+            m.append(h)
+        }
         guard m != keyMappings else { return }
         keyMappings = m
         KeyboardOptions.apply(m)
@@ -434,6 +438,8 @@ class MacWindowSystem: WindowSystem {
     }
 
     func publishInput(_ state: InputState) {
+        let hyperKey = server.config.chutneyHyperKey, hyperTap = server.config.chutneyHyperTap
+        let hyperModifier = server.config.hyperModifier
         router.publish { s in
             s.keymode = state.keymode
             s.bindings = state.bindings
@@ -446,7 +452,9 @@ class MacWindowSystem: WindowSystem {
             s.overcircleActive = state.overcircleActive
             s.switcherActive = state.switcherActive
             s.tagCombo = state.tagCombo
-            s.capsHyper = state.capsHyper
+            // Port extension: not in mango. chutney_hyper_key's key is held as Hyper too.
+            s.capsHyper = state.capsHyper ?? (hyperKey.isEmpty ? nil : Modifiers.parse("hyper", hyperModifier: hyperModifier))
+            s.hyperTapEscape = hyperTap == "escape"
             s.wantsMouseMoved = state.wantsMouseMoved
             s.cursorHideOnKeypress = state.cursorHideOnKeypress
         }

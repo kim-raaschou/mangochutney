@@ -25,6 +25,8 @@ A Mac has no Hyper key. In Mango Chutney `HYPER` in a binding means the modifier
 | Setting | Default | Description |
 | :--- | :--- | :--- |
 | `chutney_hyper_modifier` | `super+ctrl+alt` | What `HYPER` means in a binding, in mango's modifier names: ⌃⌥⌘ unless you choose otherwise. Leave `shift` out if you use `HYPER+SHIFT` bindings (as `mac-bindings.conf` does). |
+| `chutney_hyper_key` | unset (the first start: your choice) | One key held as `HYPER`: `caps_lock`, `right_command` or `right_option`, done with macOS's own key mapping. That key no longer does what it did (Caps Lock types no capitals). Unset: hold the modifiers of `chutney_hyper_modifier` together. The menu bar's Learn › Hyper Key changes it. |
+| `chutney_hyper_tap` | `none` | The Hyper key pressed and let go alone: `none`, or `escape`. |
 
 ```ini
 # your choice: ⌃⌥⌘⇧
@@ -32,9 +34,16 @@ chutney_hyper_modifier=super+ctrl+alt+shift
 bind=HYPER,k,chutney_toggle_hotkeys_palette
 ```
 
-> **Tip:** one key for Hyper: mango's own `xkb_rules_options=caps:hyper` makes Caps Lock held
-> Hyper, for Mango Chutney only. For other apps to get ⌃⌥⌘ too, use the Karabiner-Elements rule in
-> `Resources/karabiner/mango-hyper.json` instead (not both).
+```ini
+# the right ⌘ held is Hyper; tapped alone it is Escape
+chutney_hyper_key=right_command
+chutney_hyper_tap=escape
+```
+
+> **Tip:** mango's own `xkb_rules_options=caps:hyper` makes Caps Lock Hyper too, as
+> `chutney_hyper_key=caps_lock` does. Either way only Mango Chutney sees it as Hyper; for other
+> apps to get ⌃⌥⌘ too, use the Karabiner-Elements rule in `Resources/karabiner/mango-hyper.json`
+> instead (and no Hyper key here).
 
 ## One Key per App
 

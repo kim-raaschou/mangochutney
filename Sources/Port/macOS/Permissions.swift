@@ -106,10 +106,12 @@ public struct PermissionState: Equatable {
 @MainActor
 final class PermissionsModel: ObservableObject {
     @Published var state: PermissionState
-    /// A first start: the window also offers Caps Lock as Hyper and Start at Login.
+    /// A first start: the window also asks for the Hyper key and offers Start at Login.
     @Published var firstStart = false
-    /// Offered on a first start: Caps Lock held is Hyper (⌃⌥⌘).
-    @Published var capsHyper = true
+    /// The key held as Hyper (chutney_hyper_key), chosen on a first start; nil: not yet.
+    @Published var hyperKey: String?
+    /// The Hyper key pressed alone is Escape (chutney_hyper_tap).
+    @Published var hyperTapEscape = false
     /// Offered on a first start: `mmsg service install` on Continue.
     @Published var startAtLogin = false
     /// After a first start's Continue: the welcome, with the first lines of config to try.
@@ -157,7 +159,7 @@ public final class Permissions {
     }
 
     /// At launch, before mango writes its default config: on a first start the window also
-    /// offers Caps Lock as Hyper and Start at Login.
+    /// asks for the Hyper key and offers Start at Login.
     public func prepareFirstStart(_ configURL: URL) {
         guard ConfigFiles.isFirstStart(configURL) else { return }
         firstStartConfig = configURL
@@ -215,7 +217,7 @@ public final class Permissions {
         if !state.screenRecording { UserDefaults.standard.set(true, forKey: Self.skipKey) }
         if let url = firstStartConfig, let model {
             ConfigFiles.ensure(url)
-            ConfigFiles.setCapsLockHyper(model.capsHyper, configURL: url)
+            ConfigFiles.setHyperKey(model.hyperKey ?? "caps_lock", tapEscape: model.hyperTapEscape, configURL: url)
             if model.startAtLogin { installLoginService() }
             firstStartConfig = nil
             startConfig = ConfigFiles.startURL(url)
@@ -289,7 +291,7 @@ struct PermissionsView: View {
             Divider()
 
             if model.welcome {
-                Welcome(capsHyper: model.capsHyper)
+                Welcome(hyperKey: model.hyperKey)
                     .padding(20)
 
                 Divider()
@@ -324,7 +326,7 @@ struct PermissionsView: View {
                            : model.state.accessibility ? "Continue without Screen Recording" : "Waiting for Accessibility…",
                            action: model.onContinue)
                         .keyboardShortcut(.defaultAction)
-                        .disabled(!model.state.accessibility)
+                        .disabled(!model.state.accessibility || (model.firstStart && model.hyperKey == nil))
                 }
                 .padding(16)
             }
@@ -339,20 +341,28 @@ private struct FirstStartChoices: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Remember two keys").font(.headline)
-            TwoKeys(capsHyper: model.capsHyper)
-            Text("macOS's shortcuts stay as they are; mango's keys are on Hyper. Written to ~/.config/mango/config.conf when you continue.")
+            Text("Choose your Hyper key").font(.headline)
+            Text("The key you hold for mango's keys; it acts as Control, Option and Command (⌃⌥⌘). macOS's own shortcuts stay as they are. Change it later in the menu bar (Learn › Hyper Key).")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 6)
-            Toggle("Caps Lock is Hyper (⌃⌥⌘)", isOn: $model.capsHyper)
-                .padding(.top, 6)
-            Text("Hyper K and Hyper L are then Caps Lock K and Caps Lock L. Caps Lock no longer types capitals. Untick for Hyper from Karabiner-Elements or a keyboard of its own.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            Picker("", selection: $model.hyperKey) {
+                option("Caps Lock (recommended)", "Under your little finger. Caps Lock no longer types capitals.")
+                    .tag(Optional("caps_lock"))
+                option("Right ⌘", "The right Command key is Hyper; the left one stays Command.")
+                    .tag(Optional("right_command"))
+                option("Right ⌥", "The right Option key is Hyper; the left one stays Option and types special characters.")
+                    .tag(Optional("right_option"))
+            }
+            .pickerStyle(.radioGroup)
+            .labelsHidden()
+            Toggle("Pressed alone, it is Escape", isOn: $model.hyperTapEscape)
                 .padding(.leading, 20)
+                .disabled(model.hyperKey == nil)
+
+            Text("Remember two keys").font(.headline)
+                .padding(.top, 10)
+            TwoKeys(hyperKey: model.hyperKey)
             Toggle("Start Mango Chutney at login", isOn: $model.startAtLogin)
                 .padding(.top, 6)
             Text("Later from the menu bar (Start at Login) or with mmsg service install and uninstall.")
@@ -362,15 +372,22 @@ private struct FirstStartChoices: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    private func option(_ title: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+            Text(detail).font(.caption).foregroundStyle(.secondary)
+        }
+    }
 }
 
 /// After a first start's Continue: the two keys to remember, then the config.
 private struct Welcome: View {
-    let capsHyper: Bool
+    let hyperKey: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TwoKeys(capsHyper: capsHyper)
+            TwoKeys(hyperKey: hyperKey)
             Divider().padding(.vertical, 6)
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "doc.text")
@@ -393,9 +410,25 @@ private struct Welcome: View {
 /// The two keys to remember, Hyper K and Hyper L, as key caps; on the first start and in
 /// the welcome.
 private struct TwoKeys: View {
-    let capsHyper: Bool
+    let hyperKey: String?
 
-    private var hyper: String { capsHyper ? "⇪" : "⌃⌥⌘" }
+    private var hyper: String {
+        switch hyperKey {
+        case "caps_lock": "⇪"
+        case "right_command": "⌘"
+        case "right_option": "⌥"
+        default: "Hyper"
+        }
+    }
+
+    private var hyperText: String {
+        switch hyperKey {
+        case "caps_lock": "Hyper is Caps Lock held: it acts as Control, Option and Command (⌃⌥⌘)."
+        case "right_command": "Hyper is the right ⌘ held: it acts as Control, Option and Command (⌃⌥⌘)."
+        case "right_option": "Hyper is the right ⌥ held: it acts as Control, Option and Command (⌃⌥⌘)."
+        default: "Hyper is the key you choose above."
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -403,8 +436,7 @@ private struct TwoKeys: View {
                 "Float, tag, layout: type it and press Return. When you do not know how, press Hyper K.")
             key("L", "The layouts",
                 "Pick how the windows are arranged, with the arrows and Return.")
-            Text(capsHyper ? "Hyper is Caps Lock held: it acts as Control, Option and Command (⌃⌥⌘)."
-                 : "Hyper is Control, Option and Command held together (⌃⌥⌘).")
+            Text(hyperText)
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .padding(.leading, 4)

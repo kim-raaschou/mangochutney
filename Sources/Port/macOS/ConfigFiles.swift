@@ -44,23 +44,19 @@ public enum ConfigFiles {
         ws.open([url], withApplicationAt: textEdit, configuration: NSWorkspace.OpenConfiguration())
     }
 
-    /// The first start's Caps Lock choice: Hyper (mango's xkb_rules_options caps:hyper,
-    /// macOS's own key mapping) or left alone, in the config the first start wrote, and only
-    /// while it is as written.
-    static let capsHyperLines = "# Caps Lock is Hyper. Hyper from Karabiner-Elements or a keyboard of its own: delete this line.\r\nxkb_rules_options=caps:hyper\r\n"
-    static let hyperComment = "# chutney_hyper_modifier=super+ctrl+alt\r\n"
+    /// The first start's Hyper key (chutney_hyper_key) and what it does alone
+    /// (chutney_hyper_tap), in the config the first start wrote, and only while it is as
+    /// written.
+    static let hyperKeyLine = "chutney_hyper_key=caps_lock\r\n"
 
-    static func setCapsLockHyper(_ on: Bool, configURL: URL) {
+    static func setHyperKey(_ key: String, tapEscape: Bool, configURL: URL) {
         func text(_ url: URL?) -> String? { url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } }
-        guard let current = text(configURL),
-              current == text(bundled("config")) || current == text(bundled("config-mac")) else { return }
-        let has = current.contains(capsHyperLines)
-        guard on != has else { return }
-        let new = on ? current.replacingOccurrences(of: hyperComment, with: hyperComment + capsHyperLines)
-                     : current.replacingOccurrences(of: capsHyperLines, with: "")
+        guard let current = text(configURL), current == text(bundled("config-mac")),
+              current.contains(hyperKeyLine) else { return }
+        let line = "chutney_hyper_key=\(key)\r\n" + (tapEscape ? "chutney_hyper_tap=escape\r\n" : "")
         do {
-            try new.write(to: configURL, atomically: true, encoding: .utf8)
-            Log.info("keys: Caps Lock \(on ? "is Hyper" : "left alone"), in \(configURL.path)")
+            try current.replacingOccurrences(of: hyperKeyLine, with: line).write(to: configURL, atomically: true, encoding: .utf8)
+            Log.info("keys: Hyper is \(key)\(tapEscape ? ", Escape alone" : ""), in \(configURL.path)")
         } catch {
             Log.info("keys: could not write the config: \(error)")
         }

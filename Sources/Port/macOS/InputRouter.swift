@@ -32,8 +32,11 @@ final class InputRouter: @unchecked Sendable {
         var switcherActive = false
         /// mango's tag_combo: a comboview is going on; any key released ends it.
         var tagCombo = false
-        /// xkb_rules_options caps:hyper: what Caps Lock (now F18) held stands for.
+        /// xkb_rules_options caps:hyper or chutney_hyper_key: what the Hyper key (now F18) held
+        /// stands for.
         var capsHyper: Modifiers?
+        /// chutney_hyper_tap escape: the Hyper key pressed alone is Escape.
+        var hyperTapEscape = false
         var wantsMouseMoved = false
         /// Tabs in the focused monitor's tab bar that ⌘1-9 picks (0: none, or off).
         var tabShortcuts = 0
@@ -97,17 +100,26 @@ final class InputRouter: @unchecked Sendable {
 
     /// Caps Lock (F18) is held as mango's hyper (xkb_rules_options caps:hyper).
     private var hyperHeld = false
+    /// Port extension: not in mango (chutney_hyper_tap). The Hyper key went down and nothing
+    /// else has been pressed or clicked since.
+    private var hyperAlone = false
+    /// Sends Escape (KeyForward to the frontmost app; tests record it instead).
+    var tapEscape: () -> Void = { KeyForward.postToFront(keyCode: 53) }
 
     func key(_ event: KeyEvent, modifierOnlySinceDown: Bool) -> Bool {
         var ev = event
         if let hyper = snapshot.capsHyper {
             // The hyper key itself is mango's: it only holds hyper, and no app sees it.
             if ev.keyCode == KeyboardOptions.hyperKeyCode && !ev.isModifierKey {
+                if ev.isDown && !ev.isRepeat { hyperAlone = true }
+                if !ev.isDown && hyperAlone && snapshot.hyperTapEscape { tapEscape() }
+                if !ev.isDown { hyperAlone = false }
                 hyperHeld = ev.isDown
                 if ev.isDown && !ev.isRepeat { lock.lock(); keyboard.lastHoldKeycode = ev.keyCode; lock.unlock() }
                 return true
             }
             if hyperHeld { ev.mods.formUnion(hyper) }
+            if ev.isDown { hyperAlone = false }
         } else {
             hyperHeld = false
         }
@@ -211,6 +223,7 @@ final class InputRouter: @unchecked Sendable {
         let s = snapshot
         var ev = event
         if hyperHeld, let hyper = s.capsHyper { ev.mods.formUnion(hyper) }
+        hyperAlone = false
         let p = ev.location, button = ev.button
         let mods = ev.mods
         if ev.isDown {

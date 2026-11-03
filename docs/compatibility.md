@@ -78,7 +78,9 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_hotkeys_max_rows` | the most rows the hotkeys palette shows (chutney_toggle_hotkeys_palette); its height follows them |
 | `chutney_hotkeys_recent` | the rows used of late on the hotkeys palette's front page (0: none) |
 | `chutney_hotkeys_width` | the hotkeys palette's width in points |
+| `chutney_hyper_key` | the key held as HYPER: caps_lock, right_command or right_option (macOS's own key mapping) |
 | `chutney_hyper_modifier` | what HYPER means in a bind |
+| `chutney_hyper_tap` | the Hyper key pressed alone: none or escape |
 | `chutney_ignore_apps` | bundle ids that are never managed |
 | `chutney_layout_palette_keys` | the keys that move the layout palette's selection: left,down,up,right (or h,j,k,l); the arrows always work |
 | `chutney_layout_palette_width` | the layout palette's width in points; its cells and icons follow |

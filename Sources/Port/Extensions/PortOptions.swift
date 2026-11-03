@@ -21,6 +21,22 @@ enum PortOptions {
             config.chutneyHyperModifier = value
             return .applied
         }
+        t["chutney_hyper_key"] = { config, value in
+            let v = value.lowercased()
+            guard ["", "none", "caps_lock", "right_command", "right_option"].contains(v) else {
+                return .invalid("Invalid chutney_hyper_key: \(value) (caps_lock, right_command or right_option)")
+            }
+            config.chutneyHyperKey = v == "none" ? "" : v
+            return .applied
+        }
+        t["chutney_hyper_tap"] = { config, value in
+            let v = value.lowercased()
+            guard ["none", "escape"].contains(v) else {
+                return .invalid("Invalid chutney_hyper_tap: \(value) (none or escape)")
+            }
+            config.chutneyHyperTap = v
+            return .applied
+        }
         t["chutney_menu_bar"] = O.bool(\.chutneyMenuBar)
         t["chutney_menu_bar_tag_style"] = { config, value in
             let v = value.lowercased()

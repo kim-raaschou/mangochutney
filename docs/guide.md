@@ -81,9 +81,9 @@ are (`config-mac.conf`: mango's bindings commented out, with
 [`mac-bindings.conf`](../Resources/mac-bindings.conf) in their place among the port's keys at its
 end). The permissions window then shows the two keys to remember, Hyper K and Hyper L, and offers:
 
-- **Caps Lock is Hyper (⌃⌥⌘)**, on unless unticked: `xkb_rules_options=caps:hyper`, done with
-  macOS's own key mapping. Untick it for Hyper from Karabiner-Elements or a keyboard of its own,
-  or delete the line later.
+- **Your Hyper key**, which must be chosen before Continue: Caps Lock (recommended), the right ⌘
+  or the right ⌥ (`chutney_hyper_key`), and whether it is Escape pressed alone
+  (`chutney_hyper_tap`). Change it later in the menu bar, Learn › Hyper Key.
 - **Start Mango Chutney at login**, off unless ticked: installs the login service on Continue.
   Later it is Start at Login in the menu bar, or:
 
@@ -100,7 +100,8 @@ same windows.
 
 ## Default keys
 
-mango's keys are on Hyper (Caps Lock held, or ⌃⌥⌘); macOS's shortcuts stay as they are.
+mango's keys are on Hyper, the key you chose on the first start (Caps Lock, the right ⌘ or the
+right ⌥); macOS's shortcuts stay as they are.
 **Hyper K** lists them all.
 
 | Keys | Does |
@@ -168,10 +169,12 @@ A Mac has no Hyper key. In Mango Chutney `HYPER` is `chutney_hyper_modifier`: Co
 held together, unless you choose other modifiers in `config.conf`. The palettes are on it
 (Hyper K, Hyper L), and so is [`mac-bindings.conf`](../Resources/mac-bindings.conf).
 
-One key for it: set `xkb_rules_options=caps:hyper` (mango's own option) and Caps Lock held is
-Hyper, done with macOS's own key mapping, no Karabiner needed. Only Mango Chutney sees it as
-Hyper; if other apps should get ⌃⌥⌘ too, use the Karabiner-Elements rule in
-`Resources/karabiner/mango-hyper.json` instead (not both).
+One key for it, chosen on the first start and later in the menu bar (Learn › Hyper Key):
+`chutney_hyper_key` is `caps_lock`, `right_command` or `right_option`, done with macOS's own key
+mapping, no Karabiner needed. `chutney_hyper_tap=escape` makes the key Escape when it is pressed
+alone. mango's own `xkb_rules_options=caps:hyper` makes Caps Lock Hyper too. Only Mango Chutney
+sees the key as Hyper; if other apps should get ⌃⌥⌘ too, use the Karabiner-Elements rule in
+`Resources/karabiner/mango-hyper.json` instead (and no Hyper key here).
 
 ## The menu bar and layout panel
 
@@ -191,7 +194,7 @@ display. Its menu holds the **layout panel**:
 - **Desktop:** the gaps, inner and outer, horizontal and vertical (linked or apart), for the tags
   or the special tag, with smart gaps and a preview drawn at the screen's scale; border width.
 - **Menu bar:** the tags as squares, circles or text, the logo, the layout icon, the key mode; animations on/off.
-- Learn: what Super and Hyper are (a click opens the keys' docs), Getting Started, mango Documentation. Then Reload Config (⌘R), Edit Config, Permissions…, Start at Login (`mmsg service install` / `uninstall`, ticked while installed), Restart and Quit Mango Chutney.
+- Learn: Hyper Key (Caps Lock, right ⌘ or right ⌥; Escape pressed alone; what Super and Hyper are, a click opens the keys' docs), Getting Started, mango Documentation. Then Reload Config (⌘R), Edit Config, Permissions…, Start at Login (`mmsg service install` / `uninstall`, ticked while installed), Restart and Quit Mango Chutney.
 
 The panel only sends mango's own dispatchers (`setlayout`, `setmfact`, `incnmaster`, `setoption`),
 as a bar would over IPC. Its changes are kept in `~/.config/mango/chutney_menu.conf`

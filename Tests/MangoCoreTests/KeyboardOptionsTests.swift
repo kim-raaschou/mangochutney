@@ -62,4 +62,48 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertTrue(router.key(key(K.hyperKeyCode, down: false), modifierOnlySinceDown: false))
         XCTAssertFalse(router.key(key(4, down: true), modifierOnlySinceDown: false), "let go: h is the app's again")
     }
+
+    /// chutney_hyper_key (port extension): the chosen key becomes F18, held as Hyper.
+    func testTheHyperKeysMapping() {
+        XCTAssertEqual(K.hyperKeyMapping("caps_lock"), .init(src: K.capsLock, dst: K.f18))
+        XCTAssertEqual(K.hyperKeyMapping("right_command"), .init(src: K.rightGUI, dst: K.f18))
+        XCTAssertEqual(K.hyperKeyMapping("right_option"), .init(src: K.rightAlt, dst: K.f18))
+        XCTAssertNil(K.hyperKeyMapping(""))
+        func parse(_ text: String) -> ParsedConfig {
+            ConfigParser.parse(text: text, baseDirectory: FileManager.default.temporaryDirectory, fileName: "t.conf")
+        }
+        let p = parse("chutney_hyper_key=Right_Command\nchutney_hyper_tap=escape\n")
+        XCTAssertEqual(p.errors, [])
+        XCTAssertEqual(p.config.chutneyHyperKey, "right_command")
+        XCTAssertEqual(p.config.chutneyHyperTap, "escape")
+        XCTAssertFalse(parse("chutney_hyper_key=fn\n").errors.isEmpty, "not a Hyper key")
+        XCTAssertEqual(Config().chutneyHyperKey, "", "none unless set")
+    }
+
+    /// chutney_hyper_key's key held is Hyper as caps:hyper's is; with chutney_hyper_tap escape,
+    /// pressed and let go alone it is Escape, and not when a key came between.
+    func testTheHyperKeyHeldIsHyperAndAloneIsEscape() {
+        let r = EngineRig()
+        r.server.config.chutneyHyperKey = "right_command"
+        r.server.config.chutneyHyperTap = "escape"
+        r.server.publishInputState()
+        let hyper = Modifiers.parse("hyper", hyperModifier: r.server.config.hyperModifier)!
+        let router = r.server.mac.router
+        router.publish { $0.bindings = [KeyBinding(mods: hyper, keyName: "h", keyCodes: [4],
+                                                   dispatch: Dispatch(name: "view", args: ["2"]))] }
+        router.server = nil
+        var escapes = 0
+        router.tapEscape = { escapes += 1 }
+        func key(_ code: UInt16, down: Bool) -> KeyEvent {
+            KeyEvent(keyCode: code, mods: [], isDown: down, isRepeat: false, isModifierKey: false)
+        }
+        XCTAssertTrue(router.key(key(K.hyperKeyCode, down: true), modifierOnlySinceDown: false))
+        XCTAssertTrue(router.key(key(K.hyperKeyCode, down: false), modifierOnlySinceDown: false))
+        XCTAssertEqual(escapes, 1, "alone: Escape")
+        _ = router.key(key(K.hyperKeyCode, down: true), modifierOnlySinceDown: false)
+        XCTAssertTrue(router.key(key(4, down: true), modifierOnlySinceDown: false), "hyper+h: the binding")
+        _ = router.key(key(4, down: false), modifierOnlySinceDown: false)
+        _ = router.key(key(K.hyperKeyCode, down: false), modifierOnlySinceDown: false)
+        XCTAssertEqual(escapes, 1, "a key came between: no Escape")
+    }
 }

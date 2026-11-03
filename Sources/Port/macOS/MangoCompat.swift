@@ -143,6 +143,8 @@ public enum MangoCompat {
     public static let portExtensionOptions: [String: String] = {
         var t: [String: String] = [
         "chutney_hyper_modifier": "what HYPER means in a bind",
+        "chutney_hyper_key": "the key held as HYPER: caps_lock, right_command or right_option (macOS's own key mapping)",
+        "chutney_hyper_tap": "the Hyper key pressed alone: none or escape",
         "chutney_menu_bar": "menu-bar item with the current tags and layout",
         "chutney_menu_bar_tag_style": "the menu bar's tags: square, circle (SF Symbols numbers) or text",
         "chutney_menu_config": "the file the menu's panel saves its settings in; the config reads it with source_optional, last",

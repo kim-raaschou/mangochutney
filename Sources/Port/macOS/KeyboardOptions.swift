@@ -48,6 +48,17 @@ enum KeyboardOptions {
         return out
     }
 
+    /// chutney_hyper_key (port extension: not in mango): the key that becomes F18, held as
+    /// Hyper as caps:hyper's Caps Lock is.
+    static func hyperKeyMapping(_ key: String) -> Mapping? {
+        switch key {
+        case "caps_lock": return Mapping(src: capsLock, dst: f18)
+        case "right_command": return Mapping(src: rightGUI, dst: f18)
+        case "right_option": return Mapping(src: rightAlt, dst: f18)
+        default: return nil
+        }
+    }
+
     /// hidutil's argument for these mappings.
     static func hidutilJSON(_ m: [Mapping]) -> String {
         let items = m.map { "{\"HIDKeyboardModifierMappingSrc\":\($0.src),\"HIDKeyboardModifierMappingDst\":\($0.dst)}" }

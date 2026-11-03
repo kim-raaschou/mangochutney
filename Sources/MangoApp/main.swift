@@ -91,9 +91,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         // Learn, as Omarchy's menu. The palettes are on their keys (Hyper K, Hyper L), not here.
         menu.addItem(.sectionHeader(title: "Learn"))
-        // Port extension: not in mango. What SUPER and HYPER are on a Mac; a click opens the docs.
-        legendItem = menu.addItem(withTitle: "", action: #selector(showKeysDocs), keyEquivalent: "")
+        // Port extension: not in mango. The Hyper key (chutney_hyper_key, chutney_hyper_tap), and
+        // what SUPER and HYPER are on a Mac; its last row opens the docs.
+        let hyper = NSMenu()
+        for (title, key) in [("Caps Lock", "caps_lock"), ("Right ⌘", "right_command"), ("Right ⌥", "right_option")] {
+            let i = hyper.addItem(withTitle: title, action: #selector(setHyperKey(_:)), keyEquivalent: "")
+            i.representedObject = key
+            i.target = self
+            hyperKeyItems.append(i)
+        }
+        hyper.addItem(.separator())
+        hyperTapItem = hyper.addItem(withTitle: "Pressed Alone: Escape", action: #selector(toggleHyperTap), keyEquivalent: "")
+        hyperTapItem?.target = self
+        hyper.addItem(.separator())
+        legendItem = hyper.addItem(withTitle: "", action: #selector(showKeysDocs), keyEquivalent: "")
+        legendItem?.target = self
         legendItem?.toolTip = "mango's modifiers on a Mac: SUPER is Command; HYPER is chutney_hyper_modifier"
+        hyperItem = menu.addItem(withTitle: "Hyper Key", action: nil, keyEquivalent: "")
+        hyperItem?.submenu = hyper
         menu.addItem(withTitle: "Getting Started", action: #selector(showGettingStarted), keyEquivalent: "")
         menu.addItem(withTitle: "mango Documentation", action: #selector(showMangoDocs), keyEquivalent: "")
         menu.addItem(.separator())
@@ -330,7 +345,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         layoutPanel.server = server
         layoutPanel.refresh()
         loginItem?.state = FileManager.default.fileExists(atPath: Self.loginPlist) ? .on : .off
-        if let server { legendItem?.title = ModifierLegend.text(server.config) }
+        if let server {
+            legendItem?.title = ModifierLegend.text(server.config)
+            let key = server.config.chutneyHyperKey
+            for i in hyperKeyItems { i.state = (i.representedObject as? String) == key ? .on : .off }
+            hyperItem?.title = "Hyper Key: " + (hyperKeyItems.first { $0.state == .on }?.title ?? "⌃⌥⌘ held")
+            hyperTapItem?.state = server.config.chutneyHyperTap == "escape" ? .on : .off
+            hyperTapItem?.isEnabled = !key.isEmpty
+        }
     }
 
     func menuDidClose(_ menu: NSMenu) {
@@ -346,6 +368,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func reload() { server?.reloadConfig() }
 
     var legendItem: NSMenuItem?
+    var hyperItem: NSMenuItem?
+    var hyperKeyItems: [NSMenuItem] = []
+    var hyperTapItem: NSMenuItem?
+
+    /// The Hyper key from the menu: kept in the menu's file (chutney_menu_config), read last.
+    @objc func setHyperKey(_ sender: NSMenuItem) {
+        guard let key = sender.representedObject as? String else { return }
+        saveMenuChoice("chutney_hyper_key", key)
+    }
+    @objc func toggleHyperTap() {
+        guard let server else { return }
+        saveMenuChoice("chutney_hyper_tap", server.config.chutneyHyperTap == "escape" ? "none" : "escape")
+    }
+    private func saveMenuChoice(_ key: String, _ value: String) {
+        guard let server, let url = MenuSave.url(server.config, configURL: server.configURL) else { return }
+        MenuSave.set(key, value, in: url)
+        server.reloadConfig()
+    }
     /// The docs' page on the keys (bundled with the app until they are on the web).
     @objc func showKeysDocs() {
         guard let url = Bundle.main.resourceURL?.appendingPathComponent("docs/chutney/bindings/keys.md") else { return }

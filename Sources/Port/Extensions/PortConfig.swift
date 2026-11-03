@@ -40,6 +40,15 @@ extension Config {
     package var chutneyHyperModifier: String {
         get { port["chutney_hyper_modifier"] ?? "super+ctrl+alt" } set { port["chutney_hyper_modifier"] = newValue }
     }
+    /// The key held as Hyper (chutney_hyper_key): caps_lock, right_command or right_option;
+    /// empty: none (Hyper is chutney_hyper_modifier held).
+    package var chutneyHyperKey: String {
+        get { port["chutney_hyper_key"] ?? "" } set { port["chutney_hyper_key"] = newValue }
+    }
+    /// The Hyper key pressed alone (chutney_hyper_tap): none, or escape.
+    package var chutneyHyperTap: String {
+        get { port["chutney_hyper_tap"] ?? "none" } set { port["chutney_hyper_tap"] = newValue }
+    }
     /// Show a menu-bar status item with the current tag/layout (chutney_menu_bar).
     package var chutneyMenuBar: Bool {
         get { bool("chutney_menu_bar", false) } set { set("chutney_menu_bar", newValue) }

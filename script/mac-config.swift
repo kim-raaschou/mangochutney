@@ -1,7 +1,7 @@
 // Builds Resources/config-mac.conf, the first start's "macOS" choice, from the shipped
 // config and the Mac set of mango's bindings: config.conf with mango's key, mouse and scroll
 // bindings commented out (gestures stay), mac-bindings.conf in their place among the port's
-// keys, and Caps Lock as the Hyper key. MacConfigTests checks that the file is up to date.
+// keys, and Caps Lock as the Hyper key (chutney_hyper_key). MacConfigTests checks that the file is up to date.
 //
 //   swift script/mac-config.swift            (make mac-config)
 import Foundation
@@ -44,8 +44,9 @@ guard let hyper = lines.firstIndex(where: { $0.hasPrefix("# chutney_hyper_modifi
 }
 lines.insert(contentsOf: keys, at: own)
 lines.insert(contentsOf: [
-    "# Caps Lock is Hyper. Hyper from Karabiner-Elements or a keyboard of its own: delete this line.",
-    "xkb_rules_options=caps:hyper",
+    "# The key held as Hyper, chosen on the first start. Hyper from Karabiner-Elements or a",
+    "# keyboard of its own: delete this line.",
+    "chutney_hyper_key=caps_lock",
 ], at: hyper + 1)
 
 try! lines.joined(separator: "\r\n").write(to: root.appendingPathComponent("Resources/config-mac.conf"),

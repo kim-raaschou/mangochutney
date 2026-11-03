@@ -17,4 +17,13 @@ enum KeyForward {
         e.flags = flags
         e.postToPid(pid)
     }
+
+    /// A key pressed and released for whatever app has the keyboard (chutney_hyper_tap); the
+    /// event tap lets mango's own events through.
+    static func postToFront(keyCode: UInt16) {
+        let source = CGEventSource(stateID: .hidSystemState)
+        for down in [true, false] {
+            CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: down)?.post(tap: .cgSessionEventTap)
+        }
+    }
 }

@@ -44,7 +44,8 @@ final class FirstStartKeysTests: MangoTestCase {
                        ["chutney_toggle_hotkeys_palette", "chutney_toggle_layout_palette"])
         XCTAssertEqual(p.config.mouseBindings.count, 2)
         XCTAssertFalse(p.config.gestureBindings.isEmpty)
-        XCTAssertEqual(p.config.xkbRulesOptions, "caps:hyper")
+        XCTAssertEqual(p.config.chutneyHyperKey, "caps_lock")
+        XCTAssertEqual(p.config.xkbRulesOptions, "", "Caps Lock as Hyper is chutney_hyper_key's")
     }
 
     /// start.conf (not in mango), the welcome's first lines to try: all commented out, so it
@@ -63,16 +64,16 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertEqual(p.config.keyBindings.first?.dispatch.name, "spawn")
     }
 
-    /// The first start's "Caps Lock is Hyper" choice removes or puts back these lines in the
-    /// config it wrote (config-mac.conf); both must be there to find.
-    func testCapsLockChoiceFindsItsLines() throws {
+    /// The first start's Hyper key choice replaces this line in the config it wrote
+    /// (config-mac.conf); Caps Lock until then.
+    func testHyperKeyChoiceFindsItsLine() throws {
         let mac = try resource("config-mac.conf")
-        XCTAssertTrue(mac.contains(ConfigFiles.capsHyperLines))
-        XCTAssertTrue(mac.contains(ConfigFiles.hyperComment))
-        let off = mac.replacingOccurrences(of: ConfigFiles.capsHyperLines, with: "")
-        let p = ConfigParser.parse(text: off, baseDirectory: resources, fileName: "config.conf")
-        XCTAssertEqual(p.config.xkbRulesOptions, "", "Caps Lock left alone")
-        let on = off.replacingOccurrences(of: ConfigFiles.hyperComment, with: ConfigFiles.hyperComment + ConfigFiles.capsHyperLines)
-        XCTAssertEqual(on, mac)
+        XCTAssertEqual(mac.components(separatedBy: ConfigFiles.hyperKeyLine).count, 2, "once")
+        let chosen = mac.replacingOccurrences(of: ConfigFiles.hyperKeyLine,
+                                              with: "chutney_hyper_key=right_option\r\nchutney_hyper_tap=escape\r\n")
+        let p = ConfigParser.parse(text: chosen, baseDirectory: resources, fileName: "config.conf")
+        XCTAssertEqual(p.errors, [])
+        XCTAssertEqual(p.config.chutneyHyperKey, "right_option")
+        XCTAssertEqual(p.config.chutneyHyperTap, "escape")
     }
 }
