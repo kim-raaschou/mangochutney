@@ -10,7 +10,7 @@ mango's [Theming](https://mangowm.github.io/docs/visuals/theming). These are the
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `chutney_style` | `0` | The tab and group bars, jump labels, switcher and palettes in the macOS look, wherever no `*_decorate_*` key sets mango's; mango's colours in macOS's, through `chutney_theme.conf`. |
+| `chutney_style` | `0` (the shipped `config.conf`: `1`) | The tab and group bars, jump labels, switcher and palettes in the macOS look, wherever no `*_decorate_*` key sets mango's; mango's colours in macOS's, through `chutney_theme.conf`; the borders' corners as the windows' own ([Borders](#borders)). |
 
 With `chutney_style=1` Mango Chutney writes `chutney_theme.conf` beside `config.conf`, and again
 when the accent colour or light/dark mode changes, then reloads the config. It sets mango's colour
@@ -39,6 +39,12 @@ focus_color=0xc66b25ff   # mango's orange, over macOS's accent
 ```
 
 ## Borders
+
+macOS draws a window's corners itself and cannot clip a window as mango clips a Wayland
+surface, so a border is drawn around the window. With `chutney_style=1` its inner edge follows the
+window's own corners: 16 points on macOS 26 and later, 10 points on Sonoma and Sequoia. mango's
+`border_radius` and `no_radius_when_single` are then not used. Without `chutney_style`, the corners
+are mango's `border_radius`.
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
