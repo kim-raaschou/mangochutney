@@ -1,0 +1,7 @@
+animation_type_close
+animation_type_open
+layer_name
+no_animation
+no_blur
+no_shadow
+shield_when_capture

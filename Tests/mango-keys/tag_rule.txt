@@ -1,0 +1,14 @@
+id
+layout_name
+master_count
+master_factor
+monitor_make
+monitor_model
+monitor_name
+monitor_serial
+no_hide
+no_render_border
+open_as_floating
+scroller_default_proportion
+scroller_default_proportion_single
+scroller_ignore_proportion_single

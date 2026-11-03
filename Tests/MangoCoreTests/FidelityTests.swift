@@ -1,0 +1,1688 @@
+import XCTest
+@testable import Mango
+@testable import Port
+
+/// mango's behaviour, function by function (docs/afvigelser.md §6): each test names the
+/// mango function it holds us to.
+@MainActor
+final class FidelityTests: MangoTestCase {
+    /// client_insert_tiling_order: without new_is_master (mango's default is on) a new
+    /// window goes last outside the scroller, not after the selected one.
+    func testNewWindowGoesLast() {
+        let r = EngineRig()
+        r.server.config.newIsMaster = false
+        let a = r.map(1), _ = r.map(2), _ = r.map(3)
+        r.server.clientFocus(a)
+        r.map(4)
+        XCTAssertEqual(r.server.clients.map(\.id), [1, 2, 3, 4])
+    }
+
+    /// client_insert_tiling_order: new_is_master puts it first.
+    func testNewIsMasterGoesFirst() {
+        let r = EngineRig()
+        r.server.config.newIsMaster = true
+        r.map(1); r.map(2)
+        XCTAssertEqual(r.server.clients.map(\.id), [2, 1])
+    }
+
+    /// client_focus_top: skips only unmanaged-global windows (no_focus is client_focus's
+    /// business), and finds nothing rather than falling back to any window in view.
+    func testFocusTopIsTheFocusStack() {
+        let r = EngineRig()
+        let a = r.window(1), b = r.window(2)
+        b.noFocus = true
+        XCTAssertTrue(r.server.clientFocusTop(r.monitor) === b, "no_focus is not skipped")
+        b.isUnglobal = true
+        XCTAssertTrue(r.server.clientFocusTop(r.monitor) === a, "isunglobal is")
+        r.server.focusStack = []
+        XCTAssertNil(r.server.clientFocusTop(r.monitor), "nothing in the focus stack: none")
+    }
+
+    var fake: (EngineRig) -> FakeWindowSystem { { $0.server.system as! FakeWindowSystem } }
+
+    /// client_focus: a no_focus window is never focused, and client_focus never moves the
+    /// pointer; focus_stack does (pointer_warp_to_client), in the client list's order.
+    func testClientFocusAndFocusStack() {
+        let r = EngineRig()
+        r.server.config.warpcursor = true
+        let a = r.window(1), b = r.window(2), c = r.window(3)
+        r.server.arrange(r.monitor)
+        r.server.clientFocus(a)
+        XCTAssertEqual(fake(r).warps, [], "client_focus does not warp")
+        c.noFocus = true
+        r.server.clientFocus(c)
+        XCTAssertEqual(r.monitor.sel, a.id, "no_focus: not focused")
+        _ = r.server.dispatch(Dispatch(name: "focusstack", args: ["next"]))
+        XCTAssertEqual(r.monitor.sel, b.id, "the next in the client list")
+        XCTAssertEqual(fake(r).warps.count, 1, "focus_stack warps")
+        _ = r.server.dispatch(Dispatch(name: "focusstack", args: ["next"]))
+        XCTAssertEqual(r.monitor.sel, b.id, "the next is no_focus: client_focus leaves the focus")
+    }
+
+    /// find_client_by_direction + get_focused_stack_client: from the master into the stack
+    /// goes to the stack window that had the focus last, not the nearest one.
+    func testFocusDirIntoTheStackGoesToItsLastFocused() {
+        let r = EngineRig()
+        r.server.config.newIsMaster = false
+        let a = r.window(1), _ = r.window(2), c = r.window(3)
+        r.server.arrange(r.monitor)
+        r.server.clientFocus(c)
+        r.server.clientFocus(a)
+        _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
+        XCTAssertEqual(r.monitor.sel, c.id)
+    }
+
+    /// focus_direction with focus_cross_tag: down goes to the next tag with a window too
+    /// (view_shift_tag_have_client), not only right.
+    func testFocusCrossTagDown() {
+        let r = EngineRig()
+        r.server.config.focusCrossTag = true
+        let a = r.window(1, tags: 1), _ = r.window(2, tags: 1 << 1)
+        r.server.arrange(r.monitor)
+        r.server.clientFocus(a)
+        _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["down"]))
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
+    }
+
+    /// client_exchange (finish_exchange_arrange_and_focus): the other window comes right
+    /// after the first in the focus stack.
+    func testExchangePutsTheOtherNextInTheFocusStack() {
+        let r = EngineRig()
+        let a = r.window(1), b = r.window(2), c = r.window(3)
+        r.server.arrange(r.monitor)
+        r.server.clientFocus(b); r.server.clientFocus(c); r.server.clientFocus(a)
+        r.server.clientExchange(a, b)
+        XCTAssertEqual(Array(r.server.focusStack.prefix(2)), [a.id, b.id])
+        XCTAssertEqual(r.server.clients.map(\.id).prefix(2), [2, 1])
+    }
+
+    /// client_view_on_monitor: the focus comes first, then the arrange, so the scroller
+    /// scrolls the window the tag switch focuses into view.
+    func testATagSwitchScrollsTheFocusedWindowIntoView() {
+        let r = EngineRig()
+        r.monitor.current.layout = .scroller
+        let a = r.map(1), _ = r.map(2), _ = r.map(3), d = r.map(4)
+        r.server.clientFocus(d)
+        r.server.clientSwitchView(1 << 1)
+        r.server.clientFocus(r.map(5))   // tag 2 has its own focused window
+        // the tag's top of the focus stack is now a window the last arrange left off screen
+        r.server.focusStack.removeAll { $0 == a.id }
+        r.server.focusStack.insert(a.id, at: 0)
+        r.server.clientSwitchView(1)
+        XCTAssertTrue(r.server.focused === a)
+        let g = a.geom ?? .zero, w = r.monitor.screen.workArea
+        XCTAssertTrue(g.minX >= w.minX && g.maxX <= w.maxX, "a in view: \(g) in \(w)")
+    }
+
+    /// handle_client_unmap: in the scroller the focus goes to the gone window's neighbour
+    /// in its stack.
+    func testUnmapFocusesTheStackNeighbour() {
+        let r = EngineRig()
+        r.monitor.current.layout = .scroller
+        let a = r.map(1), _ = r.map(2), c = r.map(3)
+        let st = r.monitor.current.state.scrollerState
+        _ = st.scrollerApplyStack(c.id, direction: .left, vertical: false, clientOrder: r.server.clients.map(\.id))
+        let col = st.column(of: c.id)
+        guard col.count >= 2, let i = col.firstIndex(of: c.id), i + 1 < col.count || i > 0 else {
+            return XCTFail("no stack to test with: \(st.column(of: a.id)) \(col)")
+        }
+        let expected = i + 1 < col.count ? col[i + 1] : col[i - 1]
+        XCTAssertNotEqual(expected, a.id, "the focused window is outside the stack")
+        r.server.clientFocus(a)
+        r.server.mac.windowDestroyed(id: c.id)
+        XCTAssertEqual(r.monitor.sel, expected, "the stack neighbour, though the gone window had no focus")
+    }
+
+    /// monitor_from_direction: past the edge it goes round to the farthest monitor.
+    func testMonitorFromDirectionGoesRound() {
+        let r = EngineRig()
+        let right = Screen(displayID: 2, name: "Right", frame: CGRect(x: 1728, y: 0, width: 1920, height: 1080),
+                           workArea: CGRect(x: 1728, y: 25, width: 1920, height: 1055), scale: 1, isMain: false)
+        r.server.rebuildMonitors(screens: [r.screen, right])
+        let a = r.server.monitors[0], b = r.server.monitors[1]
+        XCTAssertTrue(r.server.monitorFromDirection(.right, from: a) === b)
+        XCTAssertTrue(r.server.monitorFromDirection(.left, from: a) === b, "round the edge")
+    }
+
+    /// clear_fullscreen_flag: a tiled window keeps fullscreen when the layout becomes the
+    /// scroller; a floating one does not.
+    func testSetLayoutSparesScrollerFullscreen() {
+        let r = EngineRig()
+        let a = r.window(1), b = r.window(2, floating: true)
+        a.isFullscreen = true; b.isFullscreen = true
+        r.server.setLayout(.scroller, on: r.monitor)
+        XCTAssertTrue(a.isFullscreen)
+        XCTAssertFalse(b.isFullscreen)
+        r.server.setLayout(.tile, on: r.monitor)
+        XCTAssertFalse(a.isFullscreen)
+    }
+
+    /// set_proportion: refused for a lone window (scroller_ignore_proportion_single off), and
+    /// sets the stack head's proportion only.
+    func testSetProportion() {
+        let r = EngineRig()
+        r.monitor.current.layout = .scroller
+        r.server.config.scrollerIgnoreProportionSingle = false
+        let a = r.map(1)
+        _ = r.server.dispatch(Dispatch(name: "set_proportion", args: ["0.5"]), target: a)
+        XCTAssertNil(a.scrollerProportion, "one window: refused")
+        let b = r.map(2)
+        let st = r.monitor.current.state.scrollerState
+        st.scrollerApplyStack(b.id, direction: .left, vertical: false, clientOrder: r.server.clients.map(\.id))
+        let head = st.column(of: b.id).first!
+        let other = head == a.id ? b : a
+        _ = r.server.dispatch(Dispatch(name: "set_proportion", args: ["0.5"]), target: other)
+        XCTAssertEqual(r.server.clientByIdAll(head)?.scrollerProportion, 0.5)
+        XCTAssertNil(other.scrollerProportion, "only the head")
+    }
+
+    /// toggle_scratchpad: one window per call, down the client list; a hidden one goes last.
+    func testToggleScratchpadOneAtATime() {
+        let r = EngineRig()
+        let a = r.window(1), b = r.window(2), _ = r.window(3)
+        r.server.arrange(r.monitor)
+        _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
+        _ = r.server.dispatch(Dispatch(name: "minimized"), target: b)
+        func shown() -> [ClientID] { r.server.clients.filter { $0.scratchpadShown }.map(\.id) }
+        _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
+        XCTAssertEqual(shown().count, 1, "one, not the whole pool")
+        let first = shown()[0]
+        _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
+        XCTAssertEqual(shown(), [], "the shown one hides")
+        XCTAssertEqual(r.server.clients.last?.id, first, "and goes last")
+        _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
+        XCTAssertEqual(shown(), [first == 1 ? 2 : 1], "then the other")
+    }
+
+    /// smart_move_window: stops at a floating window in the way (with the inner gap), and
+    /// floats a tiled window first.
+    func testSmartMoveStopsAtAFloatingWindow() {
+        let r = EngineRig()
+        let a = r.window(1, floating: true, frame: CGRect(x: 100, y: 300, width: 200, height: 200))
+        _ = r.window(2, floating: true, frame: CGRect(x: 400, y: 300, width: 200, height: 200))
+        a.floatGeom = CGRect(x: 100, y: 300, width: 200, height: 200)
+        r.server.clientByIdAll(2)!.floatGeom = CGRect(x: 400, y: 300, width: 200, height: 200)
+        r.server.smartMoveWindow(a, .right)
+        let gap = CGFloat(r.server.config.gappih)
+        XCTAssertEqual(a.floatGeom.maxX, 400 - gap, accuracy: 0.5, "stopped before the other, the inner gap apart")
+        let t = r.window(3)
+        r.server.smartMoveWindow(t, .left)
+        XCTAssertTrue(t.isFloating)
+    }
+
+    /// dwindle_core: a window that goes fullscreen keeps its leaf, and comes back to it.
+    func testDwindleKeepsAFullscreenWindowsPlace() {
+        let r = EngineRig()
+        r.monitor.current.layout = .dwindle
+        let a = r.map(1), _ = r.map(2), _ = r.map(3)
+        let tree = r.monitor.current.state.dwindleRoot
+        let before = tree.clientOrder
+        a.isFullscreen = true
+        r.server.arrange(r.monitor)
+        XCTAssertTrue(tree.contains(a.id), "its leaf stays")
+        a.isFullscreen = false
+        r.server.arrange(r.monitor)
+        XCTAssertEqual(tree.clientOrder, before)
+    }
+
+    /// tab_state_ok: a fullscreen window is a tab member; tab_chain_focus: the chain shows
+    /// the member it showed last (is_tab_focus) when the selected window is not a member.
+    func testTabMembersAndChainFocus() {
+        let r = EngineRig()
+        r.server.config.monocleTabMode = true
+        r.monitor.current.layout = .monocle
+        let a = r.window(1), b = r.window(2), c = r.window(3, floating: true)
+        r.server.arrange(r.monitor)
+        a.isFullscreen = true
+        XCTAssertTrue(r.server.tabMembers(r.monitor).contains { $0 === a }, "fullscreen: a member")
+        r.server.clientFocus(b)
+        XCTAssertTrue(r.server.tabChainFocus(r.server.tabMembers(r.monitor), on: r.monitor) === b)
+        r.server.clientFocus(c)
+        XCTAssertTrue(r.server.tabChainFocus(r.server.tabMembers(r.monitor), on: r.monitor) === b, "the one shown last")
+    }
+
+    /// fire_gesture_motion: every matching binding fires (alldir matches any motion), and
+    /// move_resize is skipped.
+    func testGestureFiresEveryMatch() {
+        let r = EngineRig()
+        let parsed = ConfigParser.parse(text: """
+        gesturebind=none,left,3,setlayout,monocle
+        gesturebind=none,alldir,3,togglegaps
+        gesturebind=none,left,3,moveresize,curmove
+        """, baseDirectory: nil, fileName: "test")
+        r.server.config.gestureBindings = parsed.config.gestureBindings
+        XCTAssertEqual(r.server.config.gestureBindings.count, 3)
+        let gaps = r.server.enableGaps
+        XCTAssertTrue(r.server.fireGestureMotion(.left, 3))
+        XCTAssertEqual(r.monitor.layout, .monocle)
+        XCTAssertNotEqual(r.server.enableGaps, gaps, "alldir fired too")
+    }
+
+    /// client_group_join: a window from another monitor takes the target's monitor;
+    /// client_group_detach leaves the neighbour's group focus to its callers.
+    func testGroupJoinAndDetach() {
+        let r = EngineRig()
+        let right = Screen(displayID: 2, name: "Right", frame: CGRect(x: 1728, y: 0, width: 1920, height: 1080),
+                           workArea: CGRect(x: 1728, y: 25, width: 1920, height: 1055), scale: 1, isMain: false)
+        r.server.rebuildMonitors(screens: [r.screen, right])
+        let a = r.window(1, floating: true)
+        a.floatGeom = CGRect(x: 10, y: 50, width: 300, height: 200)
+        let b = r.window(2)
+        b.mon = r.server.monitors[1]
+        b.tags = r.server.monitors[1].tagset[r.server.monitors[1].seltags]
+        r.server.clientGroupJoin(a, into: b)
+        XCTAssertTrue(a.mon === b.mon)
+        let focus = [a, b].first { $0.isGroupFocus }!
+        let other = focus === a ? b : a
+        r.server.clientGroupDetach(other)
+        XCTAssertTrue(focus.isGroupFocus, "left to the callers")
+    }
+
+    /// client_replace: the replacement takes the shares and the overview backup too.
+    func testClientReplaceCopiesShares() {
+        let r = EngineRig()
+        let a = r.window(1), b = r.window(2)
+        a.stackInnerPer = 0.7
+        a.stackSizeWeight = 0.6
+        a.scrollerStackWeight = 0.5
+        a.overviewBackupGeom = CGRect(x: 1, y: 2, width: 3, height: 4)
+        r.server.clientReplace(b, a, isGroupChangeMember: true)
+        XCTAssertEqual(b.stackInnerPer, 0.7)
+        XCTAssertEqual(b.stackSizeWeight, 0.6)
+        XCTAssertEqual(b.scrollerStackWeight, 0.5)
+        XCTAssertEqual(b.overviewBackupGeom, CGRect(x: 1, y: 2, width: 3, height: 4))
+    }
+
+    /// pointer_end_grab_client: a tiled window dropped on another monitor lands there, on
+    /// the tag in view, selected.
+    func testGrabEndRehomesATiledWindow() {
+        let r = EngineRig()
+        let right = Screen(displayID: 2, name: "Right", frame: CGRect(x: 1728, y: 0, width: 1920, height: 1080),
+                           workArea: CGRect(x: 1728, y: 25, width: 1920, height: 1055), scale: 1, isMain: false)
+        r.server.rebuildMonitors(screens: [r.screen, right])
+        let c = r.window(1)
+        r.server.arrange(r.monitor)
+        let g = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
+        r.server.pointerEndGrabClient(g, at: CGPoint(x: 2500, y: 500))
+        let b = r.server.monitors[1]
+        XCTAssertTrue(c.mon === b)
+        XCTAssertTrue(r.server.selectedMonitor === b)
+        XCTAssertEqual(b.sel, c.id)
+        XCTAssertNotEqual(c.tags & b.tagset[b.seltags], 0)
+    }
+
+    /// bind_to_view: view_current_to_back goes to prevtag, not to the other tagset.
+    func testViewCurrentToBackGoesToPrevtag() {
+        let r = EngineRig()
+        r.server.config.viewCurrentToBack = true
+        let m = r.monitor
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["3"]))
+        r.server.clientViewOnMonitor(1 << 2, on: m)   // both tagsets on tag 3, prevtag still 2
+        XCTAssertEqual(m.tagset[m.seltags ^ 1], 1 << 2)
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["3"]))
+        XCTAssertEqual(m.tagset[m.seltags], 1 << 1, "prevtag: tag 2")
+    }
+
+    /// combo_view: each comboview adds its tags until a key is released.
+    func testComboview() {
+        let r = EngineRig()
+        let m = r.monitor
+        _ = r.server.dispatch(Dispatch(name: "comboview", args: ["2"]))
+        _ = r.server.dispatch(Dispatch(name: "comboview", args: ["3"]))
+        XCTAssertEqual(m.tagset[m.seltags], (1 << 1) | (1 << 2))
+        r.server.tagCombo = false   // a key released
+        _ = r.server.dispatch(Dispatch(name: "comboview", args: ["1"]))
+        XCTAssertEqual(m.tagset[m.seltags], 1)
+    }
+
+    /// get_tags_first_tag: the special tag wins; no tags give the current tag.
+    func testGetTagsFirstTag() {
+        let r = EngineRig()
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["3"]))
+        XCTAssertEqual(r.server.getTagsFirstTag(0), 1 << 2, "no tags: the current tag")
+        XCTAssertEqual(r.server.getTagsFirstTag(TagMask.special | 1 << 4), TagMask.special)
+        XCTAssertEqual(r.server.getTagsFirstTag(1 << 4 | 1 << 6), 1 << 4)
+    }
+
+    /// tag_slot_set_defaults: a reload does not reset no_render_border, open_as_floating or
+    /// no_hide.
+    func testTagRuleFlagsSurviveAReload() {
+        let r = EngineRig()
+        let with = ConfigParser.parse(text: "tag_rule=id:2,open_as_floating:1", baseDirectory: nil, fileName: "t").config
+        r.monitor.parseTagrule(config: with, onlyLayoutIfChanged: false)
+        XCTAssertTrue(r.monitor.pertag[2].openAsFloating)
+        let without = ConfigParser.parse(text: "", baseDirectory: nil, fileName: "t").config
+        r.monitor.parseTagrule(config: without, onlyLayoutIfChanged: false)
+        XCTAssertTrue(r.monitor.pertag[2].openAsFloating, "as mango: left as it was")
+    }
+
+    /// over_circle: each step focuses the next window in the client list.
+    func testOvercircleFocusesEachStep() {
+        let r = EngineRig()
+        let a = r.window(1), _ = r.window(2), _ = r.window(3)
+        r.server.arrange(r.monitor)
+        r.server.clientFocus(a)
+        _ = r.server.dispatch(Dispatch(name: "overcircle", args: ["next"]))
+        XCTAssertNotNil(r.server.overviewState)
+        r.server.overCircle(forward: true)
+        let s1 = r.monitor.sel
+        r.server.overCircle(forward: true)
+        XCTAssertNotEqual(r.monitor.sel, s1, "the focus moves at every step")
+        XCTAssertNotNil(r.monitor.sel)
+    }
+
+    /// master_mfact_per: the first tiled window's share sets the master's width (tile_core),
+    /// setmfact gives every tiled window the new one, and a new window takes the share of
+    /// the windows in view (set_size_per).
+    func testMasterMfactPer() {
+        let r = EngineRig()
+        let a = r.map(1), b = r.map(2)
+        let first = r.server.clients.first!
+        first.masterMfactPer = 0.7
+        r.server.arrange(r.monitor)
+        let w = r.monitor.screen.workArea.width
+        let master = r.server.clients.first!.geom!.width
+        XCTAssertGreaterThan(master, w * 0.6, "the first window's 0.7, not the tag's 0.55")
+        _ = r.server.dispatch(Dispatch(name: "setmfact", args: ["1.4"]))
+        XCTAssertEqual(a.masterMfactPer, 0.4, accuracy: 0.001)
+        XCTAssertEqual(b.masterMfactPer, 0.4, accuracy: 0.001)
+        let c = r.map(3)
+        XCTAssertEqual(c.masterMfactPer, 0.4, accuracy: 0.001, "set_size_per: the share in view")
+    }
+
+    /// grid_core / resize_tile_grid_fair: resizing a grid window moves the share between it
+    /// and its neighbour column, and the shares stay on the windows.
+    func testGridShares() {
+        let r = EngineRig()
+        r.monitor.current.layout = .grid
+        for id in 1...4 { r.map(CGWindowID(id)) }
+        r.server.arrange(r.monitor)
+        let first = r.server.clients[0], second = r.server.clients[1]
+        let before = first.geom!.width
+        r.server.resizeTileClient(first, offsetX: 200, offsetY: 0)
+        XCTAssertGreaterThan(first.gridColPer, 1)
+        XCTAssertLessThan(second.gridColPer, 1)
+        XCTAssertGreaterThan(first.geom!.width, before + 100)
+        r.server.arrange(r.monitor)
+        XCTAssertGreaterThan(first.geom!.width, before + 100, "kept on the windows")
+    }
+
+    /// mango's scratchpad fields: set_minimized puts a window in the scratchpad hidden
+    /// (is_in_scratchpad, isminimized); shown it stays in the scratchpad but is not
+    /// minimized (SCRATCHPAD_SHOWN), and IPC says so as mango's does.
+    func testScratchpadFieldsAsMango() {
+        let r = EngineRig()
+        let a = r.window(1), _ = r.window(2)
+        r.server.arrange(r.monitor)
+        _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
+        XCTAssertTrue(a.isInScratchpad)
+        XCTAssertTrue(a.isMinimized)
+        XCTAssertFalse(a.scratchpadShown)
+        _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
+        XCTAssertTrue(a.isInScratchpad)
+        XCTAssertFalse(a.isMinimized, "shown: not minimized")
+        XCTAssertTrue(a.scratchpadShown)
+        let data = r.server.buildClientJson(a).serialized.data(using: .utf8)!
+        let info = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
+        XCTAssertEqual(info["is_minimized"] as? Bool, false)
+        XCTAssertEqual(info["is_scratchpad"] as? Bool, true, "is_scratchpad is is_in_scratchpad")
+    }
+
+    /// toggle_special_tag_mon: the special tag is a view of its own (tagset TAG0); the
+    /// windows of the tag before it stay where they are (special_keep_bg_client); a new
+    /// window opens on it; with its last window gone it goes back
+    /// (special_handle_empty_view).
+    func testSpecialTagIsAViewOfItsOwn() {
+        let r = EngineRig()
+        let m = r.monitor
+        let a = r.map(1)
+        _ = r.server.dispatch(Dispatch(name: "toggle_special_tag"))
+        XCTAssertEqual(m.tagset[m.seltags], TagMask.special, "the special tag alone")
+        XCTAssertFalse(a.parked, "the window of the tag before stays")
+        let s = r.map(2)
+        XCTAssertEqual(s.tags, TagMask.special, "a new window opens on the special tag")
+        r.server.mac.windowDestroyed(id: s.id)
+        XCTAssertEqual(m.tagset[m.seltags], 1, "the last special window gone: back to tag 1")
+        _ = r.server.dispatch(Dispatch(name: "toggle_special_tag"))
+        _ = r.server.dispatch(Dispatch(name: "toggle_special_tag"))
+        XCTAssertEqual(m.tagset[m.seltags], 1, "toggled back to the tags before")
+    }
+
+    /// get_tags_first_tag_num: the special tag wins over normal tags.
+    func testFirstTagNumWithTheSpecialTag() {
+        XCTAssertEqual(TagMask.getTagsFirstTagNum(TagMask.special | 1 << 3), 0)
+        XCTAssertEqual(TagMask.getTagsFirstTagNum(1 << 3 | 1 << 5), 4)
+        XCTAssertNil(TagMask.getTagsFirstTagNum(0))
+    }
+
+    /// client_apply_rules: a new window without a position from a rule is centred on its
+    /// monitor; a second floating one there is moved off it (set_float_malposition).
+    func testNewFloatingWindowsAreCentred() {
+        let r = EngineRig()
+        r.server.config.windowRules = ConfigParser.parse(text: "window_rule=is_floating:1,app_id:^test$",
+                                                         baseDirectory: nil, fileName: "t").config.windowRules
+        let w = r.monitor.screen.workArea
+        let a = r.map(1, frame: CGRect(x: 10, y: 40, width: 600, height: 400))
+        XCTAssertTrue(a.isFloating)
+        XCTAssertEqual(a.floatGeom.midX, w.midX, accuracy: 1)
+        XCTAssertEqual(a.floatGeom.midY, w.midY, accuracy: 1)
+        let b = r.map(2, frame: CGRect(x: 10, y: 40, width: 600, height: 400))
+        let offset = min(w.width / 20, w.height / 20).rounded(.towardZero)
+        XCTAssertEqual(b.floatGeom.minX, a.floatGeom.minX + offset, accuracy: 1, "moved off the first")
+    }
+
+    // MARK: mango client_apply_rules, step by step
+
+    private func rules(_ r: EngineRig, _ text: String) {
+        r.server.config.windowRules = ConfigParser.parse(text: text, baseDirectory: nil, fileName: "t").config.windowRules
+    }
+
+    /// mango client_apply_rules: a window whose rule puts it on tags out of view brings
+    /// them into view (client_view_on_monitor) and is focused.
+    func testARuleTagOutOfViewIsViewed() {
+        let r = EngineRig()
+        rules(r, "window_rule=tags:3,title:^t2$")
+        r.map(1)
+        let c = r.map(2)
+        XCTAssertEqual(c.tags, 1 << 2)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 2, "its tag is viewed")
+        XCTAssertTrue(r.server.focused === c)
+    }
+
+    /// mango should_init_get_focus: is_tag_silent keeps the view, and focuses the window
+    /// only when its tag is in view; is_open_silent never focuses.
+    func testTagSilentFocusesOnlyInViewAndOpenSilentNever() {
+        let r = EngineRig()
+        rules(r, """
+        window_rule=is_tag_silent:1,tags:1,title:^t2$
+        window_rule=is_tag_silent:1,tags:3,title:^t3$
+        window_rule=is_open_silent:1,title:^t4$
+        """)
+        let a = r.map(1)
+        let b = r.map(2)
+        XCTAssertTrue(r.server.focused === b, "its tag is in view: focused")
+        r.map(3)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1, "the view stays")
+        XCTAssertTrue(r.server.focused === b)
+        r.map(4)
+        XCTAssertTrue(r.server.focused === b, "is_open_silent: not focused")
+        _ = a
+    }
+
+    /// mango client_apply_rules: a window that is not focused goes from the head of the
+    /// focus stack to its end (wl_list_safe_reinsert_prev).
+    func testAnUnfocusedNewWindowGoesToTheEndOfTheFocusStack() {
+        let r = EngineRig()
+        rules(r, "window_rule=is_open_silent:1,title:^t2$")
+        let a = r.map(1)
+        let b = r.map(2)
+        XCTAssertEqual(r.server.focusStack.first, a.id)
+        XCTAssertEqual(r.server.focusStack.last, b.id)
+    }
+
+    /// mango check_match_tag_floating_rule: open_as_floating is read from the window's own
+    /// tag, after the rules gave it one, not from the tag in view.
+    func testOpenAsFloatingIsTheWindowsTags() {
+        let r = EngineRig()
+        r.monitor.pertag[3].openAsFloating = true
+        rules(r, "window_rule=is_tag_silent:1,tags:3,title:^t2$")
+        let a = r.map(1)
+        let b = r.map(2)
+        XCTAssertFalse(a.isFloating)
+        XCTAssertTrue(b.isFloating, "tag 3 opens windows floating")
+        r.monitor.pertag[1].openAsFloating = true
+        rules(r, "window_rule=is_tag_silent:1,tags:2,title:^t3$")
+        XCTAssertFalse(r.map(3).isFloating, "the tag in view does not decide")
+    }
+
+    /// mango client_apply_rules: a new tiled window takes a fullscreen window on its tag out
+    /// of fullscreen (clear_fullscreen_flag); a new floating window does not.
+    func testANewTiledWindowEndsFullscreenOnItsTag() {
+        let r = EngineRig()
+        rules(r, "window_rule=is_floating:1,title:^t2$")
+        let a = r.map(1)
+        a.isFullscreen = true
+        r.map(2)
+        XCTAssertTrue(a.isFullscreen, "a floating window leaves it")
+        r.map(3)
+        XCTAssertFalse(a.isFullscreen)
+    }
+
+    /// mango apply_named_scratchpad: a window a rule makes a named scratchpad is shown; with
+    /// single_scratchpad the one shown before is hidden.
+    func testANamedScratchpadRuleShowsTheWindow() {
+        let r = EngineRig()
+        r.server.config.singleScratchpad = true
+        rules(r, "window_rule=is_named_scratchpad:1,title:^t[12]$")
+        let a = r.map(1)
+        XCTAssertTrue(a.isInScratchpad && !a.isMinimized && a.isFloating, "shown")
+        let b = r.map(2)
+        XCTAssertTrue(b.scratchpadShown)
+        XCTAssertTrue(a.isInScratchpad && a.isMinimized, "single_scratchpad hides the other")
+    }
+
+    /// mango is_once_applied: a window_rule_once rule hits one window.
+    func testWindowRuleOnceHitsOneWindow() {
+        let r = EngineRig()
+        rules(r, "window_rule_once=is_floating:1,app_id:^test$")
+        XCTAssertTrue(r.map(1).isFloating)
+        XCTAssertFalse(r.map(2).isFloating)
+    }
+
+    /// mango client_apply_rules: a fractional width and height are of the whole monitor
+    /// (m->m), not its work area.
+    func testRuleFractionsAreOfTheWholeMonitor() {
+        let r = EngineRig()
+        rules(r, "window_rule=is_floating:1,width:0.5,height:0.5,app_id:^test$")
+        let c = r.map(1)
+        XCTAssertEqual(c.floatGeom.width, (r.screen.frame.width * 0.5).rounded())
+        XCTAssertEqual(c.floatGeom.height, (r.screen.frame.height * 0.5).rounded())
+    }
+
+    /// mango client_apply_rules: of the monitors a rule's spec matches, the last one wins.
+    func testTheLastMonitorARuleMatchesWins() {
+        let r = EngineRig()
+        let side = Screen(displayID: 2, name: "Side", frame: CGRect(x: 1728, y: 0, width: 1920, height: 1080),
+                          workArea: CGRect(x: 1728, y: 0, width: 1920, height: 1080), scale: 1, isMain: false)
+        r.server.rebuildMonitors(screens: [r.screen, side])
+        rules(r, "window_rule=monitor:i,title:^t1$")
+        let c = r.map(1)
+        XCTAssertTrue(c.mon === r.server.monitors.last)
+    }
+
+    // MARK: mango's state functions (client_set_floating, client_apply_fullscreen, ...)
+
+    private func d(_ r: EngineRig, _ name: String, _ args: [String] = [], _ c: Client? = nil) {
+        _ = r.server.dispatch(Dispatch(name: name, args: args), target: c)
+    }
+
+    /// mango client_set_floating(c, 0): a shown scratchpad that is tiled leaves the scratchpad.
+    func testTilingAShownScratchpadTakesItOutOfTheScratchpad() {
+        let r = EngineRig()
+        let a = r.map(1)
+        a.isInScratchpad = true
+        a.isFloating = true
+        d(r, "togglefloating", [], a)
+        XCTAssertFalse(a.isFloating)
+        XCTAssertFalse(a.isInScratchpad)
+        XCTAssertTrue(r.server.tiledClients(r.monitor).contains { $0 === a })
+    }
+
+    /// mango client_set_floating(c, 0): a floating window that is tiled takes a fullscreen
+    /// or maximized window on its tag out of that state.
+    func testTilingAFloatingWindowEndsFullscreenOnItsTag() {
+        let r = EngineRig()
+        let a = r.map(1)
+        let b = r.map(2)
+        d(r, "togglefloating", [], b)
+        d(r, "togglemaximizescreen", [], a)
+        XCTAssertTrue(a.isMaximizeScreen)
+        d(r, "togglefloating", [], b)
+        XCTAssertFalse(a.isMaximizeScreen)
+    }
+
+    /// mango client_set_floating(c, 1): a floating place as wide as the work area is cut to
+    /// 90 % and centred, also when the window opens floating (client_set_monitor).
+    func testAFloatingWindowAsWideAsTheScreenIsCutTo90Percent() {
+        let r = EngineRig()
+        rules(r, "window_rule=is_floating:1,app_id:^test$")
+        let w = r.monitor.screen.workArea
+        let c = r.map(1, frame: CGRect(x: 0, y: 40, width: w.width, height: 500))
+        XCTAssertEqual(c.floatGeom.width, (w.width * 0.9).rounded(.towardZero))
+        XCTAssertEqual(c.floatGeom.midX, w.midX, accuracy: 1)
+    }
+
+    /// mango client_apply_fullscreen / client_set_maximize_screen: refused in overview.
+    func testFullscreenIsRefusedInOverview() {
+        let r = EngineRig()
+        let a = r.map(1)
+        r.server.toggleOverview(onlyCurrent: false, jump: false)
+        XCTAssertNotNil(r.server.overviewState)
+        d(r, "togglefullscreen", [], a)
+        d(r, "togglemaximizescreen", [], a)
+        XCTAssertFalse(a.isFullscreen)
+        XCTAssertFalse(a.isMaximizeScreen)
+    }
+
+    /// mango client_set_fake_fullscreen: a fullscreen window leaves fullscreen.
+    func testFakeFullscreenLeavesFullscreen() {
+        let r = EngineRig()
+        let a = r.map(1)
+        d(r, "togglefullscreen", [], a)
+        XCTAssertTrue(a.isFullscreen)
+        d(r, "togglefakefullscreen", [], a)
+        XCTAssertTrue(a.isFakeFullscreen)
+        XCTAssertFalse(a.isFullscreen)
+    }
+
+    /// mango toggle_overlay: only the layer changes; a tiled overlay stays tiled, and tiling
+    /// does not end overlay.
+    func testOverlayDoesNotFloat() {
+        let r = EngineRig()
+        let a = r.map(1)
+        d(r, "toggleoverlay", [], a)
+        XCTAssertTrue(a.isOverlay)
+        XCTAssertFalse(a.isFloating)
+        d(r, "togglefloating", [], a)
+        d(r, "togglefloating", [], a)
+        XCTAssertTrue(a.isOverlay)
+    }
+
+    /// mango toggle_global: a scratchpad window leaves the scratchpad.
+    func testGlobalTakesAWindowOutOfTheScratchpad() {
+        let r = EngineRig()
+        let a = r.map(1)
+        a.isInScratchpad = true
+        d(r, "toggleglobal", [], a)
+        XCTAssertTrue(a.isGlobal)
+        XCTAssertFalse(a.isInScratchpad)
+    }
+
+    /// mango set_minimized: the window goes last in the client list with no tags, so
+    /// restore_minimized (first minimized in list order) brings back the one minimized first.
+    func testMinimizedGoesLastInTheClientList() {
+        let r = EngineRig()
+        let a = r.map(1), _ = r.map(2), c = r.map(3)
+        d(r, "minimized", [], c)
+        d(r, "minimized", [], a)
+        XCTAssertEqual(r.server.clients.last?.id, a.id)
+        XCTAssertEqual(a.tags, 0)
+        XCTAssertEqual(a.oldTags, 1)
+        d(r, "restore_minimized")
+        XCTAssertFalse(c.isMinimized, "the one minimized first")
+        XCTAssertTrue(a.isMinimized)
+    }
+
+    /// mango minimize_window: refused in overview.
+    func testMinimizedIsRefusedInOverview() {
+        let r = EngineRig()
+        let a = r.map(1)
+        r.server.toggleOverview(onlyCurrent: false, jump: false)
+        d(r, "minimized", [], a)
+        XCTAssertFalse(a.isMinimized)
+    }
+
+    /// mango restore_minimized: onto the focused window's tags, not the tags in view.
+    func testRestoreMinimizedGoesOntoTheFocusedWindowsTags() {
+        let r = EngineRig()
+        let a = r.map(1)
+        let b = r.map(2)
+        d(r, "minimized", [], a)
+        b.tags = 0b11
+        r.server.clientFocus(b)
+        d(r, "restore_minimized")
+        XCTAssertEqual(a.tags, 0b11)
+        XCTAssertFalse(a.isFloating)
+    }
+
+    /// mango client_active: focusid on a minimized window shows it; on a window on a tag
+    /// in view, that first tag alone is viewed.
+    func testFocusIdShowsAMinimizedWindowAndViewsItsFirstTag() {
+        let r = EngineRig()
+        let a = r.map(1)
+        let b = r.map(2)
+        d(r, "minimized", [], a)
+        r.server.clientActive(a)
+        XCTAssertFalse(a.isMinimized)
+        XCTAssertFalse(a.isInScratchpad)
+        XCTAssertTrue(r.server.focused === a)
+        b.tags = 1 << 1
+        r.monitor.tagset[r.monitor.seltags] = 0b11
+        r.server.clientActive(b)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
+    }
+
+    // MARK: mango tag_monitor
+
+    private func twoMonitors(_ r: EngineRig) -> Monitor {
+        let side = Screen(displayID: 2, name: "Side", frame: CGRect(x: 1728, y: 0, width: 1920, height: 1080),
+                          workArea: CGRect(x: 1728, y: 0, width: 1920, height: 1080), scale: 1, isMain: false)
+        r.server.rebuildMonitors(screens: [r.screen, side])
+        return r.server.monitors.first { $0.screen.name == "Side" }!
+    }
+
+    /// mango tag_monitor: the window takes the target's tags in view, the view there
+    /// collapses to its first tag, the target is selected and the window focused.
+    func testTagmonViewsTheWindowsFirstTagOnTheTarget() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        side.tagset[side.seltags] = 0b11
+        let a = r.map(1)
+        d(r, "tagmon", ["right"], a)
+        XCTAssertTrue(a.mon === side)
+        XCTAssertEqual(a.tags, 0b11)
+        XCTAssertEqual(side.tagset[side.seltags], 1)
+        XCTAssertTrue(r.server.selectedMonitor === side)
+        XCTAssertTrue(r.server.focused === a)
+    }
+
+    /// mango client_reset_mon_tags: the special tag in view on the target takes the window.
+    func testTagmonOntoTheSpecialTag() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        side.tagset[side.seltags] = TagMask.special
+        let a = r.map(1)
+        d(r, "tagmon", ["right"], a)
+        XCTAssertEqual(a.tags, TagMask.special)
+    }
+
+    /// mango tag_monitor: on the window's own monitor its tags are viewed.
+    func testTagmonOnItsOwnMonitorViewsItsTags() {
+        let r = EngineRig()
+        let a = r.map(1)
+        a.tags = 1 << 1
+        d(r, "tagmon", ["next", "1"], a)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
+    }
+
+    /// mango tag_cross_monitor: the tags are set before the move, viewed on the target, and
+    /// the window is focused; on the selected monitor it is `tag`.
+    func testTagcrossmonSetsTheTagsAndViewsThem() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        let a = r.map(1)
+        d(r, "tagcrossmon", ["3", "Side"], a)
+        XCTAssertTrue(a.mon === side)
+        XCTAssertEqual(a.tags, 1 << 2)
+        XCTAssertEqual(side.tagset[side.seltags], 1 << 2)
+        XCTAssertTrue(r.server.focused === a)
+        r.server.selectedMonitor = r.monitor
+        let b = r.map(2)
+        d(r, "tagcrossmon", ["2", "Built-in"], b)
+        XCTAssertTrue(b.mon === r.monitor)
+        XCTAssertEqual(b.tags, 1 << 1)
+    }
+
+    // MARK: mango move_client across monitors, pointer_end_grab_client
+
+    /// mango client_jump_to_monitor: without exchange_cross_monitor (the default) move_client
+    /// with no window that way does nothing; with it the window goes to that monitor,
+    /// selected there.
+    func testMoveClientJumpsOnlyWithExchangeCrossMonitor() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        r.server.selectedMonitor = r.monitor
+        let a = r.map(1)
+        d(r, "move_client", ["right"], a)
+        XCTAssertTrue(a.mon === r.monitor, "exchange_cross_monitor off")
+        r.server.config.exchangeCrossMonitor = true
+        d(r, "move_client", ["right"], a)
+        XCTAssertTrue(a.mon === side)
+        XCTAssertEqual(side.sel, a.id)
+        XCTAssertTrue(r.server.selectedMonitor === side)
+    }
+
+    /// mango client_move_to_monitor: next to the window it meets there, before it when moving
+    /// right.
+    func testMoveClientGoesBesideTheWindowOnTheOtherMonitor() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        r.server.selectedMonitor = side
+        let b = r.map(2)
+        let c = r.map(3)
+        r.server.selectedMonitor = r.monitor
+        let a = r.map(1)
+        d(r, "move_client", ["right"], a)
+        XCTAssertTrue(a.mon === r.monitor, "exchange_cross_monitor off")
+        r.server.config.exchangeCrossMonitor = true
+        r.server.selectedMonitor = r.monitor
+        d(r, "move_client", ["right"], a)
+        XCTAssertTrue(a.mon === side)
+        let order = r.server.tiledClients(side).map(\.id)
+        XCTAssertEqual(order.count, 3)
+        XCTAssertTrue(order.contains(b.id) && order.contains(c.id))
+    }
+
+    /// mango pointer_end_grab_client: with drag_tile_to_tile off, a dragged tile let go on
+    /// another monitor goes to that monitor, selected.
+    func testADraggedTileWithoutDragTileToTileJoinsTheMonitorItIsLetGoOn() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        r.server.config.dragTileToTile = false
+        r.server.selectedMonitor = r.monitor
+        let a = r.map(1)
+        r.server.arrange(r.monitor, .none)
+        let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
+        let f = a.geom ?? a.frame
+        r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
+        let p = CGPoint(x: side.screen.frame.midX, y: side.screen.frame.midY)
+        r.server.pointerProcessMotion(p, time: 0)
+        r.server.buttonReleased(at: p)
+        XCTAssertTrue(a.mon === side)
+        XCTAssertTrue(a.isFloating)
+        XCTAssertTrue(r.server.selectedMonitor === side)
+        XCTAssertEqual(side.sel, a.id)
+    }
+
+    // MARK: phase 2: the layouts' ground (ISFAKETILED, smartgaps per layout, sel)
+
+    /// mango ISFAKETILED: a maximized tiled window keeps its tile; its neighbour does not
+    /// spread into it.
+    func testAMaximizedWindowKeepsItsTile() {
+        let r = EngineRig()
+        let a = r.map(1)
+        let b = r.map(2)
+        r.server.arrange(r.monitor, .none)
+        let before = a.geom
+        d(r, "togglemaximizescreen", [], b)
+        XCTAssertTrue(b.isMaximizeScreen)
+        XCTAssertEqual(a.geom, before)
+    }
+
+    /// mango maximize_screen_gaps: the config's outer gaps, also with gaps toggled off.
+    func testMaximizedUsesTheConfigOuterGaps() {
+        let r = EngineRig()
+        let a = r.map(1)
+        r.map(2)
+        d(r, "togglegaps")
+        d(r, "togglemaximizescreen", [], a)
+        let w = r.monitor.screen.workArea
+        XCTAssertEqual(a.geom?.minX, w.minX + CGFloat(r.server.config.gappoh))
+    }
+
+    /// mango arrange: a monitor without a selection takes the top of its focus stack.
+    func testArrangeFillsTheSelection() {
+        let r = EngineRig()
+        let a = r.map(1)
+        r.monitor.sel = nil
+        r.server.arrange(r.monitor, .none)
+        XCTAssertEqual(r.monitor.sel, a.id)
+    }
+
+    /// mango scroller smartgaps: one column is single even with two stacked windows; the
+    /// gap between them stays.
+    func testScrollerSmartGapsCountColumns() {
+        let r = EngineRig()
+        r.server.config.smartgaps = true
+        r.monitor.current.layout = .scroller
+        let a = r.map(1)
+        let b = r.map(2)
+        d(r, "scroller_stack", ["left"], b)
+        r.server.arrange(r.monitor, .none)
+        let w = r.monitor.screen.workArea
+        let top = [a, b].compactMap(\.geom).min { $0.minY < $1.minY }!
+        let bottom = [a, b].compactMap(\.geom).max { $0.minY < $1.minY }!
+        XCTAssertEqual(r.monitor.current.state.scrollerState.column(of: a.id).count, 2)
+        XCTAssertEqual(top.minY, w.minY, "no outer gap")
+        XCTAssertEqual(bottom.minY - top.maxY, CGFloat(r.server.config.gappiv), "the stack gap stays")
+    }
+
+    /// mango grid_core: config gaps, smartgaps does not apply.
+    func testGridIgnoresSmartGaps() {
+        let r = EngineRig()
+        r.server.config.smartgaps = true
+        r.monitor.current.layout = .grid
+        let a = r.map(1)
+        r.server.arrange(r.monitor, .none)
+        XCTAssertGreaterThan(a.geom!.minX, r.monitor.screen.workArea.minX)
+    }
+
+    // MARK: phase 2: weights and resize (reset_size_per_mon, resize_tile_*)
+
+    private func tileOf4(_ r: EngineRig, _ layout: LayoutKind = .tile) -> [Client] {
+        r.monitor.current.layout = layout
+        for id in 1...4 { r.map(CGWindowID(id)) }
+        r.server.arrange(r.monitor, .none)
+        return r.server.tiledClients(r.monitor)
+    }
+
+    /// mango resize_tile_master_horizontal: the y offset changes the window's share of its
+    /// stack; the others share the rest, and it lasts (the weights).
+    func testResizewinChangesAStackWindowsShare() {
+        let r = EngineRig()
+        let t = tileOf4(r)
+        let top = t[1], mid = t[2], low = t[3]
+        XCTAssertEqual(top.geom!.height, mid.geom!.height, accuracy: 2)
+        d(r, "resizewin", ["0", "+100"], top)
+        XCTAssertGreaterThan(top.geom!.height, mid.geom!.height + 50)
+        XCTAssertEqual(mid.geom!.height, low.geom!.height, accuracy: 2)
+        let h = top.geom!.height
+        r.server.arrange(r.monitor, .none)
+        XCTAssertEqual(top.geom!.height, h, accuracy: 1, "kept in the weights")
+    }
+
+    /// mango resize_tile_master_horizontal: a positive x offset widens the master in tile
+    /// from a stack window too, and narrows it in right_tile.
+    func testResizewinMovesTheSplitMangosWay() {
+        let r = EngineRig()
+        let t = tileOf4(r)
+        d(r, "resizewin", ["+50", "0"], t[2])
+        XCTAssertGreaterThan(t[0].masterMfactPer, 0.55)
+        let r2 = EngineRig()
+        let t2 = tileOf4(r2, .rightTile)
+        d(r2, "resizewin", ["+50", "0"], t2[0])
+        XCTAssertLessThan(t2[0].masterMfactPer, 0.55)
+    }
+
+    /// mango resize_tile_scroller: the y offset changes the window's share of its stack.
+    func testResizewinChangesAScrollerStackShare() {
+        let r = EngineRig()
+        r.monitor.current.layout = .scroller
+        let a = r.map(1)
+        let b = r.map(2)
+        d(r, "scroller_stack", ["left"], b)
+        r.server.arrange(r.monitor, .none)
+        let top = [a, b].min { $0.geom!.minY < $1.geom!.minY }!
+        let other = top === a ? b : a
+        XCTAssertEqual(top.geom!.height, other.geom!.height, accuracy: 2)
+        d(r, "resizewin", ["0", "+100"], top)
+        XCTAssertGreaterThan(top.geom!.height, other.geom!.height + 50)
+    }
+
+    /// mango resize_tile_scroller: a lone column keeps its proportion unless
+    /// scroller_ignore_proportion_single.
+    func testResizewinLeavesALoneColumnsProportion() {
+        let r = EngineRig()
+        r.server.config.scrollerIgnoreProportionSingle = false
+        r.monitor.current.layout = .scroller
+        let a = r.map(1)
+        r.server.arrange(r.monitor, .none)
+        d(r, "resizewin", ["+100", "0"], a)
+        XCTAssertNil(a.scrollerProportion)
+    }
+
+    // MARK: phase 3: tag dispatchers
+
+    /// mango tag_client: a tiled window tagged onto a tag takes the fullscreen window there
+    /// out of fullscreen; the tags are viewed even when in view.
+    func testTagEndsFullscreenOnTheTargetTag() {
+        let r = EngineRig()
+        let a = r.map(1)
+        a.tags = 1 << 1
+        a.isFullscreen = true
+        let b = r.map(2)
+        d(r, "tag", ["2"], b)
+        XCTAssertFalse(a.isFullscreen)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
+    }
+
+    /// mango toggle_tag: with no argument a window on every tag goes back to the current one;
+    /// toggleview,0 leaves the special tag out.
+    func testToggletagAllAndBackAndToggleviewZero() {
+        let r = EngineRig()
+        let a = r.map(1)
+        r.monitor.tagset[r.monitor.seltags] = 0b11
+        d(r, "toggletag", [], a)
+        XCTAssertEqual(a.tags, TagMask.mask(forTagNum: 9))
+        d(r, "toggletag", [], a)
+        XCTAssertEqual(a.tags, 1, "the current tag alone")
+        d(r, "toggleview", ["0"])
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags] & TagMask.special, 0)
+    }
+
+    /// mango tag_to_right: a plain shift of the tag in view; the window follows and the
+    /// tag is viewed.
+    func testTagtorightIsAPlainShift() {
+        let r = EngineRig()
+        let a = r.map(1)
+        d(r, "tagtoright", [], a)
+        XCTAssertEqual(a.tags, 1 << 1)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
+    }
+
+    /// mango view_insert: next to a tag with windows, the tags from there move up one and
+    /// the freed tag is viewed.
+    func testViewInsertShiftsTheTags() {
+        let r = EngineRig()
+        let a = r.map(1)
+        let b = r.map(2)
+        b.tags = 1 << 1
+        r.monitor.pertag[2].settings.nmaster = 3
+        d(r, "view_insert", ["next"])
+        XCTAssertEqual(a.tags, 1)
+        XCTAssertEqual(b.tags, 1 << 2, "tag 2 moved to 3")
+        XCTAssertEqual(r.monitor.pertag[3].settings.nmaster, 3, "with its state")
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
+    }
+
+    /// mango tag_gather_apply: the tags in use are renumbered 1…k after a layout pass.
+    func testTagGatherRenumbersTags() {
+        let r = EngineRig()
+        r.server.config.tagGather = true
+        let a = r.map(1)
+        let b = r.map(2)
+        b.tags = 1 << 8
+        r.server.arrange(r.monitor, .none)
+        XCTAssertEqual(a.tags, 1)
+        XCTAssertEqual(b.tags, 1 << 1, "tag 9 became tag 2")
+    }
+
+    // MARK: phase 3: focus and close
+
+    /// mango handle_client_activation_request: without focus_on_activate a window on a tag
+    /// out of view that asks for focus is marked urgent; the view stays.
+    func testActivationWithoutFocusOnActivateMarksUrgent() {
+        let r = EngineRig()
+        r.server.config.focusOnActivate = false
+        let a = r.map(1)
+        let b = r.map(2)
+        b.tags = 1 << 1
+        r.server.arrange(r.monitor, .none)
+        r.server.clientFocus(a)
+        r.server.handleClientActivationRequest(b)
+        XCTAssertTrue(b.isUrgent)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1)
+        XCTAssertTrue(r.server.focused === a)
+    }
+
+    /// mango handle_client_activation_request: with focus_on_activate a window on a tag out of
+    /// view that asks for focus has its tags viewed and is focused.
+    func testActivationWithFocusOnActivateViewsItsTag() {
+        let r = EngineRig()
+        r.server.config.focusOnActivate = true
+        let a = r.map(1)
+        let b = r.map(2)
+        b.tags = 1 << 1
+        r.server.arrange(r.monitor, .none)
+        r.server.clientFocus(a)
+        r.server.handleClientActivationRequest(b)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
+        XCTAssertTrue(r.server.focused === b)
+        XCTAssertFalse(b.isUrgent)
+    }
+
+    /// Not in mango: macOS reports a click on a window in view as its activation; the port
+    /// gives it to mango as the click it is, without focus_on_activate.
+    func testAClickOnAWindowInViewFocusesIt() {
+        let r = EngineRig()
+        r.server.config.focusOnActivate = false
+        let a = r.map(1)
+        let b = r.map(2)
+        r.server.clientFocus(a)
+        r.server.mac.windowFocused(id: b.id)
+        XCTAssertTrue(r.server.focused === b)
+        XCTAssertFalse(b.isUrgent)
+    }
+
+    /// mango handle_client_request_minimize: with ignore_minimize (mango's default) the
+    /// request is refused; mango changes nothing.
+    func testAMinimizeRequestIsRefusedWithIgnoreMinimize() {
+        let r = EngineRig()
+        let a = r.map(1)
+        a.ignoreMinimize = true
+        r.server.handleClientRequestMinimize(a, true)
+        XCTAssertFalse(a.isMinimized)
+        XCTAssertFalse(a.isInScratchpad)
+        a.ignoreMinimize = false
+        r.server.handleClientRequestMinimize(a, true)
+        XCTAssertTrue(a.isMinimized && a.isInScratchpad, "set_minimized")
+    }
+
+    /// mango focus_last: a minimized window is skipped.
+    func testFocuslastSkipsAMinimizedWindow() {
+        let r = EngineRig()
+        let a = r.map(1)
+        let b = r.map(2)
+        let c = r.map(3)
+        r.server.clientFocus(a)
+        r.server.clientFocus(b)
+        r.server.clientFocus(c)
+        d(r, "minimized", [], b)
+        XCTAssertTrue(r.server.focused === c)
+        d(r, "focuslast")
+        XCTAssertTrue(r.server.focused === a, "b is minimized")
+    }
+
+    /// mango smart_kill_client: a window on several tags, none in view, is not closed.
+    func testSmartkillKeepsAWindowWhoseTagsAreNotInView() {
+        let r = EngineRig()
+        let a = r.map(1)
+        a.tags = 0b110
+        d(r, "smartkillclient", [], a)
+        XCTAssertEqual(a.tags, 0b110)
+        XCTAssertFalse((r.server.system as! FakeWindowSystem).closed.contains(a.id))
+    }
+
+    /// mango zoom: the window goes first in the list; already first, the next one does.
+    func testZoomMovesTheWindowFirst() {
+        let r = EngineRig()
+        let a = r.map(1), b = r.map(2), c = r.map(3)
+        r.server.clients = [a, b, c]
+        d(r, "zoom", [], c)
+        XCTAssertEqual(r.server.clients.map(\.id), [c.id, a.id, b.id])
+        d(r, "zoom", [], c)
+        XCTAssertEqual(r.server.clients.map(\.id), [a.id, c.id, b.id])
+        XCTAssertTrue(r.server.focused === a)
+    }
+
+    // MARK: phase 3: geometry
+
+    /// mango smart_resize_window: a tiled window floats and grows; growing right stops at a
+    /// floating window in the way, less the inner gap.
+    func testSmartresizewinFloatsAndStopsAtANeighbour() {
+        let r = EngineRig()
+        let a = r.map(1)
+        d(r, "smartresizewin", ["right"], a)
+        XCTAssertTrue(a.isFloating)
+        let b = r.map(2)
+        b.isFloating = true
+        a.floatGeom = CGRect(x: 100, y: 200, width: 300, height: 300)
+        b.floatGeom = CGRect(x: 450, y: 250, width: 300, height: 300)
+        d(r, "smartresizewin", ["right"], a)
+        XCTAssertEqual(a.floatGeom.maxX, 450 - CGFloat(r.server.config.gappih))
+    }
+
+    /// mango move_window / resize_window: a plain number is a place in layout coordinates, a
+    /// size with no minimum of the port's.
+    func testMovewinAndResizewinAbsolute() {
+        let r = EngineRig()
+        let a = r.map(1)
+        d(r, "movewin", ["100", "120"], a)
+        XCTAssertEqual(a.floatGeom.origin, CGPoint(x: 100, y: 120))
+        d(r, "resizewin", ["40", "40"], a)
+        XCTAssertEqual(a.floatGeom.size, CGSize(width: 40, height: 40))
+    }
+
+    /// mango increase_gaps / setgaps: with the special tag in view the special gaps change.
+    func testIncgapsOnTheSpecialTagChangesTheSpecialGaps() {
+        let r = EngineRig()
+        r.map(1)
+        let normal = r.monitor.gaps
+        r.monitor.tagset[r.monitor.seltags] = TagMask.special
+        d(r, "incgaps", ["5"])
+        XCTAssertEqual(r.monitor.gaps, normal)
+        XCTAssertEqual(r.monitor.specialGaps.oh, normal.oh + 5)
+    }
+
+    // MARK: phase 3: small dispatchers
+
+    /// mango spawn_on_empty: the first argument is the command, the second the tags.
+    func testSpawnOnEmptyTakesTheCommandThenTheTags() {
+        let r = EngineRig()
+        r.map(1)
+        d(r, "spawn_on_empty", ["foot -e x", "3"])
+        XCTAssertEqual((r.server.system as! FakeWindowSystem).spawned, ["foot -e x"])
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 2)
+    }
+
+    /// mango parse_circle_direction: groupfocus and switch_proportion_preset without
+    /// "next" go back.
+    func testSwitchProportionPresetDefaultsToPrev() {
+        let r = EngineRig()
+        r.server.config.scrollerProportionPreset = [0.5, 0.8, 1.0]
+        r.monitor.current.layout = .scroller
+        let a = r.map(1)
+        r.map(2)
+        a.scrollerProportion = 0.8
+        d(r, "switch_proportion_preset", [], a)
+        XCTAssertEqual(a.scrollerProportion, 0.5)
+    }
+
+    /// mango get_client_by_id_or_title: without scratchpad_cross_monitor only the selected
+    /// monitor's windows are found (the command starts a new one).
+    func testNamedScratchpadLooksOnTheSelectedMonitorOnly() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        r.server.selectedMonitor = side
+        let a = r.map(1)
+        r.server.selectedMonitor = r.monitor
+        d(r, "toggle_named_scratchpad", ["test", "none", "foot"])
+        XCTAssertFalse(a.isNamedScratchpad)
+        XCTAssertEqual((r.server.system as! FakeWindowSystem).spawned, ["foot"])
+    }
+
+    // MARK: phase 4: mouse buttons
+
+    /// mango pointer_process_button_press: a mousebind runs without a window under the
+    /// pointer (only move_resize needs one).
+    func testAMousebindRunsWithoutAWindow() {
+        let r = EngineRig()
+        let before = r.server.enableGaps
+        let b = MouseBinding(mods: [.superKey], button: .middle, dispatch: Dispatch(name: "togglegaps"))
+        r.server.mousebind(b, at: CGPoint(x: 5, y: 500))
+        XCTAssertNotEqual(r.server.enableGaps, before)
+    }
+
+    /// mango: in overview a click on no window leaves the overview open.
+    func testAnOverviewClickOnNothingKeepsTheOverview() {
+        let r = EngineRig()
+        r.map(1)
+        r.server.toggleOverview(onlyCurrent: false, jump: false)
+        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 1, y: 1080), mods: [])
+        XCTAssertNotNil(r.server.overviewState)
+    }
+
+    /// mango pointer_process_button_press: a press selects the monitor under the pointer and
+    /// focuses the window there.
+    func testAPressSelectsTheMonitorAndFocuses() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        r.server.selectedMonitor = r.monitor
+        let a = r.map(1)
+        r.server.selectedMonitor = side
+        let b = r.map(2)
+        r.server.clientFocus(a)
+        XCTAssertTrue(r.server.selectedMonitor === r.monitor)
+        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: side.screen.frame.midX, y: side.screen.frame.midY), mods: [])
+        XCTAssertTrue(r.server.selectedMonitor === side)
+        XCTAssertTrue(r.server.focused === b)
+    }
+
+    // MARK: phase 4: monitors and drags
+
+    /// mango monitor_close: an overview on a display that goes away closes; its windows go
+    /// to the selected monitor (client_change_mon) with their tags.
+    func testRemovingTheOverviewsDisplayClosesTheOverview() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        r.server.selectedMonitor = side
+        let a = r.map(1)
+        a.tags = 1 << 2
+        r.server.toggleOverview(onlyCurrent: false, jump: false)
+        XCTAssertTrue(r.server.overviewState?.monitor === side)
+        r.server.rebuildMonitors(screens: [r.screen])
+        XCTAssertNil(r.server.overviewState)
+        XCTAssertTrue(a.mon === r.monitor)
+        XCTAssertEqual(a.tags, 1 << 2)
+    }
+
+    /// mango: a dragged tile let go on a group bar joins the group also without
+    /// drag_tile_to_tile.
+    func testAGroupBarDropWorksWithoutDragTileToTile() {
+        let r = EngineRig()
+        r.server.config.dragTileToTile = false
+        r.server.config.alwaysShowGroupBar = true
+        let a = r.map(1)
+        let b = r.map(2)
+        r.server.arrange(r.monitor, .none)
+        let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
+        let f = b.geom ?? b.frame
+        r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
+        let bar = CGPoint(x: a.frame.midX, y: a.frame.minY - CGFloat(r.server.config.groupBarHeight) / 2)
+        guard r.server.groupBarTargetAt(at: bar, except: b) === a else {
+            return XCTFail("no group bar over a: \(a.frame)")
+        }
+        r.server.buttonReleased(at: bar)
+        XCTAssertTrue(b.isGroupMember)
+    }
+
+    // MARK: phase 5: config and reload
+
+    /// mango override_config: the bar heights to 500, the group bar button to 4…64 and 0…50.
+    func testBarClamps() {
+        let c = ConfigParser.parse(text: """
+        tab_bar_height=800
+        title_message_bar_height=900
+        group_bar_button_size=0
+        group_bar_button_margin=-5
+        """, baseDirectory: nil, fileName: "t").config
+        XCTAssertEqual(c.tabBarHeight, 500)
+        XCTAssertEqual(c.titleMessageBarHeight, 500)
+        XCTAssertEqual(c.groupBarButtonSize, 4)
+        XCTAssertEqual(c.groupBarButtonMargin, 0)
+    }
+
+    /// mango: no scroller_proportion_preset unless set.
+    func testNoProportionPresetByDefault() {
+        XCTAssertEqual(Config().scrollerProportionPreset, [])
+    }
+
+    /// mango reset_tag: windows on tags that are gone go to the last tag.
+    func testResetTagMovesWindowsOffGoneTags() {
+        let r = EngineRig()
+        let a = r.map(1)
+        a.tags = 1 << 7
+        r.server.config.tagNum = 5
+        r.server.resetTag(9)
+        XCTAssertEqual(a.tags, 1 << 4)
+    }
+
+    /// mango parse_tagrule: a tag whose rule is taken out goes back to tile on reload.
+    func testARemovedTagRuleSendsTheTagBackToTile() {
+        let r = EngineRig()
+        r.server.config.tagRules = ConfigParser.parse(text: "tag_rule=id:2,layout_name:scroller", baseDirectory: nil,
+                                                      fileName: "t").config.tagRules
+        r.monitor.parseTagrule(config: r.server.config, onlyLayoutIfChanged: false)
+        XCTAssertEqual(r.monitor.pertag[2].layout, .scroller)
+        r.server.config.tagRules = []
+        r.monitor.parseTagrule(config: r.server.config, onlyLayoutIfChanged: true)
+        XCTAssertEqual(r.monitor.pertag[2].layout, .tile)
+    }
+
+    // MARK: phase 5: values as C reads them
+
+    /// mango parse_tag_mask: the special tag mixed with others is the special tag alone; a
+    /// number past 31 goes through atoi of the whole string.
+    func testParseTagMaskAsMango() {
+        XCTAssertEqual(TagMask.parseTagMask("1|0"), TagMask.special)
+        XCTAssertEqual(TagMask.parseTagMask("32"), 32)
+        XCTAssertEqual(TagMask.parseTagMask("1|abc"), 1)
+        XCTAssertEqual(TagMask.parseTagMask("00"), 0)
+        XCTAssertEqual(TagMask.parseTagMask("-1"), TagMask.all)
+    }
+
+    /// mango parse_mod: an unknown token is skipped; none known fails.
+    func testParseModSkipsUnknownTokens() {
+        XCTAssertEqual(Modifiers.parse("SUPER+FOO"), .superKey)
+        XCTAssertNil(Modifiers.parse("FOO"))
+        XCTAssertNil(Modifiers.parse(""))
+    }
+
+    /// mango's atoi: a window rule flag that is no number is 0 (set, not unset).
+    func testARuleFlagThatIsNoNumberIsZero() {
+        let r = try! RuleParser.parseWindowRule("app_id:foo,is_floating:yes", once: false).get()
+        XCTAssertEqual(r.isFloating, false)
+    }
+
+    /// mango switch_layout: the circle_layout name after the one in use; an unknown name
+    /// leaves the layout.
+    func testSwitchLayoutFollowsCircleLayout() {
+        let r = EngineRig()
+        r.map(1)
+        r.server.config.circleLayout = ["tile", "monocle"]
+        d(r, "switch_layout")
+        XCTAssertEqual(r.monitor.layout, .monocle)
+        r.server.config.circleLayout = ["spiral"]
+        d(r, "switch_layout")
+        XCTAssertEqual(r.monitor.layout, .monocle)
+    }
+
+    // MARK: phase 5: rules and binds
+
+    /// mango: a window rule with a global_key_binding it cannot read is dropped whole.
+    func testABadGlobalKeyBindingDropsTheRule() {
+        let c = ConfigParser.parse(text: "window_rule=app_id:foo,is_floating:1,global_key_binding:bogus-a",
+                                   baseDirectory: nil, fileName: "t")
+        XCTAssertTrue(c.config.windowRules.isEmpty)
+        XCTAssertEqual(c.errors.count, 1)
+    }
+
+    /// mango parse_func_name: dispatcher names as written.
+    func testDispatcherNamesAreCaseSensitive() {
+        let c = ConfigParser.parse(text: "bind=SUPER,j,FocusStack,next", baseDirectory: nil, fileName: "t")
+        XCTAssertTrue(c.config.keyBindings.isEmpty)
+        XCTAssertTrue(c.errors.first?.message.contains("Unknown dispatch") ?? false)
+    }
+
+    /// mango parse_double_array(4): a fifth number is ignored; animation_type_from_string:
+    /// an unknown type animates as slide.
+    func testCurvesTakeFourAndUnknownAnimationTypesSlide() {
+        let c = ConfigParser.parse(text: """
+        animation_curve_open=0.46,1,0.29,0.99,7
+        animation_type_open=bounce
+        """, baseDirectory: nil, fileName: "t")
+        XCTAssertEqual(c.errors.count, 0)
+        XCTAssertEqual(c.config.animationCurveOpen, BezierCurve(x1: 0.46, y1: 1, x2: 0.29, y2: 0.99))
+        XCTAssertEqual(c.config.animationTypeOpen, .slide)
+    }
+
+    // MARK: phase 5: setoption and IPC
+
+    /// mango config->keymode: a bind set with setoption after key_mode goes into that mode;
+    /// env needs a value.
+    func testSetoptionKeyModeAndEnv() {
+        var c = Config()
+        XCTAssertEqual(ConfigOptions.parseOption(key: "key_mode", value: "resize", to: &c), .applied)
+        XCTAssertEqual(ConfigOptions.parseOption(key: "bind", value: "NONE,h,focusdir,left", to: &c), .applied)
+        XCTAssertEqual(c.keyBindings.last?.mode, "resize")
+        guard case .invalid = ConfigOptions.parseOption(key: "env", value: "FOO,", to: &c) else { return XCTFail("expected invalid") }
+    }
+
+    // MARK: decisions B1, B2
+
+    /// mango convert_hex_to_rgba: always RRGGBBAA; parse_color: `#` is no hex number.
+    func testColoursAreAlwaysRRGGBBAA() {
+        let c = parseColor("0xff0000")!
+        XCTAssertEqual([c.r, c.g, c.b, c.a], [0, 1, 0, 0])
+        XCTAssertNil(parseColor("#ff0000ff"))
+        XCTAssertEqual(parseColor("0x112233ff")?.a, 1)
+    }
+
+    /// mango's boolean options are atoi: "true" is 0.
+    func testBooleanWordsAreZero() {
+        let c = ConfigParser.parse(text: "sloppy_focus=true\nsmart_gaps=1", baseDirectory: nil, fileName: "t").config
+        XCTAssertFalse(c.sloppyfocus)
+        XCTAssertTrue(c.smartgaps)
+    }
+
+    // MARK: decision B3: setoption runs reset_option
+
+    /// mango setoption → reset_option → reapply_master: the monitors' gaps follow at once,
+    /// each tag's nmaster goes back to the config, and the exec lines run again.
+    func testSetoptionReappliesAsMango() {
+        let r = EngineRig()
+        r.map(1)
+        r.server.config.exec = ["foo"]
+        r.monitor.current.settings.nmaster = 3
+        d(r, "setoption", ["gap_outer_horizontal", "24"])
+        XCTAssertEqual(r.monitor.gaps.oh, 24)
+        XCTAssertEqual(r.monitor.current.settings.nmaster, r.server.config.defaultNmaster)
+        XCTAssertEqual((r.server.system as! FakeWindowSystem).spawned, ["foo"])
+    }
+
+    // MARK: decision B5: confine_pointer
+
+    /// mango confine_pointer: focused with the pointer outside, the pointer goes to the
+    /// window's middle; a motion out of it is put back 5 px inside.
+    func testConfinePointerKeepsThePointerInside() {
+        let r = EngineRig()
+        rules(r, "window_rule=confine_pointer:1,app_id:^test$")
+        let fake = r.server.system as! FakeWindowSystem
+        let a = r.map(1)
+        XCTAssertTrue(a.confinePointer)
+        XCTAssertEqual(fake.warps.last, CGPoint(x: a.frame.midX, y: a.frame.midY))
+        r.server.handleCursorMotion(CGPoint(x: a.frame.maxX + 50, y: a.frame.midY), time: 1)
+        XCTAssertEqual(fake.warps.last, CGPoint(x: a.frame.maxX - 6, y: a.frame.midY))
+    }
+
+    // MARK: decision B4: overview as mango
+
+    /// mango set_overview: every tag is in view while the overview is open; a tag view is
+    /// refused; leaving views the selected window's first tag, and the tags from before
+    /// become the previous tagset.
+    func testOverviewViewsEveryTagAndLeavesOnTheSelectedWindowsTag() {
+        let r = EngineRig()
+        let a = r.map(1)
+        let b = r.map(2)
+        b.tags = 1 << 1
+        r.server.clientFocus(a)
+        r.monitor.tagset[r.monitor.seltags] = 1
+        d(r, "toggleoverview")
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], TagMask.mask(forTagNum: 9))
+        d(r, "view", ["3"])
+        XCTAssertNotNil(r.server.overviewState, "a tag view is refused in overview")
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], TagMask.mask(forTagNum: 9))
+        d(r, "focusstack", ["next"])
+        XCTAssertTrue(r.server.focused === b, "a card on another tag is reached")
+        d(r, "toggleoverview")
+        XCTAssertNil(r.server.overviewState)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1, "b's first tag")
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags ^ 1], 1, "the tags from before")
+        XCTAssertTrue(r.server.focused === b)
+    }
+
+    /// mango over_circle: in a plain overview it turns to the tab layout and moves on.
+    func testOvercircleTakesOverAPlainOverview() {
+        let r = EngineRig()
+        r.map(1)
+        r.map(2)
+        d(r, "toggleoverview")
+        d(r, "overcircle", ["next"])
+        XCTAssertEqual(r.server.overviewState?.circle, true)
+    }
+
+    // MARK: phase 6: lifecycle details
+
+    /// mango client_group_replace: when the shown member of a two-window group closes, the
+    /// other is no group member and no group focus.
+    func testTheLastGroupMemberIsNoGroupFocus() {
+        let r = EngineRig()
+        let a = r.map(1)
+        let b = r.map(2)
+        r.server.clientGroupJoin(b, into: a)
+        let shown = [a, b].first { !$0.groupParked }!
+        let other = shown === a ? b : a
+        r.server.handleClientUnmap(shown)
+        XCTAssertFalse(other.isGroupMember)
+        XCTAssertFalse(other.isGroupFocus)
+    }
+
+    /// mango client_focus(NULL): a selection still shown stays.
+    func testFocusNoneKeepsAShownSelection() {
+        let r = EngineRig()
+        let a = r.map(1)
+        r.server.clientFocus(nil)
+        XCTAssertEqual(r.monitor.sel, a.id)
+    }
+
+    /// mango scroller_arrange_stack_node: every stacked window by its share of what is left,
+    /// the last one too (no remainder for it).
+    func testScrollerStackHasNoRemainderForTheLast() {
+        let r = EngineRig()
+        r.monitor.current.layout = .scroller
+        let a = r.map(1), b = r.map(2), c = r.map(3)
+        d(r, "scroller_stack", ["left"], b)
+        d(r, "scroller_stack", ["left"], c)
+        r.server.arrange(r.monitor, .none)
+        let hs = [a, b, c].map { $0.geom!.height }
+        XCTAssertEqual(r.monitor.current.state.scrollerState.column(of: a.id).count, 3)
+        XCTAssertLessThanOrEqual(hs.max()! - hs.min()!, 0.5, "\(hs)")
+    }
+
+    /// mango scroller: the columns follow the client list; a window tiled again gets its
+    /// column where it is in the list, not after the focused one.
+    func testAWindowTiledAgainGoesBackToItsPlaceInTheScroller() {
+        let r = EngineRig()
+        r.monitor.current.layout = .scroller
+        let a = r.map(1), b = r.map(2), c = r.map(3)
+        r.server.clients = [a, b, c]
+        r.server.arrange(r.monitor, .none)
+        d(r, "togglefloating", [], b)
+        r.server.clientFocus(c)
+        d(r, "togglefloating", [], b)
+        let ids = [a, b, c].map(\.id)
+        XCTAssertEqual(r.monitor.current.state.scrollerState.columns(for: ids), [[a.id], [b.id], [c.id]])
+    }
+
+    /// mango dwindle_core: every window not in the tree splits next to the focused one (no
+    /// spiral).
+    func testDwindleNewcomersSplitTheFocusedLeaf() {
+        let tree = DwindleTree()
+        let area = CGRect(x: 0, y: 0, width: 2000, height: 1000)
+        func input(_ ids: [ClientID], focused: ClientID?) -> LayoutInput {
+            LayoutInput(workArea: area, monitorFrame: area, gaps: .zero,
+                        clients: ids.map { LayoutClient(id: $0, currentFrame: area) },
+                        focusedID: focused, prevFocusedID: nil, pertag: PertagSettings(), config: Config())
+        }
+        _ = tree.dwindleCore(input([1], focused: 1))
+        let r = tree.dwindleCore(input([1, 2, 3], focused: 1))
+        // 2 halves 1's leaf, then 3 halves 1's again: 2 keeps its half (a spiral would cut 2)
+        XCTAssertEqual(r.frames[2]?.width, 1000)
+        XCTAssertEqual(r.frames[1]?.width, 500)
+    }
+
+
+    // MARK: the review of 2026-10-31
+
+    /// mango run_exec / run_exec_once (reapply.c): through the shell (spawn_shell).
+    func testExecRunsThroughTheShell() throws {
+        let r = EngineRig()
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("config.conf")
+        try "exec=FOO=1 echo a | cat\nexec_once=echo b\n".write(to: url, atomically: true, encoding: .utf8)
+        r.server.configURL = url
+        r.server.reloadConfig()
+        XCTAssertEqual(fake(r).shelled, ["FOO=1 echo a | cat", "echo b"])
+    }
+
+    /// mango center_window: not a fullscreen or maximized window.
+    func testCenterwinLeavesFullscreenAndMaximized() {
+        let r = EngineRig()
+        let c = r.window(1, floating: true)
+        let before = c.floatGeom
+        c.isMaximizeScreen = true
+        d(r, "centerwin", [], c)
+        XCTAssertEqual(c.floatGeom, before)
+        XCTAssertFalse(c.isCustomSize)
+    }
+
+    /// mango toggle_overview, enter_overview, toggle_jump: nothing while a window is grabbed.
+    func testOverviewNotWhileGrabbed() {
+        let r = EngineRig()
+        let c = r.map(1)
+        r.server.grab = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
+        for name in ["toggleoverview", "enteroverview", "togglejump"] { d(r, name) }
+        XCTAssertNil(r.server.overviewState)
+        r.server.grab = nil
+        d(r, "toggleoverview")
+        XCTAssertNotNil(r.server.overviewState)
+        r.server.grab = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
+        d(r, "leaveoverview")
+        XCTAssertNotNil(r.server.overviewState, "leave_overview: nothing while grabbed")
+    }
+
+    /// mango inc_nmaster, set_master_factor, set_layout: the selected monitor, whatever
+    /// window the dispatch names.
+    func testLayoutDispatchersUseTheSelectedMonitor() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        r.server.selectedMonitor = side
+        let a = r.map(1)
+        r.server.selectedMonitor = r.monitor
+        XCTAssertTrue(a.mon === side)
+        d(r, "setlayout", ["monocle"], a)
+        d(r, "incnmaster", ["1"], a)
+        XCTAssertEqual(r.monitor.layout, .monocle)
+        XCTAssertEqual(r.monitor.current.settings.nmaster, 2)
+        XCTAssertNotEqual(side.layout, .monocle)
+    }
+
+    /// mango parse_monitor_arg: directions, next and prev, else a monitor's name; a number
+    /// is a name like any other.
+    func testFocusmonTakesNoNumber() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        d(r, "focusmon", ["2"])
+        XCTAssertTrue(r.server.selectedMonitor === r.monitor)
+        d(r, "focusmon", ["Side"])
+        XCTAssertTrue(r.server.selectedMonitor === side)
+    }
+
+    /// mango regex_match (util.c, PCRE2 without CASELESS): monitor names match by case.
+    func testMonitorNamesMatchByCase() {
+        var spec = MonitorSpec()
+        spec.name = "Built-in"
+        XCTAssertTrue(spec.matchMonitorSpec(name: "Built-in Retina Display"))
+        spec.name = "built-in"
+        XCTAssertFalse(spec.matchMonitorSpec(name: "Built-in Retina Display"))
+    }
+
+    /// mango option_defs.c: jump_labels as given (empty: no labels); a preset token read
+    /// as sscanf("%f"); drop_color's alpha 0.5.
+    func testJumpLabelsPresetAndDropColour() {
+        var c = Config()
+        XCTAssertEqual(c.dropcolor.a, 0.5)
+        _ = ConfigOptions.parseOption(key: "jump_labels", value: "", to: &c)
+        XCTAssertEqual(c.jumpLabels, "")
+        _ = ConfigOptions.parseOption(key: "scroller_proportion_preset", value: "0.5x, 0.8", to: &c)
+        XCTAssertEqual(c.scrollerProportionPreset, [0.5, 0.8])
+        if case .applied = ConfigOptions.parseOption(key: "scroller_proportion_preset", value: "a,0.8", to: &c) { XCTFail("not a number") }
+    }
+
+    /// mango resize_window: a tiled window is resized without animations, and the setting
+    /// is back afterwards.
+    func testResizewinKeepsTheAnimationSetting() {
+        let r = EngineRig()
+        r.server.config.animations = true
+        let a = r.map(1)
+        r.map(2)
+        d(r, "resizewin", ["+50", "0"], a)
+        XCTAssertTrue(r.server.config.animations)
+    }
+
+    /// handle_client_request_minimize: a window minimized while mango could not see it
+    /// (sleep) goes through mango's handler, which focuses the next window.
+    func testMinimizedWhileAwayGoesThroughTheHandler() {
+        let r = EngineRig()
+        let a = r.map(1), b = r.map(2)
+        a.ignoreMinimize = true   // mango's default
+        r.server.clientFocus(a)
+        r.server.mac.windowReacquired(id: a.id, element: r.app.element(for: a.id),
+                                      state: ReacquiredState(frame: nil, minimized: true, fullscreen: false, appHidden: false))
+        XCTAssertNil(r.server.clientByIdAll(a.id), "away in the Dock: unmapped")
+        XCTAssertEqual(r.monitor.sel, b.id, "the next window is focused")
+    }
+}

@@ -1,0 +1,4 @@
+module MangoPrivate {
+    header "private.h"
+    export *
+}
