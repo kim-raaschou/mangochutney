@@ -187,6 +187,9 @@ public final class Permissions {
                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
             w.title = "Mango Chutney Permissions"
             w.isReleasedWhenClosed = false
+            // Above other apps' windows, System Settings among them, while the grants are given.
+            // The app's own windows are never mango's clients, so it is never tiled.
+            w.level = .floating
             w.collectionBehavior = [.moveToActiveSpace]
             w.contentView = host
             w.center()
