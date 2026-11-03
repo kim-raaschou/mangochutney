@@ -361,13 +361,6 @@ extension HotkeysPaletteTests {
         c.chutneyHyperModifier = "super+ctrl+alt+shift"
         c.xkbRulesOptions = "ctrl:nocaps, caps:hyper"
         XCTAssertEqual(ModifierLegend.text(c), "Super ⌘   Hyper ⌃⌥⇧⌘ or Caps Lock")
-        let rows = [ShortcutRow(mode: "apps", keys: "⌘ K", action: "", dispatch: "chutney_toggle_hotkeys_palette", args: []),
-                    ShortcutRow(mode: "default", keys: "⌃⌥⌘ K", action: "", dispatch: "chutney_toggle_hotkeys_palette", args: []),
-                    ShortcutRow(mode: "default", keys: "⌃⌥⌘ ←", action: "", dispatch: "chutney_toggle_layout_palette", args: [])]
-        let key = ModifierLegend.menuKey(rows, "chutney_toggle_hotkeys_palette")
-        XCTAssertEqual(key?.key, "k")
-        XCTAssertEqual(key?.modifiers, [.control, .option, .command], "the default mode's, not the apps mode's")
-        XCTAssertNil(ModifierLegend.menuKey(rows, "chutney_toggle_layout_palette"), "an arrow is no menu key")
     }
 }
 

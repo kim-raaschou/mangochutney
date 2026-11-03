@@ -735,17 +735,4 @@ public enum ModifierLegend {
             .contains { $0.trimmingCharacters(in: .whitespaces) == "caps:hyper" }
         return "Super ⌘   Hyper \(hyper)" + (caps ? " or Caps Lock" : "")
     }
-
-    /// The key of the default mode's first binding to `dispatch`, as a menu item shows it
-    /// ("⌃⌥⌘ K"); nil when it has none, or one a menu cannot show (an arrow, a mode's).
-    public static func menuKey(_ rows: [ShortcutRow], _ dispatch: String) -> (key: String, modifiers: NSEvent.ModifierFlags)? {
-        guard let r = rows.first(where: { $0.mode == "default" && $0.dispatch == dispatch }) else { return nil }
-        let parts = r.keys.split(separator: " ", maxSplits: 1).map(String.init)
-        guard parts.count == 2, parts[1].count == 1, parts[1].first?.isLetter == true || parts[1].first?.isNumber == true
-        else { return nil }
-        var m: NSEvent.ModifierFlags = []
-        for (symbol, flag) in [("⌃", NSEvent.ModifierFlags.control), ("⌥", .option), ("⇧", .shift), ("⌘", .command)]
-        where parts[0].contains(symbol) { m.insert(flag) }
-        return (parts[1].lowercased(), m)
-    }
 }

@@ -116,7 +116,6 @@ final class PermissionsModel: ObservableObject {
     @Published var welcome = false
     var onContinue: () -> Void = {}
     var onOpenStart: () -> Void = {}
-    var onComingFromMacOS: () -> Void = {}
     var onDone: () -> Void = {}
     var onRestart: () -> Void = {}
     var onQuit: () -> Void = {}
@@ -145,8 +144,11 @@ public final class Permissions {
     private var firstStartConfig: URL?
     /// The first lines to try (start.conf), opened from the welcome.
     private var startConfig: URL?
-    private static let comingFromMacOS =
-        URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/chutney/from-macos.md")!
+    private static let gettingStarted =
+        URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/chutney/getting-started.md")!
+
+    /// The docs' Getting Started: the two keys to remember, the menu bar, the config.
+    public static func openGettingStarted() { NSWorkspace.shared.open(gettingStarted) }
 
     public var state: PermissionState {
         PermissionState(accessibility: Permission.accessibility.isGranted,
@@ -182,7 +184,6 @@ public final class Permissions {
         model.onRestart = { [weak self] in self?.restart() }
         model.onQuit = { [weak self] in self?.quit() }
         model.onOpenStart = { [weak self] in self?.openStart() }
-        model.onComingFromMacOS = { NSWorkspace.shared.open(Self.comingFromMacOS) }
         model.onDone = { [weak self] in self?.window?.close() }
         self.model = model
         if window == nil {
@@ -220,6 +221,8 @@ public final class Permissions {
             model.offerKeys = false
             model.welcome = true
             window?.title = "Welcome to Mango Chutney"
+            // The docs open behind the welcome, which floats above them.
+            Self.openGettingStarted()
             return
         }
         window?.close()
@@ -273,9 +276,9 @@ struct PermissionsView: View {
                     .resizable()
                     .frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(model.welcome ? "Welcome to Mango Chutney" : "Mango Chutney needs your permission")
+                    Text(model.welcome ? "Remember two keys" : "Mango Chutney needs your permission")
                         .font(.title3.bold())
-                    Text(model.welcome ? "Your windows now tile. Three things to start with."
+                    Text(model.welcome ? "Everything else is found from them. Getting Started is open in your browser."
                          : "macOS asks you to allow these in System Settings.")
                         .foregroundStyle(.secondary)
                 }
@@ -291,7 +294,6 @@ struct PermissionsView: View {
                 Divider()
 
                 HStack(spacing: 10) {
-                    Button("Coming from macOS", action: model.onComingFromMacOS)
                     Spacer()
                     Button("Open Your Config", action: model.onOpenStart)
                     Button("Done", action: model.onDone)
@@ -367,28 +369,48 @@ private struct KeysChoice: View {
     }
 }
 
-/// After a first start's Continue: where to begin, and the first lines of config to try.
+/// After a first start's Continue: the two keys to remember, then the config.
 private struct Welcome: View {
     let macKeys: Bool
 
+    private var hyper: String { macKeys ? "⇪" : "⌃⌥⌘" }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            row("keyboard", "Hyper K lists every key",
-                "Search for a key by what it does: float, tag, layout. "
-                + (macKeys ? "Hyper is Caps Lock held." : "Hyper is ⌃⌥⌘ held."))
-            row("square.grid.2x2", "Hyper L picks a layout",
-                "The menu bar item has the layouts too, with the gaps and borders.")
-            row("doc.text", "Your config is yours to change",
-                "Open Your Config shows the first lines to try: take away a #, save, and see the change.")
+            key("K", "Every key, searched by what you want to do",
+                "Float, tag, layout: type it and press Return. When you do not know how, press Hyper K.")
+            key("L", "The layouts",
+                "Pick how the windows are arranged, with the arrows and Return.")
+            Text(macKeys ? "Hyper is Caps Lock held." : "Hyper is Control, Option and Command held together.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+            Divider().padding(.vertical, 6)
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "doc.text")
+                    .font(.title2)
+                    .foregroundStyle(.tint)
+                    .frame(width: 30)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Your config is yours to change").font(.headline)
+                    Text("Open Your Config shows the first lines to try: take away a #, save, and see the change. The menu bar's mango has the layouts, gaps and borders, and Learn.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.horizontal, 14)
         }
     }
 
-    private func row(_ symbol: String, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.title2)
-                .foregroundStyle(.tint)
-                .frame(width: 30)
+    /// One of the two keys: Hyper and the letter as key caps, then what it does.
+    private func key(_ letter: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .center, spacing: 16) {
+            HStack(spacing: 6) {
+                cap(hyper)
+                cap(letter)
+            }
+            .frame(width: 150, alignment: .leading)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.headline)
                 Text(detail)
@@ -401,6 +423,17 @@ private struct Welcome: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func cap(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 22, weight: .semibold, design: .rounded))
+            .fixedSize()
+            .padding(.horizontal, 12)
+            .frame(minWidth: 44, minHeight: 44)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.4)))
+            .shadow(color: .black.opacity(0.12), radius: 0, y: 2)
     }
 }
 

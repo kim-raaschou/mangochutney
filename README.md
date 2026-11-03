@@ -22,6 +22,10 @@ menu bar item, a searchable list of keys, and colours that follow your system se
 
 You can see the layouts at [mangowm.github.io](https://mangowm.github.io/).
 
+> **Remember two keys.** **Hyper K** lists every key, searched by what you want to do. **Hyper L**
+> picks a layout. Everything else is found from them; [Getting Started](docs/chutney/getting-started.md)
+> has the rest.
+
 ## Features
 
 - 14 layouts: tile, scroller, monocle, deck, dwindle, grid and more

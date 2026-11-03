@@ -165,7 +165,7 @@ display. Its menu holds the **layout panel**:
 - **Desktop:** the gaps, inner and outer, horizontal and vertical (linked or apart), for the tags
   or the special tag, with smart gaps and a preview drawn at the screen's scale; border width.
 - **Menu bar:** the tags as squares, circles or text, the logo, the layout icon, the key mode; animations on/off.
-- Hotkeys…, Layouts…, Reload Config (⌘R), Edit Config, Mango Chutney Documentation (the README on GitHub), Permissions…, Start at Login (`mmsg service install` / `uninstall`, ticked while installed), Restart and Quit Mango Chutney.
+- Learn: what Super and Hyper are (a click opens the keys' docs), Getting Started, mango Documentation. Then Reload Config (⌘R), Edit Config, Permissions…, Start at Login (`mmsg service install` / `uninstall`, ticked while installed), Restart and Quit Mango Chutney.
 
 The panel only sends mango's own dispatchers (`setlayout`, `setmfact`, `incnmaster`, `setoption`),
 as a bar would over IPC. Its changes are kept in `~/.config/mango/chutney_menu.conf`

@@ -89,15 +89,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         menu.addItem(makeLayoutPanelItem(model: layoutPanel))
         menu.addItem(.separator())
+        // Learn, as Omarchy's menu. The palettes are on their keys (Hyper K, Hyper L), not here.
+        menu.addItem(.sectionHeader(title: "Learn"))
         // Port extension: not in mango. What SUPER and HYPER are on a Mac; a click opens the docs.
         legendItem = menu.addItem(withTitle: "", action: #selector(showKeysDocs), keyEquivalent: "")
         legendItem?.toolTip = "mango's modifiers on a Mac: SUPER is Command; HYPER is chutney_hyper_modifier"
-        hotkeysItem = menu.addItem(withTitle: "Hotkeys…", action: #selector(showHotkeys), keyEquivalent: "")
-        layoutsItem = menu.addItem(withTitle: "Layouts…", action: #selector(showLayouts), keyEquivalent: "")
+        menu.addItem(withTitle: "Getting Started", action: #selector(showGettingStarted), keyEquivalent: "")
+        menu.addItem(withTitle: "mango Documentation", action: #selector(showMangoDocs), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Reload Config", action: #selector(reload), keyEquivalent: "r")
         menu.addItem(withTitle: "Edit Config", action: #selector(editConfig), keyEquivalent: "")
-        menu.addItem(withTitle: "Mango Chutney Documentation", action: #selector(showDocs), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Permissions…", action: #selector(showPermissions), keyEquivalent: "")
         loginItem = menu.addItem(withTitle: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
@@ -329,16 +330,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         layoutPanel.server = server
         layoutPanel.refresh()
         loginItem?.state = FileManager.default.fileExists(atPath: Self.loginPlist) ? .on : .off
-        if let server {
-            legendItem?.title = ModifierLegend.text(server.config)
-            // The palettes' own keys beside them, as macOS menus show a command's key.
-            let rows = server.shortcutRows
-            for (item, dispatch) in [(hotkeysItem, "chutney_toggle_hotkeys_palette"), (layoutsItem, "chutney_toggle_layout_palette")] {
-                let key = ModifierLegend.menuKey(rows, dispatch)
-                item?.keyEquivalent = key?.key ?? ""
-                item?.keyEquivalentModifierMask = key?.modifiers ?? []
-            }
-        }
+        if let server { legendItem?.title = ModifierLegend.text(server.config) }
     }
 
     func menuDidClose(_ menu: NSMenu) {
@@ -353,22 +345,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func reload() { server?.reloadConfig() }
 
-    @objc func showHotkeys() {
-        if let server { HotkeysPalette.shared.show(server) }
-    }
     var legendItem: NSMenuItem?
-    var hotkeysItem: NSMenuItem?
-    var layoutsItem: NSMenuItem?
     /// The docs' page on the keys (bundled with the app until they are on the web).
     @objc func showKeysDocs() {
         guard let url = Bundle.main.resourceURL?.appendingPathComponent("docs/chutney/bindings/keys.md") else { return }
         NSWorkspace.shared.open(url)
     }
-    @objc func showDocs() {
-        NSWorkspace.shared.open(URL(string: "https://github.com/kim-raaschou/mangochutney#readme")!)
-    }
-    @objc func showLayouts() {
-        if let server { LayoutPalette.shared.show(server) }
+    @objc func showGettingStarted() { Permissions.openGettingStarted() }
+    @objc func showMangoDocs() {
+        NSWorkspace.shared.open(URL(string: "https://mangowm.github.io/docs/")!)
     }
     @objc func editConfig() {
         ConfigFiles.open(server?.configURL ?? ConfigParser.defaultConfigURL())
