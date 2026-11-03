@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "Reload Config", action: #selector(reload), keyEquivalent: "r")
         menu.addItem(withTitle: "Edit Config", action: #selector(editConfig), keyEquivalent: "")
+        menu.addItem(withTitle: "Mango Chutney Documentation", action: #selector(showDocs), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Permissions…", action: #selector(showPermissions), keyEquivalent: "")
         loginItem = menu.addItem(withTitle: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
@@ -361,6 +362,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func showKeysDocs() {
         guard let url = Bundle.main.resourceURL?.appendingPathComponent("docs/chutney/bindings/keys.md") else { return }
         NSWorkspace.shared.open(url)
+    }
+    @objc func showDocs() {
+        NSWorkspace.shared.open(URL(string: "https://github.com/kim-raaschou/mangochutney#readme")!)
     }
     @objc func showLayouts() {
         if let server { LayoutPalette.shared.show(server) }
