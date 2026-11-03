@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setupStatusItem()
         Permissions.shared.restart = { [weak self] in self?.restart() }
         Permissions.shared.quit = { [weak self] in self?.quit() }
+        Permissions.shared.installLoginService = { [weak self] in self?.service("install") }
         Permissions.shared.offerKeysOnFirstStart(configPath ?? ConfigParser.defaultConfigURL())
         Permissions.shared.showIfNeeded()
         if AX.isTrusted {
@@ -383,16 +384,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// mango. When this mango is the service itself, uninstall only removes the plist (no
     /// bootout, which would stop this mango); the service is gone at the next login.
     @objc func toggleLogin() {
-        let mmsg = Bundle.main.executableURL!.resolvingSymlinksInPath()
-            .deletingLastPathComponent().appendingPathComponent("mmsg").path
         let installed = FileManager.default.fileExists(atPath: Self.loginPlist)
         if installed, ProcessInfo.processInfo.environment["XPC_SERVICE_NAME"] == "dev.mangochutney" {
             try? FileManager.default.removeItem(atPath: Self.loginPlist)
             return
         }
+        service(installed ? "uninstall" : "install")
+    }
+
+    /// `mmsg service <verb>`, with the mmsg beside this mango.
+    func service(_ verb: String) {
+        let mmsg = Bundle.main.executableURL!.resolvingSymlinksInPath()
+            .deletingLastPathComponent().appendingPathComponent("mmsg").path
         let p = Process()
         p.executableURL = URL(fileURLWithPath: mmsg)
-        p.arguments = ["service", installed ? "uninstall" : "install"]
+        p.arguments = ["service", verb]
         try? p.run()
     }
 

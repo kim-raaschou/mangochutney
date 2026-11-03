@@ -40,8 +40,8 @@ open -a "Mango Chutney"
 Needs macOS 14 or later on Apple silicon. Quit any other tiling window manager first.
 
 On first start it asks for Accessibility. Screen Recording is optional and gives the overview and
-switcher pictures of the windows. Start at login from the menu bar or with
-`mmsg service install`.
+switcher pictures of the windows. Start at login is a choice on the first start, and later in the
+menu bar or with `mmsg service install`.
 
 ## Keys
 

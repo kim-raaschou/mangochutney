@@ -83,8 +83,10 @@ permissions window then also asks which keys to start with:
   [Hyper](#the-hyper-key) key, Caps Lock held. `config.conf` is then `config-mac.conf`:
   mango's bindings commented out, with [`mac-bindings.conf`](../Resources/mac-bindings.conf) in
   their place among the port's keys at its end. Hyper from Karabiner-Elements or a keyboard of
-  its own instead of Caps Lock: delete the `xkb_rules_options=caps:hyper` line. To start at
-  login:
+  its own instead of Caps Lock: delete the `xkb_rules_options=caps:hyper` line.
+
+Below the keys, **Start Mango Chutney at login** (off unless ticked) installs the login service on
+Continue. Later it is Start at Login in the menu bar, or:
 
 ```bash
 mmsg service install

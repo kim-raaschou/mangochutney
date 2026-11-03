@@ -110,6 +110,8 @@ final class PermissionsModel: ObservableObject {
     /// (config-mac.conf).
     @Published var offerKeys = false
     @Published var macKeys = false
+    /// Offered with the keys on a first start: `mmsg service install` on Continue.
+    @Published var startAtLogin = false
     /// After a first start's Continue: the welcome, with the first lines of config to try.
     @Published var welcome = false
     var onContinue: () -> Void = {}
@@ -131,6 +133,8 @@ public final class Permissions {
     /// The app's own restart and quit (set by the app at launch).
     public var restart: () -> Void = {}
     public var quit: () -> Void = { NSApp.terminate(nil) }
+    /// The login service (`mmsg service install`; set by the app at launch).
+    public var installLoginService: () -> Void = {}
 
     private static let skipKey = "skipScreenRecording"
     private var window: NSWindow?
@@ -210,6 +214,7 @@ public final class Permissions {
         if !state.screenRecording { UserDefaults.standard.set(true, forKey: Self.skipKey) }
         if let url = firstStartConfig, let model {
             if model.macKeys { ConfigFiles.useMacKeys(configURL: url) } else { ConfigFiles.ensure(url) }
+            if model.startAtLogin { installLoginService() }
             firstStartConfig = nil
             startConfig = ConfigFiles.startURL(url)
             model.offerKeys = false
@@ -341,6 +346,12 @@ private struct KeysChoice: View {
             .pickerStyle(.radioGroup)
             .labelsHidden()
             Text("Written to ~/.config/mango/config.conf when you continue. Hyper K lists every key.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 20)
+            Toggle("Start Mango Chutney at login", isOn: $model.startAtLogin)
+                .padding(.top, 6)
+            Text("Later from the menu bar (Start at Login) or with mmsg service install and uninstall.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.leading, 20)
