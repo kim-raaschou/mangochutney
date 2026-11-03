@@ -41,6 +41,7 @@ app: build
 	cp $(BUILD_DIR)/mmsg "$(APP)/Contents/MacOS/mmsg"
 	cp Resources/config.conf "$(APP)/Contents/Resources/config.conf"
 	cp Resources/config-mac.conf "$(APP)/Contents/Resources/config-mac.conf"
+	cp Resources/start.conf "$(APP)/Contents/Resources/start.conf"
 	cp Resources/mango.svg "$(APP)/Contents/Resources/mango.svg"
 	rm -rf "$(APP)/Contents/Resources/docs" && mkdir -p "$(APP)/Contents/Resources/docs"
 	cp -R docs/chutney "$(APP)/Contents/Resources/docs/chutney"

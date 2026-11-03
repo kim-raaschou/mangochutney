@@ -110,7 +110,12 @@ final class PermissionsModel: ObservableObject {
     /// (config-mac.conf).
     @Published var offerKeys = false
     @Published var macKeys = false
+    /// After a first start's Continue: the welcome, with the first lines of config to try.
+    @Published var welcome = false
     var onContinue: () -> Void = {}
+    var onOpenStart: () -> Void = {}
+    var onComingFromMacOS: () -> Void = {}
+    var onDone: () -> Void = {}
     var onRestart: () -> Void = {}
     var onQuit: () -> Void = {}
 
@@ -134,6 +139,10 @@ public final class Permissions {
     private var askedForCapture = false
     /// A first start's config, where the chosen keys are written.
     private var firstStartConfig: URL?
+    /// The first lines to try (start.conf), opened from the welcome.
+    private var startConfig: URL?
+    private static let comingFromMacOS =
+        URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/chutney/from-macos.md")!
 
     public var state: PermissionState {
         PermissionState(accessibility: Permission.accessibility.isGranted,
@@ -168,6 +177,9 @@ public final class Permissions {
         model.onContinue = { [weak self] in self?.continueOn() }
         model.onRestart = { [weak self] in self?.restart() }
         model.onQuit = { [weak self] in self?.quit() }
+        model.onOpenStart = { [weak self] in self?.openStart() }
+        model.onComingFromMacOS = { NSWorkspace.shared.open(Self.comingFromMacOS) }
+        model.onDone = { [weak self] in self?.window?.close() }
         self.model = model
         if window == nil {
             let host = NSHostingView(rootView: PermissionsView(model: model))
@@ -194,11 +206,24 @@ public final class Permissions {
     private func continueOn() {
         if !state.screenRecording { UserDefaults.standard.set(true, forKey: Self.skipKey) }
         if let url = firstStartConfig, let model {
-            if model.macKeys { ConfigFiles.useMacKeys(configURL: url) }
+            if model.macKeys { ConfigFiles.useMacKeys(configURL: url) } else { ConfigFiles.ensure(url) }
             firstStartConfig = nil
+            startConfig = ConfigFiles.startURL(url)
             model.offerKeys = false
+            model.welcome = true
+            window?.title = "Welcome to Mango Chutney"
+            return
         }
         window?.close()
+    }
+
+    /// The first lines to try, or the config when start.conf is gone.
+    private func openStart() {
+        guard let start = startConfig else { return }
+        let fm = FileManager.default
+        let url = fm.fileExists(atPath: start.path) ? start
+            : start.deletingLastPathComponent().appendingPathComponent("config.conf")
+        ConfigFiles.open(url)
     }
 
     private func observe() {
@@ -240,8 +265,10 @@ struct PermissionsView: View {
                     .resizable()
                     .frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Mango Chutney needs your permission").font(.title3.bold())
-                    Text("macOS asks you to allow these in System Settings.")
+                    Text(model.welcome ? "Welcome to Mango Chutney" : "Mango Chutney needs your permission")
+                        .font(.title3.bold())
+                    Text(model.welcome ? "Your windows now tile. Three things to start with."
+                         : "macOS asks you to allow these in System Settings.")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -249,31 +276,47 @@ struct PermissionsView: View {
 
             Divider()
 
-            VStack(spacing: 10) {
-                ForEach(Permission.allCases) { p in
-                    PermissionRow(permission: p, granted: model.state.isGranted(p), onRestart: model.onRestart)
-                }
-            }
-            .padding(20)
-
-            if model.offerKeys {
-                Divider()
-                KeysChoice(model: model)
+            if model.welcome {
+                Welcome(macKeys: model.macKeys)
                     .padding(20)
-            }
 
-            Divider()
+                Divider()
 
-            HStack(spacing: 10) {
-                Button("Quit Mango Chutney", action: model.onQuit)
-                Spacer()
-                Button(model.state.allGranted ? "Done"
-                       : model.state.accessibility ? "Continue without Screen Recording" : "Waiting for Accessibility…",
-                       action: model.onContinue)
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!model.state.accessibility)
+                HStack(spacing: 10) {
+                    Button("Coming from macOS", action: model.onComingFromMacOS)
+                    Spacer()
+                    Button("Open Your Config", action: model.onOpenStart)
+                    Button("Done", action: model.onDone)
+                        .keyboardShortcut(.defaultAction)
+                }
+                .padding(16)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(Permission.allCases) { p in
+                        PermissionRow(permission: p, granted: model.state.isGranted(p), onRestart: model.onRestart)
+                    }
+                }
+                .padding(20)
+
+                if model.offerKeys {
+                    Divider()
+                    KeysChoice(model: model)
+                        .padding(20)
+                }
+
+                Divider()
+
+                HStack(spacing: 10) {
+                    Button("Quit Mango Chutney", action: model.onQuit)
+                    Spacer()
+                    Button(model.state.allGranted ? (model.offerKeys ? "Continue" : "Done")
+                           : model.state.accessibility ? "Continue without Screen Recording" : "Waiting for Accessibility…",
+                           action: model.onContinue)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(!model.state.accessibility)
+                }
+                .padding(16)
             }
-            .padding(16)
         }
         .frame(width: 560)
     }
@@ -307,6 +350,43 @@ private struct KeysChoice: View {
             Text(title)
             Text(detail).font(.caption).foregroundStyle(.secondary)
         }
+    }
+}
+
+/// After a first start's Continue: where to begin, and the first lines of config to try.
+private struct Welcome: View {
+    let macKeys: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            row("keyboard", "Hyper K lists every key",
+                "Search for a key by what it does: float, tag, layout. "
+                + (macKeys ? "Hyper is Caps Lock held." : "Hyper is ⌃⌥⌘ held."))
+            row("square.grid.2x2", "Hyper L picks a layout",
+                "The menu bar item has the layouts too, with the gaps and borders.")
+            row("doc.text", "Your config is yours to change",
+                "Open Your Config shows the first lines to try: take away a #, save, and see the change.")
+        }
+    }
+
+    private func row(_ symbol: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol)
+                .font(.title2)
+                .foregroundStyle(.tint)
+                .frame(width: 30)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.headline)
+                Text(detail)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

@@ -21,8 +21,9 @@ All in `~/.config/mango`.
 
 | File | Written by | What it holds |
 | :--- | :--- | :--- |
-| `config.conf` | you | mango's own `assets/config.conf`, unchanged, then the port's keys from their marker line to the end: the palettes' bindings, the macOS look, and the two files below, read last. Your own settings go above those two lines. |
+| `config.conf` | you | mango's own `assets/config.conf`, unchanged, then the port's keys from their marker line to the end: the palettes' bindings, the macOS look, and the files below, read last. Your own settings go above those lines. |
 | `chutney_theme.conf` | Mango Chutney | macOS's colours for mango's colour keys, with [`chutney_style`](visuals/theming#macos-look). Not for editing. |
+| `start.conf` | you, from the first start | The first lines to try, all commented out, opened from the welcome window: take away a `#` and save. |
 | `chutney_menu.conf` | Mango Chutney | What the menu bar's layout panel changes ([`chutney_menu_config`](configuration/basics#files)). Not for editing; delete a line to give the key back to `config.conf`. |
 
 You edit one file, `config.conf`. Read in that order. A key set twice takes its last value; bindings add up instead, and of two on

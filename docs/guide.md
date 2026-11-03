@@ -90,6 +90,11 @@ permissions window then also asks which keys to start with:
 mmsg service install
 ```
 
+Continue then turns the window into a welcome: Hyper K lists every key, Hyper L picks a layout,
+and **Open Your Config** opens `start.conf`, the first lines to try. Each is commented out: take
+away the `#`, save, and the change shows at once. "Coming from macOS" opens
+[that guide](chutney/from-macos.md).
+
 Stop AeroSpace, yabai, rift or any other tiling window manager first: two managers fight over the
 same windows.
 
@@ -214,13 +219,14 @@ its size; the icons follow.
 
 ## Configuration
 
-The config is mango's: the same file, format and names. You edit one file, `config.conf`; the
-other two are written by Mango Chutney and read last.
+The config is mango's: the same file, format and names. You edit `config.conf`, and
+`start.conf` if you like; the other two are written by Mango Chutney and read last.
 
 | File | Who writes it | What |
 |---|---|---|
-| `~/.config/mango/config.conf` | you | Your config. The default is mango's own `assets/config.conf`, unchanged, and then Mango Chutney's own keys from their marker line to the end: the menu bar, the palettes on Hyper K and Hyper L, the macOS look (the rest, with their defaults, are in `docs/chutney`). Your own settings and bindings go above its last two lines. Delete the port's keys for plain mango. What does nothing on macOS (blur, shadows, opacity, trackpad, …) is read and ignored; `mango -p` lists it. |
+| `~/.config/mango/config.conf` | you | Your config. The default is mango's own `assets/config.conf`, unchanged, and then Mango Chutney's own keys from their marker line to the end: the menu bar, the palettes on Hyper K and Hyper L, the macOS look (the rest, with their defaults, are in `docs/chutney`). Your own settings and bindings go above the lines at its end that read the files below. Delete the port's keys for plain mango. What does nothing on macOS (blur, shadows, opacity, trackpad, …) is read and ignored; `mango -p` lists it. |
 | `~/.config/mango/chutney_theme.conf` | Mango Chutney | With `chutney_style=1`, mango's colours in macOS's: `focus_color` your accent colour, `border_color` and `root_color` the system's grey and window background, the others its red, green, blue, purple and teal. Written at start and again when you change the accent colour or light/dark (then the config is reloaded, as mango's `reload_config`, so `exec` lines run again). Read after mango's example colours; a colour of your own goes after the `source_optional=chutney_theme.conf` line. `mango -p` lists the colours it draws. |
+| `~/.config/mango/start.conf` | you | The first lines to try, all commented out: gaps, border width and colour, a tag's layout, a key for an app. Written on the first start and opened from the welcome window; read after `chutney_theme.conf`, so a colour there wins. Delete it if you like; `source_optional` skips a missing file. |
 | `~/.config/mango/chutney_menu.conf` | Mango Chutney | The layout panel's changes, read last, so they win. Delete a line to give the key back to `config.conf`. |
 
 A config from before 0.2 has the port's keys in a `chutney.conf` of its own, read by

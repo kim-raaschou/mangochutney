@@ -9,10 +9,11 @@ mango reads `~/.config/mango/config.conf`, and with `source=` and `source_option
 names, relative to `config.conf`'s folder (see mango's
 [Basics](https://mangowm.github.io/docs/configuration/basics)). Mango Chutney ships one,
 `config.conf`: mango's own default config, unchanged, and then the port's keys from their marker
-line to the end. Its last two lines read the files Mango Chutney writes, `chutney_theme.conf` and
-then `chutney_menu.conf`, so those win.
+line to the end. Its last lines read `chutney_theme.conf`, written by Mango Chutney, then
+`start.conf`, the first lines to try from the welcome window (yours), then `chutney_menu.conf`,
+written by the menu, so the menu's choices win.
 
-Your own lines go in `config.conf`, above those two lines. A key set twice takes its last value; a
+Your own lines go in `config.conf`, above those lines. A key set twice takes its last value; a
 binding does not (the first one on the same keys runs), so a key of mango's you want elsewhere is
 commented out where mango's bindings are. A config from before 0.2 reads a `chutney.conf` of its
 own with `source_optional=chutney.conf`; it keeps working.

@@ -370,7 +370,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let server { LayoutPalette.shared.show(server) }
     }
     @objc func editConfig() {
-        NSWorkspace.shared.open(server?.configURL ?? ConfigParser.defaultConfigURL())
+        ConfigFiles.open(server?.configURL ?? ConfigParser.defaultConfigURL())
     }
     @objc func quit() { NSApp.terminate(nil) }
 

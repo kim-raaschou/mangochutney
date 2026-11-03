@@ -73,6 +73,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Systemets trackpad-gestures konkurrerer med `gesturebind` | macOS ejer dem |
 | IPC: Unix-socket `/tmp/mango-<bruger>.sock`, kun brugerens (0600), og en anden kørende mangos socket overtages ikke; `get tag` tager tallet som sidste felt; sende-bufferen er 1 MB | Ingen `XDG_RUNTIME_DIR`; skærmnavne har mellemrum; macOS' buffer er 8 KB, og et svar sendes uden at vente |
 | `source=` med relativ sti læses fra config-mappen; ingen `/etc/mango`-fallback | Under launchd er arbejdsmappen `/`; macOS har ingen `/etc`-config |
+| Første start skriver `config.conf` (eller `config-mac.conf`) og `start.conf` i `~/.config/mango` og viser et velkomstvindue, der åbner `start.conf` | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config |
 | Input besluttes på event tappets tråd; `setkeymode` og `chvt` stopper søgningen efter bindinger | macOS vil have svaret med det samme; dispatcherens svar kendes først på hovedtråden |
 | Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,2 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt | macOS melder ikke alt som en begivenhed |
 

@@ -78,7 +78,7 @@ final class ConfigParserTests: MangoTestCase {
     /// the palettes' bindings and the app's own files, read last.
     func testShippedConfigReadsTheMacOSDefaultsLast() throws {
         let parsed = ConfigParser.parseConfig(fileAt: defaultConfigURL)
-        XCTAssertEqual(parsed.sourcedFiles.map(\.lastPathComponent), ["config.conf", "chutney_theme.conf", "chutney_menu.conf"])
+        XCTAssertEqual(parsed.sourcedFiles.map(\.lastPathComponent), ["config.conf", "chutney_theme.conf", "start.conf", "chutney_menu.conf"])
         let c = parsed.config
         XCTAssertTrue(c.chutneyMenuBar)
         XCTAssertEqual(c.chutneyMenuConfig, "chutney_menu.conf")

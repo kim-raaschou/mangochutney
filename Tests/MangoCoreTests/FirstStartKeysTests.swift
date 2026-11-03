@@ -46,4 +46,20 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertFalse(p.config.gestureBindings.isEmpty)
         XCTAssertEqual(p.config.xkbRulesOptions, "caps:hyper")
     }
+
+    /// start.conf (not in mango), the welcome's first lines to try: all commented out, so it
+    /// changes nothing until a # is taken away, and each line is one of mango's keys.
+    func testStartConfIsCommentedOutAndEveryLineIsMangos() throws {
+        let lines = try resource("start.conf").components(separatedBy: "\n").filter { !$0.isEmpty }
+        XCTAssertTrue(lines.allSatisfy { $0.hasPrefix("#") })
+        XCTAssertTrue(ConfigParser.parseConfig(fileAt: resources.appendingPathComponent("start.conf")).errors.isEmpty)
+        let tried = lines.filter { $0.range(of: #"^# [a-z_]+="#, options: .regularExpression) != nil }
+            .map { String($0.dropFirst(2)) }
+        XCTAssertEqual(tried.count, 8)
+        let p = ConfigParser.parse(text: tried.joined(separator: "\n"), baseDirectory: resources, fileName: "start.conf")
+        XCTAssertEqual(p.errors, [], p.errors.map(\.description).joined(separator: "\n"))
+        XCTAssertEqual(p.config.borderpx, 8)
+        XCTAssertEqual(p.config.tagRules.first?.layoutName, "scroller")
+        XCTAssertEqual(p.config.keyBindings.first?.dispatch.name, "spawn")
+    }
 }
