@@ -250,8 +250,9 @@ final class ConfigFidelityTests: MangoTestCase {
     }
 
     /// The shipped config is mango's assets/config.conf with macOS values: every key and
-    /// every binding's dispatcher of mango's file appears in it, active or commented out,
-    /// in mango's order (see also `make config-diff`).
+    /// every gesture's dispatcher of mango's file appears in it, active or commented out,
+    /// in mango's order (see also `make config-diff`). Not in mango: the key, mouse and scroll
+    /// bindings are mango's set on Hyper (docs/afvigelser.md), so they are left out here.
     func testShippedConfigFollowsMangosFile() throws {
         let root = ProcessInfo.processInfo.environment["MANGO_SOURCES"] ?? NSHomeDirectory() + "/sources/mango"
         let mangoURL = URL(fileURLWithPath: root + "/assets/config.conf")
@@ -276,8 +277,10 @@ final class ConfigFidelityTests: MangoTestCase {
                 return key == "tag_rule" || key == "layer_rule" ? "\(key)=\(value)" : key
             }
         }
-        let mango = entries(try String(contentsOf: mangoURL, encoding: .utf8), commented: false)
-        let port = entries(try String(contentsOf: packageRoot.appendingPathComponent("Resources/config.conf"), encoding: .utf8), commented: true)
+        let onHyper = ["bind:", "mousebind:", "axisbind:"]
+        func outsideKeys(_ e: [String]) -> [String] { e.filter { x in !onHyper.contains(where: x.hasPrefix) } }
+        let mango = outsideKeys(entries(try String(contentsOf: mangoURL, encoding: .utf8), commented: false))
+        let port = outsideKeys(entries(try String(contentsOf: packageRoot.appendingPathComponent("Resources/config.conf"), encoding: .utf8), commented: true))
         var rest = port[...]
         var missing: [String] = []
         for e in mango {

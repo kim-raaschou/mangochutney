@@ -27,6 +27,16 @@ final class ConfigParserTests: MangoTestCase {
 
     // MARK: - Shipped config
 
+    /// mango's config without its key, mouse and scroll bindings, and without the port's
+    /// marked lines: where config.conf and mango's assets/config.conf are the same.
+    private func outsideKeyBindings(_ text: String) -> [String] {
+        var lines = text.components(separatedBy: "\r\n")
+        if let keys = lines.firstIndex(of: "# Key Bindings"), let gestures = lines.firstIndex(of: "# Gesture Bindings") {
+            lines.removeSubrange(keys..<gestures)
+        }
+        return lines.filter { !$0.hasPrefix("# Mango Chutney:") }
+    }
+
     func testShippedConfigParsesWithoutErrors() throws {
         let url = defaultConfigURL
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), url.path)
@@ -34,21 +44,22 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.errors, [], parsed.errors.map(\.description).joined(separator: "\n"))
         XCTAssertEqual(parsed.sourcedFiles.first?.path, url.standardizedFileURL.path)
 
-        // config.conf is mango's assets/config.conf, unchanged, and then the port's keys, from
-        // their marker line to the end.
+        // config.conf is mango's assets/config.conf with mango's keys on Hyper (not in mango),
+        // and then the port's keys, from their marker line to the end.
         let text = try String(contentsOf: url, encoding: .utf8)
         let marker = try XCTUnwrap(text.range(of: "\r\n" + ConfigFiles.portMarker), "the port's keys come last")
         let mangoText = String(text[..<marker.lowerBound])
         let stock = URL(fileURLWithPath: (ProcessInfo.processInfo.environment["MANGO_SOURCES"]
             ?? NSHomeDirectory() + "/sources/mango") + "/assets/config.conf")
         if let mangoFile = try? String(contentsOf: stock, encoding: .utf8) {
-            XCTAssertEqual(mangoText, mangoFile, "mango's own file, unchanged")
+            XCTAssertEqual(outsideKeyBindings(mangoText), outsideKeyBindings(mangoFile),
+                           "mango's own file but for its key bindings: merge mango's changes")
         }
         let mango = parse(mangoText, base: url.deletingLastPathComponent())
         XCTAssertEqual(mango.errors, [])
         let c = mango.config
         XCTAssertEqual(c.keyBindings.count, mangoText.components(separatedBy: "\r\n").filter { $0.hasPrefix("bind=") }.count)
-        XCTAssertEqual(c.mouseBindings.count, 3)
+        XCTAssertEqual(c.mouseBindings.count, 2)
         XCTAssertEqual(c.axisBindings.count, 2)
         XCTAssertEqual(c.gestureBindings.count, 8)
         XCTAssertEqual(c.tagRules.count, 9)
@@ -61,7 +72,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertNil(c.chutneyFloatingColor)
         XCTAssertEqual(c.chutneyIgnoreApps, [])
         let reload = c.keyBindings.first { $0.dispatch.name == "reload_config" }
-        XCTAssertEqual(reload?.mods, .superKey, "mango's own keys")
+        XCTAssertEqual(reload?.mods, [.superKey, .ctrl, .alt], "mango's keys on Hyper")
         XCTAssertEqual(reload?.keyName, "r")
         XCTAssertEqual(c.keyBindings.first { $0.dispatch.name == "view" }?.dispatch.args, ["1", "0"], "mango's own arguments")
     }
@@ -78,7 +89,7 @@ final class ConfigParserTests: MangoTestCase {
     /// the palettes' bindings and the app's own files, read last.
     func testShippedConfigReadsTheMacOSDefaultsLast() throws {
         let parsed = ConfigParser.parseConfig(fileAt: defaultConfigURL)
-        XCTAssertEqual(parsed.sourcedFiles.map(\.lastPathComponent), ["config.conf", "chutney_theme.conf", "start.conf", "chutney_menu.conf"])
+        XCTAssertEqual(parsed.sourcedFiles.map(\.lastPathComponent), ["config.conf", "chutney_theme.conf", "chutney_menu.conf"])
         let c = parsed.config
         XCTAssertTrue(c.chutneyMenuBar)
         XCTAssertEqual(c.chutneyMenuConfig, "chutney_menu.conf")
@@ -91,7 +102,8 @@ final class ConfigParserTests: MangoTestCase {
         let hotkeys = c.keyBindings.first { $0.dispatch.name == "chutney_toggle_hotkeys_palette" }
         XCTAssertEqual(hotkeys?.mods, [.superKey, .ctrl, .alt], "on the Hyper layer")
         XCTAssertEqual(hotkeys?.keyName, "k")
-        XCTAssertEqual(c.xkbRulesOptions, "", "Caps Lock is left alone")
+        XCTAssertEqual(c.xkbRulesOptions, "", "Caps Lock as Hyper is chutney_hyper_key's")
+        XCTAssertEqual(c.chutneyHyperKey, "caps_lock")
 
         let text = try String(contentsOf: defaultConfigURL, encoding: .utf8)
         let port = try XCTUnwrap(text.range(of: ConfigFiles.portMarker))

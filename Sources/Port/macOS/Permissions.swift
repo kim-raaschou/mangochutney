@@ -118,7 +118,7 @@ final class PermissionsModel: ObservableObject {
     /// After a first start's Continue: the welcome, with the first lines of config to try.
     @Published var welcome = false
     var onContinue: () -> Void = {}
-    var onOpenStart: () -> Void = {}
+    var onOpenConfig: () -> Void = {}
     var onDone: () -> Void = {}
     var onRestart: () -> Void = {}
     var onQuit: () -> Void = {}
@@ -145,8 +145,8 @@ public final class Permissions {
     private var askedForCapture = false
     /// A first start's config, where the chosen keys are written.
     private var firstStartConfig: URL?
-    /// The first lines to try (start.conf), opened from the welcome.
-    private var startConfig: URL?
+    /// The config the first start wrote, opened from the welcome.
+    private var yourConfig: URL?
     private static let gettingStarted =
         URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/guide.md#getting-started")!
 
@@ -186,7 +186,7 @@ public final class Permissions {
         model.onContinue = { [weak self] in self?.continueOn() }
         model.onRestart = { [weak self] in self?.restart() }
         model.onQuit = { [weak self] in self?.quit() }
-        model.onOpenStart = { [weak self] in self?.openStart() }
+        model.onOpenConfig = { [weak self] in self?.openConfig() }
         model.onDone = { [weak self] in self?.window?.close() }
         self.model = model
         if window == nil {
@@ -223,7 +223,7 @@ public final class Permissions {
             ConfigFiles.setHyperKey(key, tap: quickPress ? model.hyperTap : "none", configURL: url)
             if model.startAtLogin { installLoginService() }
             firstStartConfig = nil
-            startConfig = ConfigFiles.startURL(url)
+            yourConfig = url
             model.firstStart = false
             model.welcome = true
             window?.title = "Welcome to Mango Chutney"
@@ -234,13 +234,8 @@ public final class Permissions {
         window?.close()
     }
 
-    /// The first lines to try, or the config when start.conf is gone.
-    private func openStart() {
-        guard let start = startConfig else { return }
-        let fm = FileManager.default
-        let url = fm.fileExists(atPath: start.path) ? start
-            : start.deletingLastPathComponent().appendingPathComponent("config.conf")
-        ConfigFiles.open(url)
+    private func openConfig() {
+        if let yourConfig { ConfigFiles.open(yourConfig) }
     }
 
     private func observe() {
@@ -301,7 +296,7 @@ struct PermissionsView: View {
 
                 HStack(spacing: 10) {
                     Spacer()
-                    Button("Open Your Config", action: model.onOpenStart)
+                    Button("Open Your Config", action: model.onOpenConfig)
                     Button("Done", action: model.onDone)
                         .keyboardShortcut(.defaultAction)
                 }
@@ -413,7 +408,7 @@ private struct Welcome: View {
                     .frame(width: 30)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Your config is yours to change").font(.headline)
-                    Text("Open Your Config shows the first lines to try: take away a #, save, and see the change. The menu bar's mango has the layouts, gaps and borders, and Learn.")
+                    Text("Open Your Config: near its end are the first lines to try. Take away a #, save, and see the change. The menu bar's mango has the layouts, gaps and borders, and Learn.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

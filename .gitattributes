@@ -1,6 +1,4 @@
 # LF in the repository and in every checkout, whatever core.autocrlf says.
 * text=auto eol=lf
-# mango's own assets/config.conf is CRLF; kept byte for byte.
+# mango's own assets/config.conf is CRLF; ours keeps its line endings.
 Resources/config.conf -text
-# Built from it by script/mac-config.swift, with the same line endings.
-Resources/config-mac.conf -text

@@ -3,10 +3,9 @@ import Mango
 
 /// Not in mango: the port's default config. mango reads /etc/mango/config.conf when the
 /// user has none; a Mac app has no /etc config, so the first start writes the shipped
-/// config-mac.conf as config.conf: mango's own config with mango's keys on Hyper, so that
-/// macOS's shortcuts stay as they are (script/mac-config.swift, docs/afvigelser.md), and
-/// start.conf beside it, the first lines to try (read by config.conf with source_optional). The only files the app writes besides are its own,
-/// read last (chutney_theme.conf, chutney_menu.conf).
+/// config.conf: mango's own config with mango's keys on Hyper, so that macOS's shortcuts
+/// stay as they are (docs/afvigelser.md). The only files the app writes besides are its
+/// own (chutney_theme.conf, chutney_menu.conf).
 public enum ConfigFiles {
     /// The line where the port's keys begin in the shipped config.conf.
     static let portMarker = "# Mango Chutney: the macOS port's own keys"
@@ -16,19 +15,10 @@ public enum ConfigFiles {
         let fm = FileManager.default
         guard !fm.fileExists(atPath: configURL.path) else { return }
         try? fm.createDirectory(at: configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let def = bundled("config-mac") {
+        if let def = bundled("config") {
             try? fm.copyItem(at: def, to: configURL)
             Log.info("wrote default config to \(configURL.path)")
         }
-        let start = startURL(configURL)
-        if !fm.fileExists(atPath: start.path), let def = bundled("start") {
-            try? fm.copyItem(at: def, to: start)
-        }
-    }
-
-    /// The first lines to try, beside the config; the welcome window opens it.
-    static func startURL(_ configURL: URL) -> URL {
-        configURL.deletingLastPathComponent().appendingPathComponent("start.conf")
     }
 
     /// A first start: there is no config yet, so the permissions window offers its choices.
@@ -51,7 +41,7 @@ public enum ConfigFiles {
 
     static func setHyperKey(_ key: String, tap: String, configURL: URL) {
         func text(_ url: URL?) -> String? { url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } }
-        guard let current = text(configURL), current == text(bundled("config-mac")),
+        guard let current = text(configURL), current == text(bundled("config")),
               current.contains(hyperKeyLine) else { return }
         let line = "chutney_hyper_key=\(key)\r\n" + (tap == "none" ? "" : "chutney_hyper_tap=\(tap)\r\n")
         do {
@@ -62,8 +52,7 @@ public enum ConfigFiles {
         }
     }
 
-    /// A bundled config file (`config-mac.conf`, written on a first start; `config.conf`,
-    /// mango's own keys; `start.conf`).
+    /// The bundled config.conf, written on a first start.
     static func bundled(_ name: String) -> URL? {
         if let u = Bundle.main.url(forResource: name, withExtension: "conf") { return u }
         // Development: Resources/<name>.conf next to the package.

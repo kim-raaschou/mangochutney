@@ -61,8 +61,8 @@ Everything else is found from these two. A few more to start with:
 ## Config
 
 The config is `~/.config/mango/config.conf`, mango's own format, and it reloads when you save it.
-`start.conf` beside it has a few lines to try. The menu bar's choices are kept in a file of their
-own and never touch your config.
+Near its end are a few lines to try. The menu bar's choices are kept in a file of their own and
+never touch your config.
 
 The **[guide](docs/guide.md)** has the rest: a first week with tiling, all the keys, the Hyper key,
 the menu bar and palettes, one key per app, coming from AeroSpace or yabai, and Mango Chutney's own

@@ -32,8 +32,9 @@ mangos nøgler. Slet den for ren mango (mango selv melder "Unknown keyword" for 
 | `chutney_ignore_apps` | Apps, der aldrig styres | nej | Alle styres |
 | `chutney_hyper_modifier` | Hvad `HYPER` betyder i en binding | `super+ctrl+alt` | Mangos Mod3 |
 
-Mangos bindinger er standard, også dem på ⌘ og ⌥, som apps og macOS også bruger (⌘M lukker
-mango). `Resources/mac-bindings.conf` har de samme på Hyper til at sætte i deres sted.
+`Resources/config.conf` er mangos `assets/config.conf`, men med mangos bindinger på Hyper
+(`var=mod,HYPER`, `var=mods,HYPER+SHIFT`), fordi ⌘, ⌥ og ⌃ er macOS' og appernes. Resten følger
+mangos fil linje for linje, og mangos ændringer merges ind (`make config-diff`).
 
 ## 2. Valgt anderledes, uden nøgle
 
@@ -73,7 +74,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Systemets trackpad-gestures konkurrerer med `gesturebind` | macOS ejer dem |
 | IPC: Unix-socket `/tmp/mango-<bruger>.sock`, kun brugerens (0600), og en anden kørende mangos socket overtages ikke; `get tag` tager tallet som sidste felt; sende-bufferen er 1 MB | Ingen `XDG_RUNTIME_DIR`; skærmnavne har mellemrum; macOS' buffer er 8 KB, og et svar sendes uden at vente |
 | `source=` med relativ sti læses fra config-mappen; ingen `/etc/mango`-fallback | Under launchd er arbejdsmappen `/`; macOS har ingen `/etc`-config |
-| Første start skriver `config-mac.conf` som `config.conf`: mangos config med mangos taster på Hyper (en tast, brugeren vælger som i Raycasts Hyper Key: Caps Lock, en venstre/højre modifier eller F1–F12; `chutney_hyper_key`), ikke mangos egne taster. Også `start.conf`, og et velkomstvindue, der åbner Getting Started | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config. mangos taster (⌘M, ⌘N, ⌥+bogstav, ⌃+pile) er macOS' og appernes genveje |
+| Første start skriver `Resources/config.conf` som `config.conf`: mangos config med mangos taster på Hyper (en tast, brugeren vælger som i Raycasts Hyper Key: Caps Lock, en venstre/højre modifier eller F1–F12; `chutney_hyper_key`), ikke mangos egne taster, og de første linjer at prøve nær slutningen. Også et velkomstvindue, der åbner Getting Started | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config. mangos taster (⌘M, ⌘N, ⌥+bogstav, ⌃+pile) er macOS' og appernes genveje |
 | Input besluttes på event tappets tråd; `setkeymode` og `chvt` stopper søgningen efter bindinger | macOS vil have svaret med det samme; dispatcherens svar kendes først på hovedtråden |
 | Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,2 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt | macOS melder ikke alt som en begivenhed |
 

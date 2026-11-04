@@ -60,8 +60,8 @@ and **Open Your Config**. The window comes back from the menu bar (Permissions�
 is on in the list but does not take (an old build), remove the row with − and allow it again.
 
 The first start writes your config, `~/.config/mango/config.conf`: mango's own default config with
-mango's keys on Hyper, so macOS's shortcuts stay as they are. Beside it is `start.conf`, a few
-lines to try, all commented out: take away a `#`, save, and the change shows at once.
+mango's keys on Hyper, so macOS's shortcuts stay as they are. Near its end are a few lines to
+try, all commented out: take away a `#`, save, and the change shows at once.
 
 ## A first week
 
@@ -121,12 +121,11 @@ modes ([mango's Key Bindings](https://mangowm.github.io/docs/bindings/keys)). On
 [`chutney_hyper_modifier`](#the-hyper-key). Key names are mango's (`a`–`z`, `Return`, `Escape`,
 `Left`, `F1`, …), found on the keyboard layout in use; `code:N` is a macOS key code.
 
-**mango's own keys.** The shipped `Resources/config.conf` is mango's default config with mango's
-own bindings (⌥ arrows, ⌃ 1–9, ⌘ N, ⌘ M …). To use them, put its `bind`, `mousebind` and
-`axisbind` lines in place of yours. On a Mac they belong to apps and to macOS too: ⌘M, ⌘N, ⌘R,
-⌘Tab, ⌘ with arrows (start and end of a line), ⌥ with letters and digits (the characters it types,
-such as @ and {), ⌃ with arrows (Spaces). That is why the default has them on Hyper
-([`mac-bindings.conf`](../Resources/mac-bindings.conf)).
+**mango's own keys.** mango's default config has its bindings on ⌥, ⌃ and ⌘ (⌥ arrows, ⌃ 1–9,
+⌘ N, ⌘ M …). On a Mac those belong to apps and to macOS too: ⌘M, ⌘N, ⌘R, ⌘Tab, ⌘ with arrows (start
+and end of a line), ⌥ with letters and digits (the characters it types, such as @ and {), ⌃ with
+arrows (Spaces). That is why your config has them on Hyper: `var=mod,HYPER` and
+`var=mods,HYPER+SHIFT` at the top of its key bindings, and two lines move them all elsewhere.
 
 ## The Hyper key
 
@@ -147,9 +146,7 @@ chutney_hyper_key=caps_lock
 chutney_hyper_tap=escape
 ```
 
-mango's own `xkb_rules_options=caps:hyper` makes Caps Lock Hyper too. For other apps to get ⌃⌥⌘ as
-well, use the Karabiner-Elements rule in `Resources/karabiner/mango-hyper.json` instead, and no
-Hyper key here.
+mango's own `xkb_rules_options=caps:hyper` makes Caps Lock Hyper too.
 
 ## The menu bar
 
@@ -274,9 +271,8 @@ files are in `~/.config/mango`, read in this order:
 
 | File | Written by | What |
 | :--- | :--- | :--- |
-| `config.conf` | you | Your config. The first start writes mango's own `assets/config.conf` with its bindings on Hyper, then Mango Chutney's own keys from their marker line to the end. Your own settings go above the lines at its end that read the files below. |
+| `config.conf` | you | Your config. The first start writes mango's own `assets/config.conf` with its bindings on Hyper, then Mango Chutney's own keys from their marker line to the end, then the first lines to try. Your own settings go there, above the lines at its end that read the files below. |
 | `chutney_theme.conf` | Mango Chutney | With `chutney_style=1`, macOS's colours for mango's colour keys. Not for editing. |
-| `start.conf` | you | The first lines to try, all commented out. Delete it if you like; `source_optional` skips a missing file. |
 | `chutney_menu.conf` | Mango Chutney | The menu's choices, read last, so they win. Delete a line to give the key back to `config.conf`. |
 
 A key set twice takes its last value. Bindings add up instead: of two on the same keys the first one

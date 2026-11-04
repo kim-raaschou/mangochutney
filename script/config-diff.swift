@@ -1,8 +1,9 @@
 // Compares the shipped config (Resources/config.conf) with mango's assets/config.conf:
 // value differences of options both have active (for bindings: the dispatcher's arguments),
 // mango options the port comments out,
-// mango entries missing or out of order, and the port's own additions. Bindings are
-// compared by dispatcher, since their keys differ on purpose (see the config's comments).
+// mango entries missing or out of order, and the port's own additions. Gestures are compared
+// by dispatcher. Key, mouse and scroll bindings are left out: the port's are mango's set on
+// Hyper (docs/afvigelser.md); mango's changes to them show in mango's own git log.
 //
 //   swift script/config-diff.swift <mango-dir> [port-config]      (make config-diff)
 import Foundation
@@ -26,6 +27,7 @@ func entries(_ path: String, keepComments: Bool) -> [Entry] {
         let key = line[..<eq].trimmingCharacters(in: .whitespaces)
         guard !key.isEmpty, key.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) else { return nil }
         let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
+        if ["bind", "mousebind", "axisbind"].contains(key) { return nil }
         if key.hasPrefix("bind") || key.hasSuffix("bind") {
             let f = value.split(separator: ",", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
             let skip = key == "gesturebind" ? 3 : 2

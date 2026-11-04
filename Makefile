@@ -25,7 +25,7 @@ OLD_APP       := Mango.app
 OLD_LABEL     := dev.mango.wm
 LABEL         := dev.mangochutney
 
-.PHONY: all build app test install uninstall run clean check mango-diff readme-tables config-diff mac-config release cask
+.PHONY: all build app test install uninstall run clean check mango-diff readme-tables config-diff release cask
 
 all: app
 
@@ -40,8 +40,6 @@ app: build
 	cp $(BUILD_DIR)/mango "$(APP)/Contents/MacOS/mango"
 	cp $(BUILD_DIR)/mmsg "$(APP)/Contents/MacOS/mmsg"
 	cp Resources/config.conf "$(APP)/Contents/Resources/config.conf"
-	cp Resources/config-mac.conf "$(APP)/Contents/Resources/config-mac.conf"
-	cp Resources/start.conf "$(APP)/Contents/Resources/start.conf"
 	cp Resources/mango.svg "$(APP)/Contents/Resources/mango.svg"
 	@if [ "$(CODESIGN_IDENTITY)" != "-" ] && ! security find-identity -p codesigning | grep -qF '"$(CODESIGN_IDENTITY)"'; then \
 		echo "error: no code signing identity named \"$(CODESIGN_IDENTITY)\". Available:"; \
@@ -81,11 +79,6 @@ mango-diff:
 config-diff:
 	@swift script/config-diff.swift "$(MANGO)" Resources/config.conf
 
-# Build Resources/config-mac.conf (the first start's macOS keys) from config.conf and
-# mac-bindings.conf; FirstStartKeysTests fails until it is run after either changes.
-mac-config:
-	@swift script/mac-config.swift
-
 # Regenerate the compatibility tables from the code: docs/compatibility.md (mango --list-ignored), README (mango --list-glance).
 readme-tables: build
 	$(BUILD_DIR)/mango --list-ignored > .build/mango-compat.md
@@ -120,9 +113,6 @@ install: app
 	mkdir -p $(PREFIX)/bin
 	ln -sf "$(APP_DIR)/$(APP_NAME)/Contents/MacOS/mmsg" $(PREFIX)/bin/mmsg
 	ln -sf "$(APP_DIR)/$(APP_NAME)/Contents/MacOS/mango" $(PREFIX)/bin/mango
-	@mkdir -p $(HOME)/.config/mango
-	@test -f $(HOME)/.config/mango/config.conf || test -f $(HOME)/.config/mango/config.toml || \
-		cp Resources/config.conf $(HOME)/.config/mango/config.conf
 	@if launchctl print gui/$$(id -u)/$(LABEL) >/dev/null 2>&1 || test -f $(HOME)/.mango-old-agent; then \
 		echo "reloading the $(LABEL) launch agent"; $(PREFIX)/bin/mmsg service install; fi
 	@rm -f $(HOME)/.mango-old-agent
