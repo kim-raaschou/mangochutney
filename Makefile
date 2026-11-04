@@ -43,9 +43,6 @@ app: build
 	cp Resources/config-mac.conf "$(APP)/Contents/Resources/config-mac.conf"
 	cp Resources/start.conf "$(APP)/Contents/Resources/start.conf"
 	cp Resources/mango.svg "$(APP)/Contents/Resources/mango.svg"
-	rm -rf "$(APP)/Contents/Resources/docs" && mkdir -p "$(APP)/Contents/Resources/docs"
-	cp -R docs/chutney "$(APP)/Contents/Resources/docs/chutney"
-	cp docs/compatibility.md "$(APP)/Contents/Resources/docs/compatibility.md"
 	@if [ "$(CODESIGN_IDENTITY)" != "-" ] && ! security find-identity -p codesigning | grep -qF '"$(CODESIGN_IDENTITY)"'; then \
 		echo "error: no code signing identity named \"$(CODESIGN_IDENTITY)\". Available:"; \
 		security find-identity -p codesigning | grep '"' || echo "  (none: create one in Keychain Access › Certificate Assistant)"; \

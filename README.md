@@ -16,23 +16,14 @@
 Mango Chutney arranges your windows in a layout and lets you work with them from the keyboard.
 Open a window and it takes its place next to the others; close it and the rest fill the space.
 
-It is a port of [mango](https://github.com/mangowm/mango), a tiling window manager for Linux.
-The layouts, tags and config are mango's. On top of that it adds a few things for the Mac: a
-menu bar item, a searchable list of keys, and colours that follow your system settings.
+It is a port of [mango](https://github.com/mangowm/mango), a tiling window manager for Linux. The
+layouts, tags and config are mango's. On top of that it adds a few things for the Mac: a Hyper
+key, a menu bar item, a searchable list of keys, and colours that follow your system settings.
 
-You can see the layouts at [mangowm.github.io](https://mangowm.github.io/).
-
-> **Remember two keys.** **Hyper K** lists every key, searched by what you want to do. **Hyper L**
-> picks a layout. Everything else is found from them; [Getting Started](docs/chutney/getting-started.md)
-> has the rest.
-
-## Features
-
-- 14 layouts: tile, scroller, monocle, deck, dwindle, grid and more
+- 14 layouts: tile, scroller, monocle, deck, dwindle, grid and more ([see them](https://mangowm.github.io/))
 - 9 tags per screen instead of desktops, each with its own layout (no macOS Spaces needed)
 - floating windows, fullscreen, scratchpads, an overview and a window switcher
 - a menu bar panel for layouts, gaps and borders
-- Hyper K: all keys in a list you can search
 
 ## Install
 
@@ -43,46 +34,43 @@ open -a "Mango Chutney"
 
 Needs macOS 14 or later on Apple silicon. Quit any other tiling window manager first.
 
-On first start it asks for Accessibility. Screen Recording is optional and gives the overview and
-switcher pictures of the windows. Start at login is a choice on the first start, and later in the
-menu bar or with `mmsg service install`.
+The first start asks for Accessibility (Screen Recording is optional: pictures in the overview and
+switcher) and for your **Hyper key**: Caps Lock, a left or right modifier, or a function key, as
+Raycast's Hyper Key. Held, it acts as ⌃⌥⌘, which no app uses, so macOS's own shortcuts stay as
+they are.
 
-## Keys
-
-mango's keys are on **Hyper**: one key you choose on the first start (Caps Lock, a left or right
-modifier, or F1–F12, as Raycast's Hyper Key), held. It acts as ⌃⌥⌘, and macOS's own shortcuts
-stay as they are.
+## Remember two keys
 
 | Keys | Does |
 |---|---|
-| Hyper K | list all keys |
-| Hyper L | pick a layout |
-| Hyper ← ↑ → ↓ | focus left, up, right, down |
-| Hyper 1–9 | go to tag 1–9 (Hyper ⇧ 1–9 moves the window there) |
-| Hyper N | next layout |
-| Hyper \ | toggle floating |
-| Hyper F | fullscreen |
-| Hyper Q | close window |
-| Hyper drag | move window (right-drag resizes) |
+| **Hyper K** | every key, searched by what you want to do: "float", "tag", "layout" |
+| **Hyper L** | the layouts, as pictures |
 
-mango's own keys (⌥ arrows, ⌃ 1–9, ⌘ N …) clash with Mac shortcuts; the
-[guide](docs/guide.md#default-keys) says how to use them anyway.
+Everything else is found from these two. A few more to start with:
+
+| Keys | Does |
+|---|---|
+| Hyper ← ↑ → ↓ | focus left, up, right, down (with ⇧: move the window) |
+| Hyper 1–9 | go to tag 1–9 (with ⇧: send the window there) |
+| Hyper N | next layout |
+| Hyper \ | float the window |
+| Hyper F | fullscreen |
+| Hyper Q | close the window |
+| Hyper drag | move a window (right-drag resizes) |
 
 ## Config
 
-The config is `~/.config/mango/config.conf`, mango's own format. It reloads when you save it.
-Changes made from the menu bar are saved in a separate file and never touch your config.
+The config is `~/.config/mango/config.conf`, mango's own format, and it reloads when you save it.
+`start.conf` beside it has a few lines to try. The menu bar's choices are kept in a file of their
+own and never touch your config.
 
-- Coming [from macOS](docs/chutney/from-macos.md), [from AeroSpace](docs/chutney/from-aerospace.md) or
-  [from yabai](docs/chutney/from-yabai.md): where to start, and what to try
-- [Guide](docs/guide.md): Hyper key, menu bar, palettes, Spaces and displays
-- [mango's docs](https://mangowm.github.io/): layouts, keys, window rules, all options
-- [Mango Chutney's options](docs/chutney/index.md): the `chutney_` keys
+The **[guide](docs/guide.md)** has the rest: a first week with tiling, all the keys, the Hyper key,
+the menu bar and palettes, one key per app, coming from AeroSpace or yabai, and Mango Chutney's own
+`chutney_` options. Everything of mango's is in [mango's documentation](https://mangowm.github.io/docs).
 
 ## Coming from mango
 
-Your mango config should load as it is, and `mmsg` works the same. Not everything is possible on
-macOS:
+Your mango config loads as it is, and `mmsg` works the same. Not everything is possible on macOS:
 
 <!-- mango-glance:start -->
 |  | In mango | Works on macOS | Not implemented yet | Cannot work on macOS |
@@ -95,27 +83,34 @@ macOS:
 <!-- mango-glance:end -->
 
 Blur, shadows, other apps' opacity, input devices, display modes and the layer shell are out of
-reach. Windows on hidden tags are moved to a corner of the screen.
-[Compatibility](docs/compatibility.md) has the full list, and `mango -p` checks your config.
-
-The Mac additions are all named `chutney_` and are off unless set. They stand together at the
-end of `config.conf`; delete them to run plain mango.
+reach, and windows on hidden tags are moved to a corner of the screen.
+[Compatibility](docs/compatibility.md) has the full list, and `mango -p` checks your config. The
+Mac additions are all named `chutney_` and are off unless set; delete them to run plain mango.
 
 ## Status
 
-Beta (0.0.1-20261103-beta). I use it every day, but there are rough edges. Bugs go in this repo's issues;
-questions about mango itself go to [mango](https://github.com/mangowm/mango) or its
+Beta (0.0.1-20261103-beta). I use it every day, but there are rough edges. Bugs go in this repo's
+issues; questions about mango itself go to [mango](https://github.com/mangowm/mango) or its
 [Discord](https://discord.gg/CPjbDxesh5).
 
 ## Development
 
 ```bash
-make test
-make install
+make test         # the tests (XCTest needs Xcode)
+make install      # build into /Applications, link mango and mmsg into ~/.local/bin
+make check        # validate Resources/config.conf
+make release      # the signed zip, dist/MangoChutney-<version>.zip
 ```
 
-`Sources/Mango` is mango ported to Swift, without any macOS code. `Sources/Port` is the macOS
-part. More in the [guide](docs/guide.md#development).
+- **`Sources/Mango`** is mango's code in Swift, function by function, with mango's names and no
+  macOS framework.
+- **`Sources/Boundary`** is where wlroots stands for mango: `WindowSystem`, `PortHooks`, the event
+  loop.
+- **`Sources/Port`** is macOS: `macOS` (Accessibility, the event tap, borders and bars, hiding
+  windows, focus) and `Extensions` (Mango Chutney's own, joined to mango only through `PortHooks`).
+- **`Sources/MangoApp`** is the app and its menu bar; **`Sources/mmsg`** the command line client.
+
+Every deviation from mango is listed in [afvigelser.md](docs/afvigelser.md) (in Danish).
 
 ## Acknowledgements
 
@@ -128,4 +123,5 @@ part. More in the [guide](docs/guide.md#development).
   AeroSpace's (MIT, `docs/licenses/AeroSpace-LICENSE.txt`).
 - [mangobutter](https://justaguy.dev/drew/mangobutter), whose quickshell panel the layout panel is
   based on.
-- [Omarchy](https://omarchy.org/) for the hotkeys palette, and AeroControl for `chutney_focus_app`.
+- [Omarchy](https://omarchy.org/) for the hotkeys palette, [Raycast](https://www.raycast.com/) for
+  the Hyper Key, and AeroControl for `chutney_focus_app`.

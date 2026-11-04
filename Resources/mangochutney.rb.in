@@ -44,6 +44,6 @@ cask "mangochutney" do
 
     Remember two keys: Hyper K lists every key, Hyper L picks a layout.
     Hyper is the key you choose on the first start, as Raycast's Hyper Key (Caps Lock, …).
-    Getting Started: https://github.com/kim-raaschou/mangochutney/blob/main/docs/chutney/getting-started.md
+    Getting Started: https://github.com/kim-raaschou/mangochutney/blob/main/docs/guide.md#getting-started
   EOS
 end

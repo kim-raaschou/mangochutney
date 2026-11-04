@@ -148,9 +148,9 @@ public final class Permissions {
     /// The first lines to try (start.conf), opened from the welcome.
     private var startConfig: URL?
     private static let gettingStarted =
-        URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/chutney/getting-started.md")!
+        URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/guide.md#getting-started")!
 
-    /// The docs' Getting Started: the two keys to remember, the menu bar, the config.
+    /// The guide's Getting Started: the two keys to remember, the first start.
     public static func openGettingStarted() { NSWorkspace.shared.open(gettingStarted) }
 
     public var state: PermissionState {

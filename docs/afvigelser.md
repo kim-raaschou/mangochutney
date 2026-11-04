@@ -12,7 +12,7 @@ som mango, så langt macOS tillader (afsnit 3).
 
 Hver er fra, når nøglen mangler, og ændrer da intet af mangos opførsel. Standardconfigen er
 mangos egen `assets/config.conf` uændret, og derefter portens nøgler fra deres markeringslinje
-til slutningen: dem, en Mac vil have; resten står i `docs/chutney`. Blokken sætter ingen af
+til slutningen: dem, en Mac vil have; resten står i `docs/guide.md`. Blokken sætter ingen af
 mangos nøgler. Slet den for ren mango (mango selv melder "Unknown keyword" for hver
 `chutney_`-linje og læser resten).
 

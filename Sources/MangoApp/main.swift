@@ -403,10 +403,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         MenuSave.set(key, value, in: url)
         server.reloadConfig()
     }
-    /// The docs' page on the keys (bundled with the app until they are on the web).
+    /// The guide's Hyper key.
     @objc func showKeysDocs() {
-        guard let url = Bundle.main.resourceURL?.appendingPathComponent("docs/chutney/bindings/keys.md") else { return }
-        NSWorkspace.shared.open(url)
+        NSWorkspace.shared.open(URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/guide.md#the-hyper-key")!)
     }
     @objc func showGettingStarted() { Permissions.openGettingStarted() }
     @objc func showMangoDocs() {
