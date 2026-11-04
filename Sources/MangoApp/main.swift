@@ -93,16 +93,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.sectionHeader(title: "Learn"))
         // Port extension: not in mango. The Hyper key (chutney_hyper_key, chutney_hyper_tap), and
         // what SUPER and HYPER are on a Mac; its last row opens the docs.
+        // The keys as Raycast's Hyper Key offers them: Caps Lock, the modifiers, F1 … F12.
         let hyper = NSMenu()
-        for (title, key) in [("Caps Lock", "caps_lock"), ("Right ⌘", "right_command"), ("Right ⌥", "right_option")] {
-            let i = hyper.addItem(withTitle: title, action: #selector(setHyperKey(_:)), keyEquivalent: "")
-            i.representedObject = key
+        func keyItem(_ k: KeyboardOptions.HyperKey, in menu: NSMenu) {
+            let i = menu.addItem(withTitle: k.label, action: #selector(setHyperKey(_:)), keyEquivalent: "")
+            i.representedObject = k.name
             i.target = self
             hyperKeyItems.append(i)
         }
+        let keys = KeyboardOptions.hyperKeys
+        keyItem(keys[0], in: hyper)
         hyper.addItem(.separator())
-        hyperTapItem = hyper.addItem(withTitle: "Pressed Alone: Escape", action: #selector(toggleHyperTap), keyEquivalent: "")
-        hyperTapItem?.target = self
+        for k in keys where k.original == nil { keyItem(k, in: hyper) }
+        let fKeys = NSMenu()
+        for k in keys where k.name.hasPrefix("f") { keyItem(k, in: fKeys) }
+        hyper.addItem(withTitle: "Function Keys", action: nil, keyEquivalent: "").submenu = fKeys
+        hyper.addItem(.separator())
+        hyper.addItem(.sectionHeader(title: "Quick Press"))
+        for (title, tap) in [("Does Nothing", "none"), ("The Key Itself", "original"), ("Escape", "escape")] {
+            let i = hyper.addItem(withTitle: title, action: #selector(setHyperTap(_:)), keyEquivalent: "")
+            i.representedObject = tap
+            i.target = self
+            hyperTapItems.append(i)
+        }
         hyper.addItem(.separator())
         legendItem = hyper.addItem(withTitle: "", action: #selector(showKeysDocs), keyEquivalent: "")
         legendItem?.target = self
@@ -349,9 +362,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             legendItem?.title = ModifierLegend.text(server.config)
             let key = server.config.chutneyHyperKey
             for i in hyperKeyItems { i.state = (i.representedObject as? String) == key ? .on : .off }
-            hyperItem?.title = "Hyper Key: " + (hyperKeyItems.first { $0.state == .on }?.title ?? "⌃⌥⌘ held")
-            hyperTapItem?.state = server.config.chutneyHyperTap == "escape" ? .on : .off
-            hyperTapItem?.isEnabled = !key.isEmpty
+            hyperItem?.title = "Hyper Key: " + (KeyboardOptions.hyperKey(key)?.label ?? "⌃⌥⌘ held")
+            // Quick Press, as Raycast's: only for Caps Lock and a function key.
+            let quick = KeyboardOptions.hyperKey(key)?.original != nil
+            for i in hyperTapItems {
+                i.state = (i.representedObject as? String) == server.config.chutneyHyperTap ? .on : .off
+                i.isEnabled = quick
+            }
         }
     }
 
@@ -370,16 +387,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var legendItem: NSMenuItem?
     var hyperItem: NSMenuItem?
     var hyperKeyItems: [NSMenuItem] = []
-    var hyperTapItem: NSMenuItem?
+    var hyperTapItems: [NSMenuItem] = []
 
     /// The Hyper key from the menu: kept in the menu's file (chutney_menu_config), read last.
     @objc func setHyperKey(_ sender: NSMenuItem) {
         guard let key = sender.representedObject as? String else { return }
         saveMenuChoice("chutney_hyper_key", key)
     }
-    @objc func toggleHyperTap() {
-        guard let server else { return }
-        saveMenuChoice("chutney_hyper_tap", server.config.chutneyHyperTap == "escape" ? "none" : "escape")
+    @objc func setHyperTap(_ sender: NSMenuItem) {
+        guard let tap = sender.representedObject as? String else { return }
+        saveMenuChoice("chutney_hyper_tap", tap)
     }
     private func saveMenuChoice(_ key: String, _ value: String) {
         guard let server, let url = MenuSave.url(server.config, configURL: server.configURL) else { return }

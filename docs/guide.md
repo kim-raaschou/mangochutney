@@ -81,9 +81,10 @@ are (`config-mac.conf`: mango's bindings commented out, with
 [`mac-bindings.conf`](../Resources/mac-bindings.conf) in their place among the port's keys at its
 end). The permissions window then shows the two keys to remember, Hyper K and Hyper L, and offers:
 
-- **Your Hyper key**, which must be chosen before Continue: Caps Lock (recommended), the right ⌘
-  or the right ⌥ (`chutney_hyper_key`), and whether it is Escape pressed alone
-  (`chutney_hyper_tap`). Change it later in the menu bar, Learn › Hyper Key.
+- **Your Hyper key**, which must be chosen before Continue, as Raycast's Hyper Key: Caps Lock
+  (recommended), a left or right ⌃ ⇧ ⌥ ⌘, or F1–F12 (`chutney_hyper_key`). For Caps Lock and the
+  function keys, **Quick Press**: what the key does pressed alone, nothing, the key itself or
+  Escape (`chutney_hyper_tap`). Change it later in the menu bar, Learn › Hyper Key.
 - **Start Mango Chutney at login**, off unless ticked: installs the login service on Continue.
   Later it is Start at Login in the menu bar, or:
 
@@ -100,8 +101,8 @@ same windows.
 
 ## Default keys
 
-mango's keys are on Hyper, the key you chose on the first start (Caps Lock, the right ⌘ or the
-right ⌥); macOS's shortcuts stay as they are.
+mango's keys are on Hyper, the key you chose on the first start; macOS's shortcuts stay as they
+are.
 **Hyper K** lists them all.
 
 | Keys | Does |
@@ -170,9 +171,10 @@ held together, unless you choose other modifiers in `config.conf`. The palettes 
 (Hyper K, Hyper L), and so is [`mac-bindings.conf`](../Resources/mac-bindings.conf).
 
 One key for it, chosen on the first start and later in the menu bar (Learn › Hyper Key):
-`chutney_hyper_key` is `caps_lock`, `right_command` or `right_option`, done with macOS's own key
-mapping, no Karabiner needed. `chutney_hyper_tap=escape` makes the key Escape when it is pressed
-alone. mango's own `xkb_rules_options=caps:hyper` makes Caps Lock Hyper too. Only Mango Chutney
+`chutney_hyper_key` is `caps_lock`, `left_` or `right_` `control`, `shift`, `option` or
+`command`, or `f1` … `f12`, as Raycast's Hyper Key, done with macOS's own key mapping, no
+Karabiner needed. For Caps Lock and a function key, `chutney_hyper_tap` is what a quick press does:
+`none`, `original` (Caps Lock's lock, or the function key) or `escape`. mango's own `xkb_rules_options=caps:hyper` makes Caps Lock Hyper too. Only Mango Chutney
 sees the key as Hyper; if other apps should get ⌃⌥⌘ too, use the Karabiner-Elements rule in
 `Resources/karabiner/mango-hyper.json` instead (and no Hyper key here).
 
@@ -194,7 +196,7 @@ display. Its menu holds the **layout panel**:
 - **Desktop:** the gaps, inner and outer, horizontal and vertical (linked or apart), for the tags
   or the special tag, with smart gaps and a preview drawn at the screen's scale; border width.
 - **Menu bar:** the tags as squares, circles or text, the logo, the layout icon, the key mode; animations on/off.
-- Learn: Hyper Key (Caps Lock, right ⌘ or right ⌥; Escape pressed alone; what Super and Hyper are, a click opens the keys' docs), Getting Started, mango Documentation. Then Reload Config (⌘R), Edit Config, Permissions…, Start at Login (`mmsg service install` / `uninstall`, ticked while installed), Restart and Quit Mango Chutney.
+- Learn: Hyper Key (the key, as Raycast's list; Quick Press; what Super and Hyper are, a click opens the keys' docs), Getting Started, mango Documentation. Then Reload Config (⌘R), Edit Config, Permissions…, Start at Login (`mmsg service install` / `uninstall`, ticked while installed), Restart and Quit Mango Chutney.
 
 The panel only sends mango's own dispatchers (`setlayout`, `setmfact`, `incnmaster`, `setoption`),
 as a bar would over IPC. Its changes are kept in `~/.config/mango/chutney_menu.conf`

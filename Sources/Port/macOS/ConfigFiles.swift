@@ -49,14 +49,14 @@ public enum ConfigFiles {
     /// written.
     static let hyperKeyLine = "chutney_hyper_key=caps_lock\r\n"
 
-    static func setHyperKey(_ key: String, tapEscape: Bool, configURL: URL) {
+    static func setHyperKey(_ key: String, tap: String, configURL: URL) {
         func text(_ url: URL?) -> String? { url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } }
         guard let current = text(configURL), current == text(bundled("config-mac")),
               current.contains(hyperKeyLine) else { return }
-        let line = "chutney_hyper_key=\(key)\r\n" + (tapEscape ? "chutney_hyper_tap=escape\r\n" : "")
+        let line = "chutney_hyper_key=\(key)\r\n" + (tap == "none" ? "" : "chutney_hyper_tap=\(tap)\r\n")
         do {
             try current.replacingOccurrences(of: hyperKeyLine, with: line).write(to: configURL, atomically: true, encoding: .utf8)
-            Log.info("keys: Hyper is \(key)\(tapEscape ? ", Escape alone" : ""), in \(configURL.path)")
+            Log.info("keys: Hyper is \(key), pressed alone: \(tap), in \(configURL.path)")
         } catch {
             Log.info("keys: could not write the config: \(error)")
         }

@@ -8,8 +8,8 @@ new window takes a place next to the others, and when one closes the rest fill t
 takes a few days to get used to. You do not need to learn it all at once, and the mouse keeps
 working the whole time.
 
-The keys below are on **Hyper**: the key you chose on the first start, Caps Lock, the right ⌘ or
-the right ⌥, held (it acts as ⌃⌥⌘), so macOS's own shortcuts stay as they are. **Hyper K** lists every key and lets you search for one by what it does, so when you
+The keys below are on **Hyper**: the key you chose on the first start (Caps Lock, unless you chose
+another), held (it acts as ⌃⌥⌘), so macOS's own shortcuts stay as they are. **Hyper K** lists every key and lets you search for one by what it does, so when you
 forget a key, search for "float" or "tag".
 
 ## 1. Let it place your windows
@@ -79,7 +79,7 @@ The scratchpad is a place to put windows you need now and then, such as a termin
 ## 7. Your Hyper key
 
 Every key above starts with Hyper, so ⌘, ⌥ and ⌃ keep doing what they do in your apps. To use
-another key as Hyper, or to make it Escape when pressed alone, open the menu bar's Learn › Hyper
+another key as Hyper, or to choose what it does pressed alone, open the menu bar's Learn › Hyper
 Key; the [guide](../guide.md#the-hyper-key) has more.
 
 ## Next

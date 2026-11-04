@@ -733,12 +733,8 @@ public enum ModifierLegend {
         let hyper = Modifiers.parse(config.chutneyHyperModifier, hyperModifier: "").map(HotkeysModel.symbols) ?? ""
         let caps = config.xkbRulesOptions.lowercased().split(separator: ",")
             .contains { $0.trimmingCharacters(in: .whitespaces) == "caps:hyper" }
-        let key = switch config.chutneyHyperKey {
-        case "caps_lock": " or Caps Lock"
-        case "right_command": " or right ⌘"
-        case "right_option": " or right ⌥"
-        default: caps ? " or Caps Lock" : ""
-        }
+        let key = KeyboardOptions.hyperKey(config.chutneyHyperKey).map { " or \($0.label)" }
+            ?? (caps ? " or Caps Lock" : "")
         return "Super ⌘   Hyper \(hyper)" + key
     }
 }

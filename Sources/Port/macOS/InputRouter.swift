@@ -35,8 +35,8 @@ final class InputRouter: @unchecked Sendable {
         /// xkb_rules_options caps:hyper or chutney_hyper_key: what the Hyper key (now F18) held
         /// stands for.
         var capsHyper: Modifiers?
-        /// chutney_hyper_tap escape: the Hyper key pressed alone is Escape.
-        var hyperTapEscape = false
+        /// chutney_hyper_tap: the Hyper key pressed alone.
+        var hyperTap: HyperTap = .none
         var wantsMouseMoved = false
         /// Tabs in the focused monitor's tab bar that ⌘1-9 picks (0: none, or off).
         var tabShortcuts = 0
@@ -103,8 +103,23 @@ final class InputRouter: @unchecked Sendable {
     /// Port extension: not in mango (chutney_hyper_tap). The Hyper key went down and nothing
     /// else has been pressed or clicked since.
     private var hyperAlone = false
-    /// Sends Escape (KeyForward to the frontmost app; tests record it instead).
-    var tapEscape: () -> Void = { KeyForward.postToFront(keyCode: 53) }
+    /// What a quick press of the Hyper key does (chutney_hyper_tap), as Raycast's Quick Press.
+    enum HyperTap: Equatable {
+        case none
+        /// A key pressed and let go for the frontmost app (Escape, or a function key itself).
+        case key(UInt16)
+        /// Caps Lock itself: its lock turned over.
+        case capsLock
+    }
+
+    /// Does a quick press (tests record it instead).
+    var hyperTapped: (HyperTap) -> Void = { tap in
+        switch tap {
+        case .none: break
+        case .key(let code): KeyForward.postToFront(keyCode: code)
+        case .capsLock: KeyboardOptions.toggleCapsLock()
+        }
+    }
 
     func key(_ event: KeyEvent, modifierOnlySinceDown: Bool) -> Bool {
         var ev = event
@@ -112,7 +127,7 @@ final class InputRouter: @unchecked Sendable {
             // The hyper key itself is mango's: it only holds hyper, and no app sees it.
             if ev.keyCode == KeyboardOptions.hyperKeyCode && !ev.isModifierKey {
                 if ev.isDown && !ev.isRepeat { hyperAlone = true }
-                if !ev.isDown && hyperAlone && snapshot.hyperTapEscape { tapEscape() }
+                if !ev.isDown && hyperAlone && snapshot.hyperTap != .none { hyperTapped(snapshot.hyperTap) }
                 if !ev.isDown { hyperAlone = false }
                 hyperHeld = ev.isDown
                 if ev.isDown && !ev.isRepeat { lock.lock(); keyboard.lastHoldKeycode = ev.keyCode; lock.unlock() }

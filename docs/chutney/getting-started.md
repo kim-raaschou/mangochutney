@@ -10,7 +10,7 @@ description: Remember two keys. Everything else is found from them.
 | **Hyper K** | Every key binding, in a list you search by what you want to do: "float", "tag", "layout". When you do not know how, press Hyper K. |
 | **Hyper L** | The layouts, as pictures: pick how the windows are arranged with the arrows and Return. |
 
-**Hyper** is the key you chose on the first start: Caps Lock, the right ⌘ or the right ⌥, held.
+**Hyper** is the key you chose on the first start (Caps Lock, unless you chose another), held.
 It acts as Control, Option and Command (⌃⌥⌘). mango's keys are all on Hyper, so macOS's own
 shortcuts stay as they are. Change it in the menu bar: Learn › Hyper Key.
 
@@ -21,7 +21,7 @@ Everything else, you can find from these two. You do not need to learn the rest 
 The mango in the menu bar shows the tags in view and the layout. Click it for:
 
 - **The layout panel:** the layouts, their options, the gaps and borders, with the mouse.
-- **Learn:** your Hyper key (and Escape when it is pressed alone), this page, and mango's own
+- **Learn:** your Hyper key (and what it does pressed alone), this page, and mango's own
   documentation.
 - **Your config:** Reload Config and Edit Config.
 - **Start at Login**, Permissions, Restart and Quit.

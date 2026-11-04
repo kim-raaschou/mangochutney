@@ -110,8 +110,9 @@ final class PermissionsModel: ObservableObject {
     @Published var firstStart = false
     /// The key held as Hyper (chutney_hyper_key), chosen on a first start; nil: not yet.
     @Published var hyperKey: String?
-    /// The Hyper key pressed alone is Escape (chutney_hyper_tap).
-    @Published var hyperTapEscape = false
+    /// Caps Lock or a function key that is Hyper, pressed alone (chutney_hyper_tap): none,
+    /// original or escape.
+    @Published var hyperTap = "none"
     /// Offered on a first start: `mmsg service install` on Continue.
     @Published var startAtLogin = false
     /// After a first start's Continue: the welcome, with the first lines of config to try.
@@ -217,7 +218,9 @@ public final class Permissions {
         if !state.screenRecording { UserDefaults.standard.set(true, forKey: Self.skipKey) }
         if let url = firstStartConfig, let model {
             ConfigFiles.ensure(url)
-            ConfigFiles.setHyperKey(model.hyperKey ?? "caps_lock", tapEscape: model.hyperTapEscape, configURL: url)
+            let key = model.hyperKey ?? "caps_lock"
+            let quickPress = KeyboardOptions.hyperKey(key)?.original != nil
+            ConfigFiles.setHyperKey(key, tap: quickPress ? model.hyperTap : "none", configURL: url)
             if model.startAtLogin { installLoginService() }
             firstStartConfig = nil
             startConfig = ConfigFiles.startURL(url)
@@ -342,23 +345,43 @@ private struct FirstStartChoices: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Choose your Hyper key").font(.headline)
-            Text("The key you hold for mango's keys; it acts as Control, Option and Command (⌃⌥⌘). macOS's own shortcuts stay as they are. Change it later in the menu bar (Learn › Hyper Key).")
+            Text("One key becomes Hyper: held, it acts as Control, Option and Command (⌃⌥⌘), which no app uses, so mango's keys never take an app's shortcut. That key no longer does what it did. Change it later in the menu bar (Learn › Hyper Key).")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Picker("", selection: $model.hyperKey) {
-                option("Caps Lock (recommended)", "Under your little finger. Caps Lock no longer types capitals.")
-                    .tag(Optional("caps_lock"))
-                option("Right ⌘", "The right Command key is Hyper; the left one stays Command.")
-                    .tag(Optional("right_command"))
-                option("Right ⌥", "The right Option key is Hyper; the left one stays Option and types special characters.")
-                    .tag(Optional("right_option"))
+            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 8) {
+                GridRow {
+                    Text("Hyper Key").gridColumnAlignment(.trailing)
+                    Picker("", selection: $model.hyperKey) {
+                        Text("Choose…").tag(String?.none)
+                        Divider()
+                        Text("Caps Lock (recommended)").tag(Optional("caps_lock"))
+                        Divider()
+                        ForEach(KeyboardOptions.hyperKeys.filter { $0.original == nil }, id: \.name) { k in
+                            Text(k.label).tag(Optional(k.name))
+                        }
+                        Divider()
+                        ForEach(KeyboardOptions.hyperKeys.filter { $0.name.hasPrefix("f") }, id: \.name) { k in
+                            Text(k.label).tag(Optional(k.name))
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                if let key = model.hyperKey.flatMap(KeyboardOptions.hyperKey), key.original != nil {
+                    GridRow {
+                        Text("Quick Press")
+                        Picker("", selection: $model.hyperTap) {
+                            Text("Does Nothing").tag("none")
+                            Text(key.name == "caps_lock" ? "Toggles Caps Lock" : "Sends \(key.label)").tag("original")
+                            Text("Escape").tag("escape")
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
             }
-            .pickerStyle(.radioGroup)
-            .labelsHidden()
-            Toggle("Pressed alone, it is Escape", isOn: $model.hyperTapEscape)
-                .padding(.leading, 20)
-                .disabled(model.hyperKey == nil)
+            .padding(.leading, 4)
 
             Text("Remember two keys").font(.headline)
                 .padding(.top, 10)
@@ -373,12 +396,6 @@ private struct FirstStartChoices: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func option(_ title: String, _ detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-            Text(detail).font(.caption).foregroundStyle(.secondary)
-        }
-    }
 }
 
 /// After a first start's Continue: the two keys to remember, then the config.
@@ -412,22 +429,13 @@ private struct Welcome: View {
 private struct TwoKeys: View {
     let hyperKey: String?
 
-    private var hyper: String {
-        switch hyperKey {
-        case "caps_lock": "⇪"
-        case "right_command": "⌘"
-        case "right_option": "⌥"
-        default: "Hyper"
-        }
-    }
+    private var key: KeyboardOptions.HyperKey? { hyperKey.flatMap(KeyboardOptions.hyperKey) }
+
+    private var hyper: String { key?.symbol ?? "Hyper" }
 
     private var hyperText: String {
-        switch hyperKey {
-        case "caps_lock": "Hyper is Caps Lock held: it acts as Control, Option and Command (⌃⌥⌘)."
-        case "right_command": "Hyper is the right ⌘ held: it acts as Control, Option and Command (⌃⌥⌘)."
-        case "right_option": "Hyper is the right ⌥ held: it acts as Control, Option and Command (⌃⌥⌘)."
-        default: "Hyper is the key you choose above."
-        }
+        guard let key else { return "Hyper is the key you choose above." }
+        return "Hyper is \(key.label) held: it acts as Control, Option and Command (⌃⌥⌘)."
     }
 
     var body: some View {

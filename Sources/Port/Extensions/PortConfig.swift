@@ -40,12 +40,14 @@ extension Config {
     package var chutneyHyperModifier: String {
         get { port["chutney_hyper_modifier"] ?? "super+ctrl+alt" } set { port["chutney_hyper_modifier"] = newValue }
     }
-    /// The key held as Hyper (chutney_hyper_key): caps_lock, right_command or right_option;
-    /// empty: none (Hyper is chutney_hyper_modifier held).
+    /// The key held as Hyper (chutney_hyper_key), as Raycast's Hyper Key: caps_lock, a left or
+    /// right modifier (right_command, …) or f1 … f12; empty: none (Hyper is
+    /// chutney_hyper_modifier held).
     package var chutneyHyperKey: String {
         get { port["chutney_hyper_key"] ?? "" } set { port["chutney_hyper_key"] = newValue }
     }
-    /// The Hyper key pressed alone (chutney_hyper_tap): none, or escape.
+    /// Caps Lock or a function key that is Hyper, pressed alone (chutney_hyper_tap): none, the
+    /// key itself (original), or escape.
     package var chutneyHyperTap: String {
         get { port["chutney_hyper_tap"] ?? "none" } set { port["chutney_hyper_tap"] = newValue }
     }

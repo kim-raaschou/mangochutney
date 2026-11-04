@@ -66,12 +66,18 @@ final class KeyboardOptionsTests: MangoTestCase {
     /// chutney_hyper_key (port extension): the chosen key becomes F18, held as Hyper.
     func testTheHyperKeysMapping() {
         XCTAssertEqual(K.hyperKeyMapping("caps_lock"), .init(src: K.capsLock, dst: K.f18))
+        XCTAssertEqual(K.hyperKeyMapping("left_control"), .init(src: K.leftControl, dst: K.f18))
+        XCTAssertEqual(K.hyperKeyMapping("left_option"), .init(src: K.leftAlt, dst: K.f18))
         XCTAssertEqual(K.hyperKeyMapping("right_command"), .init(src: K.rightGUI, dst: K.f18))
         XCTAssertEqual(K.hyperKeyMapping("right_option"), .init(src: K.rightAlt, dst: K.f18))
+        XCTAssertEqual(K.hyperKeyMapping("f1"), .init(src: 0x7_0000_003A, dst: K.f18))
+        XCTAssertEqual(K.hyperKeyMapping("f12"), .init(src: 0x7_0000_0045, dst: K.f18))
         XCTAssertNil(K.hyperKeyMapping(""))
+        XCTAssertEqual(K.hyperKeys.count, 1 + 8 + 12, "Raycast's: Caps Lock, the eight modifiers, F1 … F12")
         func parse(_ text: String) -> ParsedConfig {
             ConfigParser.parse(text: text, baseDirectory: FileManager.default.temporaryDirectory, fileName: "t.conf")
         }
+        XCTAssertTrue(parse("chutney_hyper_tap=original\n").errors.isEmpty)
         let p = parse("chutney_hyper_key=Right_Command\nchutney_hyper_tap=escape\n")
         XCTAssertEqual(p.errors, [])
         XCTAssertEqual(p.config.chutneyHyperKey, "right_command")
@@ -80,11 +86,21 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertEqual(Config().chutneyHyperKey, "", "none unless set")
     }
 
+    /// Quick Press as Raycast's: only Caps Lock and a function key have one; the key itself is
+    /// Caps Lock's lock, or the function key sent.
+    func testQuickPress() {
+        XCTAssertEqual(MacWindowSystem.hyperTap(key: "caps_lock", tap: "escape"), .key(53))
+        XCTAssertEqual(MacWindowSystem.hyperTap(key: "caps_lock", tap: "original"), .capsLock)
+        XCTAssertEqual(MacWindowSystem.hyperTap(key: "f5", tap: "original"), .key(96))
+        XCTAssertEqual(MacWindowSystem.hyperTap(key: "right_command", tap: "escape"), .none, "a modifier has none")
+        XCTAssertEqual(MacWindowSystem.hyperTap(key: "caps_lock", tap: "none"), .none)
+    }
+
     /// chutney_hyper_key's key held is Hyper as caps:hyper's is; with chutney_hyper_tap escape,
     /// pressed and let go alone it is Escape, and not when a key came between.
     func testTheHyperKeyHeldIsHyperAndAloneIsEscape() {
         let r = EngineRig()
-        r.server.config.chutneyHyperKey = "right_command"
+        r.server.config.chutneyHyperKey = "caps_lock"
         r.server.config.chutneyHyperTap = "escape"
         r.server.publishInputState()
         let hyper = Modifiers.parse("hyper", hyperModifier: r.server.config.hyperModifier)!
@@ -93,7 +109,7 @@ final class KeyboardOptionsTests: MangoTestCase {
                                                    dispatch: Dispatch(name: "view", args: ["2"]))] }
         router.server = nil
         var escapes = 0
-        router.tapEscape = { escapes += 1 }
+        router.hyperTapped = { if $0 == .key(53) { escapes += 1 } }
         func key(_ code: UInt16, down: Bool) -> KeyEvent {
             KeyEvent(keyCode: code, mods: [], isDown: down, isRepeat: false, isModifierKey: false)
         }

@@ -23,16 +23,16 @@ enum PortOptions {
         }
         t["chutney_hyper_key"] = { config, value in
             let v = value.lowercased()
-            guard ["", "none", "caps_lock", "right_command", "right_option"].contains(v) else {
-                return .invalid("Invalid chutney_hyper_key: \(value) (caps_lock, right_command or right_option)")
+            guard ["", "none"].contains(v) || KeyboardOptions.hyperKey(v) != nil else {
+                return .invalid("Invalid chutney_hyper_key: \(value) (caps_lock, left_/right_ control, shift, option or command, f1 … f12)")
             }
             config.chutneyHyperKey = v == "none" ? "" : v
             return .applied
         }
         t["chutney_hyper_tap"] = { config, value in
             let v = value.lowercased()
-            guard ["none", "escape"].contains(v) else {
-                return .invalid("Invalid chutney_hyper_tap: \(value) (none or escape)")
+            guard ["none", "original", "escape"].contains(v) else {
+                return .invalid("Invalid chutney_hyper_tap: \(value) (none, original or escape)")
             }
             config.chutneyHyperTap = v
             return .applied

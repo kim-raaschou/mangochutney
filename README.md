@@ -49,8 +49,9 @@ menu bar or with `mmsg service install`.
 
 ## Keys
 
-mango's keys are on **Hyper**: one key you choose on the first start, Caps Lock, the right ⌘ or
-the right ⌥, held. It acts as ⌃⌥⌘, and macOS's own shortcuts stay as they are.
+mango's keys are on **Hyper**: one key you choose on the first start (Caps Lock, a left or right
+modifier, or F1–F12, as Raycast's Hyper Key), held. It acts as ⌃⌥⌘, and macOS's own shortcuts
+stay as they are.
 
 | Keys | Does |
 |---|---|

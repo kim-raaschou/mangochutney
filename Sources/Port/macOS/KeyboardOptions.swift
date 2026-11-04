@@ -8,7 +8,7 @@ import Mango
 /// macOS or until mango changes it). caps:hyper turns Caps Lock into F18, which the event
 /// tap holds as mango's hyper (InputRouter); the others are plain key moves. Options that
 /// do not move a key (layouts, compose, …) are macOS keyboard settings.
-enum KeyboardOptions {
+package enum KeyboardOptions {
     /// HID usages (keyboard page 7).
     static let capsLock: UInt64 = 0x7_0000_0039
     static let escape: UInt64 = 0x7_0000_0029
@@ -48,15 +48,56 @@ enum KeyboardOptions {
         return out
     }
 
-    /// chutney_hyper_key (port extension: not in mango): the key that becomes F18, held as
-    /// Hyper as caps:hyper's Caps Lock is.
-    static func hyperKeyMapping(_ key: String) -> Mapping? {
-        switch key {
-        case "caps_lock": return Mapping(src: capsLock, dst: f18)
-        case "right_command": return Mapping(src: rightGUI, dst: f18)
-        case "right_option": return Mapping(src: rightAlt, dst: f18)
-        default: return nil
+    /// A key chutney_hyper_key can make Hyper (port extension: not in mango), as Raycast's
+    /// Hyper Key offers them: its HID usage, its name in a menu, its key cap, and for a key that
+    /// is no modifier the key code a quick press sends as the key itself.
+    package struct HyperKey {
+        package let name: String
+        let usage: UInt64
+        package let label: String
+        package let symbol: String
+        package let original: UInt16?
+    }
+
+    /// kVK_CapsLock: a quick press of Caps Lock as itself turns its lock on or off.
+    static let capsLockKeyCode: UInt16 = 57
+
+    package static let hyperKeys: [HyperKey] = {
+        var keys = [HyperKey(name: "caps_lock", usage: capsLock, label: "Caps Lock", symbol: "⇪", original: capsLockKeyCode)]
+        for (side, base) in [("left", UInt64(0)), ("right", UInt64(4))] {
+            for (name, offset, symbol) in [("control", UInt64(0), "⌃"), ("shift", 1, "⇧"), ("option", 2, "⌥"), ("command", 3, "⌘")] {
+                keys.append(HyperKey(name: "\(side)_\(name)", usage: leftControl + base + offset,
+                                     label: "\(side.capitalized) \(symbol)", symbol: symbol, original: nil))
+            }
         }
+        // kVK_F1 … kVK_F12.
+        let codes: [UInt16] = [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111]
+        for (i, code) in codes.enumerated() {
+            keys.append(HyperKey(name: "f\(i + 1)", usage: 0x7_0000_003A + UInt64(i), label: "F\(i + 1)",
+                                 symbol: "F\(i + 1)", original: code))
+        }
+        return keys
+    }()
+
+    package static func hyperKey(_ name: String) -> HyperKey? { hyperKeys.first { $0.name == name } }
+
+    /// chutney_hyper_key: the key that becomes F18, held as Hyper as caps:hyper's Caps Lock is.
+    static func hyperKeyMapping(_ name: String) -> Mapping? {
+        hyperKey(name).map { Mapping(src: $0.usage, dst: f18) }
+    }
+
+    /// Caps Lock's lock turned over: a quick press of the Caps Lock key that is Hyper, as itself
+    /// (chutney_hyper_tap original).
+    static func toggleCapsLock() {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(kIOHIDSystemClass))
+        guard service != 0 else { return }
+        defer { IOObjectRelease(service) }
+        var connect: io_connect_t = 0
+        guard IOServiceOpen(service, mach_task_self_, UInt32(kIOHIDParamConnectType), &connect) == KERN_SUCCESS else { return }
+        defer { IOServiceClose(connect) }
+        var on = false
+        IOHIDGetModifierLockState(connect, Int32(kIOHIDCapsLockState), &on)
+        IOHIDSetModifierLockState(connect, Int32(kIOHIDCapsLockState), !on)
     }
 
     /// hidutil's argument for these mappings.

@@ -437,6 +437,17 @@ class MacWindowSystem: WindowSystem {
         if on { gestures.start() }
     }
 
+    /// chutney_hyper_tap for chutney_hyper_key's key: as Raycast's Quick Press, only for
+    /// Caps Lock and a function key (a modifier pressed alone is already something).
+    static func hyperTap(key: String, tap: String) -> InputRouter.HyperTap {
+        guard let k = KeyboardOptions.hyperKey(key), let original = k.original else { return .none }
+        switch tap {
+        case "escape": return .key(53)   // kVK_Escape
+        case "original": return original == KeyboardOptions.capsLockKeyCode ? .capsLock : .key(original)
+        default: return .none
+        }
+    }
+
     func publishInput(_ state: InputState) {
         let hyperKey = server.config.chutneyHyperKey, hyperTap = server.config.chutneyHyperTap
         let hyperModifier = server.config.hyperModifier
@@ -454,7 +465,7 @@ class MacWindowSystem: WindowSystem {
             s.tagCombo = state.tagCombo
             // Port extension: not in mango. chutney_hyper_key's key is held as Hyper too.
             s.capsHyper = state.capsHyper ?? (hyperKey.isEmpty ? nil : Modifiers.parse("hyper", hyperModifier: hyperModifier))
-            s.hyperTapEscape = hyperTap == "escape"
+            s.hyperTap = Self.hyperTap(key: hyperKey, tap: hyperTap)
             s.wantsMouseMoved = state.wantsMouseMoved
             s.cursorHideOnKeypress = state.cursorHideOnKeypress
         }
