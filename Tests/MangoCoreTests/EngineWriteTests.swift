@@ -22,6 +22,24 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertTrue(r.screen.workArea.contains(r.app.frames[2]!), "back on the screen")
     }
 
+    /// A hidden window whose app is then hidden (⌘H) is away, out of the layout, but still in
+    /// mango's corner: quitting brings it back as well.
+    func testQuittingBringsBackAWindowAwayInACorner() {
+        let r = EngineRig()
+        r.window(1)
+        let c = r.window(2, tags: 1 << 1)
+        r.server.arrange(r.monitor, .none)
+        r.settle()
+        XCTAssertTrue(c.parked)
+        r.server.mac.appHidden(pid: c.pid, hidden: true)
+        XCTAssertNil(r.server.clientByIdAll(2), "away")
+        XCTAssertFalse(r.screen.workArea.contains(r.app.frames[2]!), "still in the corner")
+        r.app.writes.removeAll()
+        r.server.cleanup()
+        XCTAssertTrue(r.app.writes.map(\.id).contains(2))
+        XCTAssertTrue(r.screen.workArea.contains(r.app.frames[2]!), "back on the screen")
+    }
+
     func testRestartingLeavesHiddenWindowsHidden() {
         let r = EngineRig()
         r.window(1)

@@ -369,6 +369,15 @@ class MacWindowSystem: WindowSystem {
             // left waiting, and restoreAppSettings' mark on the queue comes after it.
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: server.clampToScreen(f, m.screen.workArea))
         }
+        // A window macOS has away (its app hidden, minimized, an app that hung) left where
+        // mango had it: back too, if that was a corner, or it stays there once mango is gone.
+        for (c, _) in away.values {
+            guard let m = c.mon ?? server.monitors.first else { continue }
+            let real = windowServerFrame(c.id) ?? c.frame
+            guard c.parked || Hider.isParked(real, in: m.screen.frame) else { continue }
+            let f = c.isFloating ? c.floatGeom : (c.geom ?? c.floatGeom)
+            writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: server.clampToScreen(f, m.screen.workArea))
+        }
         restoreAppSettings(restore)   // after the restores on each app's queue
         // Restores run on the per-app queues in parallel; a hung app cannot hold up quit.
         _ = restore.wait(timeout: .now() + 2)

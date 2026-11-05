@@ -396,8 +396,10 @@ What follows from that:
 - **Displays and sleep:** a disconnected display's windows move to another and back when it
   returns; after sleep the windows are picked up again within a few seconds. A restart keeps every
   window's tag, display and floating state for the login session.
-- **A window stuck in a corner** (after `kill -9`): drag the sliver into view, or start Mango
-  Chutney again.
+- **A window stuck in a corner** (after `kill -9` or a crash, when Mango Chutney could not put
+  it back): start Mango Chutney again and quit it from the menu bar, which brings every window
+  it hid back into view. Without it (uninstalled), click the app and choose Window › Center
+  (macOS 15 and later), or drag the sliver into view.
 - **The Hyper key still Hyper** (after `kill -9` or a crash): the key keeps its move until Mango
   Chutney starts again, which clears it, or until macOS restarts.
 
