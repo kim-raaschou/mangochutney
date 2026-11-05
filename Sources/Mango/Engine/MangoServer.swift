@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 import QuartzCore
 
-public let mangoVersion = "0.0.1-20261103-beta"
+public let mangoVersion = "0.0.2-20261105-beta"
 
 package enum ArrangeAnimation {
     case none
