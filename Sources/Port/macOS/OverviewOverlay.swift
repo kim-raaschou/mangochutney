@@ -34,20 +34,28 @@ final class OverviewOverlay {
     }
     private let mango: MangoLook?
 
-    init(workArea: CGRect, focusColor: RGBA, borderColor: RGBA, jumpLook: DecorateStyle = DecorateStyle(),
+    /// The overlay's top left corner (AX coordinates): the work area's, raised to `top`.
+    private let origin: CGPoint
+
+    /// `top`: the screen's top (AX coordinates). The overlay reaches up under the menu bar,
+    /// just below it in level, so the bar shows the blur through its own material (as
+    /// Mission Control) rather than the sharp desktop over a hard edge. The cards stay in
+    /// the work area.
+    init(workArea: CGRect, top: CGFloat? = nil, focusColor: RGBA, borderColor: RGBA, jumpLook: DecorateStyle = DecorateStyle(),
          mango: MangoLook? = nil) {
         self.jumpLook = jumpLook
         self.mango = mango
         self.workArea = workArea
+        origin = CGPoint(x: workArea.minX, y: min(top ?? workArea.minY, workArea.minY))
         self.focusColor = NSColor(red: focusColor.r, green: focusColor.g, blue: focusColor.b, alpha: 1).cgColor
         self.borderColor = NSColor(red: borderColor.r, green: borderColor.g, blue: borderColor.b,
                                    alpha: mango == nil ? 0.8 : borderColor.a).cgColor
         let h = Screens.primaryHeight
-        let frame = CGRect(x: workArea.minX, y: h - workArea.maxY, width: workArea.width, height: workArea.height)
+        let frame = CGRect(x: origin.x, y: h - workArea.maxY, width: workArea.width, height: workArea.maxY - origin.y)
         window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
         window.isOpaque = false
         window.backgroundColor = .clear
-        window.level = .statusBar
+        window.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1)
         window.ignoresMouseEvents = true
         window.isReleasedWhenClosed = false
         window.hasShadow = false
@@ -70,7 +78,7 @@ final class OverviewOverlay {
 
     /// Card rect in the overlay's (flipped) view coordinates.
     private func local(_ r: CGRect) -> CGRect {
-        CGRect(x: r.minX - workArea.minX, y: r.minY - workArea.minY, width: r.width, height: r.height)
+        CGRect(x: r.minX - origin.x, y: r.minY - origin.y, width: r.width, height: r.height)
     }
 
     func show(_ cards: [Card]) {

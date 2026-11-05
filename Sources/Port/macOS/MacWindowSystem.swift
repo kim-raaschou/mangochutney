@@ -189,7 +189,7 @@ class MacWindowSystem: WindowSystem {
 
     func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) {
         overviewOverlay?.close()
-        let overlay = OverviewOverlay(workArea: m.screen.workArea, focusColor: look.focusColor, borderColor: look.borderColor,
+        let overlay = OverviewOverlay(workArea: m.screen.workArea, top: m.screen.frame.minY, focusColor: look.focusColor, borderColor: look.borderColor,
                                       jumpLook: look.jumpLook,
                                       mango: look.mango.map { .init(root: $0.root, borderWidth: $0.borderWidth, cornerRadius: $0.cornerRadius) })
         overviewOverlay = overlay

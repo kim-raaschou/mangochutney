@@ -43,12 +43,7 @@ public final class LayoutPalette {
             p.hasShadow = true
             p.onResign = { [weak self] in self?.close() }
             // The system's material behind the grid, as the hotkeys palette.
-            let glass = NSVisualEffectView()
-            glass.material = .popover
-            glass.blendingMode = .behindWindow
-            glass.state = .active
-            glass.wantsLayer = true
-            glass.layer?.masksToBounds = true
+            let glass = GlassBacking(material: .popover)
             let host = NSHostingView(rootView: LayoutPaletteView(model: model))
             host.translatesAutoresizingMaskIntoConstraints = false
             glass.addSubview(host)
@@ -62,7 +57,7 @@ public final class LayoutPalette {
             panel = p
         }
         panel?.appearance = model.look.macOS ? nil : NSAppearance(named: .darkAqua)
-        panel?.contentView?.layer?.cornerRadius = model.look.cornerRadius
+        (panel?.contentView as? GlassBacking)?.cornerRadius = model.look.cornerRadius
         place()
         // The palette takes the keys; mango's focus waits until it closes.
         server.holdNativeFocus = true
@@ -251,7 +246,7 @@ struct LayoutPaletteView: View {
         }
         .padding(look.padding)
         .background(look.background)
-        .overlay(look.macOS ? nil : Rectangle().stroke(look.frame, lineWidth: 1))
+        .overlay { if !look.macOS { Rectangle().stroke(look.frame, lineWidth: 1) } }
     }
 
     @ViewBuilder
@@ -265,7 +260,7 @@ struct LayoutPaletteView: View {
             }
         }
         .frame(width: model.cell.width - 6, height: model.cell.height - 6)
-        .background(RoundedRectangle(cornerRadius: look.macOS ? 8 : 0).fill(selected ? look.selectionFill : .clear))
+        .background { RoundedRectangle(cornerRadius: look.macOS ? 8 : 0).fill(selected ? look.selectionFill : .clear) }
         .overlay(alignment: .topTrailing) {
             if model.editing, let kind {
                 let ticked = CircleLayout.contains(model.circle, kind)

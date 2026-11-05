@@ -57,15 +57,11 @@ final class SwitcherPanel {
         let root = FlippedView(frame: CGRect(origin: .zero, size: panel.size))
         root.wantsLayer = true
         if style.macOS {
-            let blur = NSVisualEffectView(frame: CGRect(origin: .zero, size: panel.size))
-            blur.material = .hudWindow
-            blur.blendingMode = .behindWindow
-            blur.state = .active
-            blur.wantsLayer = true
-            blur.layer?.cornerRadius = 18
-            blur.layer?.masksToBounds = true
-            blur.addSubview(root)
-            window.contentView = blur
+            // The HUD (GlassBacking: Liquid Glass on macOS 26).
+            let glass = GlassBacking(material: .hudWindow, cornerRadius: 18)
+            glass.frame = CGRect(origin: .zero, size: panel.size)
+            glass.addContent(root)
+            window.contentView = glass
         } else {
             root.layer?.backgroundColor = Self.mangoPanelColor
             window.contentView = root
@@ -180,8 +176,8 @@ final class SwitcherPanel {
 @MainActor
 final class TitleMessageBar {
     private let window: NSWindow
-    private let container = NSView()
-    private let blur = NSVisualEffectView()
+    /// The HUD (GlassBacking: Liquid Glass on macOS 26).
+    private let container = GlassBacking(material: .hudWindow)
     private let view = TitleMessageBarView()
 
     init() {
@@ -195,15 +191,7 @@ final class TitleMessageBar {
         window.animationBehavior = .none
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         window.appearance = NSAppearance(named: .vibrantDark)
-        blur.material = .hudWindow
-        blur.blendingMode = .behindWindow
-        blur.state = .active
-        container.wantsLayer = true
-        container.layer?.masksToBounds = true
-        for v in [blur, view] as [NSView] {
-            v.autoresizingMask = [.width, .height]
-            container.addSubview(v)
-        }
+        container.addContent(view)
         window.contentView = container
     }
 
@@ -213,12 +201,11 @@ final class TitleMessageBar {
         view.appid = appid
         view.style = style
         window.setFrame(cocoaRect(frame), display: false)
-        blur.frame = container.bounds
         view.frame = container.bounds
         // mango's bg colour replaces the HUD; its radius (else the macOS one) rounds it.
-        blur.isHidden = style.focusBgColor != nil
+        container.materialHidden = style.focusBgColor != nil
         let r = min(CGFloat(style.cornerRadius ?? TitleMessageBarView.macRadius), min(frame.width, frame.height) / 2)
-        container.layer?.cornerRadius = r
+        container.cornerRadius = r
         view.needsDisplay = true
         window.orderFrontRegardless()
     }
@@ -262,8 +249,9 @@ private final class TitleMessageBarView: NSView {
         let padX = CGFloat(style.paddingX ?? 12), padY = CGFloat(style.paddingY ?? 0)
         let avail = inner.insetBy(dx: padX, dy: padY)
         guard avail.width > 0, avail.height > 0 else { return }
-        // macOS: the title in semibold, the app id smaller and dimmer; mango's font and
-        // colour for both lines when they are set.
+        // macOS: the title in semibold, the app id smaller (both in the label colour: on
+        // glass the size carries the hierarchy); mango's font and colour for both lines
+        // when they are set.
         let mangoFont = style.fontDesc.map { decorateFont(FontDescription($0)) }
         let titleAttrs: [NSAttributedString.Key: Any] = [
             .font: mangoFont ?? .systemFont(ofSize: 15, weight: .semibold),
@@ -271,7 +259,7 @@ private final class TitleMessageBarView: NSView {
         ]
         let appidAttrs: [NSAttributedString.Key: Any] = [
             .font: mangoFont ?? .systemFont(ofSize: 12),
-            .foregroundColor: style.focusFgColor.map(nsColor) ?? .secondaryLabelColor,
+            .foregroundColor: style.focusFgColor.map(nsColor) ?? .labelColor,
         ]
         let lines = [(ellipsized(title, titleAttrs, width: avail.width), titleAttrs),
                      (ellipsized(appid, appidAttrs, width: avail.width), appidAttrs)]

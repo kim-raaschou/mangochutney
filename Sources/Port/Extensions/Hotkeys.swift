@@ -56,13 +56,8 @@ public final class HotkeysPalette {
             p.hasShadow = true
             p.onResign = { [weak self] in self?.close() }
             // The system's material behind the rows (macOS's look; the port's own paints
-            // over it), rounded as macOS's sheets are.
-            let glass = NSVisualEffectView()
-            glass.material = .popover
-            glass.blendingMode = .behindWindow
-            glass.state = .active
-            glass.wantsLayer = true
-            glass.layer?.masksToBounds = true
+            // over it), rounded as macOS's sheets are (GlassBacking: Liquid Glass on macOS 26).
+            let glass = GlassBacking(material: .popover)
             let host = NSHostingView(rootView: HotkeysView(model: model))
             host.translatesAutoresizingMaskIntoConstraints = false
             glass.addSubview(host)
@@ -77,7 +72,7 @@ public final class HotkeysPalette {
         }
         // The look may have changed with a reload.
         panel?.appearance = model.look.macOS ? nil : NSAppearance(named: .darkAqua)
-        panel?.contentView?.layer?.cornerRadius = model.look.cornerRadius
+        (panel?.contentView as? GlassBacking)?.cornerRadius = model.look.cornerRadius
         panel?.invalidateShadow()
         // In the middle of the selected monitor's screen.
         let id = server.selectedMonitor?.screen.displayID
@@ -284,7 +279,9 @@ struct HotkeysLook {
     }
 
     var text: Color { macOS ? Color.primary : Color(white: 0.9) }
-    var dim: Color { macOS ? Color.secondary : Color(white: 0.6) }
+    /// The lesser text. On glass it is primary too: the hierarchy is in the sizes, not in a
+    /// dimmer colour (secondary measures under 3:1 on glass).
+    var dim: Color { macOS ? Color.primary : Color(white: 0.6) }
     var accent: Color { marking }
     /// The selected row: the marking colour filled, white on it.
     var selectionFill: Color { marking }
@@ -355,7 +352,7 @@ struct HotkeysView: View {
         .padding(look.padding)
         .frame(width: model.width, height: look.height(rows: model.page.rows))
         .background(look.background)
-        .overlay(look.macOS ? nil : Rectangle().stroke(look.frame, lineWidth: 2))
+        .overlay { if !look.macOS { Rectangle().stroke(look.frame, lineWidth: 2) } }
     }
 
     /// What Return does with the selected row; for a binding, its key for next time.
@@ -421,10 +418,10 @@ struct HotkeysView: View {
         .foregroundStyle(fg)
         .opacity(isRunnable(item) ? 1 : 0.45)
         .padding(.horizontal, look.macOS ? 10 : 16).frame(height: look.rowHeight)
-        .background(
+        .background {
             RoundedRectangle(cornerRadius: look.macOS ? 7 : 0)
                 .fill(selected ? look.selectionFill : Color.clear)
-        )
+        }
     }
 
     private func symbol(_ name: String, selected: Bool) -> some View {
@@ -468,7 +465,7 @@ struct HotkeysView: View {
             Text(s)
                 .font(look.font(12))
                 .padding(.horizontal, 6).padding(.vertical, 2)
-                .overlay(RoundedRectangle(cornerRadius: 3).stroke(look.dim.opacity(0.6), lineWidth: 1))
+                .overlay { RoundedRectangle(cornerRadius: 3).stroke(look.dim.opacity(0.6), lineWidth: 1) }
         }
     }
 }

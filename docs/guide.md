@@ -312,7 +312,7 @@ mango's [Theming](https://mangowm.github.io/docs/visuals/theming). These are the
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `chutney_style` | `0` (the default config: `1`) | The tab and group bars, jump labels, switcher and palettes in the macOS look, wherever no `*_decorate_*` key sets mango's; mango's colours in macOS's; the borders' corners as the windows' own. |
+| `chutney_style` | `0` (the default config: `1`) | The tab and group bars, jump labels, switcher and palettes in the macOS look, wherever no `*_decorate_*` key sets mango's; mango's colours in macOS's; the borders' corners as the windows' own. The bars, the switcher and the palettes stand on Liquid Glass on macOS 26 and later, on the system's blur before it. |
 | `chutney_border_unfocused` | `1` | Borders around unfocused windows too. `0`: only the focused window has one. |
 | `chutney_floating_color` | unset | One border colour for floating windows (`0xRRGGBBAA`). Empty or `none`: mango's colours. |
 | `chutney_physical_pixels` | `0` | `border_px` and the gaps in the screen's pixels rather than points: `border_px=3` is 1.5 points on a Retina screen, as on mango with scale 2. |

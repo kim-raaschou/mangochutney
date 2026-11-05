@@ -79,21 +79,12 @@ public final class TabBarManager {
                 view.onClick = { [weak self] id in self?.onSelect?(id) }
                 view.onClose = { [weak self] id in self?.onClose?(id) }
                 view.onRightClick = { [weak self] id in self?.onRightClick?(id) }
-                let bar = NSVisualEffectView(frame: .zero)
-                bar.material = .headerView
-                bar.blendingMode = .behindWindow
-                bar.state = .active
-                // The panel's look (chutney_style) under the tabs, beside them in a container,
-                // so a plain strip can hide it.
-                let container = NSView(frame: .zero)
-                container.wantsLayer = true
-                container.layer?.masksToBounds = true
+                // The panel's look (chutney_style) under the tabs (GlassBacking: Liquid Glass
+                // on macOS 26), which a plain strip hides.
+                let container = GlassBacking(material: .headerView)
                 // Rounded on top only: the bottom is under the window.
                 container.layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
-                for v in [bar, view] as [NSView] {
-                    v.autoresizingMask = [.width, .height]
-                    container.addSubview(v)
-                }
+                container.addContent(view)
                 panel.contentView = container
                 apply(strip, to: panel, view: view, style: style)
                 panel.orderFrontRegardless()
@@ -122,11 +113,11 @@ public final class TabBarManager {
         panel.setFrame(CGRect(x: strip.frame.minX, y: h - strip.frame.maxY,
                               width: strip.frame.width, height: strip.frame.height), display: false)
         guard redraw else { return }
-        panel.contentView?.layer?.cornerRadius = strip.plain ? 0 : strip.cornerRadius
-        for v in panel.contentView?.subviews ?? [] {
-            v.frame = panel.contentView?.bounds ?? .zero
-            if v is NSVisualEffectView { v.isHidden = strip.plain }
+        if let glass = panel.contentView as? GlassBacking {
+            glass.cornerRadius = strip.plain ? 0 : strip.cornerRadius
+            glass.materialHidden = strip.plain
         }
+        view.frame = panel.contentView?.bounds ?? .zero
         view.show(strip, style: style)
     }
 }
@@ -194,10 +185,12 @@ final class TabStripView: NSView {
         func cg(_ c: RGBA) -> CGColor { CGColor(red: c.r, green: c.g, blue: c.b, alpha: c.a) }
         lineHeight = ceil(font.ascender - font.descender)
         let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
-        var resolved: (pill: CGColor, label: CGColor, secondary: CGColor, separator: CGColor)!
+        // Every title in the label colour: on glass the focused tab's weight and pill carry
+        // the hierarchy, not a dimmer colour.
+        var resolved: (pill: CGColor, label: CGColor, separator: CGColor)!
         effectiveAppearance.performAsCurrentDrawingAppearance {
             resolved = (NSColor.labelColor.withAlphaComponent(0.13).cgColor, NSColor.labelColor.cgColor,
-                        NSColor.secondaryLabelColor.cgColor, NSColor.separatorColor.cgColor)
+                        NSColor.separatorColor.cgColor)
         }
         let focusedIndex = strip.segments.firstIndex { $0.focused }
         for (i, seg) in strip.segments.enumerated() {
@@ -227,7 +220,7 @@ final class TabStripView: NSView {
             text.font = tf
             text.fontSize = tf.pointSize
             text.foregroundColor = seg.focused ? d.focusFgColor.map(cg) ?? resolved.label
-                                               : d.fgColor.map(cg) ?? resolved.secondary
+                                               : d.fgColor.map(cg) ?? resolved.label
             text.alignmentMode = .center
             text.truncationMode = .end
             text.contentsScale = scale

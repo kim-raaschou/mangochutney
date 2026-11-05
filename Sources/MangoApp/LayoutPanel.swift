@@ -564,8 +564,7 @@ struct LayoutGrid: View {
                             .minimumScaleFactor(0.7)
                     }
                     .frame(width: 74, height: 44)
-                    .background(RoundedRectangle(cornerRadius: 6)
-                        .fill(on ? model.accent : Color.primary.opacity(0.06)))
+                    .background { RoundedRectangle(cornerRadius: 6).fill(on ? model.accent : Color.primary.opacity(0.06)) }
                     .foregroundStyle(on ? Color.white : Color.primary)
                 }
                 .buttonStyle(.plain)

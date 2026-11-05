@@ -597,7 +597,7 @@ private struct TwoKeys: View {
             .padding(.horizontal, 12)
             .frame(minWidth: 44, minHeight: 44)
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.4)))
+            .overlay { RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.4)) }
             .shadow(color: .black.opacity(0.12), radius: 0, y: 2)
     }
 }
