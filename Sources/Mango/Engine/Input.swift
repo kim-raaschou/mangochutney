@@ -177,20 +177,20 @@ package extension MangoServer {
             }
         }
         grab = g
-        system.ignoreMoves(c, until: CACurrentMediaTime() + 3600)   // not in mango: the app's own reports of the drag
+        system.grabBegan(c)   // not in mango: the port's side
         return true
     }
 
     func pointerEndGrabClient(_ g: Grab, at p: CGPoint, followPointer: Bool = true) {
         let c = g.client
-        system.ignoreMoves(c, until: CACurrentMediaTime() + 0.4)   // not in mango: the app's last reports of the drag
+        system.grabEnded(c)   // not in mango: the port's side
         defer { system.settle(c) }
         guard let m = c.mon else { grab = nil; return }
         let sm: Monitor = selectedMonitor
         if sm.sel == c.id { sm.sel = nil }
         let target = (followPointer ? monitorAtPoint(p) : monitorAtPoint(c.frame.center)) ?? m
         selectedMonitor = target
-        c.homeDisplayID = target.screen.displayID
+        clientUpdateOldmonnameRecord(c, target)
         clientSetMonitor(c, target, 0, focus: true)
         if !c.isVisible(on: target) { c.tags = target.tagset[target.seltags] }
         let sel = target.sel.flatMap { clientByIdAll($0) }
@@ -288,7 +288,6 @@ package extension MangoServer {
                 c.floatGeom = f
                 updateDragTile(at: p)
                 c.frame = f
-                c.ignoreMovesUntil = CACurrentMediaTime() + 0.3   // not in mango: the app's report of this move
                 system.setFrame(c, f, size: false)
                 updateBorders(animating: [c.id: f])
             case .resize:
@@ -333,7 +332,6 @@ package extension MangoServer {
         let f = CGRect(x: g.right ? s.minX : s.maxX - w, y: g.bottom ? s.minY : s.maxY - h, width: w, height: h)
         c.frame = f
         c.floatGeom = f
-        c.ignoreMovesUntil = CACurrentMediaTime() + 0.3   // not in mango: the app's report of this move
         system.setFrame(c, f, size: true)
         updateBorders(animating: [c.id: f])
     }

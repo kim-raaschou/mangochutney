@@ -5,7 +5,7 @@ import CoreGraphics
 public protocol PlatformWindow: AnyObject {
     var frame: CGRect { get set }
     var parked: Bool { get set }
-    var ignoreMovesUntil: TimeInterval { get set }
+    var isFloatType: Bool { get }   // not in mango: wlroots' side of client_is_float_type
 }
 
 @MainActor
@@ -38,8 +38,8 @@ public final class Client {
     public var isTagSilent = false
     public var isUrgent = false
 
-    // not in mango: mango's oldmonname, as macOS's display ID (a display's name is not unique).
-    public var homeDisplayID: CGDirectDisplayID?
+    // not in mango: the display ID, not the output's name (two displays can share a name).
+    public var oldmonname: CGDirectDisplayID?
 
     package var frame: CGRect {
         get { platform.frame }
@@ -48,10 +48,6 @@ public final class Client {
     package var parked: Bool {
         get { platform.parked }
         set { platform.parked = newValue }
-    }
-    package var ignoreMovesUntil: TimeInterval {
-        get { platform.ignoreMovesUntil }
-        set { platform.ignoreMovesUntil = newValue }
     }
     public var masterMfactPer: CGFloat = 0
     public var gridColPer: CGFloat = 1
@@ -94,8 +90,6 @@ public final class Client {
     var cursorInUpperHalf = false
     var cursorInLeftHalf = false
     var dragBeginGeom: CGRect = .zero
-    // not in mango: a dialog opens floating (mango's client_is_float_type, from macOS's subrole).
-    public var isDialog = false
 
 /// Not in mango: without the border (mango's box includes it).
     public var floatGeom: CGRect
@@ -133,19 +127,15 @@ public final class Client {
 @MainActor
 public final class Pertag {
     public var layout: LayoutKind
-    // not in mango: the layout before, kept for the port's layout across a restart.
-    public var prevLayout: LayoutKind
     public var settings: PertagSettings
     public let state = TagLayoutState()
     public var noRenderBorder = false
     public var openAsFloating = false
     public var noHide = false
-    // not in mango: the tag_rule's layout, so a reload changes only a layout whose rule changed.
-    public var configuredLayout: LayoutKind?
+    public var configLayout: LayoutKind = .tile
 
     init(layout: LayoutKind, settings: PertagSettings) {
         self.layout = layout
-        prevLayout = layout
         self.settings = settings
     }
 }
@@ -193,7 +183,7 @@ public final class Monitor {
                 scrollerDefaultProportionSingle: CGFloat(config.scrollerDefaultProportionSingle),
                 scrollerIgnoreProportionSingle: config.scrollerIgnoreProportionSingle))
         }
-        parseTagrule(config: config, onlyLayoutIfChanged: false)
+        parseTagrule(config: config, clients: [])
     }
 
     func tagGatherResetSlot(_ tag: Int, config: Config) {
@@ -217,8 +207,8 @@ public final class Monitor {
             if let v = r.openAsFloating { p.openAsFloating = v }
             if let v = r.noHide { p.noHide = v }
         }
-        if let k = ruleLayout { p.layout = k; p.prevLayout = k }
-        p.configuredLayout = ruleLayout
+        p.configLayout = ruleLayout ?? .tile
+        p.layout = p.configLayout
         pertag[tag] = p
     }
 
@@ -227,7 +217,7 @@ public final class Monitor {
         tagGatherResetSlot(src, config: config)
     }
 
-    func parseTagrule(config: Config, onlyLayoutIfChanged: Bool) {
+    func parseTagrule(config: Config, clients: [Client]) {
         for (i, p) in pertag.enumerated() {
             p.settings.nmaster = config.defaultNmaster
             p.settings.mfact = CGFloat(config.defaultMfact)
@@ -248,12 +238,18 @@ public final class Monitor {
                 if let v = r.openAsFloating { p.openAsFloating = v }
                 if let v = r.noHide { p.noHide = v }
             }
-            let configured = ruleLayout ?? .tile
-            if !onlyLayoutIfChanged || configured != (p.configuredLayout ?? .tile) {
-                p.prevLayout = p.layout
-                p.layout = configured
+            let prevConfigLayout = p.configLayout
+            p.configLayout = ruleLayout ?? .tile
+            if prevConfigLayout != p.configLayout { p.layout = p.configLayout }
+        }
+        let tagmask = TagMask.mask(forTagNum: config.tagNum)
+        for i in 1...max(1, min(config.tagNum, pertag.count - 1)) {
+            for c in clients where c.tags & (1 << UInt32(i - 1)) & tagmask != 0
+                && !c.isFloating && !c.isMinimized && !c.isMaximizeScreen && !c.isFullscreen && !c.isUnglobal {
+                // not in mango: this monitor's windows only; mango's gives every window the last monitor's mfact (a mango bug, docs/afvigelser.md §6).
+                guard c.mon === self else { continue }
+                if pertag[i].settings.mfact > 0 { c.masterMfactPer = pertag[i].settings.mfact }
             }
-            p.configuredLayout = ruleLayout
         }
     }
 }

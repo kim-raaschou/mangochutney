@@ -56,7 +56,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.mon = mon
         server.clientResetMonTags(c, mon, tags)
         server.checkMatchTagFloatingRule(c, mon)
-        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.isDialog)")
+        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.mac.isFloatType)")
         scheduleInitialSettle()
     }
 
@@ -68,11 +68,11 @@ extension MacWindowSystem: AppWatcherDelegate {
                                                                    into: server.clients.map(\.id)))
         server.focusStack.append(c.id)
         var (mon, _) = server.clientApplyRules(c, mapped: false)
-        c.homeDisplayID = d.homeDisplayID
+        c.oldmonname = d.homeDisplayID
         if let m = server.monitors.first(where: { $0.screen.displayID == d.displayID }) {
             mon = m
         } else {
-            c.homeDisplayID = d.displayID
+            c.oldmonname = d.displayID
         }
         c.isFloating = d.isFloating
         c.isGlobal = d.isGlobal
@@ -89,7 +89,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.tags = d.tags
         Log.info("\(c.appName): window \(c.id) is back; restored its tag and place")
         memory.returned(server, c)
-        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.isDialog) (returned)")
+        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.mac.isFloatType) (returned)")
         if initial { scheduleInitialSettle(); return }
         if let cm = c.mon { server.arrange(cm, .move) }
         server.printstatus()

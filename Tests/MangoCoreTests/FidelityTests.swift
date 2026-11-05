@@ -165,7 +165,7 @@ final class FidelityTests: MangoTestCase {
         r.server.config.scrollerIgnoreProportionSingle = false
         let a = r.map(1)
         _ = r.server.dispatch(Dispatch(name: "set_proportion", args: ["0.5"]), target: a)
-        XCTAssertNil(a.scrollerProportion, "one window: refused")
+        XCTAssertEqual(a.scrollerProportion, 0.9, "one window: refused")
         let b = r.map(2)
         let st = r.monitor.current.state.scrollerState
         st.scrollerApplyStack(b.id, direction: .left, vertical: false, clientOrder: r.server.clients.map(\.id))
@@ -173,7 +173,7 @@ final class FidelityTests: MangoTestCase {
         let other = head == a.id ? b : a
         _ = r.server.dispatch(Dispatch(name: "set_proportion", args: ["0.5"]), target: other)
         XCTAssertEqual(r.server.clientByIdAll(head)?.scrollerProportion, 0.5)
-        XCTAssertNil(other.scrollerProportion, "only the head")
+        XCTAssertEqual(other.scrollerProportion, 0.9, "only the head")
     }
 
     /// toggle_scratchpad: one window per call, down the client list; a hidden one goes last.
@@ -350,10 +350,10 @@ final class FidelityTests: MangoTestCase {
     func testTagRuleFlagsSurviveAReload() {
         let r = EngineRig()
         let with = ConfigParser.parse(text: "tag_rule=id:2,open_as_floating:1", baseDirectory: nil, fileName: "t").config
-        r.monitor.parseTagrule(config: with, onlyLayoutIfChanged: false)
+        r.monitor.parseTagrule(config: with, clients: [])
         XCTAssertTrue(r.monitor.pertag[2].openAsFloating)
         let without = ConfigParser.parse(text: "", baseDirectory: nil, fileName: "t").config
-        r.monitor.parseTagrule(config: without, onlyLayoutIfChanged: false)
+        r.monitor.parseTagrule(config: without, clients: [])
         XCTAssertTrue(r.monitor.pertag[2].openAsFloating, "as mango: left as it was")
     }
 
@@ -979,7 +979,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         r.server.arrange(r.monitor, .none)
         d(r, "resizewin", ["+100", "0"], a)
-        XCTAssertNil(a.scrollerProportion)
+        XCTAssertEqual(a.scrollerProportion, 0.9, "the tag's default, as set_size_per copied it")
     }
 
     // MARK: phase 3: tag dispatchers
@@ -1333,10 +1333,10 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.tagRules = ConfigParser.parse(text: "tag_rule=id:2,layout_name:scroller", baseDirectory: nil,
                                                       fileName: "t").config.tagRules
-        r.monitor.parseTagrule(config: r.server.config, onlyLayoutIfChanged: false)
+        r.monitor.parseTagrule(config: r.server.config, clients: [])
         XCTAssertEqual(r.monitor.pertag[2].layout, .scroller)
         r.server.config.tagRules = []
-        r.monitor.parseTagrule(config: r.server.config, onlyLayoutIfChanged: true)
+        r.monitor.parseTagrule(config: r.server.config, clients: [])
         XCTAssertEqual(r.monitor.pertag[2].layout, .tile)
     }
 
@@ -1763,5 +1763,18 @@ final class FidelityTests: MangoTestCase {
     func testAnEmptyRuleAnimationTypeIsUnset() throws {
         let r = try RuleParser.parseWindowRule("app_id:x,animation_type_open:", once: false).get()
         XCTAssertNil(r.animationTypeOpen)
+    }
+
+    /// mango client_apply_bounds: a floating window halfway off the screens stays there; one
+    /// wholly outside comes back to the edge of the scene.
+    func testFloatingWindowsKeepMangosLooseBounds() {
+        let r = EngineRig()
+        let c = r.map(1)
+        c.isFloating = true
+        let scene = r.server.sceneGeometry
+        let half = CGRect(x: scene.maxX - 200, y: 200, width: 600, height: 400)
+        XCTAssertEqual(r.server.clientApplyBounds(c, half, scene), half, "half outside: left as it is")
+        let out = CGRect(x: scene.maxX + 50, y: 200, width: 600, height: 400)
+        XCTAssertEqual(r.server.clientApplyBounds(c, out, scene).minX, scene.maxX - 600, "wholly outside: back in")
     }
 }

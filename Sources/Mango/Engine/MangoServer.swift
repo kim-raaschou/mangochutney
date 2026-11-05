@@ -126,14 +126,7 @@ public final class MangoServer {
                               oh: CGFloat(config.gappoh), ov: CGFloat(config.gappov))
                 m.specialGaps = Gaps(ih: CGFloat(config.specialGappih), iv: CGFloat(config.specialGappiv),
                                      oh: CGFloat(config.specialGappoh), ov: CGFloat(config.specialGappov))
-                m.parseTagrule(config: config, onlyLayoutIfChanged: true)
-                for i in 1..<m.pertag.count {
-                    // not in mango: each monitor's own windows (mango's loop takes every window).
-                    for c in clientsAll where c.mon === m && c.tags & (1 << UInt32(i - 1)) != 0
-                        && !c.isFloating && !c.isMinimized && !c.isFullscreen && !c.isMaximizeScreen && !c.isUnglobal {
-                        c.masterMfactPer = m.pertag[i].settings.mfact
-                    }
-                }
+                m.parseTagrule(config: config, clients: clientsAll)
             }
             system.watchGestures(!config.gestureBindings.isEmpty)
         }
@@ -195,11 +188,11 @@ public final class MangoServer {
             selectedMonitor = monitors.first { $0.screen.isMain } ?? monitors[0]
         }
         for c in clientsAll where c.mon == nil || removed.contains(where: { $0 === c.mon }) {
-            if c.homeDisplayID == nil, let from = c.mon { c.homeDisplayID = from.screen.displayID }
+            if c.oldmonname == nil, let from = c.mon { clientUpdateOldmonnameRecord(c, from) }
             clientChangeMon(c, to: selectedMonitor, focus: false)
         }
         for m in added {
-            for c in clientsAll where c.homeDisplayID == m.screen.displayID && c.mon !== m {
+            for c in clientsAll where c.oldmonname == m.screen.displayID && c.mon !== m {
                 clientChangeMon(c, to: m, focus: false)
             }
         }
@@ -210,10 +203,7 @@ public final class MangoServer {
         clientSetMonitor(c, m, c.tags, focus: focus)
         c.parked = false   // not in mango: the system places it on the new display
         if c.isFloating {
-            let w = m.screen.workArea
-            // (kept on the screen: not in mango, for a no_force_center window from a
-            // display that went away)
-            c.floatGeom = clampToScreen(clientCenterGeometry(c, m, c.floatGeom), w)
+            c.floatGeom = clientCenterGeometry(c, m, c.floatGeom)
         }
     }
 
@@ -374,15 +364,7 @@ public final class MangoServer {
             var target: CGRect?
             var park = false
             if c.scratchpadShown {
-                // not in mango: sized here too, for a scratchpad shown without show_scratchpad (a restart).
-                if !c.isCustomSize {
-                    let w = work.width * CGFloat(config.scratchpadWidthRatio)
-                    let h = work.height * CGFloat(config.scratchpadHeightRatio)
-                    c.floatGeom = clientCenterGeometry(c, CGRect(origin: c.floatGeom.origin, size: CGSize(width: w, height: h)),
-                                                  in: work).rounded()
-                    c.isCustomSize = true
-                }
-                target = clampToScreen(c.floatGeom, work)
+                target = system.keepOnDisplay(clientApplyBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
                 raise.append(c)
             } else if c.isFullscreen {
                 target = m.screen.frame
@@ -400,7 +382,7 @@ public final class MangoServer {
                 target = box.insetBy(dx: bw, dy: bw)
                 raise.append(c)
             } else if c.isFloating {
-                target = clampToScreen(c.floatGeom, work)
+                target = system.keepOnDisplay(clientApplyBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
                 if c.isOverlay { raise.append(c) }
             } else if let f = result.frames[c.id] {
                 let bw = borderWidth(c, on: m)
@@ -498,16 +480,19 @@ public final class MangoServer {
                               over: Set(specialClients(m).map(\.id)))
     }
 
-    /// Not in mango: keeps a floating frame inside the work area.
-    package func clampToScreen(_ f: CGRect, _ work: CGRect) -> CGRect {
-        var r = f
-        r.size.width = min(r.width, work.width)
-        r.size.height = min(r.height, work.height)
-        if r.minX < work.minX { r.origin.x = work.minX }
-        if r.minY < work.minY { r.origin.y = work.minY }
-        if r.maxX > work.maxX { r.origin.x = work.maxX - r.width }
-        if r.maxY > work.maxY { r.origin.y = work.maxY - r.height }
-        return r
+    var sceneGeometry: CGRect { monitors.map(\.screen.frame).reduce(CGRect.null) { $0.union($1) } }
+
+    // not in mango: returns the frame instead of setting c->geom
+    func clientApplyBounds(_ c: Client, _ geom: CGRect, _ bbox: CGRect) -> CGRect {
+        var g = geom
+        let least = 1 + 2 * (c.mon.map { borderWidth(c, on: $0) } ?? 0)
+        g.size.width = max(least, g.width)
+        g.size.height = max(least, g.height)
+        if g.minX >= bbox.maxX { g.origin.x = bbox.maxX - g.width }
+        if g.minY >= bbox.maxY { g.origin.y = bbox.maxY - g.height }
+        if g.maxX <= bbox.minX { g.origin.x = bbox.minX }
+        if g.maxY <= bbox.minY { g.origin.y = bbox.minY }
+        return g
     }
 
     /// Not in mango: a geometry helper.
@@ -663,7 +648,7 @@ public final class MangoServer {
         clientInsertTilingOrder(c)
         focusStack.insert(c.id, at: 0)
         clientApplyRules(c)
-        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.isDialog)")
+        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(clientIsFloatType(c))")
         if let cm = c.mon { arrange(cm, .move) }
         printstatus()
     }
@@ -674,7 +659,7 @@ public final class MangoServer {
     package func clientApplyRules(_ c: Client, mapped: Bool = true) -> (mon: Monitor, tags: UInt32) {
         var mon: Monitor = selectedMonitor
         var newtags: UInt32 = 0
-        c.isFloating = c.isDialog
+        c.isFloating = clientIsFloatType(c)
 
         for i in config.windowRules.indices {
             let r = config.windowRules[i]
@@ -815,6 +800,13 @@ public final class MangoServer {
         if c.tags != 0 && !c.isFloating, let t = TagMask.getTagsFirstTagNum(c.tags), mon.pertag[t].openAsFloating {
             c.isFloating = true
         }
+    }
+
+    func clientIsFloatType(_ c: Client) -> Bool { c.platform.isFloatType }
+
+    func clientUpdateOldmonnameRecord(_ c: Client, _ m: Monitor) {
+        // not in mango: no iskilling or mapped test; every Client is a mapped window.
+        c.oldmonname = m.screen.displayID
     }
 
     func clearFullscreenFlag(_ c: Client) {

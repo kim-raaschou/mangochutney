@@ -593,4 +593,19 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(KeyNames.name(forKeyCode: 300), "code:300")
         XCTAssertFalse(KeyNames.currentLayoutName().isEmpty)
     }
+
+    /// A bug in mango (docs/afvigelser.md §6): a file that sources itself, directly or
+    /// through another, is read once and reported; mango reads it until it runs out of stack.
+    func testASourceCycleIsReadOnce() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try "border_px=3\nsource=b.conf\n".write(to: dir.appendingPathComponent("a.conf"), atomically: true, encoding: .utf8)
+        try "gap_inner_horizontal=7\nsource=a.conf\n".write(to: dir.appendingPathComponent("b.conf"), atomically: true, encoding: .utf8)
+        let p = ConfigParser.parseConfig(fileAt: dir.appendingPathComponent("a.conf"))
+        XCTAssertEqual(p.config.borderpx, 3)
+        XCTAssertEqual(p.config.gappih, 7)
+        XCTAssertEqual(p.errors.count, 1)
+        XCTAssertTrue(p.errors.first?.description.contains("Recursive source") ?? false)
+    }
 }

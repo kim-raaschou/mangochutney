@@ -104,7 +104,7 @@ final class SavedLayoutTests: MangoTestCase {
         XCTAssertEqual(c?.tags, 1 << 8)
         XCTAssertEqual(c?.isFloating, true)
         XCTAssertEqual(c?.floatGeom, CGRect(x: 10, y: 20, width: 300, height: 200))
-        XCTAssertEqual(c?.homeDisplayID, 2)
+        XCTAssertEqual(c?.oldmonname, 2)
     }
 
     @MainActor
@@ -151,18 +151,17 @@ final class SavedLayoutTests: MangoTestCase {
                                             workArea: CGRect(x: 0, y: 37, width: 1728, height: 1080), scale: 2, isMain: true)])
         let m = server.monitors[0]
         m.pertag[1].layout = .monocle
-        m.pertag[1].prevLayout = .scroller
         m.pertag[2].layout = .grid
-        m.pertag[2].configuredLayout = .deck            // a rule set deck then; it is gone now
+        m.pertag[2].configLayout = .deck                // a rule set deck then; it is gone now
         m.pertag[3].layout = .grid
-        m.pertag[3].configuredLayout = .deck            // a rule set deck then, and still does
+        m.pertag[3].configLayout = .deck                // a rule set deck then, and still does
         m.pertag[4].layout = .grid
-        m.pertag[4].configuredLayout = .deck            // now the rule says scroller
+        m.pertag[4].configLayout = .deck                // now the rule says scroller
         m.tagset[m.seltags ^ 1] = 1 << 4
         m.prevTag = 5
         let saved = server.mac.memory.currentLayout(server)
-        XCTAssertEqual(saved.tagLayouts?["1"]?[1], SavedLayout.TagLayout(layout: "monocle", prevLayout: "scroller",
-                                                                         configuredLayout: nil))
+        XCTAssertEqual(saved.tagLayouts?["1"]?[1], SavedLayout.TagLayout(layout: "monocle",
+                                                                         configuredLayout: "tile"))
 
         let url = dir.appendingPathComponent("windows.json")
         try saved.write(to: url)
@@ -170,17 +169,15 @@ final class SavedLayoutTests: MangoTestCase {
         fresh.system = FakeWindowSystem(fresh)
         fresh.rebuildMonitors(screens: [server.monitors[0].screen])
         let f = fresh.monitors[0]
-        f.pertag[3].configuredLayout = .deck            // what the config gives now
-        f.pertag[4].configuredLayout = .scroller
+        f.pertag[3].configLayout = .deck                // what the config gives now
+        f.pertag[4].configLayout = .scroller
         f.pertag[4].layout = .scroller
         fresh.mac.memory.layoutURL = url
         fresh.mac.memory.restore(fresh)
         XCTAssertEqual(f.pertag[1].layout, .monocle)
-        XCTAssertEqual(f.pertag[1].prevLayout, .scroller)
-        XCTAssertEqual(f.pertag[2].layout, .grid, "its rule is gone: the layout in use stays")
+        XCTAssertEqual(f.pertag[2].layout, .tile, "its rule is gone: tile, as mango's reload")
         XCTAssertEqual(f.pertag[3].layout, .grid, "its rule is unchanged: the layout in use stays")
         XCTAssertEqual(f.pertag[4].layout, .scroller, "its rule changed: the rule's layout")
-        XCTAssertEqual(f.pertag[4].prevLayout, .grid)
         XCTAssertEqual(f.tagset[f.seltags ^ 1], 1 << 4, "view goes back to the tags shown before")
         XCTAssertEqual(f.prevTag, 5)
     }

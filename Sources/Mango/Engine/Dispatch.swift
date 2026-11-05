@@ -791,7 +791,6 @@ package extension MangoServer {
     }
 
     func setLayout(_ k: LayoutKind, on m: Monitor) {
-        m.current.prevLayout = m.current.layout
         m.current.layout = k
         clearFullscreenAndMaximizedState(m)
         arrange(m)
@@ -919,8 +918,16 @@ package extension MangoServer {
             c.masterMfactPer = fc.masterMfactPer
             break
         }
-// not in mango: the scroller proportions stay unset; the layout reads that as the tag's default.
-        if keepOwn { return }
+        let pt = m.current.settings
+        if keepOwn {
+            if !c.isCustomScrollerProportion && (c.scrollerProportion ?? 0) <= 0 {
+                c.scrollerProportion = pt.scrollerDefaultProportion
+            }
+            if !c.isCustomScrollerProportionSingle && (c.scrollerProportionSingle ?? 0) <= 0 {
+                c.scrollerProportionSingle = pt.scrollerDefaultProportionSingle
+            }
+            return
+        }
         var found = false
         for fc in tiled where fc !== c {
             if centered && fc.isLeftStack != c.isLeftStack { continue }
@@ -935,8 +942,8 @@ package extension MangoServer {
         }
         c.masterInnerPer = c.masterSizeWeight
         c.stackInnerPer = c.stackSizeWeight
-        if !c.isCustomScrollerProportion { c.scrollerProportion = nil }
-        if !c.isCustomScrollerProportionSingle { c.scrollerProportionSingle = nil }
+        if !c.isCustomScrollerProportion { c.scrollerProportion = pt.scrollerDefaultProportion }
+        if !c.isCustomScrollerProportionSingle { c.scrollerProportionSingle = pt.scrollerDefaultProportionSingle }
     }
 
     // not in mango: `fake`, the windows wl_list_for_each with VISIBLEON and ISFAKETILED finds
@@ -1682,7 +1689,7 @@ package extension MangoServer {
         }
         if oldmon.sel == c.id { oldmon.sel = nil }
         clientSetMonitor(c, m, newtags, focus: true)
-        c.homeDisplayID = m.screen.displayID
+        clientUpdateOldmonnameRecord(c, m)
         c.parked = false   // not in mango: the system places it on the new display
         let from = oldmon.screen.workArea, to = m.screen.workArea
         c.floatGeom.size = CGSize(width: (c.floatGeom.width * to.width / max(1, from.width)).rounded(.towardZero),
@@ -1768,7 +1775,7 @@ package extension MangoServer {
             c.floatGeom = clientCenterGeometry(c, CGRect(origin: c.floatGeom.origin, size: CGSize(width: w, height: h)),
                                                in: to).rounded()
             c.mon = selectedMonitor
-            c.homeDisplayID = selectedMonitor.screen.displayID
+            clientUpdateOldmonnameRecord(c, selectedMonitor)
             if shown {
                 c.tags = getTagsFirstTag(selectedMonitor.tagset[selectedMonitor.seltags])
                 arrange(selectedMonitor)

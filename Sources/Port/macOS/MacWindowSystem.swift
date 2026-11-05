@@ -351,6 +351,22 @@ class MacWindowSystem: WindowSystem {
         }
     }
 
+    /// With separate Spaces (macOS's default) a window stands on one display: one placed across
+    /// two is moved by macOS, away from where mango draws its border. Kept inside the work area.
+    func keepOnDisplay(_ frame: CGRect, _ m: Monitor) -> CGRect { Self.clampToScreen(frame, m.screen.workArea) }
+
+    /// A frame kept inside the work area: where a window mango hid goes back when mango quits.
+    static func clampToScreen(_ f: CGRect, _ work: CGRect) -> CGRect {
+        var r = f
+        r.size.width = min(r.width, work.width)
+        r.size.height = min(r.height, work.height)
+        if r.minX < work.minX { r.origin.x = work.minX }
+        if r.minY < work.minY { r.origin.y = work.minY }
+        if r.maxX > work.maxX { r.origin.x = work.maxX - r.width }
+        if r.maxY > work.maxY { r.origin.y = work.maxY - r.height }
+        return r
+    }
+
     func shutdown() {
         animator.cancelAll()
         // The keyboard as it was: the user's own moves, without mango's.
@@ -367,7 +383,7 @@ class MacWindowSystem: WindowSystem {
             let f = c.isFloating ? c.floatGeom : (c.geom ?? c.floatGeom)
             // Written as every frame is, on the app's queue: it replaces a frame an animation
             // left waiting, and restoreAppSettings' mark on the queue comes after it.
-            writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: server.clampToScreen(f, m.screen.workArea))
+            writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         // A window macOS has away (its app hidden, minimized, an app that hung) left where
         // mango had it: back too, if that was a corner, or it stays there once mango is gone.
@@ -376,7 +392,7 @@ class MacWindowSystem: WindowSystem {
             let real = windowServerFrame(c.id) ?? c.frame
             guard c.parked || Hider.isParked(real, in: m.screen.frame) else { continue }
             let f = c.isFloating ? c.floatGeom : (c.geom ?? c.floatGeom)
-            writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: server.clampToScreen(f, m.screen.workArea))
+            writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         restoreAppSettings(restore)   // after the restores on each app's queue
         // Restores run on the per-app queues in parallel; a hung app cannot hold up quit.
@@ -540,7 +556,10 @@ class MacWindowSystem: WindowSystem {
         readBack(c, q)
     }
 
-    func ignoreMoves(_ c: Client, until: Double) { watcher.suppressGeometry(c.id, until: until) }
+    /// The app's own move reports are not taken while mango moves the window, nor in the
+    /// moment after (its last ones arrive late).
+    func grabBegan(_ c: Client) { watcher.suppressGeometry(c.id, until: CACurrentMediaTime() + 3600) }
+    func grabEnded(_ c: Client) { watcher.suppressGeometry(c.id, until: CACurrentMediaTime() + 0.4) }
 }
 
 extension MangoServer {

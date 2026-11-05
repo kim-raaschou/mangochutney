@@ -178,9 +178,13 @@ package protocol WindowSystem: AnyObject {
     /// mango client_send_close (manage/client.c).
     /// A window asked to close (mango's killclient, politely).
     func clientSendClose(_ c: Client)
-    /// The window's own move notifications are not reported until `until` (seconds,
-    /// on the media clock): mango moves it.
-    func ignoreMoves(_ c: Client, until: Double)
+    /// Not in mango: the port's side (macOS shows a window on one display).
+    /// A floating window's frame as `m`'s display can hold it.
+    func keepOnDisplay(_ frame: CGRect, _ m: Monitor) -> CGRect
+    /// Not in mango: the port's side (the app's own move reports while mango moves it).
+    /// A grab on the window began, and ended.
+    func grabBegan(_ c: Client)
+    func grabEnded(_ c: Client)
 }
 
 package extension WindowSystem {

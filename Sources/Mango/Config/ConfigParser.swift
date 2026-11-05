@@ -31,7 +31,6 @@ public struct ParsedConfig {
 
 public enum ConfigParser {
     static let maxValueBytes = 255
-    static let maxSourceDepth = 16
 
     public static func defaultConfigURL() -> URL {
         let dir = URL(fileURLWithPath: ConfigOptions.homeDirectory(), isDirectory: true)
@@ -261,13 +260,9 @@ package struct ParserState {
         let reportFile = from?.0 ?? path
         let reportLine = from?.1 ?? 0
 
-        // not in mango: a file that sources itself, or too deep, is reported, not followed for ever.
+        // not in mango: a file that sources itself is reported, not read for ever (a mango bug, docs/afvigelser.md §6).
         if includeStack.contains(path) {
             reportConfigLineError(reportFile, reportLine, "Recursive source of \(path) ignored")
-            return
-        }
-        if includeStack.count >= ConfigParser.maxSourceDepth {
-            reportConfigLineError(reportFile, reportLine, "source nested too deeply: \(path)")
             return
         }
 

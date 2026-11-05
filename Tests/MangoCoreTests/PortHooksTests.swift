@@ -78,6 +78,6 @@ final class SetProportionAllTests: MangoTestCase {
         let r = EngineRig()
         let a = r.map(1), _ = r.map(2)
         _ = r.server.dispatch(Dispatch(name: "chutney_set_proportion_all", args: ["0.5"]))
-        XCTAssertNil(a.scrollerProportion)
+        XCTAssertEqual(a.scrollerProportion, 0.9, "unchanged")
     }
 }

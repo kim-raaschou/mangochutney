@@ -35,7 +35,7 @@ final class WindowMemory {
             isOverlay: c.isOverlay, isMinimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
             isNamedScratchpad: c.isNamedScratchpad, floatFrame: c.floatGeom,
             scrollerProportion: c.scrollerProportion, orderSnapshot: snapshot, at: CACurrentMediaTime(),
-            bundleId: c.bundleId, homeDisplayID: c.homeDisplayID,
+            bundleId: c.bundleId, homeDisplayID: c.oldmonname,
             isCustomSize: c.isCustomSize))
         departed.rememberGroup(DepartedGroup(members: group, focus: groupFocus))
     }
@@ -76,7 +76,7 @@ final class WindowMemory {
     func currentLayout(_ server: MangoServer) -> SavedLayout {
         var windows: [SavedLayout.Window] = server.clientsAll.map { c in
             SavedLayout.Window(id: c.id, bundleId: c.bundleId, tags: c.tags, displayID: c.mon?.screen.displayID,
-                               homeDisplayID: c.homeDisplayID, isFloating: c.isFloating, isGlobal: c.isGlobal,
+                               homeDisplayID: c.oldmonname, isFloating: c.isFloating, isGlobal: c.isGlobal,
                                isOverlay: c.isOverlay, isMinimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
                                isNamedScratchpad: c.isNamedScratchpad, floatFrame: c.floatGeom,
                                scrollerProportion: c.scrollerProportion, orderSnapshot: nil,
@@ -102,8 +102,7 @@ final class WindowMemory {
             previousTagsets[display] = m.tagset[m.seltags ^ 1]
             prevTags[display] = m.prevTag
             tagLayouts[display] = m.pertag.map {
-                SavedLayout.TagLayout(layout: $0.layout.name, prevLayout: $0.prevLayout.name,
-                                      configuredLayout: $0.configuredLayout?.name)
+                SavedLayout.TagLayout(layout: $0.layout.name, configuredLayout: $0.configLayout.name)
             }
         }
         // The groups in use, and those with members away.
@@ -160,14 +159,10 @@ final class WindowMemory {
             }
             if let t = saved.prevTags?[display], (1...31).contains(t) { m.prevTag = t }
             for (p, t) in zip(m.pertag, saved.tagLayouts?[display] ?? []) {
-                // As a reload does (applyTagRules): a tag_rule whose layout changed since
-                // gives its layout, the one in use becoming the previous one; otherwise
-                // the layout in use stays, also when the rule is gone.
-                if let k = p.configuredLayout, k.name != t.configuredLayout {
-                    if let prev = LayoutKind(name: t.layout) { p.prevLayout = prev }
-                } else if let layout = LayoutKind(name: t.layout), let prev = LayoutKind(name: t.prevLayout) {
+                // As a reload does (mango parse_tagrule): a tag_rule whose layout changed since
+                // gives its layout; otherwise the layout in use stays.
+                if p.configLayout.name == (t.configuredLayout ?? LayoutKind.tile.name), let layout = LayoutKind(name: t.layout) {
                     p.layout = layout
-                    p.prevLayout = prev
                 }
             }
         }

@@ -41,7 +41,7 @@ final class EngineMonitorChangeTests: MangoTestCase {
         XCTAssertEqual(editor.tags, 1 << 1)
         XCTAssertEqual(devMode.floatGeom.midX, lap.screen.workArea.midX, accuracy: 1, "floating: centred")
         XCTAssertEqual(devMode.floatGeom.midY, lap.screen.workArea.midY, accuracy: 1)
-        XCTAssertEqual(devMode.homeDisplayID, 2)
+        XCTAssertEqual(devMode.oldmonname, 2)
 
         server.rebuildMonitors(screens: [laptop, external])   // connected again
         XCTAssertEqual(devMode.mon?.screen.displayID, 2, "back home")
@@ -58,8 +58,28 @@ final class EngineMonitorChangeTests: MangoTestCase {
         let lap = try XCTUnwrap(server.monitors.first { $0.screen.displayID == 1 })
         let c = client(server, id: 12, on: ext, tags: 1, floating: false, frame: CGRect(x: 1800, y: 100, width: 800, height: 600))
         server.rebuildMonitors(screens: [laptop])
-        c.homeDisplayID = lap.screen.displayID   // a drag onto the laptop: pointer_end_grab_client records it (client_update_oldmonname_record)
+        c.oldmonname = lap.screen.displayID   // a drag onto the laptop: pointer_end_grab_client records it (client_update_oldmonname_record)
         server.rebuildMonitors(screens: [laptop, external])
         XCTAssertEqual(c.mon?.screen.displayID, 1, "the user chose the laptop")
+    }
+
+    /// A bug in mango (docs/afvigelser.md §6): parse_tagrule gives every window the mfact of
+    /// the last monitor's tag. Here each monitor's windows keep their own monitor's.
+    @MainActor
+    func testAReloadKeepsEachMonitorsOwnMfact() throws {
+        let server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/mango.conf"))
+        server.system = FakeWindowSystem(server)
+        server.rebuildMonitors(screens: [laptop, external])
+        let lap = try XCTUnwrap(server.monitors.first { $0.screen.displayID == 1 })
+        let ext = try XCTUnwrap(server.monitors.first { $0.screen.displayID == 2 })
+        let a = client(server, id: 20, on: lap, tags: 1, floating: false, frame: CGRect(x: 0, y: 40, width: 800, height: 600))
+        let b = client(server, id: 21, on: ext, tags: 1, floating: false, frame: CGRect(x: 1800, y: 40, width: 800, height: 600))
+        server.config.tagRules = ConfigParser.parse(text: """
+            tag_rule=id:1,monitor_name:Built-in,master_factor:0.3
+            tag_rule=id:1,monitor_name:LG,master_factor:0.7
+            """, baseDirectory: nil, fileName: "t").config.tagRules
+        for m in server.monitors { m.parseTagrule(config: server.config, clients: server.clientsAll) }
+        XCTAssertEqual(a.masterMfactPer, 0.3, accuracy: 0.001)
+        XCTAssertEqual(b.masterMfactPer, 0.7, accuracy: 0.001)
     }
 }

@@ -181,7 +181,7 @@ public final class TagLayoutState {
 }
 
 package extension LayoutInput {
-    /// Not in mango: guards layouts against non-finite numbers.
+    /// Not in mango: C converts a non-finite number to an int silently, Swift stops the program.
     func sanitized() -> LayoutInput {
         func finite(_ v: CGFloat) -> Bool { v.isFinite && abs(v) < 1e6 }
         func ok(_ c: LayoutClient) -> Bool {

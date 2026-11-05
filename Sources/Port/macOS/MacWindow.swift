@@ -30,18 +30,21 @@ final class MacWindow: PlatformWindow {
     /// once it takes a tile's size. The window then grows inward (Placement.inwardOrigin).
     var refusedSize: CGSize?
 
-    init(element: AXUIElement, frame: CGRect) {
+    /// A dialog (its subrole): mango's client_is_float_type.
+    let isFloatType: Bool
+
+    init(element: AXUIElement, frame: CGRect, isFloatType: Bool = false) {
         self.element = element
         self.frame = frame
+        self.isFloatType = isFloatType
     }
 }
 
 extension Client {
     /// A window the watcher found, with its macOS side.
     convenience init(window w: DiscoveredWindow, monitor: Monitor, tags: UInt32) {
-        self.init(id: w.id, pid: w.pid, platform: MacWindow(element: w.element, frame: w.frame), bundleId: w.bundleId,
-                  appName: w.appName, title: w.title, monitor: monitor, tags: tags, frame: w.frame)
-        isDialog = w.isDialog
+        self.init(id: w.id, pid: w.pid, platform: MacWindow(element: w.element, frame: w.frame, isFloatType: w.isDialog),
+                  bundleId: w.bundleId, appName: w.appName, title: w.title, monitor: monitor, tags: tags, frame: w.frame)
     }
 
     var mac: MacWindow { platform as! MacWindow }   // the port makes every Client's platform
@@ -49,6 +52,10 @@ extension Client {
     var element: AXUIElement {
         get { mac.element }
         set { mac.element = newValue }
+    }
+    var ignoreMovesUntil: TimeInterval {
+        get { mac.ignoreMovesUntil }
+        set { mac.ignoreMovesUntil = newValue }
     }
     var lastReassert: TimeInterval {
         get { mac.lastReassert }

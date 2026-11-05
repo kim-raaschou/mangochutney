@@ -30,10 +30,11 @@ struct SavedLayout: Codable, Equatable {
     }
 
     /// A tag's layout, kept as a reload keeps it: the runtime layout, unless the tag_rule
-    /// that set it has changed since (`configuredLayout`). Layouts by name.
+    /// that set it has changed since (mango's config_ltidxs, `configuredLayout`). Layouts by
+    /// name; `prevLayout` is only read, from files written before it went.
     struct TagLayout: Codable, Equatable {
         var layout: String
-        var prevLayout: String
+        var prevLayout: String? = nil
         var configuredLayout: String?
     }
 
