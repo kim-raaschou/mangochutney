@@ -65,8 +65,8 @@ public enum MenuSave {
     // MARK: conflicts
 
     /// Every key and tag_rule field the menu file sets to another value than the config
-    /// does: its last value in the files read before the menu file (config.conf, chutney.conf,
-    /// chutney_theme.conf), in mango's read order.
+    /// does: its last value in the files read before the menu file (config.conf and those it
+    /// sources, chutney_theme.conf among them), in mango's read order.
     public static func conflicts(configURL: URL, menuURL: URL) -> [Conflict] {
         let menu = read(menuURL)
         let config = linesRead(from: configURL, before: menuURL)

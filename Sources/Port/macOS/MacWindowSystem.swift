@@ -445,8 +445,9 @@ class MacWindowSystem: WindowSystem {
     func keyboardCancelPendingReleaseBind() { router.cancelPendingReleaseBind() }
 
     func watchGestures(_ on: Bool) {
-        gestures.stop()
-        if on { gestures.start() }
+        // Started and stopped only as gesture bindings come or go (start does nothing while it
+        // runs): a stop clears what the trackpad's own thread is reading.
+        if on { gestures.start() } else { gestures.stop() }
     }
 
     /// chutney_hyper_tap for chutney_hyper_key's key: as Raycast's Quick Press, only for

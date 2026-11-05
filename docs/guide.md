@@ -138,6 +138,11 @@ later in the menu bar (Learn › Hyper Key). It is done with macOS's own key map
 no Karabiner needed, and only Mango Chutney sees the key as Hyper. Key moves of your own in that
 mapping stay as they are, and are all that is left when Mango Chutney quits.
 
+The first start writes your key in `config.conf`; a key chosen later in the menu is kept in
+`chutney_menu.conf`, which is read last and wins. To go back to the one in `config.conf`, delete
+the `chutney_hyper_key` line in `chutney_menu.conf`. The menu's choice is there only with
+`chutney_menu_config` set, as in the default config.
+
 | Setting | Default | Description |
 | :--- | :--- | :--- |
 | `chutney_hyper_modifier` | `super+ctrl+alt` | What `HYPER` means in a binding, in mango's modifier names: ⌃⌥⌘. Leave `shift` out if you use `HYPER+SHIFT` bindings, as the default config does. |
@@ -287,8 +292,8 @@ runs, and mango reports the conflict. mango's TOML format, `config.toml`, is rea
 do nothing, and which names are Mango Chutney's own.
 
 **Mango Chutney's own options** are all named `chutney_`, and each is off, or mango's behaviour,
-when it is absent: delete them and Mango Chutney behaves as plain mango. mango itself reports each as
-an unknown keyword and skips the line.
+when it is absent: delete them and Mango Chutney behaves as mango, with the config's keys still on
+`HYPER` (then ⌃⌥⌘ held). mango itself reports each as an unknown keyword and skips the line.
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |

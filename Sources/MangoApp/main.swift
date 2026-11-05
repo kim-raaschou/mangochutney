@@ -3,7 +3,7 @@ import Mango
 import Port
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemValidation {
     var server: MangoServer?
     var statusItem: NSStatusItem?
     var mainMenu: NSMenu?
@@ -369,11 +369,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let key = server.config.chutneyHyperKey
             for i in hyperKeyItems { i.state = (i.representedObject as? String) == key ? .on : .off }
             hyperItem?.title = "Hyper Key: " + (KeyboardOptions.hyperKey(key)?.label ?? "⌃⌥⌘ held")
-            // Quick Press, as Raycast's: only for Caps Lock and a function key.
-            let quick = KeyboardOptions.hyperKey(key)?.original != nil
             for i in hyperTapItems {
                 i.state = (i.representedObject as? String) == server.config.chutneyHyperTap ? .on : .off
-                i.isEnabled = quick
             }
         }
     }
@@ -404,6 +401,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let tap = sender.representedObject as? String else { return }
         saveMenuChoice("chutney_hyper_tap", tap)
     }
+    /// The Hyper key's items can be chosen only where the choice can be kept: mango running and
+    /// a menu file (chutney_menu_config). Quick Press, as Raycast's: only for Caps Lock and a
+    /// function key.
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        let isKey = hyperKeyItems.contains(item), isTap = hyperTapItems.contains(item)
+        guard isKey || isTap else { return true }
+        guard let server, MenuSave.url(server.config, configURL: server.configURL) != nil else { return false }
+        return isKey || KeyboardOptions.hyperKey(server.config.chutneyHyperKey)?.original != nil
+    }
+
     private func saveMenuChoice(_ key: String, _ value: String) {
         guard let server, let url = MenuSave.url(server.config, configURL: server.configURL) else { return }
         MenuSave.set(key, value, in: url)
@@ -530,7 +537,7 @@ if check {
         } else {
             let keys = MenuSave.conflicts(configURL: url, menuURL: theme).map(\.key)
             if !keys.isEmpty {
-                print("note: chutney_style: \(theme.lastPathComponent) draws \(keys.count) colour(s) of \(url.lastPathComponent) in macOS's (\(keys.joined(separator: ", "))); to keep one, set it in chutney.conf after source_optional=\(theme.lastPathComponent)")
+                print("note: chutney_style: \(theme.lastPathComponent) draws \(keys.count) colour(s) of \(url.lastPathComponent) in macOS's (\(keys.joined(separator: ", "))); to keep one, set it again after source_optional=\(theme.lastPathComponent)")
             }
         }
     }

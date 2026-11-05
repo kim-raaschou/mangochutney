@@ -85,7 +85,8 @@ Your mango config loads as it is, and `mmsg` works the same. Not everything is p
 Blur, shadows, other apps' opacity, input devices, display modes and the layer shell are out of
 reach, and windows on hidden tags are moved to a corner of the screen.
 [Compatibility](docs/compatibility.md) has the full list, and `mango -p` checks your config. The
-Mac additions are all named `chutney_` and are off unless set; delete them to run plain mango.
+Mac additions are all named `chutney_` and are off unless set; delete them and it behaves as mango,
+with the keys still on Hyper (⌃⌥⌘ held).
 
 ## Status
 

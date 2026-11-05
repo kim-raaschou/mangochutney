@@ -12,10 +12,11 @@ afsnit 6.
 ## 1. Til og fra: portens udvidelser
 
 Hver er fra, når nøglen mangler, og ændrer da intet af mangos opførsel. Standardconfigen er
-mangos egen `assets/config.conf` uændret, og derefter portens nøgler fra deres markeringslinje
-til slutningen: dem, en Mac vil have; resten står i `docs/guide.md`. Blokken sætter ingen af
-mangos nøgler. Slet den for ren mango (mango selv melder "Unknown keyword" for hver
-`chutney_`-linje og læser resten).
+mangos egen `assets/config.conf` med mangos taster på Hyper (afsnit 2), og derefter portens
+nøgler fra deres markeringslinje til slutningen: dem, en Mac vil have; resten står i
+`docs/guide.md`. Blokken sætter ingen af mangos nøgler. Slettes den, opfører porten sig som
+mango med filens taster, hvor `HYPER` da er ⌃⌥⌘ holdt (`chutney_hyper_modifier`s standard);
+mango selv melder "Unknown keyword" for hver `chutney_`-linje og læser resten.
 
 | Nøgle / dispatcher | Gør | I standardconfigen | Uden den (mango) |
 |---|---|---|---|
