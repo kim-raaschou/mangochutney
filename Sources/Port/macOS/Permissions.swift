@@ -108,13 +108,25 @@ final class PermissionsModel: ObservableObject {
     @Published var state: PermissionState
     /// A first start: the window also asks for the Hyper key and offers Start at Login.
     @Published var firstStart = false
+    /// Settings, from the menu: the same choices, each kept as soon as it is made.
+    @Published var settings = false
+    /// Settings can keep a Hyper key choice (mango runs, and has a menu file).
+    @Published var canSave = true
     /// The key held as Hyper (chutney_hyper_key), chosen on a first start; nil: not yet.
-    @Published var hyperKey: String?
+    @Published var hyperKey: String? {
+        didSet { if settings, hyperKey != oldValue { onChoice("chutney_hyper_key", hyperKey ?? "none") } }
+    }
     /// Caps Lock or a function key that is Hyper, pressed alone (chutney_hyper_tap): none,
     /// original or escape.
-    @Published var hyperTap = "none"
-    /// Offered on a first start: `mmsg service install` on Continue.
-    @Published var startAtLogin = false
+    @Published var hyperTap = "none" {
+        didSet { if settings, hyperTap != oldValue { onChoice("chutney_hyper_tap", hyperTap) } }
+    }
+    /// Offered on a first start: `mmsg service install` on Continue. In settings at once.
+    @Published var startAtLogin = false {
+        didSet { if settings, startAtLogin != oldValue { onStartAtLogin(startAtLogin) } }
+    }
+    var onChoice: (String, String) -> Void = { _, _ in }
+    var onStartAtLogin: (Bool) -> Void = { _ in }
     /// After a first start's Continue: the welcome, with the first lines of config to try.
     @Published var welcome = false
     var onContinue: () -> Void = {}
@@ -139,6 +151,16 @@ public final class Permissions {
     public var installLoginService: () -> Void = {}
     /// After a first start's Continue has written the config: mango may start.
     public var firstStartDone: () -> Void = {}
+    /// Settings: the choices as they are, and where a change goes (set by the app at launch).
+    public struct Choices {
+        public var hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool
+        public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool) {
+            self.hyperKey = hyperKey; self.hyperTap = hyperTap; self.startAtLogin = startAtLogin; self.canSave = canSave
+        }
+    }
+    public var currentChoices: () -> Choices? = { nil }
+    public var saveChoice: (String, String) -> Void = { _, _ in }
+    public var setStartAtLogin: (Bool) -> Void = { _ in }
     /// A first start not yet through Continue: mango waits, so nothing is written and no
     /// key is moved before the choice.
     public var firstStartPending: Bool { firstStartConfig != nil }
@@ -214,6 +236,24 @@ public final class Permissions {
         NSApp.activate()
     }
 
+    /// Settings, from the menu: the window with the first start's choices, kept as they are
+    /// made. On a first start not yet through Continue, the first start's window.
+    public func showSettings() {
+        show()
+        guard let model, firstStartConfig == nil else { return }
+        let c = currentChoices()
+        model.settings = false   // the choices as they are, not saved again
+        model.welcome = false
+        model.hyperKey = c?.hyperKey
+        model.hyperTap = c?.hyperTap ?? "none"
+        model.startAtLogin = c?.startAtLogin ?? false
+        model.canSave = c?.canSave ?? false
+        model.onChoice = { [weak self] key, value in self?.saveChoice(key, value) }
+        model.onStartAtLogin = { [weak self] on in self?.setStartAtLogin(on) }
+        model.settings = true
+        window?.title = "Mango Chutney Settings"
+    }
+
     /// Reads the grants again (the window updates).
     public func refresh() {
         model?.state = state
@@ -283,9 +323,11 @@ struct PermissionsView: View {
                     .resizable()
                     .frame(width: 48, height: 48)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(model.welcome ? "Remember two keys" : "Mango Chutney needs your permission")
+                    Text(model.welcome ? "Remember two keys"
+                         : model.settings ? "Mango Chutney Settings" : "Mango Chutney needs your permission")
                         .font(.title3.bold())
                     Text(model.welcome ? "Everything else is found from them. Getting Started is open in your browser."
+                         : model.settings ? "Permissions, your Hyper key and Start at Login, kept as you choose."
                          : "macOS asks you to allow these in System Settings.")
                         .foregroundStyle(.secondary)
                 }
@@ -315,7 +357,7 @@ struct PermissionsView: View {
                 }
                 .padding(20)
 
-                if model.firstStart {
+                if model.firstStart || model.settings {
                     Divider()
                     FirstStartChoices(model: model)
                         .padding(20)
@@ -345,8 +387,9 @@ private struct FirstStartChoices: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Choose your Hyper key").font(.headline)
-            Text("One key becomes Hyper: held, it acts as Control, Option and Command (⌃⌥⌘), which no app uses, so mango's keys never take an app's shortcut. That key no longer does what it did. Change it later in the menu bar (Learn › Hyper Key).")
+            Text(model.settings ? "Your Hyper key" : "Choose your Hyper key").font(.headline)
+            Text("One key becomes Hyper: held, it acts as Control, Option and Command (⌃⌥⌘), which no app uses, so mango's keys never take an app's shortcut. That key no longer does what it did."
+                 + (model.settings ? " A choice here is kept in chutney_menu.conf and wins over config.conf." : " Change it later in Settings (⌘, in the menu bar)."))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -354,7 +397,7 @@ private struct FirstStartChoices: View {
                 GridRow {
                     Text("Hyper Key").gridColumnAlignment(.trailing)
                     Picker("", selection: $model.hyperKey) {
-                        Text("Choose…").tag(String?.none)
+                        Text(model.settings ? "Not set (⌃⌥⌘ held)" : "Choose…").tag(String?.none)
                         Divider()
                         Text("Caps Lock (recommended)").tag(Optional("caps_lock"))
                         Divider()
@@ -383,13 +426,15 @@ private struct FirstStartChoices: View {
                 }
             }
             .padding(.leading, 4)
+            .disabled(model.settings && !model.canSave)
 
             Text("Remember two keys").font(.headline)
                 .padding(.top, 10)
             TwoKeys(hyperKey: model.hyperKey)
             Toggle("Start Mango Chutney at login", isOn: $model.startAtLogin)
                 .padding(.top, 6)
-            Text("Later from the menu bar (Start at Login) or with mmsg service install and uninstall.")
+            Text(model.settings ? "Or with mmsg service install and uninstall."
+                 : "Later in Settings, or with mmsg service install and uninstall.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.leading, 20)

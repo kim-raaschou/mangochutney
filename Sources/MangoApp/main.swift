@@ -3,7 +3,7 @@ import Mango
 import Port
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenuItemValidation {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var server: MangoServer?
     var statusItem: NSStatusItem?
     var mainMenu: NSMenu?
@@ -23,6 +23,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         Permissions.shared.quit = { [weak self] in self?.quit() }
         Permissions.shared.installLoginService = { [weak self] in self?.service("install") }
         Permissions.shared.firstStartDone = { [weak self] in self?.startIfTrusted() }
+        Permissions.shared.currentChoices = { [weak self] in
+            let login = FileManager.default.fileExists(atPath: Self.loginPlist)
+            guard let server = self?.server else {
+                return .init(hyperKey: nil, hyperTap: "none", startAtLogin: login, canSave: false)
+            }
+            let key = server.config.chutneyHyperKey
+            return .init(hyperKey: key.isEmpty ? nil : key, hyperTap: server.config.chutneyHyperTap, startAtLogin: login,
+                         canSave: MenuSave.url(server.config, configURL: server.configURL) != nil)
+        }
+        Permissions.shared.saveChoice = { [weak self] key, value in self?.saveMenuChoice(key, value) }
+        Permissions.shared.setStartAtLogin = { [weak self] on in self?.setLogin(on) }
         Permissions.shared.prepareFirstStart(configPath ?? ConfigParser.defaultConfigURL())
         Permissions.shared.showIfNeeded()
         if AX.isTrusted {
@@ -97,45 +108,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         menu.addItem(.separator())
         // Learn, as Omarchy's menu. The palettes are on their keys (Hyper K, Hyper L), not here.
         menu.addItem(.sectionHeader(title: "Learn"))
-        // Port extension: not in mango. The Hyper key (chutney_hyper_key, chutney_hyper_tap), and
-        // what SUPER and HYPER are on a Mac; its last row opens the docs.
-        // The keys as Raycast's Hyper Key offers them: Caps Lock, the modifiers, F1 … F12.
-        let hyper = NSMenu()
-        func keyItem(_ k: KeyboardOptions.HyperKey, in menu: NSMenu) {
-            let i = menu.addItem(withTitle: k.label, action: #selector(setHyperKey(_:)), keyEquivalent: "")
-            i.representedObject = k.name
-            i.target = self
-            hyperKeyItems.append(i)
-        }
-        let keys = KeyboardOptions.hyperKeys
-        keyItem(keys[0], in: hyper)
-        hyper.addItem(.separator())
-        for k in keys where k.original == nil { keyItem(k, in: hyper) }
-        let fKeys = NSMenu()
-        for k in keys where k.name.hasPrefix("f") { keyItem(k, in: fKeys) }
-        hyper.addItem(withTitle: "Function Keys", action: nil, keyEquivalent: "").submenu = fKeys
-        hyper.addItem(.separator())
-        hyper.addItem(.sectionHeader(title: "Quick Press"))
-        for (title, tap) in [("Does Nothing", "none"), ("The Key Itself", "original"), ("Escape", "escape")] {
-            let i = hyper.addItem(withTitle: title, action: #selector(setHyperTap(_:)), keyEquivalent: "")
-            i.representedObject = tap
-            i.target = self
-            hyperTapItems.append(i)
-        }
-        hyper.addItem(.separator())
-        legendItem = hyper.addItem(withTitle: "", action: #selector(showKeysDocs), keyEquivalent: "")
-        legendItem?.target = self
-        legendItem?.toolTip = "mango's modifiers on a Mac: SUPER is Command; HYPER is chutney_hyper_modifier"
-        hyperItem = menu.addItem(withTitle: "Hyper Key", action: nil, keyEquivalent: "")
-        hyperItem?.submenu = hyper
         menu.addItem(withTitle: "Getting Started", action: #selector(showGettingStarted), keyEquivalent: "")
         menu.addItem(withTitle: "mango Documentation", action: #selector(showMangoDocs), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Reload Config", action: #selector(reload), keyEquivalent: "r")
         menu.addItem(withTitle: "Edit Config", action: #selector(editConfig), keyEquivalent: "")
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Permissions…", action: #selector(showPermissions), keyEquivalent: "")
-        loginItem = menu.addItem(withTitle: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
+        // Permissions, the Hyper key (chutney_hyper_key, chutney_hyper_tap) and Start at Login:
+        // the first start's window, each choice kept as it is made.
+        menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Restart Mango Chutney", action: #selector(restart), keyEquivalent: "")
         menu.addItem(withTitle: "Quit Mango Chutney", action: #selector(quit), keyEquivalent: "q")
@@ -363,16 +344,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
         server?.holdNativeFocus = true
         layoutPanel.server = server
         layoutPanel.refresh()
-        loginItem?.state = FileManager.default.fileExists(atPath: Self.loginPlist) ? .on : .off
-        if let server {
-            legendItem?.title = ModifierLegend.text(server.config)
-            let key = server.config.chutneyHyperKey
-            for i in hyperKeyItems { i.state = (i.representedObject as? String) == key ? .on : .off }
-            hyperItem?.title = "Hyper Key: " + (KeyboardOptions.hyperKey(key)?.label ?? "⌃⌥⌘ held")
-            for i in hyperTapItems {
-                i.state = (i.representedObject as? String) == server.config.chutneyHyperTap ? .on : .off
-            }
-        }
     }
 
     func menuDidClose(_ menu: NSMenu) {
@@ -387,38 +358,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
     @objc func reload() { server?.reloadConfig() }
 
-    var legendItem: NSMenuItem?
-    var hyperItem: NSMenuItem?
-    var hyperKeyItems: [NSMenuItem] = []
-    var hyperTapItems: [NSMenuItem] = []
-
-    /// The Hyper key from the menu: kept in the menu's file (chutney_menu_config), read last.
-    @objc func setHyperKey(_ sender: NSMenuItem) {
-        guard let key = sender.representedObject as? String else { return }
-        saveMenuChoice("chutney_hyper_key", key)
-    }
-    @objc func setHyperTap(_ sender: NSMenuItem) {
-        guard let tap = sender.representedObject as? String else { return }
-        saveMenuChoice("chutney_hyper_tap", tap)
-    }
-    /// The Hyper key's items can be chosen only where the choice can be kept: mango running and
-    /// a menu file (chutney_menu_config). Quick Press, as Raycast's: only for Caps Lock and a
-    /// function key.
-    func validateMenuItem(_ item: NSMenuItem) -> Bool {
-        let isKey = hyperKeyItems.contains(item), isTap = hyperTapItems.contains(item)
-        guard isKey || isTap else { return true }
-        guard let server, MenuSave.url(server.config, configURL: server.configURL) != nil else { return false }
-        return isKey || KeyboardOptions.hyperKey(server.config.chutneyHyperKey)?.original != nil
-    }
-
-    private func saveMenuChoice(_ key: String, _ value: String) {
+    /// A Hyper key choice from Settings: kept in the menu's file (chutney_menu_config), read
+    /// last, unless it is the value already in use.
+    func saveMenuChoice(_ key: String, _ value: String) {
         guard let server, let url = MenuSave.url(server.config, configURL: server.configURL) else { return }
+        let now = key == "chutney_hyper_key" ? server.config.chutneyHyperKey : server.config.chutneyHyperTap
+        guard value != now, !(value == "none" && now.isEmpty) else { return }
         MenuSave.set(key, value, in: url)
         server.reloadConfig()
-    }
-    /// The guide's Hyper key.
-    @objc func showKeysDocs() {
-        NSWorkspace.shared.open(URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/guide.md#the-hyper-key")!)
     }
     @objc func showGettingStarted() { Permissions.openGettingStarted() }
     @objc func showMangoDocs() {
@@ -429,16 +376,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     }
     @objc func quit() { NSApp.terminate(nil) }
 
-    @objc func showPermissions() { Permissions.shared.show() }
+    @objc func showSettings() { Permissions.shared.showSettings() }
 
-    var loginItem: NSMenuItem?
     static var loginPlist: String { NSHomeDirectory() + "/Library/LaunchAgents/dev.mangochutney.plist" }
 
     /// Start at Login: `mmsg service install` / `mmsg service uninstall`, the mmsg next to this
     /// mango. When this mango is the service itself, uninstall only removes the plist (no
     /// bootout, which would stop this mango); the service is gone at the next login.
-    @objc func toggleLogin() {
+    func setLogin(_ on: Bool) {
         let installed = FileManager.default.fileExists(atPath: Self.loginPlist)
+        guard on != installed else { return }
         if installed, ProcessInfo.processInfo.environment["XPC_SERVICE_NAME"] == "dev.mangochutney" {
             try? FileManager.default.removeItem(atPath: Self.loginPlist)
             return

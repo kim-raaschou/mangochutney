@@ -52,14 +52,13 @@ A window says what Mango Chutney needs and opens the right page of System Settin
 - **Your Hyper key**, which must be chosen before Continue, as Raycast's Hyper Key: Caps Lock
   (recommended), a left or right ⌃ ⇧ ⌥ ⌘, or F1–F12. For Caps Lock and the function keys,
   **Quick Press**: what the key does pressed alone (nothing, the key itself, or Escape).
-- **Start Mango Chutney at login**, off unless ticked (later: the menu bar's Start at Login, or
-  `mmsg service install`).
+- **Start Mango Chutney at login**, off unless ticked (later: Settings, or `mmsg service install`).
 
 Nothing is written and no key is moved before Continue: Mango Chutney waits for your choice
 (the menu bar says so), and quitting before it just means the next start is a first start
 again. Continue writes your config, starts tiling, opens this guide in your browser and turns
 the window into a welcome with the two keys and **Open Your Config**. The window comes back
-from the menu bar (Permissions…). If Accessibility
+from the menu bar as Settings… (⌘,). If Accessibility
 is on in the list but does not take (an old build), remove the row with − and allow it again.
 
 The first start writes your config, `~/.config/mango/config.conf`: mango's own default config with
@@ -134,13 +133,13 @@ arrows (Spaces). That is why your config has them on Hyper: `var=mod,HYPER` and
 
 A Mac has no Hyper key. In a binding `HYPER` means the modifiers `chutney_hyper_modifier` names,
 held together, and `chutney_hyper_key` makes one key hold them: chosen on the first start, and
-later in the menu bar (Learn › Hyper Key). It is done with macOS's own key mapping (`hidutil`),
+later in Settings (⌘, in the menu bar), the same window. It is done with macOS's own key mapping (`hidutil`),
 no Karabiner needed, and only Mango Chutney sees the key as Hyper. Key moves of your own in that
 mapping stay as they are, and are all that is left when Mango Chutney quits.
 
-The first start writes your key in `config.conf`; a key chosen later in the menu is kept in
+The first start writes your key in `config.conf`; a key chosen later in Settings is kept in
 `chutney_menu.conf`, which is read last and wins. To go back to the one in `config.conf`, delete
-the `chutney_hyper_key` line in `chutney_menu.conf`. The menu's choice is there only with
+the `chutney_hyper_key` line in `chutney_menu.conf`. Settings can keep a key only with
 `chutney_menu_config` set, as in the default config.
 
 | Setting | Default | Description |
@@ -169,9 +168,11 @@ others dimmed: macOS draws the same item on every display. Its menu holds:
   (new is master, scroller widths, dwindle's splits, the tab modes, …), the master width and
   count, the gaps (inner and outer, with smart gaps and a preview at the screen's scale), the
   border width, the menu bar's own look and animations on or off.
-- **Learn.** Hyper Key (the key, Quick Press, and what Super and Hyper are), Getting Started and
-  mango's documentation.
-- Reload Config (⌘R), Edit Config, Permissions…, Start at Login, Restart and Quit.
+- **Learn.** Getting Started and mango's documentation.
+- Reload Config (⌘R) and Edit Config.
+- **Settings… (⌘,)**, the first start's window: the permissions, your Hyper key and Quick Press,
+  the two keys to remember, and Start at Login. A choice is kept as you make it.
+- Restart and Quit.
 
 The panel sends only mango's own dispatchers (`setlayout`, `setmfact`, `incnmaster`, `setoption`),
 as a bar would over IPC. Its changes are kept in `chutney_menu.conf`, which the config reads last,
