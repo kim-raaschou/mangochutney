@@ -26,11 +26,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Permissions.shared.currentChoices = { [weak self] in
             let login = FileManager.default.fileExists(atPath: Self.loginPlist)
             guard let server = self?.server else {
-                return .init(hyperKey: nil, hyperTap: "none", startAtLogin: login, canSave: false)
+                return .init(hyperKey: nil, hyperTap: "none", startAtLogin: login, canSave: false,
+                             configURL: self?.configPath ?? ConfigParser.defaultConfigURL())
             }
             let key = server.config.chutneyHyperKey
             return .init(hyperKey: key.isEmpty ? nil : key, hyperTap: server.config.chutneyHyperTap, startAtLogin: login,
-                         canSave: MenuSave.url(server.config, configURL: server.configURL) != nil)
+                         canSave: MenuSave.url(server.config, configURL: server.configURL) != nil,
+                         configURL: server.configURL)
         }
         Permissions.shared.saveChoice = { [weak self] key, value in self?.saveMenuChoice(key, value) }
         Permissions.shared.setStartAtLogin = { [weak self] on in self?.setLogin(on) }
@@ -105,11 +107,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
         menu.addItem(makeLayoutPanelItem(model: layoutPanel))
-        menu.addItem(.separator())
-        // Learn, as Omarchy's menu. The palettes are on their keys (Hyper K, Hyper L), not here.
-        menu.addItem(.sectionHeader(title: "Learn"))
-        menu.addItem(withTitle: "Getting Started", action: #selector(showGettingStarted), keyEquivalent: "")
-        menu.addItem(withTitle: "mango Documentation", action: #selector(showMangoDocs), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Reload Config", action: #selector(reload), keyEquivalent: "r")
         menu.addItem(withTitle: "Edit Config", action: #selector(editConfig), keyEquivalent: "")
@@ -366,10 +363,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard value != now, !(value == "none" && now.isEmpty) else { return }
         MenuSave.set(key, value, in: url)
         server.reloadConfig()
-    }
-    @objc func showGettingStarted() { Permissions.openGettingStarted() }
-    @objc func showMangoDocs() {
-        NSWorkspace.shared.open(URL(string: "https://mangowm.github.io/docs/")!)
     }
     @objc func editConfig() {
         ConfigFiles.open(server?.configURL ?? ConfigParser.defaultConfigURL())

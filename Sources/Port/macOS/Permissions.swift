@@ -153,9 +153,10 @@ public final class Permissions {
     public var firstStartDone: () -> Void = {}
     /// Settings: the choices as they are, and where a change goes (set by the app at launch).
     public struct Choices {
-        public var hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool
-        public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool) {
+        public var hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL
+        public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL) {
             self.hyperKey = hyperKey; self.hyperTap = hyperTap; self.startAtLogin = startAtLogin; self.canSave = canSave
+            self.configURL = configURL
         }
     }
     public var currentChoices: () -> Choices? = { nil }
@@ -179,6 +180,9 @@ public final class Permissions {
 
     /// The guide's Getting Started: the two keys to remember, the first start.
     public static func openGettingStarted() { NSWorkspace.shared.open(gettingStarted) }
+    /// Mango Chutney's guide, and mango's own documentation (the config's keys).
+    static let guide = URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/guide.md")!
+    static let mangoDocs = URL(string: "https://mangowm.github.io/docs/")!
 
     public var state: PermissionState {
         PermissionState(accessibility: Permission.accessibility.isGranted,
@@ -248,6 +252,7 @@ public final class Permissions {
         model.hyperTap = c?.hyperTap ?? "none"
         model.startAtLogin = c?.startAtLogin ?? false
         model.canSave = c?.canSave ?? false
+        yourConfig = c?.configURL
         model.onChoice = { [weak self] key, value in self?.saveChoice(key, value) }
         model.onStartAtLogin = { [weak self] on in self?.setStartAtLogin(on) }
         model.settings = true
@@ -362,6 +367,11 @@ struct PermissionsView: View {
                     FirstStartChoices(model: model)
                         .padding(20)
                 }
+                if model.settings {
+                    Divider()
+                    YourConfig(onOpenConfig: model.onOpenConfig)
+                        .padding(20)
+                }
 
                 Divider()
 
@@ -444,6 +454,27 @@ private struct FirstStartChoices: View {
 
 }
 
+/// Settings' way on into mango: everything else is mango's, in the user's config.
+private struct YourConfig: View {
+    let onOpenConfig: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Your config").font(.headline)
+            Text("Gaps, borders, colours, layouts, rules and keys are mango's, and they live in your config. mango's documentation has every one; the guide has what Mango Chutney adds.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Button("Open Your Config", action: onOpenConfig)
+                Button("mango Documentation") { NSWorkspace.shared.open(Permissions.mangoDocs) }
+                Button("Mango Chutney Guide") { NSWorkspace.shared.open(Permissions.guide) }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// After a first start's Continue: the two keys to remember, then the config.
 private struct Welcome: View {
     let hyperKey: String?
@@ -459,7 +490,7 @@ private struct Welcome: View {
                     .frame(width: 30)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Your config is yours to change").font(.headline)
-                    Text("Open Your Config: near its end are the first lines to try. Take away a #, save, and see the change. The menu bar's mango has the layouts, gaps and borders, and Learn.")
+                    Text("Open Your Config: near its end are the first lines to try. Take away a #, save, and see the change. The menu bar's mango has the layouts, gaps and borders; Settings (⌘,) has these keys and the docs.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

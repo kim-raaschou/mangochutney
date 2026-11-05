@@ -168,10 +168,10 @@ others dimmed: macOS draws the same item on every display. Its menu holds:
   (new is master, scroller widths, dwindle's splits, the tab modes, …), the master width and
   count, the gaps (inner and outer, with smart gaps and a preview at the screen's scale), the
   border width, the menu bar's own look and animations on or off.
-- **Learn.** Getting Started and mango's documentation.
 - Reload Config (⌘R) and Edit Config.
 - **Settings… (⌘,)**, the first start's window: the permissions, your Hyper key and Quick Press,
-  the two keys to remember, and Start at Login. A choice is kept as you make it.
+  the two keys to remember, and Start at Login, each kept as you choose it. Below them, **Your
+  config**: open it, mango's documentation (every key the config has) and this guide.
 - Restart and Quit.
 
 The panel sends only mango's own dispatchers (`setlayout`, `setmfact`, `incnmaster`, `setoption`),
