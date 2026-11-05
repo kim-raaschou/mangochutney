@@ -44,7 +44,7 @@ public enum LayoutKind: Int, CaseIterable, Sendable {
     }
 
     public init?(name: String) {
-        guard let k = LayoutKind.allCases.first(where: { $0.name == name.lowercased() }) else { return nil }
+        guard let k = LayoutKind.allCases.first(where: { $0.name == name }) else { return nil }
         self = k
     }
 

@@ -38,6 +38,7 @@ public final class Client {
     public var isTagSilent = false
     public var isUrgent = false
 
+    // not in mango: mango's oldmonname, as macOS's display ID (a display's name is not unique).
     public var homeDisplayID: CGDirectDisplayID?
 
     package var frame: CGRect {
@@ -73,6 +74,8 @@ public final class Client {
     public var animationTypeOpen: AnimationType?
     public var scrollerProportion: CGFloat?
     public var scrollerProportionSingle: CGFloat?
+    public var isCustomScrollerProportion = false
+    public var isCustomScrollerProportionSingle = false
     public var masterSizeWeight: CGFloat = 0
     public var stackSizeWeight: CGFloat = 0
     public var masterInnerPer: CGFloat = 0
@@ -91,6 +94,7 @@ public final class Client {
     var cursorInUpperHalf = false
     var cursorInLeftHalf = false
     var dragBeginGeom: CGRect = .zero
+    // not in mango: a dialog opens floating (mango's client_is_float_type, from macOS's subrole).
     public var isDialog = false
 
 /// Not in mango: without the border (mango's box includes it).
@@ -116,8 +120,6 @@ public final class Client {
         floatGeom = frame
     }
 
-    public var isNavigable: Bool { !noFocus && !isUnglobal }
-
 
     public var appid: String { bundleId.isEmpty ? appName : bundleId }
 
@@ -131,12 +133,14 @@ public final class Client {
 @MainActor
 public final class Pertag {
     public var layout: LayoutKind
+    // not in mango: the layout before, kept for the port's layout across a restart.
     public var prevLayout: LayoutKind
     public var settings: PertagSettings
     public let state = TagLayoutState()
     public var noRenderBorder = false
     public var openAsFloating = false
     public var noHide = false
+    // not in mango: the tag_rule's layout, so a reload changes only a layout whose rule changed.
     public var configuredLayout: LayoutKind?
 
     init(layout: LayoutKind, settings: PertagSettings) {
@@ -158,6 +162,7 @@ public final class Monitor {
     public var specialGaps: Gaps
     public var curtag = 1
     public var prevTag = 1
+    public var carouselAnimDir = 0
     public var isInHotarea = false
     public var specialEmptyView = false
     public var ovbkCurrentTagset: UInt32 = 0

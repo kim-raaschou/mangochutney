@@ -67,7 +67,7 @@ package enum LayoutSupport {
         return t
     }
 
-/// mango stores
+    // not in mango: a value mango keeps in a float field, rounded as C rounds it.
     static func f32(_ v: CGFloat) -> Double { Double(Float(v)) }
 
     /// Not in mango: picks the window shown in deck/monocle.

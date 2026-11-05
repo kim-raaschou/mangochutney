@@ -128,6 +128,7 @@ public final class MangoServer {
                                      oh: CGFloat(config.specialGappoh), ov: CGFloat(config.specialGappov))
                 m.parseTagrule(config: config, onlyLayoutIfChanged: true)
                 for i in 1..<m.pertag.count {
+                    // not in mango: each monitor's own windows (mango's loop takes every window).
                     for c in clientsAll where c.mon === m && c.tags & (1 << UInt32(i - 1)) != 0
                         && !c.isFloating && !c.isMinimized && !c.isFullscreen && !c.isMaximizeScreen && !c.isUnglobal {
                         c.masterMfactPer = m.pertag[i].settings.mfact
@@ -373,6 +374,7 @@ public final class MangoServer {
             var target: CGRect?
             var park = false
             if c.scratchpadShown {
+                // not in mango: sized here too, for a scratchpad shown without show_scratchpad (a restart).
                 if !c.isCustomSize {
                     let w = work.width * CGFloat(config.scratchpadWidthRatio)
                     let h = work.height * CGFloat(config.scratchpadHeightRatio)
@@ -520,7 +522,7 @@ public final class MangoServer {
         if c.mon !== selectedMonitor { return config.bordercolor }
         if c.isUrgent { return config.urgentcolor }
         guard isFocused else { return config.bordercolor }
-        if c.scratchpadShown || c.isNamedScratchpad { return config.scratchpadcolor }
+        if c.isInScratchpad { return config.scratchpadcolor }
         if c.isGlobal { return config.globalcolor }
         if c.isOverlay { return config.overlaycolor }
         if c.isMaximizeScreen { return config.maximizescreencolor }
@@ -532,7 +534,7 @@ public final class MangoServer {
         let isoverview = overviewState?.monitor === m
         var hitNoBorder = false
         if !renderBorder { hitNoBorder = true }
-        if !isoverview && m.current.noRenderBorder { hitNoBorder = true }
+        if !isoverview && m.pertag[c.tags & TagMask.special != 0 ? 0 : (TagMask.getTagsFirstTagNum(c.tags) ?? 0)].noRenderBorder { hitNoBorder = true }
         if config.noBorderWhenSingle {
             let shown = visibleClients(m)
             let visible = shown.filter { !$0.isUnglobal }.count
@@ -768,8 +770,8 @@ public final class MangoServer {
         if let v = r.isOverlay { c.isOverlay = v }
         if let v = r.ignoreMinimize { c.ignoreMinimize = v }
         if let v = r.isUnmanagedGlobal { c.isUnglobal = v }
-        if let v = r.scrollerProportion { c.scrollerProportion = CGFloat(v) }
-        if let v = r.scrollerProportionSingle { c.scrollerProportionSingle = CGFloat(v) }
+        if let v = r.scrollerProportion { c.scrollerProportion = CGFloat(v); if v > 0 { c.isCustomScrollerProportion = true } }
+        if let v = r.scrollerProportionSingle { c.scrollerProportionSingle = CGFloat(v); if v > 0 { c.isCustomScrollerProportionSingle = true } }
         if let v = r.animationTypeOpen { c.animationTypeOpen = v }
     }
 

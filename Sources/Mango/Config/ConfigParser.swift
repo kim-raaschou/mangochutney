@@ -261,6 +261,7 @@ package struct ParserState {
         let reportFile = from?.0 ?? path
         let reportLine = from?.1 ?? 0
 
+        // not in mango: a file that sources itself, or too deep, is reported, not followed for ever.
         if includeStack.contains(path) {
             reportConfigLineError(reportFile, reportLine, "Recursive source of \(path) ignored")
             return

@@ -35,7 +35,6 @@ final class UnmanagedGlobalTests: MangoTestCase {
         let w = r.window(a)
         let u = r.window(pet)
         u.isUnglobal = true
-        XCTAssertFalse(u.isNavigable)
         XCTAssertTrue(r.server.clientFocusTop(r.monitor) === w)
     }
 

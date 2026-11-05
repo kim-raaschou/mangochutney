@@ -27,7 +27,7 @@ package enum Keyboard {
                 }
             }
             out.append(b)
-            if b.dispatch.name == "setkeymode" || b.dispatch.name == "chvt" { break }
+            if ["setkeymode", "chvt", "reload_config", "load_config_file"].contains(b.dispatch.name) { break }
             if !b.flags.contains(.allowConflict) { break }
         }
         return out

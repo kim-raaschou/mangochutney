@@ -78,7 +78,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | `source=` med relativ sti læses fra config-mappen; ingen `/etc/mango`-fallback | Under launchd er arbejdsmappen `/`; macOS har ingen `/etc`-config |
 | Første start skriver `Resources/config.conf` som `config.conf`: mangos config med mangos taster på Hyper (en tast, brugeren vælger som i Raycasts Hyper Key: Caps Lock, en venstre/højre modifier eller F1–F12; `chutney_hyper_key`), ikke mangos egne taster, og de første linjer at prøve nær slutningen. Også et velkomstvindue, der åbner Getting Started | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config. mangos taster (⌘M, ⌘N, ⌥+bogstav, ⌃+pile) er macOS' og appernes genveje |
 | Input besluttes på event tappets tråd; `setkeymode` og `chvt` stopper søgningen efter bindinger | macOS vil have svaret med det samme; dispatcherens svar kendes først på hovedtråden |
-| Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,15 s, som mangos), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt | macOS melder ikke alt som en begivenhed |
+| Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,15 s, som mangos), appens egne rapporter under et træk (0,3 og 0,4 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt | macOS melder ikke alt som en begivenhed |
 
 ## 4. Mangler endnu
 
@@ -90,12 +90,23 @@ Hvor koden står, når den ikke står som i mango.
 
 - **Kernen (`Sources/Mango`)** har mangos funktioner med mangos navne og kun mangos egne
   kommentarer eller mærker om, hvor vi afviger (CLAUDE.md regel 8). En funktion med andet navn
-  end mangos har én linje `/// mango <funktion> (<fil>)`; der er 13 tilbage: tastaturets tråd,
-  cursor-timeren, `Log`, `f32` og nogle få, der allerede har mangos navn.
+  end mangos har én linje `/// mango <funktion> (<fil>)`; der er 12 tilbage: tastaturets tråd,
+  cursor-timeren, `Log` og nogle få, der allerede har mangos navn.
 - **Bevidst i kernen, mærket:** parkeringen (`c.parked`, mango klipper i scenen), scrollerens
   kolonner i tag-tilstanden (mango bruger `ScrollerStackNode` i klientlisten), overview med
   billeder (`thumbnails`), drag-tile delt med appens eget træk, `parse_option` som en tabel,
   og `resize_tile_master` i begge retninger i én funktion.
+- **Mærket i kernen, til at flytte ud** (crew review 2026-11-05):
+  - felter: `homeDisplayID` (mangos `oldmonname`, som skærmens display-ID), `isDialog`
+    (mangos `client_is_float_type` fra macOS' subrole), `Pertag.prevLayout` (kun portens layout
+    over en genstart) og `Pertag.configuredLayout` (en reload ændrer kun et layout, hvis
+    tag_rule'n er ændret);
+  - `LayoutInput.sanitized()` (værn mod tal, der ikke er endelige), `clampToScreen` (et flydende
+    vindue holdes inden for arbejdsområdet), `f32`;
+  - scratchpad-størrelsen også i `arrange` (en scratchpad vist uden `show_scratchpad`, efter en
+    genstart), `source`-værnet mod rekursion og dybde, reload-løkken pr. skærms egne vinduer;
+  - appens egne rapporter under og efter et træk ignoreres (`ignoreMoves`: 3600 s under, 0,4 s
+    efter, 0,3 s pr. flyt), og scrollerens proportion uden regel følger tag'ets standard.
 - **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `EventLoop`
   (`wl_event_loop_add_fd` til IPC), `Screen`, `PortHooks`, `ConfigPort` (portens nøgler,
   modifiernavne, tastkoder) og `InputState`.

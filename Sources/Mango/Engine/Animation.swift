@@ -150,7 +150,7 @@ package extension MangoServer {
         let prev = m.prevTag, cur = m.curtag
         if prev != 0, cur != 0, c.tags & (1 << UInt32(prev - 1)) != 0, animates {
             let forward: Bool
-            if case .tag(let f) = anim { forward = f } else { forward = cur > prev }
+            if case .tag(let f) = anim { forward = f } else { forward = m.carouselAnimDir != 0 ? m.carouselAnimDir > 0 : cur > prev }
             c.tagouting = true
             system.hide(c, tagout: setTagoutAnimation(c, on: m, forward: forward))
         } else {

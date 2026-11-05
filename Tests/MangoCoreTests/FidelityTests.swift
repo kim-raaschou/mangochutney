@@ -1728,4 +1728,40 @@ final class FidelityTests: MangoTestCase {
         r.server.handleClientUnmap(c)
         XCTAssertNil(r.server.grab)
     }
+
+    /// mango focus_stack starts from the window the dispatch names (arg->tc); focus_by_id
+    /// does nothing without one.
+    func testFocusstackAndFocusidTakeTheTarget() {
+        let r = EngineRig()
+        let a = r.map(1), b = r.map(2), c = r.map(3)
+        r.server.clientFocus(a)
+        _ = r.server.dispatch(Dispatch(name: "focusstack", args: ["next"]), target: b)
+        XCTAssertEqual(r.monitor.sel, r.server.getNextStackClient(b, reverse: false)?.id, "from b, not from a")
+        r.server.clientFocus(c)
+        _ = r.server.dispatch(Dispatch(name: "focusid"))
+        XCTAssertEqual(r.monitor.sel, c.id, "no target: nothing")
+    }
+
+    /// mango client_view_on_monitor: no tag animation when the new view overlaps the old one.
+    func testCurtagStaysWhenAViewOverlaps() {
+        let r = EngineRig()
+        _ = r.map(1)
+        d(r, "view", ["1"])
+        d(r, "toggleview", ["2"])
+        d(r, "view", ["2"])
+        XCTAssertEqual(r.monitor.curtag, 2)
+        XCTAssertEqual(r.monitor.prevTag, 1)
+    }
+
+    /// mango's layout names are matched as written (strcmp).
+    func testLayoutNamesAreCaseSensitive() {
+        XCTAssertEqual(LayoutKind(name: "tile"), .tile)
+        XCTAssertNil(LayoutKind(name: "Tile"))
+    }
+
+    /// An empty animation_type in a window rule is mango's ANIM_TYPE_UNSET: the global type.
+    func testAnEmptyRuleAnimationTypeIsUnset() throws {
+        let r = try RuleParser.parseWindowRule("app_id:x,animation_type_open:", once: false).get()
+        XCTAssertNil(r.animationTypeOpen)
+    }
 }

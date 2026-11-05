@@ -36,6 +36,7 @@ public enum RuleParser {
                 if let n = ValueParse.int(val) { apply(n) } else { errors.append("Invalid value for window rule option \(key): \(val)") }
             }
             func anim(_ apply: (AnimationType) -> Void) {
+                guard !val.isEmpty else { return }
                 apply(animationTypeFromString(val))
             }
 
