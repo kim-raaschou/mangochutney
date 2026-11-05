@@ -39,12 +39,12 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertEqual(p.config.xkbRulesOptions, "", "Caps Lock as Hyper is chutney_hyper_key's")
     }
 
-    /// The first lines to try, between "Your own settings" and the app's files: all commented
+    /// The first lines to try, between "Your own settings" and the menu's file: all commented
     /// out, so they change nothing until a # is taken away, and each line is one of mango's keys.
     func testTheFirstLinesToTryAreCommentedOutAndMangos() throws {
         let lines = try config().components(separatedBy: "\r\n")
         guard let own = lines.firstIndex(where: { $0.hasPrefix("# Your own settings") }),
-              let end = lines.firstIndex(where: { $0.hasPrefix("source_optional=") }) else {
+              let end = lines.firstIndex(of: "source_optional=chutney_menu.conf"), own < end else {
             return XCTFail("the first lines to try are gone")
         }
         let block = lines[own..<end].filter { !$0.isEmpty }
@@ -70,5 +70,42 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertEqual(p.errors, [])
         XCTAssertEqual(p.config.chutneyHyperKey, "right_option")
         XCTAssertEqual(p.config.chutneyHyperTap, "escape")
+    }
+
+    /// The first lines to try come after the theme's line, so a colour of the user's wins.
+    func testYourLinesComeAfterTheTheme() throws {
+        let lines = try config().components(separatedBy: "\r\n")
+        let theme = try XCTUnwrap(lines.firstIndex(of: "source_optional=chutney_theme.conf"))
+        let own = try XCTUnwrap(lines.firstIndex { $0.hasPrefix("# Your own settings") })
+        let menu = try XCTUnwrap(lines.firstIndex(of: "source_optional=chutney_menu.conf"))
+        XCTAssertTrue(theme < own && own < menu)
+    }
+
+    /// Continue writes the chosen key into the config just written.
+    func testSetHyperKeyWritesTheChoice() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("config.conf")
+        try config().write(to: url, atomically: true, encoding: .utf8)
+        ConfigFiles.setHyperKey("f5", tap: "original", configURL: url)
+        let p = ConfigParser.parseConfig(fileAt: url)
+        XCTAssertEqual(p.config.chutneyHyperKey, "f5")
+        XCTAssertEqual(p.config.chutneyHyperTap, "original")
+    }
+
+    /// mango's watcher: a file replaced by one with the same text has changed (a new inode).
+    func testTheWatcherSeesAFileReplaced() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let url = dir.appendingPathComponent("config.conf")
+        try "gappih=5\n".write(to: url, atomically: true, encoding: .utf8)
+        let before = ConfigWatcher.state(url)
+        try "gappih=5\n".write(to: url, atomically: true, encoding: .utf8)
+        XCTAssertNotNil(before)
+        XCTAssertNotEqual(ConfigWatcher.state(url), before)
+        try FileManager.default.removeItem(at: url)
+        XCTAssertNil(ConfigWatcher.state(url))
     }
 }

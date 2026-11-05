@@ -69,7 +69,13 @@ extension MangoServer {
         portHooks.configLoaded.append { server in server.mac.watcher.ignoredBundleIds = Set(server.config.chutneyIgnoreApps) }
         // The macOS layer: what macOS cannot do is said once.
         portHooks.configLoaded.append { server in (server.system as? MacWindowSystem)?.configLoaded(server.config) }
-        // chutney_style: chutney_theme.conf follows macOS's accent colour and light/dark.
+        // chutney_style: chutney_theme.conf follows macOS's accent colour and light/dark, and the
+        // key itself when a reload sets or clears it (the config is then read once more).
+        portHooks.configLoaded.append { server in
+            guard ChutneyTheme.sync(configURL: server.configURL, style: server.config.chutneyStyle) else { return }
+            Log.info("chutney_style: \(ChutneyTheme.fileName) written for chutney_style=\(server.config.chutneyStyle ? 1 : 0)")
+            DispatchQueue.main.async { MainActor.assumeIsolated { server.reloadConfig() } }
+        }
         observeMacOSTheme()
     }
 }

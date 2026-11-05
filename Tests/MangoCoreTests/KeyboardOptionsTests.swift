@@ -122,4 +122,41 @@ final class KeyboardOptionsTests: MangoTestCase {
         _ = router.key(key(K.hyperKeyCode, down: false), modifierOnlySinceDown: false)
         XCTAssertEqual(escapes, 1, "a key came between: no Escape")
     }
+
+    /// hidutil's listing: one block per keyboard; a keyboard with none says (null).
+    func testTheUserKeyMappingIsRead() {
+        let text = """
+        RegistryID  Key                   Value
+        100000cf8   UserKeyMapping   (null)
+        100000b49   UserKeyMapping   (
+                {
+                HIDKeyboardModifierMappingDst = 30064771181;
+                HIDKeyboardModifierMappingSrc = 30064771129;
+            },
+                {
+                HIDKeyboardModifierMappingDst = 30064771113;
+                HIDKeyboardModifierMappingSrc = 30064771300;
+            }
+        )
+        100000bb1   UserKeyMapping   (
+                {
+                HIDKeyboardModifierMappingDst = 30064771181;
+                HIDKeyboardModifierMappingSrc = 30064771129;
+            }
+        )
+        """
+        XCTAssertEqual(KeyboardOptions.parseUserKeyMapping(text), [
+            KeyboardOptions.Mapping(src: 30064771129, dst: 30064771181),
+            KeyboardOptions.Mapping(src: 30064771300, dst: 30064771113),
+        ])
+        XCTAssertEqual(KeyboardOptions.parseUserKeyMapping("100000cf8   UserKeyMapping   (null)"), [])
+    }
+
+    /// The user's own moves stay, but for a key mango moves.
+    func testTheUsersMovesStay() {
+        let mine = KeyboardOptions.Mapping(src: 1, dst: 2), caps = KeyboardOptions.Mapping(src: 3, dst: 4)
+        let hyper = KeyboardOptions.Mapping(src: 3, dst: KeyboardOptions.f18)
+        XCTAssertEqual(KeyboardOptions.merged(user: [mine, caps], mango: [hyper]), [mine, hyper])
+        XCTAssertEqual(KeyboardOptions.merged(user: [mine], mango: []), [mine])
+    }
 }

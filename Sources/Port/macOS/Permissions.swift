@@ -137,6 +137,11 @@ public final class Permissions {
     public var quit: () -> Void = { NSApp.terminate(nil) }
     /// The login service (`mmsg service install`; set by the app at launch).
     public var installLoginService: () -> Void = {}
+    /// After a first start's Continue has written the config: mango may start.
+    public var firstStartDone: () -> Void = {}
+    /// A first start not yet through Continue: mango waits, so nothing is written and no
+    /// key is moved before the choice.
+    public var firstStartPending: Bool { firstStartConfig != nil }
 
     private static let skipKey = "skipScreenRecording"
     private var window: NSWindow?
@@ -227,6 +232,7 @@ public final class Permissions {
             model.firstStart = false
             model.welcome = true
             window?.title = "Welcome to Mango Chutney"
+            firstStartDone()
             // The docs open behind the welcome, which floats above them.
             Self.openGettingStarted()
             return

@@ -56,16 +56,22 @@ public enum ChutneyTheme {
     /// Writes the file when its text would change (with chutney_style; without it, only a file
     /// already there, back to the header). True when written: the config then needs reading
     /// again. Marked as the port's own write, so the config watcher leaves it to the caller.
+    /// `style`: chutney_style as just read; without it the config is read for it.
     @discardableResult
-    public static func sync(configURL: URL, resolve: (NSColor) -> RGBA? = rgba) -> Bool {
+    public static func sync(configURL: URL, style: Bool? = nil, resolve: (NSColor) -> RGBA? = rgba) -> Bool {
         let file = url(configURL: configURL)
-        let macOS = ConfigParser.parseConfig(fileAt: configURL).config.chutneyStyle
+        let macOS = style ?? ConfigParser.parseConfig(fileAt: configURL).config.chutneyStyle
         let exists = FileManager.default.fileExists(atPath: file.path)
         guard macOS || exists else { return false }
         let text = text(macOS: macOS, resolve: resolve)
         guard (try? String(contentsOf: file, encoding: .utf8)) != text else { return false }
+        do {
+            try text.write(to: file, atomically: false, encoding: .utf8)   // in place: the watcher keeps it
+        } catch {
+            Log.info("chutney_style: could not write \(file.path): \(error)")
+            return false
+        }
         MenuSave.lastWritten[file.path] = text
-        try? text.write(to: file, atomically: false, encoding: .utf8)   // in place: the watcher keeps it
         return true
     }
 

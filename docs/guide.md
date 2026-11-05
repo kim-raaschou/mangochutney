@@ -55,8 +55,11 @@ A window says what Mango Chutney needs and opens the right page of System Settin
 - **Start Mango Chutney at login**, off unless ticked (later: the menu bar's Start at Login, or
   `mmsg service install`).
 
-Continue opens this guide in your browser and turns the window into a welcome with the two keys
-and **Open Your Config**. The window comes back from the menu bar (Permissions…). If Accessibility
+Nothing is written and no key is moved before Continue: Mango Chutney waits for your choice
+(the menu bar says so), and quitting before it just means the next start is a first start
+again. Continue writes your config, starts tiling, opens this guide in your browser and turns
+the window into a welcome with the two keys and **Open Your Config**. The window comes back
+from the menu bar (Permissions…). If Accessibility
 is on in the list but does not take (an old build), remove the row with − and allow it again.
 
 The first start writes your config, `~/.config/mango/config.conf`: mango's own default config with
@@ -131,8 +134,9 @@ arrows (Spaces). That is why your config has them on Hyper: `var=mod,HYPER` and
 
 A Mac has no Hyper key. In a binding `HYPER` means the modifiers `chutney_hyper_modifier` names,
 held together, and `chutney_hyper_key` makes one key hold them: chosen on the first start, and
-later in the menu bar (Learn › Hyper Key). It is done with macOS's own key mapping, no Karabiner
-needed, and only Mango Chutney sees the key as Hyper.
+later in the menu bar (Learn › Hyper Key). It is done with macOS's own key mapping (`hidutil`),
+no Karabiner needed, and only Mango Chutney sees the key as Hyper. Key moves of your own in that
+mapping stay as they are, and are all that is left when Mango Chutney quits.
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
@@ -271,7 +275,7 @@ files are in `~/.config/mango`, read in this order:
 
 | File | Written by | What |
 | :--- | :--- | :--- |
-| `config.conf` | you | Your config. The first start writes mango's own `assets/config.conf` with its bindings on Hyper, then Mango Chutney's own keys from their marker line to the end, then the first lines to try. Your own settings go there, above the lines at its end that read the files below. |
+| `config.conf` | you | Your config. The first start writes mango's own `assets/config.conf` with its bindings on Hyper, then Mango Chutney's own keys from their marker line to the end, then the first lines to try. Your own settings go there, between the line that reads `chutney_theme.conf` (so a colour of yours wins) and the one that reads `chutney_menu.conf`. |
 | `chutney_theme.conf` | Mango Chutney | With `chutney_style=1`, macOS's colours for mango's colour keys. Not for editing. |
 | `chutney_menu.conf` | Mango Chutney | The menu's choices, read last, so they win. Delete a line to give the key back to `config.conf`. |
 
@@ -383,6 +387,8 @@ What follows from that:
   window's tag, display and floating state for the login session.
 - **A window stuck in a corner** (after `kill -9`): drag the sliver into view, or start Mango
   Chutney again.
+- **The Hyper key still Hyper** (after `kill -9` or a crash): the key keeps its move until Mango
+  Chutney starts again, which clears it, or until macOS restarts.
 
 ## mmsg
 

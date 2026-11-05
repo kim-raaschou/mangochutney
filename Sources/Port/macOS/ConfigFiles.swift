@@ -15,9 +15,12 @@ public enum ConfigFiles {
         let fm = FileManager.default
         guard !fm.fileExists(atPath: configURL.path) else { return }
         try? fm.createDirectory(at: configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let def = bundled("config") {
-            try? fm.copyItem(at: def, to: configURL)
+        guard let def = bundled("config") else { Log.info("no default config in the app"); return }
+        do {
+            try fm.copyItem(at: def, to: configURL)
             Log.info("wrote default config to \(configURL.path)")
+        } catch {
+            Log.info("could not write the default config to \(configURL.path): \(error)")
         }
     }
 
@@ -35,14 +38,14 @@ public enum ConfigFiles {
     }
 
     /// The first start's Hyper key (chutney_hyper_key) and what it does alone
-    /// (chutney_hyper_tap), in the config the first start wrote, and only while it is as
-    /// written.
+    /// (chutney_hyper_tap), in the config the first start has just written.
     static let hyperKeyLine = "chutney_hyper_key=caps_lock\r\n"
 
     static func setHyperKey(_ key: String, tap: String, configURL: URL) {
-        func text(_ url: URL?) -> String? { url.flatMap { try? String(contentsOf: $0, encoding: .utf8) } }
-        guard let current = text(configURL), current == text(bundled("config")),
-              current.contains(hyperKeyLine) else { return }
+        guard let current = try? String(contentsOf: configURL, encoding: .utf8), current.contains(hyperKeyLine) else {
+            Log.info("keys: no \(hyperKeyLine.trimmingCharacters(in: .newlines)) line in \(configURL.path); the Hyper key is left as it is")
+            return
+        }
         let line = "chutney_hyper_key=\(key)\r\n" + (tap == "none" ? "" : "chutney_hyper_tap=\(tap)\r\n")
         do {
             try current.replacingOccurrences(of: hyperKeyLine, with: line).write(to: configURL, atomically: true, encoding: .utf8)

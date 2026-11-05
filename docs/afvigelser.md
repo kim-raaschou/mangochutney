@@ -77,7 +77,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | `source=` med relativ sti læses fra config-mappen; ingen `/etc/mango`-fallback | Under launchd er arbejdsmappen `/`; macOS har ingen `/etc`-config |
 | Første start skriver `Resources/config.conf` som `config.conf`: mangos config med mangos taster på Hyper (en tast, brugeren vælger som i Raycasts Hyper Key: Caps Lock, en venstre/højre modifier eller F1–F12; `chutney_hyper_key`), ikke mangos egne taster, og de første linjer at prøve nær slutningen. Også et velkomstvindue, der åbner Getting Started | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config. mangos taster (⌘M, ⌘N, ⌥+bogstav, ⌃+pile) er macOS' og appernes genveje |
 | Input besluttes på event tappets tråd; `setkeymode` og `chvt` stopper søgningen efter bindinger | macOS vil have svaret med det samme; dispatcherens svar kendes først på hovedtråden |
-| Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,2 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt | macOS melder ikke alt som en begivenhed |
+| Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,15 s, som mangos), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt | macOS melder ikke alt som en begivenhed |
 
 ## 4. Mangler endnu
 

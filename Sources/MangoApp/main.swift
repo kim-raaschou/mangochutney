@@ -22,6 +22,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Permissions.shared.restart = { [weak self] in self?.restart() }
         Permissions.shared.quit = { [weak self] in self?.quit() }
         Permissions.shared.installLoginService = { [weak self] in self?.service("install") }
+        Permissions.shared.firstStartDone = { [weak self] in self?.startIfTrusted() }
         Permissions.shared.prepareFirstStart(configPath ?? ConfigParser.defaultConfigURL())
         Permissions.shared.showIfNeeded()
         if AX.isTrusted {
@@ -56,6 +57,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func startWM() {
+        // A first start: mango waits for the Hyper key, chosen in the window (Continue).
+        guard !Permissions.shared.firstStartPending else {
+            setStatus("Mango Chutney: choose your Hyper key")
+            return
+        }
         let server = MangoServer(configURL: configPath)
         server.useMacSystem()   // mango on macOS: the port stands where wlroots does
         self.server = server

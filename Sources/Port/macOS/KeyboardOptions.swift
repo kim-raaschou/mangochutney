@@ -138,8 +138,58 @@ package enum KeyboardOptions {
         do {
             try p.run()
             p.waitUntilExit()
+            if p.terminationStatus != 0 { Log.error("hidutil failed: exit status \(p.terminationStatus)") }
         } catch {
             Log.error("hidutil failed: \(error)")
         }
+    }
+
+    /// The key moves the keyboards have now (`hidutil property --get UserKeyMapping`): the
+    /// user's own, and any a mango before this one left. Nil when hidutil cannot be read.
+    static func current() -> [Mapping]? {
+        let p = Process()
+        let out = Pipe()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/hidutil")
+        p.arguments = ["property", "--get", "UserKeyMapping"]
+        p.standardOutput = out
+        p.standardError = FileHandle.nullDevice
+        do {
+            try p.run()
+            let data = out.fileHandleForReading.readDataToEndOfFile()
+            p.waitUntilExit()
+            guard p.terminationStatus == 0 else { return nil }
+            return parseUserKeyMapping(String(decoding: data, as: UTF8.self))
+        } catch {
+            Log.error("hidutil failed: \(error)")
+            return nil
+        }
+    }
+
+    /// hidutil's listing: one block per keyboard, the same mapping in each; the first one
+    /// that has any.
+    static func parseUserKeyMapping(_ text: String) -> [Mapping] {
+        var blocks: [[Mapping]] = [[]]
+        var dst: UInt64?, src: UInt64?
+        for line in text.split(separator: "\n") {
+            let t = line.trimmingCharacters(in: .whitespaces)
+            if t.contains("UserKeyMapping") { blocks.append([]); dst = nil; src = nil }
+            func value(_ key: String) -> UInt64? {
+                guard t.hasPrefix(key + " = ") else { return nil }
+                return UInt64(t.dropFirst(key.count + 3).trimmingCharacters(in: CharacterSet(charactersIn: ";")))
+            }
+            if let v = value("HIDKeyboardModifierMappingDst") { dst = v }
+            if let v = value("HIDKeyboardModifierMappingSrc") { src = v }
+            if let d = dst, let s = src {
+                blocks[blocks.count - 1].append(Mapping(src: s, dst: d))
+                dst = nil; src = nil
+            }
+        }
+        return blocks.first { !$0.isEmpty } ?? []
+    }
+
+    /// The keyboard's mapping with mango's moves: the user's own for every key mango does not
+    /// move, then mango's.
+    static func merged(user: [Mapping], mango: [Mapping]) -> [Mapping] {
+        user.filter { u in !mango.contains { $0.src == u.src } } + mango
     }
 }

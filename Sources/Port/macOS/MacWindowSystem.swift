@@ -292,6 +292,11 @@ class MacWindowSystem: WindowSystem {
 
     /// The key moves mango set (none: mango never touched the keyboard's mapping).
     var keyMappings: [KeyboardOptions.Mapping] = []
+    /// The user's own key moves, read when mango first sets its own (hidutil's are global),
+    /// without a key a mango before this one left on F18 (a crash); given back at the end.
+    var userKeyMappings: [KeyboardOptions.Mapping]?
+    /// The keyboard's whole mapping as it is now.
+    var appliedKeyMappings: [KeyboardOptions.Mapping]?
 
     func setKeyboardOptions(_ options: String) {
         var m = KeyboardOptions.mappings(MangoServer.xkbOptions(options))
@@ -299,9 +304,16 @@ class MacWindowSystem: WindowSystem {
         if let h = KeyboardOptions.hyperKeyMapping(server.config.chutneyHyperKey), !m.contains(where: { $0.src == h.src }) {
             m.append(h)
         }
-        guard m != keyMappings else { return }
+        if userKeyMappings == nil {
+            let now = KeyboardOptions.current() ?? []
+            userKeyMappings = now.filter { $0.dst != KeyboardOptions.f18 }
+            appliedKeyMappings = now
+        }
+        let all = KeyboardOptions.merged(user: userKeyMappings ?? [], mango: m)
         keyMappings = m
-        KeyboardOptions.apply(m)
+        guard all != appliedKeyMappings else { return }
+        appliedKeyMappings = all
+        KeyboardOptions.apply(all)
         if KeyboardOptions.takesCapsLock(m) { KeyboardOptions.capsLockOff() }
         Log.info(m.isEmpty ? "xkb_rules_options: the keyboard's key mapping cleared"
                            : "xkb_rules_options: \(m.count) key(s) moved")
@@ -310,7 +322,6 @@ class MacWindowSystem: WindowSystem {
     func allWindowIDs() -> Set<ClientID> { AppWorker.allWindowIDs() }
 
     func prepare() {
-        ConfigFiles.ensure(server.configURL)   // a first start: the default config to read
         ChutneyTheme.sync(configURL: server.configURL)   // not in mango: chutney_style's colours, before the config is read
         server.registerPortExtensions()   // before the config is read: chutney_ignore_apps takes it
         AX.setGlobalTimeout()
@@ -342,7 +353,8 @@ class MacWindowSystem: WindowSystem {
 
     func shutdown() {
         animator.cancelAll()
-        if !keyMappings.isEmpty { KeyboardOptions.apply([]) }   // the keyboard as it was
+        // The keyboard as it was: the user's own moves, without mango's.
+        if let user = userKeyMappings, appliedKeyMappings != user { KeyboardOptions.apply(user) }
         let restore = DispatchGroup()
         if restarting {
             Log.info("restarting: hidden windows stay hidden for the next mango")
