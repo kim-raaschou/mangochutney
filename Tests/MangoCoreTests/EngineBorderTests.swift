@@ -77,10 +77,17 @@ final class BorderInsideTheTileTests: MangoTestCase {
         let r = rig(1)
         r.server.config.noBorderWhenSingle = true
         XCTAssertEqual(frames(r, borders: true), frames(r, borders: false))
-        r.window(900_510, floating: true)   // a second window shown: mango gives both a border
+        // A floating window beside it: mango's test is the tiled count in every layout
+        // (client.c, ISSCROLLTILED and visible_fake_tiling_clients), so the tiled window
+        // keeps no border.
+        r.window(900_510, floating: true)
         let windows = frames(r, borders: true)
         let boxes = frames(r, borders: false)
-        XCTAssertEqual(windows[900_500], boxes[900_500]!.insetBy(dx: 4, dy: 4))
+        XCTAssertEqual(windows[900_500], boxes[900_500])
+        r.window(900_511)   // a second tiled window: both have a border
+        let two = frames(r, borders: true)
+        let twoBoxes = frames(r, borders: false)
+        XCTAssertEqual(two[900_500], twoBoxes[900_500]!.insetBy(dx: 4, dy: 4))
     }
 
     func testMonocleNoBorderFillsTheTile() {

@@ -123,7 +123,6 @@ public final class Client {
 
     public func isVisible(on m: Monitor) -> Bool {
         guard mon === m, !groupParked, !isMinimized else { return false }
-        if scratchpadShown { return true }
         if isGlobal || isUnglobal { return true }
         return tags & m.tagset[m.seltags] != 0
     }
@@ -157,19 +156,22 @@ public final class Monitor {
     public var prevsel: ClientID?
     public var gaps: Gaps
     public var specialGaps: Gaps
+    public var curtag = 1
     public var prevTag = 1
     public var isInHotarea = false
     public var specialEmptyView = false
     public var ovbkCurrentTagset: UInt32 = 0
     public var ovbkPrevTagset: UInt32 = 0
 
-    public var curtag: Int {
-        let normal = tagset[seltags] & 0x7FFF_FFFF
-        if normal == 0 { return tagset[seltags] & TagMask.special != 0 ? 0 : 1 }
-        return normal.trailingZeroBitCount + 1
+    public var getMonCurtag: Int {
+        // special workspace uses slot 0; all-tags is an ordinary multi-tag view
+        // and follows its first tag
+        // not in mango: no isoverview test; the overview's tagset never holds the special tag.
+        if tagset[seltags] & TagMask.special != 0 { return 0 }
+        return curtag != 0 ? curtag : 1
     }
 
-    public var current: Pertag { pertag[curtag] }
+    public var current: Pertag { pertag[getMonCurtag] }
     public var layout: LayoutKind { current.layout }
 
     init(screen: Screen, config: Config) {

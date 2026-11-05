@@ -586,17 +586,31 @@ package extension MangoServer {
 
     package func clientViewOnMonitor(_ rawMask: UInt32, on m: Monitor, changeFocus: Bool? = nil) {
         if let ov = overviewState, ov.monitor === m, rawMask != TagMask.mask(forTagNum: config.tagNum) { return }
+        guard rawMask != 0 else { return }
         let oldCur = m.curtag
         if rawMask == TagMask.all {
             guard m.tagset[0] != m.tagset[1] else { return }
+            m.prevTag = TagMask.getTagsFirstTagNum(m.tagset[m.seltags]) ?? 0
             m.seltags ^= 1
-            m.prevTag = oldCur
+            m.curtag = TagMask.getTagsFirstTagNum(m.tagset[m.seltags]) ?? 0
         } else {
-            let mask = normalizeTagMask(rawMask)
-            guard mask != 0 else { return }
             m.seltags ^= 1
-            m.tagset[m.seltags] = mask
-            if oldCur != m.curtag { m.prevTag = oldCur }
+            let mask = normalizeTagMask(rawMask)
+            if mask != 0 {
+                m.tagset[m.seltags] = mask
+                let tmptag = m.curtag
+                if mask & TagMask.special != 0 {
+                    m.curtag = 0
+                } else {
+                    let i = mask.trailingZeroBitCount
+                    m.curtag = i >= config.tagNum ? config.tagNum : i + 1
+                }
+                m.prevTag = tmptag == m.curtag ? m.prevTag : tmptag
+            } else {
+                let tmptag = m.prevTag
+                m.prevTag = m.curtag
+                m.curtag = tmptag
+            }
         }
         let forward = m.curtag >= oldCur
         for c in clients where c.isVisible(on: m) && (c.isGlobal || c.isUnglobal || (c.tags & ~TagMask.special).nonzeroBitCount > 1) {
@@ -716,6 +730,7 @@ package extension MangoServer {
         for c in clientsAll where c.mon === m { c.tags = tagRemapMask(c.tags, map) }
         m.tagset[m.seltags] = tagRemapMask(m.tagset[m.seltags], map)
         m.tagset[m.seltags ^ 1] = tagRemapMask(m.tagset[m.seltags ^ 1], map)
+        if m.curtag <= config.tagNum && m.curtag > 0 && map[m.curtag] != 0 { m.curtag = map[m.curtag] }
         if m.prevTag <= config.tagNum && m.prevTag > 0 && map[m.prevTag] != 0 { m.prevTag = map[m.prevTag] }
         for i in stride(from: config.tagNum - 1, through: target, by: -1) {
             m.tagGatherMovePertag(dst: i + 1, src: i, config: config)
@@ -738,6 +753,7 @@ package extension MangoServer {
         for c in clientsAll where c.mon === m && c.tags & TagMask.special == 0 { c.tags = tagRemapMask(c.tags, map) }
         m.tagset[m.seltags] = tagRemapMask(m.tagset[m.seltags], map)
         m.tagset[m.seltags ^ 1] = tagRemapMask(m.tagset[m.seltags ^ 1], map)
+        if m.curtag <= config.tagNum && m.curtag > 0 && map[m.curtag] != 0 { m.curtag = map[m.curtag] }
         if m.prevTag <= config.tagNum && m.prevTag > 0 && map[m.prevTag] != 0 { m.prevTag = map[m.prevTag] }
         for i in 1...config.tagNum where map[i] != 0 && map[i] != i {
             m.tagGatherMovePertag(dst: map[i], src: i, config: config)
@@ -930,7 +946,7 @@ package extension MangoServer {
     func resizeTileClient(_ gc: Client, isdrag: Bool = false, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint = .zero,
                           time: UInt32 = 0) {
         guard let m = gc.mon, !gc.isFullscreen, !gc.isMaximizeScreen, overviewState?.monitor !== m else { return }
-        let layout = m.pertag[TagMask.getTagsFirstTagNum(gc.tags) ?? m.curtag].layout
+        let layout = m.pertag[TagMask.getTagsFirstTagNum(gc.tags) ?? m.getMonCurtag].layout
         switch layout {
         case .tile, .deck, .centerTile, .rightTile:
             resizeTileMaster(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, time: time,
@@ -1073,7 +1089,7 @@ package extension MangoServer {
     func resizeTileScroller(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint,
                             time: UInt32, vertical: Bool) {
         guard let m = gc.mon else { return }
-        let pt = m.pertag[TagMask.getTagsFirstTagNum(gc.tags) ?? m.curtag]
+        let pt = m.pertag[TagMask.getTagsFirstTagNum(gc.tags) ?? m.getMonCurtag]
         let col = pt.state.scrollerState.column(of: gc.id).compactMap { clientByIdAll($0) }
         guard let ci = col.firstIndex(where: { $0 === gc }), let head = col.first else { return }
         func proportions() -> [Float] {
@@ -1568,7 +1584,7 @@ package extension MangoServer {
         guard let old = c.mon, old !== m else { return }
         if old.sel == c.id { old.sel = nil }
         if old.prevsel == c.id { old.prevsel = nil }
-        old.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? old.curtag].state.scrollerState.scrollerNodeRemove(c.id)
+        old.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? old.getMonCurtag].state.scrollerState.scrollerNodeRemove(c.id)
         c.mon = m
         c.parked = false   // not in mango: the system places it on the new display
         if !c.isVisible(on: m) { clientResetMonTags(c, m, 0) }

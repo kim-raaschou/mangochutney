@@ -109,13 +109,15 @@ public enum TileLayouts {
 
         var frames: [ClientID: IRect] = [:]
         for (i, c) in input.clients.enumerated() {
-            let share = Float(i < nmasters ? c.masterInnerPer : c.stackInnerPer)
+            let share = Double(i < nmasters ? c.masterInnerPer : c.stackInnerPer)
             if i < nmasters {
                 let r = min(n, nmasters) - i
-                let h: Int
+                var h: Int
                 if share > 0 && masterRatio > 0 {
-                    h = Int(Float(masterSurplus) * share / masterRatio)
-                    masterSurplus -= h; masterRatio -= share
+                    h = Int(Double(masterSurplus) * share / Double(masterRatio))
+                    // not in mango: the last one takes the rest, as in mango's center_tile (a mango bug, docs/afvigelser.md §6).
+                    if r == 1 { h = m.h - my - g.ov }
+                    masterSurplus -= h; masterRatio = Float(Double(masterRatio) - share)
                 } else {
                     h = (m.h - my - g.ov - g.iv * (r - 1)) / r
                 }
@@ -124,10 +126,12 @@ public enum TileLayouts {
                 my += h + g.iv
             } else {
                 let r = n - i
-                let h: Int
+                var h: Int
                 if share > 0 && slaveRatio > 0 {
-                    h = Int(Float(slaveSurplus) * share / slaveRatio)
-                    slaveSurplus -= h; slaveRatio -= share
+                    h = Int(Double(slaveSurplus) * share / Double(slaveRatio))
+                    // not in mango: the last one takes the rest, as in mango's center_tile (a mango bug, docs/afvigelser.md §6).
+                    if r == 1 { h = m.h - ty - g.ov }
+                    slaveSurplus -= h; slaveRatio = Float(Double(slaveRatio) - share)
                 } else {
                     h = (m.h - ty - g.ov - g.iv * (r - 1)) / r
                 }
@@ -193,14 +197,14 @@ public enum TileLayouts {
         var oty = g.ov, ety = g.ov
         var frames: [ClientID: IRect] = [:]
         for (i, c) in input.clients.enumerated() {
-            let share = Float(i < nmasters ? c.masterInnerPer : c.stackInnerPer)
+            let share = Double(i < nmasters ? c.masterInnerPer : c.stackInnerPer)
             if i < nmasters {
                 let r = min(n, nmasters) - i
                 var h: Int
                 if share > 0 && masterRatio > 0 {
-                    h = Int(Float(masterSurplus) * share / masterRatio)
+                    h = Int(Double(masterSurplus) * share / Double(masterRatio))
                     if r == 1 { h = m.h - my - g.ov }
-                    masterSurplus -= h; masterRatio -= share
+                    masterSurplus -= h; masterRatio = Float(Double(masterRatio) - share)
                 } else {
                     h = (m.h - my - g.ov - g.iv * (r - 1)) / r
                     if r == 1 { h = m.h - my - g.ov }
@@ -213,7 +217,7 @@ public enum TileLayouts {
                     let r = n - i
                     var h: Int
                     if share > 0 {
-                        h = Int(Float(singleStackSurplus) * share)
+                        h = Int(Double(singleStackSurplus) * share)
                         if r == 1 { h = m.h - ety - g.ov }
                     } else {
                         h = (m.h - ety - g.ov - g.iv * (r - 1)) / r
@@ -226,9 +230,9 @@ public enum TileLayouts {
                     if (stackIndex % 2 == 1) != (n % 2 == 0) {
                         var h: Int
                         if share > 0 && rightRatio > 0 {
-                            h = Int(Float(rightSurplus) * share / rightRatio)
+                            h = Int(Double(rightSurplus) * share / Double(rightRatio))
                             if r == 1 { h = m.h - ety - g.ov }
-                            rightSurplus -= h; rightRatio -= share
+                            rightSurplus -= h; rightRatio = Float(Double(rightRatio) - share)
                         } else {
                             h = (m.h - ety - g.ov - g.iv * (r - 1)) / r
                             if r == 1 { h = m.h - ety - g.ov }
@@ -238,9 +242,9 @@ public enum TileLayouts {
                     } else {
                         var h: Int
                         if share > 0 && leftRatio > 0 {
-                            h = Int(Float(leftSurplus) * share / leftRatio)
+                            h = Int(Double(leftSurplus) * share / Double(leftRatio))
                             if r == 1 { h = m.h - oty - g.ov }
-                            leftSurplus -= h; leftRatio -= share
+                            leftSurplus -= h; leftRatio = Float(Double(leftRatio) - share)
                         } else {
                             h = (m.h - oty - g.ov - g.iv * (r - 1)) / r
                             if r == 1 { h = m.h - oty - g.ov }
@@ -277,13 +281,15 @@ public enum TileLayouts {
 
         var frames: [ClientID: IRect] = [:]
         for (i, c) in input.clients.enumerated() {
-            let share = Float(i < nmasters ? c.masterInnerPer : c.stackInnerPer)
+            let share = Double(i < nmasters ? c.masterInnerPer : c.stackInnerPer)
             if i < nmasters {
                 let r = min(n, nmasters) - i
-                let w: Int
+                var w: Int
                 if share > 0 && masterRatio > 0 {
-                    w = Int(Float(masterSurplus) * share / masterRatio)
-                    masterSurplus -= w; masterRatio -= share
+                    w = Int(Double(masterSurplus) * share / Double(masterRatio))
+                    // not in mango: the last one takes the rest, as in mango's center_tile (a mango bug, docs/afvigelser.md §6).
+                    if r == 1 { w = m.w - mx - g.oh }
+                    masterSurplus -= w; masterRatio = Float(Double(masterRatio) - share)
                 } else {
                     w = (m.w - mx - g.ih - g.ih * (r - 1)) / r
                 }
@@ -291,10 +297,12 @@ public enum TileLayouts {
                 mx += w + g.ih
             } else {
                 let r = n - i
-                let w: Int
+                var w: Int
                 if share > 0 && slaveRatio > 0 {
-                    w = Int(Float(slaveSurplus) * share / slaveRatio)
-                    slaveSurplus -= w; slaveRatio -= share
+                    w = Int(Double(slaveSurplus) * share / Double(slaveRatio))
+                    // not in mango: the last one takes the rest, as in mango's center_tile (a mango bug, docs/afvigelser.md §6).
+                    if r == 1 { w = m.w - tx - g.oh }
+                    slaveSurplus -= w; slaveRatio = Float(Double(slaveRatio) - share)
                 } else {
                     w = (m.w - tx - g.ih - g.ih * (r - 1)) / r
                 }

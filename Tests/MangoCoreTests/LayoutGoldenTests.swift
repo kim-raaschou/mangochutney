@@ -9,8 +9,12 @@ import CoreGraphics
 /// (horizontal.c, vertical.c, scroll.c, dwindle.c, overview.c: the function bodies, extracted
 /// verbatim, behind stubs for the client list and `client_tile_resize`) and running them on the
 /// scenarios described in the helpers, with `-ffp-contract=off` (no fused multiply-add, like an
-/// x86-64 build). They pin the integer/float semantics of the C code: `mfact`, per-client shares,
-/// scroller proportions and dwindle ratios are `float`, so for example 2560 wide with
+/// x86-64 build). They pin the integer/float semantics of the C code: `mfact`, the surplus ratios,
+/// scroller proportions and dwindle ratios are `float`, the per-client shares `double`
+/// (client.h; the tile+shares vectors with 5 clients were computed again with them). One
+/// deviation, a mango bug (docs/afvigelser.md §6): in tile, right_tile and vertical_tile the
+/// last window of a group takes the rest, as mango's center_tile does, so the last frame of
+/// six +shares vectors is a pixel longer than C's, so for example 2560 wide with
 /// `default_master_factor=0.9` gives a 2303 px master (not 2304) because 0.9f is 0.89999998.
 final class LayoutGoldenTests: MangoTestCase {
 
@@ -40,8 +44,8 @@ final class LayoutGoldenTests: MangoTestCase {
     /// per-client shares 0.3 0.7 0.2 0.5 0.3 0.4 0.6 0.1 0.9, normalised per master / stack group.
     static let stateless = """
     tile+shares 0 3 10,35,1053,1060 1068,35,842,820 1068,860,842,235
-    tile+shares 0 5 10,35,1053,1060 1068,35,842,430 1068,470,842,123 1068,598,842,307 1068,910,842,184
-    tile+shares 0 8 10,35,1053,1060 1068,35,842,257 1068,297,842,73 1068,375,842,184 1068,564,842,110 1068,679,842,147 1068,831,842,221 1068,1057,842,37
+    tile+shares 0 5 10,35,1053,1060 1068,35,842,430 1068,470,842,122 1068,597,842,308 1068,910,842,185
+    tile+shares 0 8 10,35,1053,1060 1068,35,842,257 1068,297,842,73 1068,375,842,184 1068,564,842,110 1068,679,842,147 1068,831,842,221 1068,1057,842,38
     tile+shares 1 3 -1908,-188,1184,312 -1908,139,1184,729 -709,-188,697,1056
     tile+shares 1 5 -1908,-188,1184,312 -1908,139,1184,729 -709,-188,697,205 -709,32,697,513 -709,560,697,308
     tile+shares 1 8 -1908,-188,1184,312 -1908,139,1184,729 -709,-188,697,93 -709,-80,697,233 -709,168,697,140 -709,323,697,187 -709,525,697,281 -709,821,697,47
@@ -61,8 +65,8 @@ final class LayoutGoldenTests: MangoTestCase {
     tile 4 5 10,48,696,680 716,48,274,162 716,220,274,162 716,392,274,163 716,565,274,163
     tile 4 8 10,48,696,680 716,48,274,88 716,146,274,88 716,244,274,88 716,342,274,89 716,441,274,89 716,540,274,89 716,639,274,89
     right_tile+shares 0 3 857,35,1053,1060 10,35,842,820 10,860,842,235
-    right_tile+shares 0 5 857,35,1053,1060 10,35,842,430 10,470,842,123 10,598,842,307 10,910,842,184
-    right_tile+shares 0 8 857,35,1053,1060 10,35,842,257 10,297,842,73 10,375,842,184 10,564,842,110 10,679,842,147 10,831,842,221 10,1057,842,37
+    right_tile+shares 0 5 857,35,1053,1060 10,35,842,430 10,470,842,122 10,597,842,308 10,910,842,185
+    right_tile+shares 0 8 857,35,1053,1060 10,35,842,257 10,297,842,73 10,375,842,184 10,564,842,110 10,679,842,147 10,831,842,221 10,1057,842,38
     right_tile+shares 1 3 -1196,-188,1184,312 -1196,139,1184,729 -1908,-188,697,1056
     right_tile+shares 1 5 -1196,-188,1184,312 -1196,139,1184,729 -1908,-188,697,205 -1908,32,697,513 -1908,560,697,308
     right_tile+shares 1 8 -1196,-188,1184,312 -1196,139,1184,729 -1908,-188,697,93 -1908,-80,697,233 -1908,168,697,140 -1908,323,697,187 -1908,525,697,281 -1908,821,697,47
@@ -163,8 +167,8 @@ final class LayoutGoldenTests: MangoTestCase {
     fair 4 5 10,48,320,680 340,48,320,335 340,393,320,335 670,48,320,335 670,393,320,335
     fair 4 8 10,48,320,335 10,393,320,335 340,48,320,220 340,278,320,220 340,508,320,220 670,48,320,220 670,278,320,220 670,508,320,220
     vertical_tile+shares 0 3 10,35,1900,591 10,631,1473,464 1488,631,422,464
-    vertical_tile+shares 0 5 10,35,1900,591 10,631,776,464 791,631,221,464 1017,631,554,464 1576,631,333,464
-    vertical_tile+shares 0 8 10,35,1900,591 10,631,467,464 482,631,133,464 620,631,334,464 959,631,200,464 1164,631,267,464 1436,631,401,464 1842,631,67,464
+    vertical_tile+shares 0 5 10,35,1900,591 10,631,776,464 791,631,221,464 1017,631,554,464 1576,631,334,464
+    vertical_tile+shares 0 8 10,35,1900,591 10,631,467,464 482,631,133,464 620,631,334,464 959,631,200,464 1164,631,267,464 1436,631,401,464 1842,631,68,464
     vertical_tile+shares 1 3 -1908,-188,564,663 -1329,-188,1317,663 -1908,490,1896,378
     vertical_tile+shares 1 5 -1908,-188,564,663 -1329,-188,1317,663 -1908,490,373,378 -1520,490,933,378 -572,490,560,378
     vertical_tile+shares 1 8 -1908,-188,564,663 -1329,-188,1317,663 -1908,490,173,378 -1720,490,433,378 -1272,490,260,378 -997,490,347,378 -635,490,521,378 -99,490,87,378

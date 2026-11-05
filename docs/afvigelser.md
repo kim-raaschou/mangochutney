@@ -6,7 +6,8 @@ Hver mango-nøgle, macOS ikke kan, står med grunden i [compatibility.md](compat
 i `mango -p`.
 
 Uden nogen `chutney_`-nøgle (portens blok sidst i `config.conf` slettet) opfører porten sig
-som mango, så langt macOS tillader (afsnit 3).
+som mango, så langt macOS tillader (afsnit 3), og med de fejl i mango rettet, der står i
+afsnit 6.
 
 ## 1. Til og fra: portens udvidelser
 
@@ -100,3 +101,12 @@ Hvor koden står, når den ikke står som i mango.
 - **Porten (`Sources/Port`):** macOS-laget (`Port/macOS`: Accessibility, parkering, fokus,
   appens egne træk, vinduer ved start og tilbage, vinduer væk i `AwayWindows`, `KeySyms`,
   IPC's event loop) og udvidelserne (`Port/Extensions`), som kobler sig på gennem `PortHooks`.
+
+## 6. Fejl i mango, rettet hos os
+
+Hvor mangos egen kode er forkert, og vi gør det rigtige (CLAUDE.md, "Mango's bugs"). Hver er
+aftalt, rettet så lidt som muligt, mærket `a mango bug` i koden og låst med en test.
+
+| Fejl i mango | mango | Hos os | Rettelse |
+|---|---|---|---|
+| `tile`, `right_tile` og `vertical_tile` giver gruppens sidste vindue sin andel afrundet ned, så kolonnen kan mangle en pixel nederst (eller til højre). Andelen er `double`, forholdet `float`, og de to går ikke op. Det sker i omkring halvdelen af skærmhøjderne med lige store vinduer | 600 px på tre vinduer: 200, 199, 200 | 200, 200, 200 | Det sidste vindue får resten, som mangos egen `center_tile` gør (`if (r == 1) h = m->w.height - my - cur_gappov`). `TileLayouts.swift`, `LayoutGoldenTests` |

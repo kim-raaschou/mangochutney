@@ -31,11 +31,18 @@ recognise must be marked as port or extension.
      port's (`PortOptions`).
    - Both are marked `not in mango` / `Port extension: not in mango` where used. Few places.
 7. **No inventions in mango's code.** No special cases, own names or "improvements". Anything
-   macOS-specific is an override in the port, never a change to mango's logic.
+   macOS-specific is an override in the port, never a change to mango's logic. The one
+   exception is a bug in mango (below).
 8. **Comments in the core are mango's or a deviation's.** A comment in `Sources/Mango` is either
    mango's own comment, 1:1, or marks where we differ from mango (`not in mango: …`, one short
    sentence). A function with another name than mango's carries one line, `/// mango
    <function> (<file>)`. Nothing else: no explanations of what mango does.
+
+**Mango's bugs.** Where mango's own code is plainly wrong (a bug, not a choice we would make
+otherwise), we may differ. Each one is agreed with the user. The fix is the smallest that
+will do, preferably mango's own answer from elsewhere in its code. It is marked where it is
+made (`not in mango: … (a mango bug, docs/afvigelser.md §6)`), listed in `docs/afvigelser.md`
+§6 with mango's result and ours, and locked with a test.
 
 **Within reason.** Faithful as long as it does not get too complex. Something simple in mango
 is not to be forced onto macOS at any cost when it gets too complex or awkward there. That is

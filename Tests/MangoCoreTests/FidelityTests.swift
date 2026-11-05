@@ -1685,4 +1685,47 @@ final class FidelityTests: MangoTestCase {
         XCTAssertNil(r.server.clientByIdAll(a.id), "away in the Dock: unmapped")
         XCTAssertEqual(r.monitor.sel, b.id, "the next window is focused")
     }
+
+    /// mango VISIBLEON: a shown scratchpad belongs to the tag it was shown on, and
+    /// switch_scratchpad_client_state brings it to the tag in view.
+    func testAShownScratchpadStaysOnItsTag() {
+        let r = EngineRig()
+        let a = r.map(1), _ = r.map(2)
+        d(r, "minimized", [], a)
+        d(r, "toggle_scratchpad")
+        XCTAssertTrue(a.scratchpadShown)
+        XCTAssertTrue(a.isVisible(on: r.monitor))
+        d(r, "view", ["2"])
+        XCTAssertTrue(a.scratchpadShown, "still shown, on tag 1")
+        XCTAssertFalse(a.isVisible(on: r.monitor), "not on tag 2")
+        d(r, "toggle_scratchpad")
+        XCTAssertEqual(a.tags, 1 << 1, "moved to the tag in view")
+        XCTAssertTrue(a.isVisible(on: r.monitor))
+    }
+
+    /// mango pertag->curtag: set by client_view_on_monitor only; toggle_view and combo_view
+    /// keep the tag in view, so its layout stays.
+    func testToggleviewKeepsTheCurrentTagsLayout() {
+        let r = EngineRig()
+        _ = r.map(1)
+        d(r, "view", ["2"])
+        d(r, "setlayout", ["scroller"])
+        XCTAssertEqual(r.monitor.curtag, 2)
+        d(r, "toggleview", ["1"])
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 0b11)
+        XCTAssertEqual(r.monitor.curtag, 2, "toggle_view leaves curtag")
+        XCTAssertEqual(r.monitor.layout, .scroller, "tag 2's layout, not tag 1's")
+        d(r, "view", ["1"])
+        XCTAssertEqual(r.monitor.curtag, 1)
+        XCTAssertEqual(r.monitor.prevTag, 2)
+    }
+
+    /// mango handle_client_unmap: a window closed while it is grabbed ends the grab.
+    func testUnmapEndsTheGrab() {
+        let r = EngineRig()
+        let c = r.map(1)
+        r.server.grab = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
+        r.server.handleClientUnmap(c)
+        XCTAssertNil(r.server.grab)
+    }
 }

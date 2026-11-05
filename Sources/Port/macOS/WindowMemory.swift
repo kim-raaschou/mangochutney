@@ -153,6 +153,7 @@ final class WindowMemory {
             let display = String(m.screen.displayID)
             if let t = saved.tagsets[display], t & ~TagMask.special != 0 {
                 m.tagset[m.seltags] = t
+                m.curtag = TagMask.getTagsFirstTagNum(t) ?? 1
             }
             if let t = saved.previousTagsets?[display], t & ~TagMask.special != 0 {
                 m.tagset[m.seltags ^ 1] = t

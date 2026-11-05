@@ -168,6 +168,7 @@ public final class MangoServer {
             m.tagset[0] &= tagmask
             m.tagset[1] &= tagmask
             if m.tagset[m.seltags] == 0 { m.tagset[m.seltags] = last }
+            if m.curtag > config.tagNum { m.curtag = config.tagNum }
             if m.prevTag > config.tagNum { m.prevTag = config.tagNum }
         }
     }
@@ -534,7 +535,9 @@ public final class MangoServer {
         if !isoverview && m.current.noRenderBorder { hitNoBorder = true }
         if config.noBorderWhenSingle {
             let shown = visibleClients(m)
-            if shown.count == 1 || (m.layout.isScroller && !c.isFloating && shown.filter { !$0.isFloating }.count == 1) {
+            let visible = shown.filter { !$0.isUnglobal }.count
+            let fakeTiling = shown.filter { !$0.isFloating && !$0.isMinimized && !$0.isUnglobal }.count
+            if (!c.isFloating && !c.isMinimized && !c.isUnglobal && fakeTiling == 1) || visible == 1 {
                 hitNoBorder = true
             }
         }
@@ -814,7 +817,7 @@ public final class MangoServer {
 
     func clearFullscreenFlag(_ c: Client) {
         guard let m = c.mon else { return }
-        let layout = m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? m.curtag].layout
+        let layout = m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? m.getMonCurtag].layout
         if !c.isFloating && (layout.isScroller || (layout == .monocle && config.monocleTabMode)) { return }
         if c.isFullscreen { clientApplyFullscreen(c, false, rearrange: true) }
         if c.isMaximizeScreen { clientSetMaximizeScreen(c, false, rearrange: true) }
@@ -897,7 +900,7 @@ public final class MangoServer {
 /// Not in mango: the port keeps the scroller's column order in the tag's state.
     func exitScrollerStack(_ c: Client) {
         guard let m = c.mon else { return }
-        m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? m.curtag].state.scrollerState.exitScrollerStack(c.id)
+        m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? m.getMonCurtag].state.scrollerState.exitScrollerStack(c.id)
     }
 
     package func clientInsertTilingOrder(_ c: Client) {
@@ -970,6 +973,7 @@ public final class MangoServer {
         portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
         focusStack.removeAll { $0 == id }
         switcherRemoveClient(id)
+        if grab?.client === c { grab = nil }
         if dragTile?.client === c { dragTile = nil; system.showDropArea(nil, color: config.dropcolor) }
         system.cancelAnimation(id)
         for m in monitors {
