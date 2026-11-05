@@ -90,6 +90,9 @@ final class LayoutPanelModel: ObservableObject {
     /// and where they overrule the config.
     @Published var conflicts: [MenuSave.Conflict] = []
 
+    /// A field of the current tag's tag_rule, as `conflicts` names it.
+    func tagField(_ field: String) -> String { "tag_rule id:\(server?.selectedMonitor?.curtag ?? 0) \(field)" }
+
     /// The panel's marking colour: mango's focuscolor, or macOS's accent (PortAccent).
     var accent: Color { PortAccent.color(config) }
     private var menuURL: URL? { server.flatMap { MenuSave.url($0.config, configURL: $0.configURL) } }
@@ -141,14 +144,6 @@ struct LayoutPanelView: View {
         VStack(alignment: .leading, spacing: 8) {
             header("Layout")
             LayoutGrid(model: model)
-            header("Desktop")
-            GapEditor(model: model)
-            slider("border_px", value: $model.border, in: 0...5, step: model.pixel,
-                   label: model.physical
-                       ? "\(Self.points(model.border)) pt (\(Int((model.border / model.pixel).rounded())) px)"
-                       : "\(Int(model.border)) px",
-                   commit: model.setBorder)
-                .help("border width")
             let options = LayoutOption.options(for: model.layout)
             if model.layout.usesMaster || !options.isEmpty {
                 header("Layout options")
@@ -157,59 +152,12 @@ struct LayoutPanelView: View {
             if model.layout.usesMaster {
                 slider("mfact", value: $model.mfact, in: 0.1...0.9, step: 0.05, percent: true, commit: model.setMfact)
                     .help("master width (the tag's)")
+                    .overrideMark(model, model.tagField("master_factor"))
                 slider("nmaster", value: $model.nmaster, in: 0...6, step: 1, unit: "", commit: model.setNmaster)
                     .help("windows in the master area (the tag's)")
+                    .overrideMark(model, model.tagField("master_count"))
             }
             ForEach(options) { optionView($0) }
-            header("Effects")
-            // mangobutter's Blur and Shadows are left out: macOS cannot draw them on another app's window.
-            Toggle("animations", isOn: Binding(get: { model.animations }, set: { model.setAnimations($0) }))
-                .font(.system(size: 10, design: .monospaced))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-            header("Menu bar")
-            HStack {
-                Text("tags").font(.system(size: 10, design: .monospaced))
-                Spacer()
-                Picker("", selection: Binding(get: { model.config.chutneyMenuBarTagStyle },
-                                              set: { model.setOption("chutney_menu_bar_tag_style", $0) })) {
-                    Image(systemName: "1.square.fill").tag("square")
-                    Image(systemName: "1.circle.fill").tag("circle")
-                    Text("[1]").tag("text")
-                }
-                .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
-            }
-            HStack {
-                Text("logo").font(.system(size: 10, design: .monospaced))
-                Spacer()
-                Picker("", selection: Binding(get: { model.config.chutneyMenuBarLogo },
-                                              set: { model.setOption("chutney_menu_bar_logo", $0 == "off" ? "0" : $0) })) {
-                    Text("colour").tag("color")
-                    Text("mono").tag("mono")
-                    Text("off").tag("off")
-                }
-                .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
-            }
-            Toggle("layout icon", isOn: Binding(get: { model.config.chutneyMenuBarLayout },
-                                                set: { model.setOption("chutney_menu_bar_layout", $0 ? "1" : "0") }))
-                .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
-            Toggle("key mode", isOn: Binding(get: { model.config.chutneyMenuBarMode },
-                                         set: { model.setOption("chutney_menu_bar_mode", $0 ? "1" : "0") }))
-                .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
-            // Where the menu's saved choices win over the config: a note, no lock.
-            if !model.conflicts.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("The menu's choice wins over your config:").font(.system(size: 10, weight: .medium))
-                    ForEach(model.conflicts.prefix(5)) { c in
-                        Text("\(c.key) \(c.menuValue) (\(c.configFile):\(c.configLine) says \(c.configValue))")
-                    }
-                    if model.conflicts.count > 5 { Text("and \(model.conflicts.count - 5) more (mango -p)") }
-                }
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .padding(.top, 4)
-                .help("To give a key back to your config, delete its line in chutney_menu.conf")
-            }
         }
         .padding(12)
         .frame(width: 340)
@@ -225,17 +173,20 @@ struct LayoutPanelView: View {
                 .toggleStyle(.switch).controlSize(.mini)
                 .disabled(o.disabled(model.config))
                 .help(o.title)
+                .overrideMark(model, o.key)
         case .slider(let kp, let range, let step):
             slider(o.key, value: Binding(get: { model.config[keyPath: kp] }, set: { model.config[keyPath: kp] = $0 }),
                    in: range, step: step, label: String(format: step < 1 ? "%.2f" : "%.0f", model.config[keyPath: kp]),
                    commit: { model.setOption(o.key, String(format: "%.2f", $0)) })
                 .help(o.title)
+                .overrideMark(model, o.key)
         case .intSlider(let kp, let range, let step):
             slider(o.key, value: Binding(get: { Double(model.config[keyPath: kp]) },
                                          set: { model.config[keyPath: kp] = Int($0) }),
                    in: range, step: step, label: "\(model.config[keyPath: kp])",
                    commit: { model.setOption(o.key, String(Int($0))) })
                 .help(o.title)
+                .overrideMark(model, o.key)
         case .choice(let kp, let labels):
             HStack {
                 Text(o.key).font(.system(size: 10, design: .monospaced)).help(o.title)
@@ -246,6 +197,7 @@ struct LayoutPanelView: View {
                 }
                 .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
             }
+            .overrideMark(model, o.key)
         }
     }
 
@@ -253,12 +205,23 @@ struct LayoutPanelView: View {
         v == v.rounded() ? String(Int(v)) : String(format: "%g", (v * 100).rounded() / 100)
     }
 
-    private func header(_ s: String) -> some View {
-        Text(s).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-    }
+    private func header(_ s: String) -> some View { panelHeader(s) }
 
     private func slider(_ title: String, value: Binding<Double>, in range: ClosedRange<Double>, step: Double,
                         unit: String = "", percent: Bool = false, label: String? = nil, commit: @escaping (Double) -> Void) -> some View {
+        panelSlider(model, title, value: value, in: range, step: step, unit: unit, percent: percent, label: label, commit: commit)
+    }
+}
+
+@MainActor
+func panelHeader(_ s: String) -> some View {
+    Text(s).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
+}
+
+/// A slider with its key name and value; sent as it moves.
+@MainActor
+func panelSlider(_ model: LayoutPanelModel, _ title: String, value: Binding<Double>, in range: ClosedRange<Double>, step: Double,
+                 unit: String = "", percent: Bool = false, label: String? = nil, commit: @escaping (Double) -> Void) -> some View {
         VStack(spacing: 2) {
             HStack {
                 Text(title).font(.system(size: 10, design: .monospaced))
@@ -271,6 +234,107 @@ struct LayoutPanelView: View {
                 .controlSize(.small)
                 .onChange(of: value.wrappedValue) { _, v in commit(v) }
         }
+}
+
+/// Settings' Look tab: what is set once, moved from the menu's panel (the desktop's gaps and
+/// border, the effects, the menu bar), with mango's names; kept as the panel keeps them
+/// (chutney_menu_config).
+struct LookView: View {
+    @ObservedObject var model: LayoutPanelModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            header("Desktop")
+            GapEditor(model: model)
+            slider("border_px", value: $model.border, in: 0...5, step: model.pixel,
+                   label: model.physical
+                       ? "\(LayoutPanelView.points(model.border)) pt (\(Int((model.border / model.pixel).rounded())) px)"
+                       : "\(Int(model.border)) px",
+                   commit: model.setBorder)
+                .help("border width")
+                .overrideMark(model, "border_px")
+            header("Effects")
+            // mangobutter's Blur and Shadows are left out: macOS cannot draw them on another app's window.
+            Toggle("animations", isOn: Binding(get: { model.animations }, set: { model.setAnimations($0) }))
+                .font(.system(size: 10, design: .monospaced))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .overrideMark(model, "animations")
+            // The two choices one sees; fade cannot be done to another app's window, and a
+            // closing window is gone before macOS says so.
+            HStack {
+                Text("animation_type_open").font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Picker("", selection: Binding(get: { model.config.animationTypeOpen.rawValue },
+                                              set: { model.setOption("animation_type_open", $0) })) {
+                    Text("slide").tag("slide")
+                    Text("zoom").tag("zoom")
+                    Text("none").tag("none")
+                }
+                .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
+            }
+            .disabled(!model.animations)
+            .overrideMark(model, "animation_type_open")
+            HStack {
+                Text("tag_animation_direction").font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Picker("", selection: Binding(get: { model.config.tagAnimationDirection },
+                                              set: { model.setOption("tag_animation_direction", String($0)) })) {
+                    Text("horizontal").tag(1)
+                    Text("vertical").tag(0)
+                }
+                .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
+            }
+            .disabled(!model.animations)
+            .overrideMark(model, "tag_animation_direction")
+            Text("Durations and curves: animation_duration_* and animation_curve_* in your config.")
+                .font(.system(size: 10)).foregroundStyle(.secondary)
+            header("Menu bar")
+            HStack {
+                Text("tags").font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Picker("", selection: Binding(get: { model.config.chutneyMenuBarTagStyle },
+                                              set: { model.setOption("chutney_menu_bar_tag_style", $0) })) {
+                    Image(systemName: "1.square.fill").tag("square")
+                    Image(systemName: "1.circle.fill").tag("circle")
+                    Text("[1]").tag("text")
+                }
+                .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
+            }
+            .help("chutney_menu_bar_tag_style")
+            .overrideMark(model, "chutney_menu_bar_tag_style")
+            HStack {
+                Text("logo").font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Picker("", selection: Binding(get: { model.config.chutneyMenuBarLogo },
+                                              set: { model.setOption("chutney_menu_bar_logo", $0 == "off" ? "0" : $0) })) {
+                    Text("colour").tag("color")
+                    Text("mono").tag("mono")
+                    Text("off").tag("off")
+                }
+                .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
+            }
+            .help("chutney_menu_bar_logo")
+            .overrideMark(model, "chutney_menu_bar_logo")
+            Toggle("layout icon", isOn: Binding(get: { model.config.chutneyMenuBarLayout },
+                                                set: { model.setOption("chutney_menu_bar_layout", $0 ? "1" : "0") }))
+                .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
+                .help("chutney_menu_bar_layout")
+                .overrideMark(model, "chutney_menu_bar_layout")
+            Toggle("key mode", isOn: Binding(get: { model.config.chutneyMenuBarMode },
+                                         set: { model.setOption("chutney_menu_bar_mode", $0 ? "1" : "0") }))
+                .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
+                .help("chutney_menu_bar_mode")
+                .overrideMark(model, "chutney_menu_bar_mode")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func header(_ s: String) -> some View { panelHeader(s) }
+
+    private func slider(_ title: String, value: Binding<Double>, in range: ClosedRange<Double>, step: Double,
+                        label: String? = nil, commit: @escaping (Double) -> Void) -> some View {
+        panelSlider(model, title, value: value, in: range, step: step, label: label, commit: commit)
     }
 }
 
@@ -376,8 +440,19 @@ struct GapEditor: View {
         default: return c.specialGappov
         }
     }
+    /// mango's grid takes its horizontal gaps all round, vertical_grid its vertical ones
+    /// (grid_core, vertical_grid_core): the one direction the layout reads.
+    private var allRound: String? {
+        switch model.layout {
+        case .grid: return "horizontal"
+        case .verticalGrid: return "vertical"
+        default: return nil
+        }
+    }
+
     private func set(_ kind: String, _ px: Int) {
         model.setGap("\(prefix)_\(kind)", px)
+        guard allRound == nil else { return }
         let linked = kind.hasPrefix("inner") ? model.gapLinkInner : model.gapLinkOuter
         if linked {
             let other = kind.hasSuffix("horizontal") ? kind.replacingOccurrences(of: "horizontal", with: "vertical")
@@ -387,20 +462,13 @@ struct GapEditor: View {
     }
 
     var body: some View {
+        // The tags' gaps; smart_gaps and the special tag's gaps are the config's.
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Picker("", selection: $model.gapSpecial) {
-                    Text("tags").tag(false)
-                    Text("special tag").tag(true)
-                }
-                .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
-                Spacer()
-                Toggle("smart_gaps", isOn: Binding(get: { model.config.smartgaps },
-                                              set: { model.setOption("smart_gaps", $0 ? "1" : "0") }))
-                    .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
-                    .help("no gaps with one window")
-            }
             preview
+            if let d = allRound {
+                Text("\(model.layout.name) uses one gap all round, as mango does: the \(d) ones.")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+            }
             row("inner", linked: $model.gapLinkInner)
             row("outer", linked: $model.gapLinkOuter)
         }
@@ -411,8 +479,10 @@ struct GapEditor: View {
     private var preview: some View {
         Canvas { ctx, size in
             let k = size.width / max(1, model.screenWidth) * CGFloat(model.pixel)
-            let ih = CGFloat(value("inner_horizontal")) * k, iv = CGFloat(value("inner_vertical")) * k
-            let oh = CGFloat(value("outer_horizontal")) * k, ov = CGFloat(value("outer_vertical")) * k
+            // As the layout reads them: grid and vertical_grid one direction all round.
+            func v(_ which: String, _ dir: String) -> CGFloat { CGFloat(value("\(which)_\(allRound ?? dir)")) * k }
+            let ih = v("inner", "horizontal"), iv = v("inner", "vertical")
+            let oh = v("outer", "horizontal"), ov = v("outer", "vertical")
             let screen = CGRect(origin: .zero, size: size)
             ctx.fill(Path(roundedRect: screen, cornerRadius: 4), with: .color(.primary.opacity(0.06)))
             let area = screen.insetBy(dx: min(oh, size.width / 4), dy: min(ov, size.height / 4))
@@ -432,8 +502,12 @@ struct GapEditor: View {
     /// A row: one slider for horizontal and vertical together (linked), or one each.
     private func row(_ which: String, linked: Binding<Bool>) -> some View {
         VStack(alignment: .leading, spacing: 2) {
+            if let d = allRound {
+                Text("\(prefix)_\(which)_\(d)").font(.system(size: 10, design: .monospaced))
+                gapSlider("\(which)_\(d)", symbol: nil)
+            } else {
             HStack(spacing: 4) {
-                Text(which).font(.system(size: 10, design: .monospaced))
+                Text((model.gapSpecial ? "special_gap_" : "gap_") + which).font(.system(size: 10, design: .monospaced))
                 Button { linked.wrappedValue.toggle() } label: {
                     Image(systemName: linked.wrappedValue ? "link" : "link.badge.plus")
                         .font(.system(size: 9))
@@ -449,7 +523,9 @@ struct GapEditor: View {
                 gapSlider("\(which)_horizontal", symbol: "arrow.left.and.right")
                 gapSlider("\(which)_vertical", symbol: "arrow.up.and.down")
             }
+            }
         }
+        .overrideMark(model, "\(prefix)_\(which)_horizontal", "\(prefix)_\(which)_vertical")
     }
 
     /// A gap's slider, 0–40 points in steps of a pixel; sent as it moves.
@@ -505,6 +581,30 @@ struct LayoutGrid: View {
                     .buttonStyle(.plain)
                     .help(ticked ? "In circle_layout: switch_layout and the layout palette" : "Not in circle_layout")
                 }
+            }
+        }
+    }
+}
+
+extension View {
+    /// Not in mango: a dot where the menu's choice wins over the config (MenuSave.conflicts);
+    /// the dot's tooltip says where and what the config has.
+    @MainActor
+    func overrideMark(_ model: LayoutPanelModel, _ keys: String...) -> some View {
+        modifier(OverrideMark(conflict: model.conflicts.first { keys.contains($0.key) }, accent: model.accent))
+    }
+}
+
+struct OverrideMark: ViewModifier {
+    let conflict: MenuSave.Conflict?
+    let accent: Color
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .topLeading) {
+            if let c = conflict {
+                Circle().fill(accent).frame(width: 5, height: 5)
+                    .offset(x: -8, y: 4)
+                    .help("Wins over \(c.configFile):\(c.configLine), which says \(c.configValue)")
             }
         }
     }

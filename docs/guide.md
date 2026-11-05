@@ -164,20 +164,25 @@ others dimmed: macOS draws the same item on every display. Its menu holds:
 
 - **The layout panel.** The 14 layouts, each drawn as an icon by mango's own layout code; a click
   sets it for the tag in view. The tick in a layout's corner puts it in or out of mango's
-  `circle_layout` (the layouts Hyper N goes round and Hyper L shows). Below: the layout's options
-  (new is master, scroller widths, dwindle's splits, the tab modes, …), the master width and
-  count, the gaps (inner and outer, with smart gaps and a preview at the screen's scale), the
-  border width, the menu bar's own look and animations on or off.
+  `circle_layout` (the layouts Hyper N goes round and Hyper L shows). Below: the master width and
+  count and the layout's own options (new is master, scroller widths, dwindle's splits, the tab
+  modes, …), by mango's names.
 - Reload Config (⌘R) and Edit Config.
-- **Settings… (⌘,)**, the first start's window: the permissions, your Hyper key and Quick Press,
-  the two keys to remember, and Start at Login, each kept as you choose it. Below them, **Your
-  config**: open it, mango's documentation (every key the config has) and this guide.
+- **Settings… (⌘,)**, the first start's window, in two tabs. **General**: the permissions, your
+  Hyper key and Quick Press, the two keys to remember and Start at Login, then **Your config**:
+  open it, mango's documentation (every key the config has) and this guide. **Look**: the gaps
+  (inner and outer, with a preview at the screen's scale; on a grid tag only the direction
+  mango's grid reads, its horizontal gaps all round, or vertical_grid's vertical ones;
+  `smart_gaps` and the special tag's `special_gap_…` are the config's), `border_px`,
+  animations on or off with `animation_type_open` (slide, zoom or none) and
+  `tag_animation_direction`, and the menu bar's own look. Durations and curves are the config's. Each choice is kept as you make it.
 - Restart and Quit.
 
 The panel sends only mango's own dispatchers (`setlayout`, `setmfact`, `incnmaster`, `setoption`),
 as a bar would over IPC. Its changes are kept in `chutney_menu.conf`, which the config reads last,
-so they survive a reload and win over your own lines. Where they overrule your config the panel
-says so, with the line; `mango -p` lists them too. Delete a line in `chutney_menu.conf` to give the
+so they survive a reload and win over your own lines. Where one overrules your config, a dot marks
+the control (its tooltip has the line), Settings counts them with **Show Them**, and `mango -p`
+lists them. Delete a line in `chutney_menu.conf` to give the
 key back to your config. Your own config is never written.
 
 | Setting | Default | Description |

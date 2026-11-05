@@ -112,6 +112,13 @@ final class PermissionsModel: ObservableObject {
     @Published var settings = false
     /// Settings can keep a Hyper key choice (mango runs, and has a menu file).
     @Published var canSave = true
+    /// Settings' tab: general (permissions, keys, login, the config) or look.
+    @Published var settingsTab = "general"
+    /// The Look tab, the app's own view (gaps, border, animations, the menu bar).
+    var look: AnyView?
+    /// The menu file, and how many of its choices win over the config.
+    @Published var menuFile: URL?
+    @Published var overrides = 0
     /// The key held as Hyper (chutney_hyper_key), chosen on a first start; nil: not yet.
     @Published var hyperKey: String? {
         didSet { if settings, hyperKey != oldValue { onChoice("chutney_hyper_key", hyperKey ?? "none") } }
@@ -154,14 +161,19 @@ public final class Permissions {
     /// Settings: the choices as they are, and where a change goes (set by the app at launch).
     public struct Choices {
         public var hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL
-        public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL) {
+        /// The menu file, and how many of its choices win over a line of the config.
+        public var menuFile: URL?, overrides: Int
+        public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL,
+                    menuFile: URL? = nil, overrides: Int = 0) {
             self.hyperKey = hyperKey; self.hyperTap = hyperTap; self.startAtLogin = startAtLogin; self.canSave = canSave
-            self.configURL = configURL
+            self.configURL = configURL; self.menuFile = menuFile; self.overrides = overrides
         }
     }
     public var currentChoices: () -> Choices? = { nil }
     public var saveChoice: (String, String) -> Void = { _, _ in }
     public var setStartAtLogin: (Bool) -> Void = { _ in }
+    /// Settings' Look tab (set by the app at launch).
+    public var lookView: () -> AnyView? = { nil }
     /// A first start not yet through Continue: mango waits, so nothing is written and no
     /// key is moved before the choice.
     public var firstStartPending: Bool { firstStartConfig != nil }
@@ -253,8 +265,11 @@ public final class Permissions {
         model.startAtLogin = c?.startAtLogin ?? false
         model.canSave = c?.canSave ?? false
         yourConfig = c?.configURL
+        model.menuFile = c?.menuFile
+        model.overrides = c?.overrides ?? 0
         model.onChoice = { [weak self] key, value in self?.saveChoice(key, value) }
         model.onStartAtLogin = { [weak self] on in self?.setStartAtLogin(on) }
+        model.look = lookView()
         model.settings = true
         window?.title = "Mango Chutney Settings"
     }
@@ -355,24 +370,39 @@ struct PermissionsView: View {
                 }
                 .padding(16)
             } else {
-                VStack(spacing: 10) {
-                    ForEach(Permission.allCases) { p in
-                        PermissionRow(permission: p, granted: model.state.isGranted(p), onRestart: model.onRestart)
+                if model.settings, model.look != nil {
+                    Picker("", selection: $model.settingsTab) {
+                        Text("General").tag("general")
+                        Text("Look").tag("look")
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 14)
                 }
-                .padding(20)
+                if model.settings, model.settingsTab == "look", let look = model.look {
+                    look.padding(20)
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(Permission.allCases) { p in
+                            PermissionRow(permission: p, granted: model.state.isGranted(p), onRestart: model.onRestart)
+                        }
+                    }
+                    .padding(20)
 
-                if model.firstStart || model.settings {
-                    Divider()
-                    FirstStartChoices(model: model)
-                        .padding(20)
-                }
-                if model.settings {
-                    Divider()
-                    YourConfig(onOpenConfig: model.onOpenConfig)
-                        .padding(20)
-                }
+                    if model.firstStart || model.settings {
+                        Divider()
+                        FirstStartChoices(model: model)
+                            .padding(20)
+                    }
+                    if model.settings {
+                        Divider()
+                        YourConfig(model: model)
+                            .padding(20)
+                    }
 
+                }
                 Divider()
 
                 HStack(spacing: 10) {
@@ -456,7 +486,7 @@ private struct FirstStartChoices: View {
 
 /// Settings' way on into mango: everything else is mango's, in the user's config.
 private struct YourConfig: View {
-    let onOpenConfig: () -> Void
+    @ObservedObject var model: PermissionsModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -465,8 +495,18 @@ private struct YourConfig: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if model.overrides > 0, let menu = model.menuFile {
+                HStack(spacing: 6) {
+                    Circle().fill(Color.accentColor).frame(width: 6, height: 6)
+                    Text("\(model.overrides) choice\(model.overrides == 1 ? "" : "s") made here win\(model.overrides == 1 ? "s" : "") over your config, marked with a dot.")
+                        .font(.callout)
+                    Button("Show Them") { ConfigFiles.open(menu) }
+                        .controlSize(.small)
+                        .help("\(menu.lastPathComponent): delete a line to give the key back to your config")
+                }
+            }
             HStack(spacing: 10) {
-                Button("Open Your Config", action: onOpenConfig)
+                Button("Open Your Config", action: model.onOpenConfig)
                 Button("mango Documentation") { NSWorkspace.shared.open(Permissions.mangoDocs) }
                 Button("Mango Chutney Guide") { NSWorkspace.shared.open(Permissions.guide) }
             }

@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Mango
 import Port
 
@@ -30,12 +31,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                              configURL: self?.configPath ?? ConfigParser.defaultConfigURL())
             }
             let key = server.config.chutneyHyperKey
+            let menu = MenuSave.url(server.config, configURL: server.configURL)
             return .init(hyperKey: key.isEmpty ? nil : key, hyperTap: server.config.chutneyHyperTap, startAtLogin: login,
-                         canSave: MenuSave.url(server.config, configURL: server.configURL) != nil,
-                         configURL: server.configURL)
+                         canSave: menu != nil, configURL: server.configURL, menuFile: menu,
+                         overrides: menu.map { MenuSave.conflicts(configURL: server.configURL, menuURL: $0).count } ?? 0)
         }
         Permissions.shared.saveChoice = { [weak self] key, value in self?.saveMenuChoice(key, value) }
         Permissions.shared.setStartAtLogin = { [weak self] on in self?.setLogin(on) }
+        Permissions.shared.lookView = { [weak self] in
+            guard let self, self.server != nil else { return nil }
+            self.layoutPanel.server = self.server
+            self.layoutPanel.refresh()
+            return AnyView(LookView(model: self.layoutPanel))
+        }
         Permissions.shared.prepareFirstStart(configPath ?? ConfigParser.defaultConfigURL())
         Permissions.shared.showIfNeeded()
         if AX.isTrusted {
