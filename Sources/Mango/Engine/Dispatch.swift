@@ -128,9 +128,7 @@ package extension MangoServer {
             let cur = scrollGetStackHeadClient(c).scrollerProportion ?? m.current.settings.scrollerDefaultProportion
             let next: CGFloat
             if let i = presets.firstIndex(where: { abs($0 - cur) < 0.001 }) {
-                next = NextPrev(mangoArg: a0) == .next
-                    ? presets[(i + 1) % presets.count]
-                    : presets[(i - 1 + presets.count) % presets.count]
+                next = presets[(i + 1) % presets.count]
             } else {
                 next = presets[0]
             }
@@ -1456,7 +1454,18 @@ package extension MangoServer {
             return
         }
         var c = directionSelect(dir)
-        if overviewState?.monitor !== m { c = getFocusedStackClient(c, nil) }
+
+        if let sc = c, sc.mon !== selectedMonitor && !config.focusCrossMonitor { return }
+
+        if let sc = c, overviewState?.monitor !== m {
+            if sc.mon !== selectedMonitor {
+                guard let tm = sc.mon, let top = clientFocusTop(tm) else { return }
+                c = top
+                selectedMonitor = tm
+            } else {
+                c = getFocusedStackClient(sc, nil)
+            }
+        }
         if let c {
             clientFocus(c)
             if config.warpcursor { pointerWarpToClient(c) }

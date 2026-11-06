@@ -737,8 +737,8 @@ final class FidelityTests: MangoTestCase {
         XCTAssertFalse(a.isFloating)
     }
 
-    /// mango client_active: focusid on a minimized window shows it; on a window on a tag
-    /// in view, that first tag alone is viewed.
+    /// mango client_active: focusid on a minimized window shows it in the scratchpad, where
+    /// minimizing put it (565aca8); on a window on a tag in view, that first tag alone is viewed.
     func testFocusIdShowsAMinimizedWindowAndViewsItsFirstTag() {
         let r = EngineRig()
         let a = r.map(1)
@@ -746,7 +746,7 @@ final class FidelityTests: MangoTestCase {
         d(r, "minimized", [], a)
         r.server.clientActive(a)
         XCTAssertFalse(a.isMinimized)
-        XCTAssertFalse(a.isInScratchpad)
+        XCTAssertTrue(a.scratchpadShown, "shown in the scratchpad, not taken out")
         XCTAssertTrue(r.server.focused === a)
         b.tags = 1 << 1
         r.monitor.tagset[r.monitor.seltags] = 0b11
@@ -1282,17 +1282,46 @@ final class FidelityTests: MangoTestCase {
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 2)
     }
 
-    /// mango parse_circle_direction: groupfocus and switch_proportion_preset without
-    /// "next" go back.
-    func testSwitchProportionPresetDefaultsToPrev() {
+    /// mango 76b30fc: switch_proportion_preset goes forward through the presets in the
+    /// config's order, and round, whatever its argument.
+    func testSwitchProportionPresetGoesForwardInTheConfigsOrder() {
         let r = EngineRig()
-        r.server.config.scrollerProportionPreset = [0.5, 0.8, 1.0]
+        r.server.config.scrollerProportionPreset = [0.8, 0.5, 1.0]
         r.monitor.current.layout = .scroller
         let a = r.map(1)
         r.map(2)
         a.scrollerProportion = 0.8
         d(r, "switch_proportion_preset", [], a)
         XCTAssertEqual(a.scrollerProportion, 0.5)
+        d(r, "switch_proportion_preset", ["prev"], a)
+        XCTAssertEqual(a.scrollerProportion, 1.0, "prev goes forward too")
+        d(r, "switch_proportion_preset", ["next"], a)
+        XCTAssertEqual(a.scrollerProportion, 0.8, "and round")
+    }
+
+    /// mango 66cc5e1: focusdir onto another monitor focuses that monitor's last focused
+    /// window and selects the monitor; without focus_cross_monitor it stays.
+    func testFocusdirAcrossMonitorsTakesTheirFocusHistory() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        let a = r.map(1)
+        r.server.selectedMonitor = side
+        let b1 = r.map(2, frame: CGRect(x: 1800, y: 100, width: 800, height: 600))
+        let b2 = r.map(3, frame: CGRect(x: 2800, y: 100, width: 600, height: 600))
+        r.server.clientFocus(b2)
+        r.server.clientFocus(b1)
+        r.server.clientFocus(b2)
+        let top = r.server.clientFocusTop(side)
+        XCTAssertTrue(top === b2)
+        r.server.clientFocus(a)
+        XCTAssertTrue(r.server.selectedMonitor === r.monitor)
+        r.server.config.focusCrossMonitor = false
+        d(r, "focusdir", ["right"])
+        XCTAssertEqual(r.server.focused?.id, 1, "not over the edge without focus_cross_monitor")
+        r.server.config.focusCrossMonitor = true
+        d(r, "focusdir", ["right"])
+        XCTAssertTrue(r.server.selectedMonitor === side)
+        XCTAssertTrue(r.server.focused === b2, "the monitor's last focused window")
     }
 
     /// mango get_client_by_id_or_title: without scratchpad_cross_monitor only the selected

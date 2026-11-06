@@ -104,8 +104,6 @@ strøges her:
 
 | mango-commit | Hvad |
 |---|---|
-| `66cc5e1` | `focusdir` til en anden skærm fokuserer skærmens øverste vindue (fokushistorikken), og ikke over skærmkanten uden `focus_cross_monitor` |
-| `76b30fc` | `switch_proportion_preset` går altid frem i configens rækkefølge |
 | `6fbf46c`, `202b1da` | minimerede vinduer kommer tilbage sidst-ind-først-ud, med deres tilstand og animation |
 | `499a164` | flisetilstanden sættes, før vinduet konfigureres første gang |
 | `7a97c59` | ny nøgle `special_tag_cross_monitor` |
