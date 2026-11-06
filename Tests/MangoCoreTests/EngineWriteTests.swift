@@ -290,6 +290,18 @@ final class ScratchpadPlaceTests: MangoTestCase {
         XCTAssertEqual(c.floatGeom.midY, big.workArea.midY, accuracy: 1)
     }
 
+    /// mango 565aca8: an app asking for focus from the scratchpad is shown there, not taken out.
+    func testAnActivationShowsTheScratchpad() {
+        let r = rig()
+        r.server.config.focusOnActivate = true
+        let c = r.server.clientByIdAll(2)!
+        XCTAssertFalse(c.scratchpadShown)
+        r.server.handleClientActivationRequest(c)
+        XCTAssertTrue(c.isInScratchpad, "still in the scratchpad")
+        XCTAssertTrue(c.scratchpadShown, "and shown")
+        XCTAssertEqual(r.server.focused?.id, 2)
+    }
+
     func testRestoringAMinimizedWindowForgetsItsPlace() {
         let r = rig()
         let c = r.server.clientByIdAll(2)!

@@ -108,7 +108,6 @@ strøges her:
 | `76b30fc` | `switch_proportion_preset` går altid frem i configens rækkefølge |
 | `6fbf46c`, `202b1da` | minimerede vinduer kommer tilbage sidst-ind-først-ud, med deres tilstand og animation |
 | `499a164` | flisetilstanden sættes, før vinduet konfigureres første gang |
-| `565aca8` | en aktiveringsforespørgsel lukker ikke scratchpad |
 | `7a97c59` | ny nøgle `special_tag_cross_monitor` |
 | `57a48e6` | `transform` i IPC's `get monitor` |
 | `6f322a3` | config-overvågningen følger den rigtige sti (symlinks) |

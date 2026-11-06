@@ -1006,10 +1006,15 @@ public final class MangoServer {
     package func handleClientActivationRequest(_ c: Client) {
         guard clientByIdAll(c.id) === c else { return }
         if config.focusOnActivate && !c.isTagSilent && c.id != selectedMonitor.sel {
-            if let m = c.mon, !(m === selectedMonitor && c.tags & m.tagset[m.seltags] != 0) {
-                clientViewOnMonitor(c.tags, on: m, changeFocus: true)
+            if c.tags & TagMask.special != 0, let m = c.mon {
+                if isSpecialActive(m) {
+                    clientFocus(c)
+                } else {
+                    toggleSpecialTagMon(m)
+                }
+                return
             }
-            clientFocus(c)
+            clientActive(c)
         } else if c !== clientFocusTop(selectedMonitor) {
             c.isUrgent = true
             updateBorders()

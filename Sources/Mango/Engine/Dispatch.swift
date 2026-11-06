@@ -558,6 +558,18 @@ package extension MangoServer {
     }
 
     func clientActive(_ c: Client) {
+        if c.isInScratchpad {
+            let visible = c.isInScratchpad && !c.isMinimized && c.mon.map { c.tags & $0.tagset[$0.seltags] != 0 } == true
+            if visible {
+                clientFocus(c)
+            } else if c.isNamedScratchpad {
+                applyNamedScratchpad(c)
+            } else {
+                _ = switchScratchpadClientState(c)
+            }
+            return
+        }
+
         if c.isMinimized {
             c.isInScratchpad = false
             c.isNamedScratchpad = false
