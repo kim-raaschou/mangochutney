@@ -111,7 +111,6 @@ strøges her:
 | `7a97c59` | ny nøgle `special_tag_cross_monitor` |
 | `57a48e6` | `transform` i IPC's `get monitor` |
 | `cd1764c` | mangos nye navne for vinduets tilstand (`set_…`) |
-| `023a05b`, `55aaf1d` | `monocle_no_radius` (ny nøgle) og grænser for blur-værdier |
 | `283246a`, `09828ec` | fokus efter en popup; `resize`-dispatch i takt med skærmen (tjekkes) |
 
 ## 5. Struktur

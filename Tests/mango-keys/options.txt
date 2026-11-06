@@ -128,6 +128,7 @@ layer_shadows
 maximized_screen_color
 monocle_no_border
 monocle_no_gap
+monocle_no_radius
 monocle_right_button_close
 monocle_tab_mode
 mouse_accel_profile

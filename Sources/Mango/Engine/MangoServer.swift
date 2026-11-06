@@ -110,6 +110,17 @@ public final class MangoServer {
         configErrorNagDestroy()
     }
 
+    func clientNoRadiusActive(_ c: Client) -> Bool {
+        guard let m = c.mon else { return false }
+
+        if c.isFullscreen || (config.noRadiusWhenSingle && tiledClients(m).count == 1) {
+            return true
+        }
+
+        return config.monocleNoRadius && !c.isFloating && !c.isMinimized && !c.isUnglobal
+            && overviewState?.monitor !== m && m.layout == .monocle
+    }
+
     // not in mango: the server's side of parse_config, the config read, its errors and the nag
     func parseConfig() {
         configErrorStoreBegin()
@@ -579,7 +590,7 @@ public final class MangoServer {
                 f = CGRect(x: f.minX, y: f.minY - top, width: f.width, height: f.height + top)
                 // Port extension: not in mango. The ring may follow macOS's window corners (chutney_style).
                 let radius = portHooks.borderRadius?(self, c)
-                    ?? (c.isFullscreen || (config.noRadiusWhenSingle && tiledClients(m).count == 1) ? 0 : CGFloat(config.borderRadius))
+                    ?? (clientNoRadiusActive(c) ? 0 : CGFloat(config.borderRadius))
                 specs.append(BorderSpec(id: c.id, frame: f, color: getBorderColor(c), width: width, radius: radius,
                                         split: clientDrawSplitBorder(c, on: m)))
             }

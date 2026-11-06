@@ -96,6 +96,21 @@ final class BorderInsideTheTileTests: MangoTestCase {
         XCTAssertEqual(frames(r, borders: true), frames(r, borders: false))
     }
 
+    /// mango 023a05b, monocle_no_radius: square corners for monocle's tiled windows only.
+    func testMonocleNoRadius() {
+        let r = rig(2, layout: .monocle)
+        r.server.config.borderRadius = 6
+        let c = r.server.clientsAll[0]
+        XCTAssertFalse(r.server.clientNoRadiusActive(c), "off: mango's default")
+        r.server.config.monocleNoRadius = true
+        XCTAssertTrue(r.server.clientNoRadiusActive(c))
+        c.isFloating = true
+        XCTAssertFalse(r.server.clientNoRadiusActive(c), "a floating window keeps its corners")
+        c.isFloating = false
+        r.monitor.current.layout = .tile
+        XCTAssertFalse(r.server.clientNoRadiusActive(c), "only in monocle")
+    }
+
     /// The layouts see tiles, not the windows inside them: arranging again moves nothing.
     func testArrangingAgainMovesNothing() {
         for layout in [LayoutKind.scroller, .tile, .dwindle, .deck] {

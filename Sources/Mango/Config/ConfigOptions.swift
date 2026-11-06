@@ -173,6 +173,7 @@ public enum ConfigOptions {
         t["monocle_tab_mode"] = bool(\.monocleTabMode)
         t["monocle_no_border"] = bool(\.monocleNoBorder)
         t["monocle_no_gap"] = bool(\.monocleNoGap)
+        t["monocle_no_radius"] = bool(\.monocleNoRadius)
         t["deck_tab_mode"] = bool(\.deckTabMode)
         t["tab_bar_height"] = int(\.tabBarHeight, 0...500)
         t["group_bar_height"] = int(\.groupBarHeight, 0...500)
