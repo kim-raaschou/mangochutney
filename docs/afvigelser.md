@@ -99,12 +99,11 @@ Gælder for alle. Står i koden mærket "not in mango".
 
 ## 4. Mangler endnu
 
-Alt af mango 0.18.2, som macOS tillader, er bygget (`switch_keyboard_layout` er fravalgt,
-afsnit 2). Fra 0.18.2 til 0.18.5 (31 commits) mangler disse; de porteres ét ad gangen og
-strøges her:
-
-| mango-commit | Hvad |
-|---|---|
+Intet: alt af mango 0.18.5, som macOS tillader, er bygget (`switch_keyboard_layout` er fravalgt,
+afsnit 2). Af de 31 commits fra 0.18.2 rammer disse ikke macOS: lag- og låseflader (`a3990ec`,
+`9c44c66`), VRR (`4a430d8`; dens sloppy focus under et træk holder vi allerede, mens en knap er
+nede), billedudsnit til overview og switcher (`b7551be`), xdg- og Xwayland-tilstand (`499a164`,
+`61fa048`), popups (`283246a`) og touch (`7812939`).
 
 ## 5. Struktur
 
