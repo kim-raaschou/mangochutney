@@ -16,19 +16,36 @@ public struct MenuBarTag: Equatable {
 }
 
 public struct MenuBarMonitor: Equatable {
+    /// The monitor's name (a click on one of its tags goes to it).
+    public var name: String
     public var tags: [MenuBarTag]
     public var layout: LayoutKind
     /// The selected monitor: drawn in full.
     public var selected: Bool
 }
 
+/// A tag in the menu bar item, where it stands on the screen (CG coordinates).
+public struct MenuBarTagHit: Equatable, Sendable {
+    public var frame: CGRect
+    public var monitor: String
+    public var tag: Int
+
+    public init(frame: CGRect, monitor: String, tag: Int) { self.frame = frame; self.monitor = monitor; self.tag = tag }
+}
+
 public enum MenuBarStatus {
+    /// The tags a press in the menu bar views (none while the item's menu is open).
+    @MainActor
+    public static func publishTags(_ server: MangoServer, _ hits: [MenuBarTagHit]) {
+        server.mac.router.publish { $0.menuBarTags = hits.filter { $0.tag > 0 } }
+    }
+
     /// Every monitor, left to right (top to bottom where they stand above each other).
     @MainActor
     public static func monitors(_ server: MangoServer) -> [MenuBarMonitor] {
         server.monitors
             .sorted { ($0.screen.frame.minX, $0.screen.frame.minY) < ($1.screen.frame.minX, $1.screen.frame.minY) }
-            .map { MenuBarMonitor(tags: tags(server, $0), layout: $0.layout, selected: $0 === server.selectedMonitor) }
+            .map { MenuBarMonitor(name: $0.screen.name, tags: tags(server, $0), layout: $0.layout, selected: $0 === server.selectedMonitor) }
     }
 
     /// A tag shows when it is in view, has windows, or its tag_rule says no_hide (mango).
@@ -43,5 +60,15 @@ public enum MenuBarStatus {
         }
         if m.tagset[m.seltags] & (1 << 31) != 0 { tags.append(MenuBarTag(number: 0, active: true)) }
         return tags
+    }
+
+    /// A click on a tag in the menu bar: its monitor is focused and the tag viewed, as a
+    /// bar's tag button calls mango's focusmon and view; mango focuses the tag's top window.
+    /// The special tag is left alone.
+    @MainActor
+    public static func viewTag(_ server: MangoServer, monitor name: String, tag: Int) {
+        guard tag > 0, let m = server.monitors.first(where: { $0.screen.name == name }) else { return }
+        if m !== server.selectedMonitor { server.focusMonitor(m) }
+        _ = server.dispatch(Dispatch(name: "view", args: ["\(tag)"]))
     }
 }

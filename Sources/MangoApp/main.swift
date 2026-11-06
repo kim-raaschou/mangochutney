@@ -7,6 +7,10 @@ import Port
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var server: MangoServer?
     var statusItem: NSStatusItem?
+    /// The item's menu is open: a press on a tag is the menu's.
+    var menuOpen = false
+    /// Where each tag stands in the status item's title (x from the title's left edge).
+    var tagSpans: [(from: CGFloat, to: CGFloat, monitor: String, tag: Int)] = []
     var mainMenu: NSMenu?
     let layoutPanel = LayoutPanelModel()
     /// What the status item shows now (redrawn only when it changes).
@@ -108,7 +112,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 b.imagePosition = .imageLeft
                 b.imageHugsTitle = true
             }
-            // A click, left or right, opens the menu (the layouts first).
+            // A click, left or right, opens the menu (the layouts first); a left click on a
+            // tag views it (statusClicked).
             b.target = self
             b.action = #selector(statusClicked(_:))
             b.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -129,6 +134,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for i in menu.items where i.submenu == nil { i.target = self }
         mainMenu = menu
         statusItem = item
+        // The tags' place on the screen follows the item (the clock beside it grows, a
+        // display comes or goes).
+        for name in [NSWindow.didMoveNotification, NSApplication.didChangeScreenParametersNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] n in
+                MainActor.assumeIsolated {
+                    guard let self, n.name != NSWindow.didMoveNotification || n.object as? NSWindow === self.statusItem?.button?.window
+                    else { return }
+                    self.publishTagHits()
+                }
+            }
+        }
         setStatus("mango")
     }
 
@@ -170,6 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let key = "\(monitors)|\(showLayout)|\(mode)|\(style)|\(logo)"
         guard shownStatus != key, let b = statusItem?.button else { return }
         shownStatus = key
+        tagSpans = []
         // Everything in the title, the logo too: one line, one middle, one rhythm.
         b.image = nil
         let font = b.font ?? .monospacedSystemFont(ofSize: 12, weight: .medium)
@@ -216,6 +233,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 space(apart)
             }
             for (i, t) in m.tags.enumerated() {
+                let start = title.size().width
+                defer { tagSpans.append((start, title.size().width, m.name, t.number)) }   // with the gap after it
                 if style == "text" {
                     // Every tag three characters wide, in view or not: the item keeps its width.
                     let c = t.number == 0 ? "S" : "\(t.number)"
@@ -252,6 +271,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             title.deleteCharacters(in: NSRange(location: title.length - 1, length: 1))   // no gap at the end
         }
         b.attributedTitle = title
+        publishTagHits()
     }
 
     /// A tag as an SF Symbols number ("3.square.fill", "3.circle"; the special tag a star),
@@ -325,7 +345,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func refreshStatus() {
         guard let server else { return }
         let config = server.config
-        statusItem?.isVisible = config.chutneyMenuBar
+        if statusItem?.isVisible != config.chutneyMenuBar {
+            statusItem?.isVisible = config.chutneyMenuBar
+            publishTagHits()
+        }
         let mode = config.chutneyMenuBarMode ? server.keyMode : (server.keyMode == "default" ? "" : server.keyMode)
         setStatus(monitors: MenuBarStatus.monitors(server), showLayout: config.chutneyMenuBarLayout, mode: mode,
                   style: config.chutneyMenuBarTagStyle, logo: config.chutneyMenuBarLogo)
@@ -333,7 +356,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func statusClicked(_ sender: NSStatusBarButton) {
         if server == nil { startIfTrusted() }   // granted while System Settings stayed in front
+        if let server, let e = NSApp.currentEvent, e.type == .leftMouseUp, let t = tag(under: sender) {
+            MenuBarStatus.viewTag(server, monitor: t.monitor, tag: t.tag)
+            return
+        }
         showMenu(mainMenu)
+    }
+
+    /// Port extension: where each tag stands on the screen, for mango's event tap: a press on
+    /// one is taken there, before the menu bar marks the item (the click below is the
+    /// fallback, for the item's copies on the other displays).
+    func publishTagHits() {
+        guard let server else { return }
+        guard let item = statusItem, item.isVisible, !menuOpen, let b = item.button, let w = b.window,
+              let primary = NSScreen.screens.first else { MenuBarStatus.publishTags(server, []); return }
+        let r = w.convertToScreen(b.convert(b.bounds, to: nil))
+        let left = r.minX + (r.width - b.attributedTitle.size().width) / 2
+        let top = primary.frame.maxY - w.frame.maxY
+        MenuBarStatus.publishTags(server, tagSpans.map {
+            MenuBarTagHit(frame: CGRect(x: left + $0.from, y: top, width: $0.to - $0.from, height: w.frame.height),
+                          monitor: $0.monitor, tag: $0.tag)
+        })
+    }
+
+    /// The tag under the pointer on the status item: the title is drawn in the button's middle.
+    /// The pointer's place on the screen, not the click's: the menu bar hands the item its
+    /// click in the item's middle.
+    func tag(under b: NSStatusBarButton) -> (monitor: String, tag: Int)? {
+        guard let w = b.window else { return nil }
+        let x = b.convert(w.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil).x
+            - (b.bounds.width - b.attributedTitle.size().width) / 2
+        return tagSpans.first { x >= $0.from && x < $0.to }.map { ($0.monitor, $0.tag) }
     }
 
     /// Open the menu from the status item (the native way, anchored under it).
@@ -347,6 +400,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        menuOpen = true
+        publishTagHits()
         server?.holdNativeFocus = true
         layoutPanel.server = server
         layoutPanel.refresh()
@@ -355,6 +410,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuDidClose(_ menu: NSMenu) {
         // Fires for submenus too; only the top-level menu closing ends the session.
         guard menu === mainMenu || menu.supermenu == nil else { return }
+        menuOpen = false
+        publishTagHits()
         if menu === mainMenu { statusItem?.menu = nil }
         // Let the click that closed the menu land first, then apply any held focus.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in

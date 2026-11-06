@@ -38,6 +38,9 @@ final class InputRouter: @unchecked Sendable {
         /// chutney_hyper_tap: the Hyper key pressed alone.
         var hyperTap: HyperTap = .none
         var wantsMouseMoved = false
+        /// Port extension: not in mango (chutney_menu_bar). The menu bar item's tags on the
+        /// screen: a plain left press on one views it, before the menu bar marks the item.
+        var menuBarTags: [MenuBarTagHit] = []
         /// Tabs in the focused monitor's tab bar that ⌘1-9 picks (0: none, or off).
         var tabShortcuts = 0
         /// cursor_hide_on_keypress, and the pointer is shown.
@@ -71,6 +74,8 @@ final class InputRouter: @unchecked Sendable {
     private var grabbing = false
     /// A plain left press that mango did not take: the user may be dragging a window.
     private var pressing = false
+    /// Port extension: a press on a menu bar tag, taken with its release.
+    private var menuBarPress = false
 
     // Coalesced pointer positions (lock): at most one main-thread hop in flight each.
     private var pendingDrag: (point: CGPoint, time: UInt32)?
@@ -239,6 +244,17 @@ final class InputRouter: @unchecked Sendable {
         hyperAlone = false
         let p = ev.location, button = ev.button
         let mods = ev.mods
+        // Port extension: not in mango. A tag in the menu bar item: viewed, and neither the
+        // press nor its release goes on (the menu bar would mark the item for a moment).
+        if ev.isDown, button == 0, mods.isEmpty, let hit = s.menuBarTags.first(where: { $0.frame.contains(p) }) {
+            menuBarPress = true
+            onMain { MenuBarStatus.viewTag($0, monitor: hit.monitor, tag: hit.tag) }
+            return true
+        }
+        if !ev.isDown, menuBarPress {
+            menuBarPress = false
+            return true
+        }
         if ev.isDown {
             // Whether the press is mango's, decided here as mango's pointer_process_button_press does.
             let decision = Pointer.pointerProcessButtonPress(button: button, at: p, mods: ev.mods, switcherActive: s.switcherActive,
