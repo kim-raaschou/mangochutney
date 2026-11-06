@@ -1,55 +1,10 @@
-// mmsg: command-line client for mango's IPC socket (clone of mango's mmsg/mmsg.c).
-//
-// Sends argv joined by spaces plus "\n" to the compositor's Unix socket and
-// prints every line it receives until the server closes the connection
-// (`get`/`dispatch` reply once, `watch` streams until interrupted).
-import Foundation
+// Port extension: not in mango. mmsg's macOS extras (service, logs, reload, binds) and their
+// lines in its usage; mmsg (Sources/Mango/mmsg) is mango's mmsg.c and calls these two.
 import Darwin
+import Foundation
 
-func printUsage() {
+public func mmsgPortUsage() {
     print("""
-    Usage: mmsg <command> [args...]
-
-    One-shot queries (get):
-      get version                              Show compositor version
-      get cursorpos                            Show pointer position + monitor
-      get keymode                              Show current keymode
-      get keyboardlayout                       Show current keyboard layout
-      get last_open_surface [monitor]          Show last open surface (default focused monitor)
-      get monitor <name>                       Show monitor details
-      get focusing-client                      Show focused client details
-      get client <id>                          Show client details by ID
-      get tag <monitor> <index>                Show tag details (1‑based index)
-      get all-clients                          List all clients
-      get all-monitors                         List all monitors
-      get all-devices                          List physical input devices
-      get all-layers                           List all open layer surfaces
-      get all-tags                             List all tags (all monitors)
-      get layouts                              List all available layouts
-      get tags <monitor>                       List tags for a monitor
-      dispatch <func>[,arg...] [client,<id>]   Call a compositor function
-         <func> and arguments are separated by commas.
-         Add 'client,<id>' at the beginning or end to target a specific client.
-         Examples:
-           dispatch togglefloating
-           dispatch movewin,10,100
-           dispatch movewin,10,100 client,4
-    Persistent streams (watch):
-      watch monitor <name>                     Stream monitor changes
-      watch focusing-client                    Stream focused client changes
-      watch client <id>                        Stream client changes
-      watch tags <monitor>                     Stream tag changes for a monitor
-      watch all-monitors                       Stream all monitors changes
-      watch all-tags                           Stream all tags changes
-      watch all-clients                        Stream all clients changes
-      watch all-devices                        Stream the last input device that triggered an event
-      watch keymode                            Stream keymode changes
-      watch keyboardlayout                     Stream keyboard layout changes
-      watch last_open_surface [monitor]        Stream last open surface changes
-
-    Environment:
-      MANGO_INSTANCE_SIGNATURE  IPC socket path (set by the compositor)
-
     macOS extras:
       reload                                   Reload the config (dispatch reload_config)
       binds [mode]                             List the active shortcuts in readable form
@@ -62,8 +17,18 @@ func printUsage() {
       service status                           Show LaunchAgent and IPC socket status
       Without MANGO_INSTANCE_SIGNATURE the socket defaults to /tmp/mango-<user>.sock.
 
-    Run 'mmsg --help', '-h' or 'help' to see this message.
     """)
+}
+
+/// The port's command's exit status, or nil when the command is mango's.
+public func mmsgPortCommand(_ args: [String]) -> Int32? {
+    switch args.first {
+    case "service": return Service.run(Array(args.dropFirst()))
+    case "logs" where args.count == 1: return Service.followLogs()
+    case "reload" where args.count == 1: return runIPC("dispatch reload_config")
+    case "binds" where args.count <= 2: return printBinds(mode: args.count == 2 ? args[1] : nil)
+    default: return nil
+    }
 }
 
 func fail(_ message: String) -> Never {
@@ -166,7 +131,7 @@ func runIPC(_ command: String, sink: ((ArraySlice<UInt8>) -> Void)? = nil, reply
     return EXIT_SUCCESS
 }
 
-/// `mmsg binds [mode]`: readable table of the active bindings (macOS extension).
+/// `mmsg binds [mode]`: readable table of the active bindings.
 func printBinds(mode: String?) -> Int32 {
     var data = Data()
     let rc = runIPC("get binds") { data.append(contentsOf: $0) }
@@ -193,36 +158,4 @@ func printBinds(mode: String?) -> Int32 {
         }
     }
     return EXIT_SUCCESS
-}
-
-// MARK: - Entry point
-
-let args = Array(CommandLine.arguments.dropFirst())
-
-if let first = args.first, first == "--help" || first == "-h" || first == "help" {
-    printUsage()
-    exit(EXIT_SUCCESS)
-}
-
-guard let first = args.first else {
-    fail("""
-    Usage: mmsg <command> [args...]
-      get <type> ...      one-shot request
-      watch <type> ...    persistent stream
-      dispatch <func>...  call a compositor function
-    Run 'mmsg --help' for details.
-    """)
-}
-
-switch first {
-case "service":
-    exit(Service.run(Array(args.dropFirst())))
-case "logs" where args.count == 1:
-    exit(Service.followLogs())
-case "reload" where args.count == 1:
-    exit(runIPC("dispatch reload_config"))
-case "binds" where args.count <= 2:
-    exit(printBinds(mode: args.count == 2 ? args[1] : nil))
-default:
-    exit(runIPC(args.joined(separator: " ")))
 }

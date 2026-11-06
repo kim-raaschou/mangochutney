@@ -10,7 +10,7 @@
 | `Port/macOS` | 5.492 |
 | `Port/Extensions` | 2.206 |
 | `MangoApp` (menu, layoutpanel, `-p`) | 1.052 |
-| `mmsg` | 467 |
+| `mmsg`s macOS-kommandoer (`Sources/Port/mmsg`; mangos mmsg er kernen, `Sources/Mango/mmsg`, fra 6. november) | 407 |
 | `MangoPrivate` | 68 |
 | **Uden for kernen i alt** | **9.285** |
 | Tests | 8.702 |
@@ -58,7 +58,7 @@ Rækkefølgen er de hele filer først, fordi de er mekaniske at flytte. Mærkern
 | `chutney_focus_app` | ~140 | Behold. Du har 25 taster på den. |
 | Små nøgler: floating_color, tab-genveje, border_unfocused, physical_pixels, ignore_apps, set_proportion_all | ~100 | Behold. 10–25 linjer hver, og de er slået fra uden deres nøgle. |
 | `mango -p`, `--list-ignored`, MangoCompat | ~470 | Behold. Regel 1 kræver listen. |
-| `mmsg` med service og binds | ~470 | Behold. |
+| `mmsg`s service, logs, reload og binds (porten; mangos mmsg er kernen) | ~410 | Behold. |
 | MainThreadWatchdog | 66 | Behold. Den kører kun med `-d`, og dens timer er nævnt. |
 
 ## 3. Forenklinger, begge reviewere står bag

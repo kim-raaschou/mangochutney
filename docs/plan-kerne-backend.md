@@ -27,7 +27,7 @@ CLAUDE.md er bindende. Kort fortalt:
 | `Mango` (`Sources/Mango` + `Sources/Boundary`) | 9.144 + 492 | Kernen og grænsen |
 | `Port` (`Port/macOS` + `Port/Extensions`) | 6.780 + 2.524 | macOS-laget og udvidelserne |
 | `MangoApp` | 968 | Appen: menulinjen, layoutpanelet, `mango -p` |
-| `mmsg` | 467 | IPC-klienten, uafhængig af resten |
+| `mmsg` (`Sources/Mango/mmsg`) + `MmsgPort` (`Sources/Port/mmsg`) | 137 + 407 | Mangos `mmsg.c` 1:1; portens `service`, `logs`, `reload`, `binds` (6. november 2026) |
 | Tests | 8.846 | 551 tests; de tegner aldrig, flytter ikke markøren og tager ikke fokus (`FakeWindowSystem`) |
 
 Den 2. november var kernen 13.272 linjer.

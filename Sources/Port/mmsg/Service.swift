@@ -1,4 +1,4 @@
-// `mmsg service ...`, `mmsg logs`: manage mango as a per-user LaunchAgent.
+// Port extension: not in mango. `mmsg service ...`, `mmsg logs`: manage mango as a per-user LaunchAgent.
 import Foundation
 import Darwin
 

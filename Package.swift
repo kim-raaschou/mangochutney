@@ -30,7 +30,7 @@ let package = Package(
         .target(
             name: "Mango",
             path: "Sources",
-            exclude: ["Port", "MangoApp", "MangoPrivate", "mmsg"],
+            exclude: ["Port", "MangoApp", "MangoPrivate", "Mango/mmsg"],
             sources: ["Mango", "Boundary"]
         ),
         // The port: macOS where wlroots stands (Port/macOS) and the port's extensions
@@ -38,7 +38,13 @@ let package = Package(
         .target(
             name: "Port",
             dependencies: ["Mango", "MangoPrivate"],
-            path: "Sources/Port"
+            path: "Sources/Port",
+            exclude: ["mmsg"]
+        ),
+        // mmsg's macOS extras (service, logs, reload, binds), the port's.
+        .target(
+            name: "MmsgPort",
+            path: "Sources/Port/mmsg"
         ),
         .executableTarget(
             name: "MangoApp",
@@ -47,7 +53,8 @@ let package = Package(
         ),
         .executableTarget(
             name: "mmsg",
-            path: "Sources/mmsg"
+            dependencies: ["MmsgPort"],
+            path: "Sources/Mango/mmsg"
         ),
         .testTarget(
             name: "MangoCoreTests",

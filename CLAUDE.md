@@ -50,7 +50,9 @@ judged case by case, not by a rule: say what it would cost and decide with the u
 answer is a near equivalent or leaving it out, mark it and list it (`docs/afvigelser.md`).
 
 **Where the line is.** `Sources/Mango` holds what is in mangoWm and nothing else: what mangoWm
-does not have is not in `Sources/Mango`, however small and whatever framework it uses.
+does not have is not in `Sources/Mango`, however small and whatever framework it uses. All of
+mangoWm's tree is the core, its programs too: `mmsg` (`mmsg/mmsg.c`) is `Sources/Mango/mmsg`,
+and its macOS commands are the port's (`Sources/Port/mmsg`).
 Everything else is the port, `Sources/Port`: `macOS/` and `Extensions/`, which may name and do
 things its own way. The one thing that is not mango's and still touches mango's code is the
 call across the boundary: where mango calls wlroots, its code calls the port (`WindowSystem`),

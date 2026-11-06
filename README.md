@@ -106,12 +106,13 @@ make release      # the signed zip, dist/MangoChutney-<version>.zip
 ```
 
 - **`Sources/Mango`** is mango's code in Swift, function by function, with mango's names and no
-  macOS framework.
+  macOS framework; `Sources/Mango/mmsg` is mango's `mmsg`.
 - **`Sources/Boundary`** is where wlroots stands for mango: `WindowSystem`, `PortHooks`, the event
   loop.
 - **`Sources/Port`** is macOS: `macOS` (Accessibility, the event tap, borders and bars, hiding
   windows, focus) and `Extensions` (Mango Chutney's own, joined to mango only through `PortHooks`).
-- **`Sources/MangoApp`** is the app and its menu bar; **`Sources/mmsg`** the command line client.
+- **`Sources/MangoApp`** is the app and its menu bar; **`Sources/Port/mmsg`** is mmsg's macOS
+  commands (`service`, `logs`, `reload`, `binds`).
 
 Every deviation from mango is listed in [afvigelser.md](docs/afvigelser.md) (in Danish).
 
