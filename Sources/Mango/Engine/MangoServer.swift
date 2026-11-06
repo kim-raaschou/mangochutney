@@ -392,7 +392,7 @@ public final class MangoServer {
             var target: CGRect?
             var park = false
             if c.scratchpadShown {
-                target = system.keepOnDisplay(clientApplyBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
+                target = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
                 raise.append(c)
             } else if c.isFullscreen {
                 target = m.screen.frame
@@ -410,7 +410,7 @@ public final class MangoServer {
                 target = box.insetBy(dx: bw, dy: bw)
                 raise.append(c)
             } else if c.isFloating {
-                target = system.keepOnDisplay(clientApplyBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
+                target = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
                 if c.isOverlay { raise.append(c) }
             } else if let f = result.frames[c.id] {
                 let bw = borderWidth(c, on: m)
@@ -512,7 +512,7 @@ public final class MangoServer {
     var sceneGeometry: CGRect { monitors.map(\.screen.frame).reduce(CGRect.null) { $0.union($1) } }
 
     // not in mango: returns the frame instead of setting c->geom
-    func clientApplyBounds(_ c: Client, _ geom: CGRect, _ bbox: CGRect) -> CGRect {
+    func clientSetBounds(_ c: Client, _ geom: CGRect, _ bbox: CGRect) -> CGRect {
         var g = geom
         let least = 1 + 2 * (c.mon.map { borderWidth(c, on: $0) } ?? 0)
         g.size.width = max(least, g.width)
@@ -677,7 +677,7 @@ public final class MangoServer {
         c.mon = nil
         clientInsertTilingOrder(c)
         focusStack.insert(c.id, at: 0)
-        clientApplyRules(c)
+        clientSetRules(c)
         if let cm = c.mon { arrange(cm, .move) }
         printstatus()
     }
@@ -685,7 +685,7 @@ public final class MangoServer {
     // not in mango: `mapped` false is mango's surface not mapped yet, the rules alone; the port's
     // windows found mapped already (at start, back after sleep) are placed by the port
     @discardableResult
-    package func clientApplyRules(_ c: Client, mapped: Bool = true) -> (mon: Monitor, tags: UInt32) {
+    package func clientSetRules(_ c: Client, mapped: Bool = true) -> (mon: Monitor, tags: UInt32) {
         var mon: Monitor = selectedMonitor
         var newtags: UInt32 = 0
         c.isFloating = clientIsFloatType(c)
@@ -847,7 +847,7 @@ public final class MangoServer {
             clientResetMonTags(c, m, newtags)
             checkMatchTagFloatingRule(c, m)
             clientSetFloating(c, c.isFloating)
-            clientApplyFullscreen(c, c.isFullscreen, rearrange: true)
+            clientSetFullscreen(c, c.isFullscreen, rearrange: true)
         }
         if focus { clientFocus(clientFocusTop(selectedMonitor)) }
     }
@@ -880,7 +880,7 @@ public final class MangoServer {
         guard let m = c.mon else { return }
         let layout = m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? m.getMonCurtag].layout
         if !c.isFloating && (layout.isScroller || (layout == .monocle && config.monocleTabMode)) { return }
-        if c.isFullscreen { clientApplyFullscreen(c, false, rearrange: true) }
+        if c.isFullscreen { clientSetFullscreen(c, false, rearrange: true) }
         if c.isMaximizeScreen { clientSetMaximizeScreen(c, false, rearrange: true) }
     }
 
@@ -925,7 +925,7 @@ public final class MangoServer {
         printstatus()
     }
 
-    func clientApplyFullscreen(_ c: Client, _ fullscreen: Bool, rearrange: Bool) {
+    func clientSetFullscreen(_ c: Client, _ fullscreen: Bool, rearrange: Bool) {
         guard let m = c.mon, grab?.client !== c else { return }
         if overviewState?.monitor === m { return }
         c.isFullscreen = fullscreen
@@ -942,7 +942,7 @@ public final class MangoServer {
     func clientSetFakeFullscreen(_ c: Client, _ fakefullscreen: Bool) {
         c.isFakeFullscreen = fakefullscreen
         guard c.mon != nil else { return }
-        if c.isFullscreen { clientApplyFullscreen(c, false, rearrange: true) }
+        if c.isFullscreen { clientSetFullscreen(c, false, rearrange: true) }
     }
 
     func clientSetMaximizeScreen(_ c: Client, _ maximizescreen: Bool, rearrange: Bool) {

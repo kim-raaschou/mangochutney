@@ -29,7 +29,7 @@ final class RuleFieldTests: MangoTestCase {
         rule.noForceCenter = true
         r.server.config.windowRules = [rule]
         let c = r.window(900_301)
-        _ = r.server.clientApplyRules(c)
+        _ = r.server.clientSetRules(c)
         XCTAssertTrue(c.noForceCenter)
     }
 

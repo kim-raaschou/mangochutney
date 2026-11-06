@@ -31,7 +31,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         }
     }
 
-    /// A window there when mango started: mango's rules (client_apply_rules, before the map),
+    /// A window there when mango started: mango's rules (client_set_rules, before the map),
     /// on the monitor it is on, where it is; laid out once all are in.
     private func mapInitial(_ c: Client) {
         c.isPendingOpenAnimation = false
@@ -42,7 +42,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         // mango's rules start from the selected monitor: the one the window is on
         let selected = server.selectedMonitor
         server.selectedMonitor = server.monitorAtPoint(c.frame.center) ?? selected
-        let (mon, tags) = server.clientApplyRules(c, mapped: false)
+        let (mon, tags) = server.clientSetRules(c, mapped: false)
         server.selectedMonitor = selected
         if !c.isCustomPos {
             c.floatGeom = frame
@@ -66,7 +66,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         server.clients.insert(c, at: DepartedWindow.insertionIndex(of: c.id, snapshot: d.orderSnapshot,
                                                                    into: server.clients.map(\.id)))
         server.focusStack.append(c.id)
-        var (mon, _) = server.clientApplyRules(c, mapped: false)
+        var (mon, _) = server.clientSetRules(c, mapped: false)
         c.oldmonname = d.homeDisplayID
         if let m = server.monitors.first(where: { $0.screen.displayID == d.displayID }) {
             mon = m

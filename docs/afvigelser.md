@@ -63,7 +63,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 |---|---|
 | Vinduer på skjulte tags parkeres i et hjørne med en pixel synlig | Uden compositor kan et vindue ikke skjules |
 | Menulinjens punkt viser alle skærme, hver med sine tags og sit layout, den valgte fuldt optrukket og de andre dæmpet (som AeroSpace og rift) | macOS tegner ét menulinjepunkt som kopi på hver skærm; en bar som waybar viser hver skærm sine egne |
-| Et flydende vindue holdes inden for sin skærms arbejdsområde (`keepOnDisplay` efter mangos `client_apply_bounds`); mango lader det stå halvt uden for skærmene | Med separate Spaces (macOS' standard) står et vindue på én skærm: et vindue lagt hen over to flytter macOS, væk fra den ramme, mango tegner |
+| Et flydende vindue holdes inden for sin skærms arbejdsområde (`keepOnDisplay` efter mangos `client_set_bounds`); mango lader det stå halvt uden for skærmene | Med separate Spaces (macOS' standard) står et vindue på én skærm: et vindue lagt hen over to flytter macOS, væk fra den ramme, mango tegner |
 | Et vindue åbner flydende, når det er en dialog (`client_is_float_type`); mangos andet led, `|| parent` (et vindue med en forælder), mangler | macOS' Accessibility siger ikke, hvilket vindue der er et andets forælder |
 | Hvilke vinduer der styres (popups aldrig), og hvilke der åbner flydende (dialoger), afgøres med AeroSpaces heuristik 1:1, med dens app-lister, og én ændring: AeroSpaces regel om vinduesniveau gælder alle apps, ikke kun dem på dens liste, så et vindue over normalt niveau (en notifikation, et flydende panel) aldrig styres; en `window_rule` med `is_floating` vinder. Som i AeroSpace flyder et vindue, der er minimeret, eller hvis app er skjult, når det findes | Wayland siger det med xdg-roller; macOS siger det ikke pålideligt, og AeroSpaces heuristik er afprøvet mod rigtige apps |
 | Et vindue, der ikke kan blive mindre end sit felt, går ind over naboen og vokser indad fra en skærmkant, det ellers ville krydse; mango klipper det | Appen afviser størrelsen, og andre apps' vinduer kan ikke klippes |
@@ -105,7 +105,6 @@ strøges her:
 
 | mango-commit | Hvad |
 |---|---|
-| `cd1764c` | mangos nye navne for vinduets tilstand (`set_…`) |
 
 ## 5. Struktur
 

@@ -495,7 +495,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertNil(TagMask.getTagsFirstTagNum(0))
     }
 
-    /// client_apply_rules: a new window without a position from a rule is centred on its
+    /// client_set_rules: a new window without a position from a rule is centred on its
     /// monitor; a second floating one there is moved off it (set_float_malposition).
     func testNewFloatingWindowsAreCentred() {
         let r = EngineRig()
@@ -511,13 +511,13 @@ final class FidelityTests: MangoTestCase {
         XCTAssertEqual(b.floatGeom.minX, a.floatGeom.minX + offset, accuracy: 1, "moved off the first")
     }
 
-    // MARK: mango client_apply_rules, step by step
+    // MARK: mango client_set_rules, step by step
 
     private func rules(_ r: EngineRig, _ text: String) {
         r.server.config.windowRules = ConfigParser.parse(text: text, baseDirectory: nil, fileName: "t").config.windowRules
     }
 
-    /// mango client_apply_rules: a window whose rule puts it on tags out of view brings
+    /// mango client_set_rules: a window whose rule puts it on tags out of view brings
     /// them into view (client_view_on_monitor) and is focused.
     func testARuleTagOutOfViewIsViewed() {
         let r = EngineRig()
@@ -549,7 +549,7 @@ final class FidelityTests: MangoTestCase {
         _ = a
     }
 
-    /// mango client_apply_rules: a window that is not focused goes from the head of the
+    /// mango client_set_rules: a window that is not focused goes from the head of the
     /// focus stack to its end (wl_list_safe_reinsert_prev).
     func testAnUnfocusedNewWindowGoesToTheEndOfTheFocusStack() {
         let r = EngineRig()
@@ -575,7 +575,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertFalse(r.map(3).isFloating, "the tag in view does not decide")
     }
 
-    /// mango client_apply_rules: a new tiled window takes a fullscreen window on its tag out
+    /// mango client_set_rules: a new tiled window takes a fullscreen window on its tag out
     /// of fullscreen (clear_fullscreen_flag); a new floating window does not.
     func testANewTiledWindowEndsFullscreenOnItsTag() {
         let r = EngineRig()
@@ -609,7 +609,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertFalse(r.map(2).isFloating)
     }
 
-    /// mango client_apply_rules: a fractional width and height are of the whole monitor
+    /// mango client_set_rules: a fractional width and height are of the whole monitor
     /// (m->m), not its work area.
     func testRuleFractionsAreOfTheWholeMonitor() {
         let r = EngineRig()
@@ -619,7 +619,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertEqual(c.floatGeom.height, (r.screen.frame.height * 0.5).rounded())
     }
 
-    /// mango client_apply_rules: of the monitors a rule's spec matches, the last one wins.
+    /// mango client_set_rules: of the monitors a rule's spec matches, the last one wins.
     func testTheLastMonitorARuleMatchesWins() {
         let r = EngineRig()
         let side = Screen(displayID: 2, name: "Side", frame: CGRect(x: 1728, y: 0, width: 1920, height: 1080),
@@ -630,7 +630,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertTrue(c.mon === r.server.monitors.last)
     }
 
-    // MARK: mango's state functions (client_set_floating, client_apply_fullscreen, ...)
+    // MARK: mango's state functions (client_set_floating, client_set_fullscreen, ...)
 
     private func d(_ r: EngineRig, _ name: String, _ args: [String] = [], _ c: Client? = nil) {
         _ = r.server.dispatch(Dispatch(name: name, args: args), target: c)
@@ -672,7 +672,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertEqual(c.floatGeom.midX, w.midX, accuracy: 1)
     }
 
-    /// mango client_apply_fullscreen / client_set_maximize_screen: refused in overview.
+    /// mango client_set_fullscreen / client_set_maximize_screen: refused in overview.
     func testFullscreenIsRefusedInOverview() {
         let r = EngineRig()
         let a = r.map(1)
@@ -1921,7 +1921,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertNil(r.animationTypeOpen)
     }
 
-    /// mango client_apply_bounds: a floating window halfway off the screens stays there; one
+    /// mango client_set_bounds: a floating window halfway off the screens stays there; one
     /// wholly outside comes back to the edge of the scene.
     func testFloatingWindowsKeepMangosLooseBounds() {
         let r = EngineRig()
@@ -1929,8 +1929,8 @@ final class FidelityTests: MangoTestCase {
         c.isFloating = true
         let scene = r.server.sceneGeometry
         let half = CGRect(x: scene.maxX - 200, y: 200, width: 600, height: 400)
-        XCTAssertEqual(r.server.clientApplyBounds(c, half, scene), half, "half outside: left as it is")
+        XCTAssertEqual(r.server.clientSetBounds(c, half, scene), half, "half outside: left as it is")
         let out = CGRect(x: scene.maxX + 50, y: 200, width: 600, height: 400)
-        XCTAssertEqual(r.server.clientApplyBounds(c, out, scene).minX, scene.maxX - 600, "wholly outside: back in")
+        XCTAssertEqual(r.server.clientSetBounds(c, out, scene).minX, scene.maxX - 600, "wholly outside: back in")
     }
 }

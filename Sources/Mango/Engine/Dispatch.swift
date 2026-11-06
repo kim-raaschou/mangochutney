@@ -279,7 +279,7 @@ package extension MangoServer {
             guard let c = target ?? clientFocusTop(selectedMonitor) else { return nil }
             c.isInScratchpad = false
             c.isNamedScratchpad = false
-            clientApplyFullscreen(c, !c.isFullscreen, rearrange: true)
+            clientSetFullscreen(c, !c.isFullscreen, rearrange: true)
             updateBorders()
         case "togglefakefullscreen":
             guard let c = target ?? clientFocusTop(selectedMonitor) else { return nil }
