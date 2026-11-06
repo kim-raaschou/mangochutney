@@ -164,7 +164,6 @@ package extension MangoServer {
            let target = groupBarTargetAt(at: p, except: g.client) {
             grab = nil
             startDragWindow = false
-            lastApplyDragTime = 0
             dragTile = nil
             system.showDropArea(nil, color: config.dropcolor)
             g.client.isFloating = false
@@ -264,7 +263,6 @@ package extension MangoServer {
         let pointed = clientAtPoint(p)
         pointerUpdateResizeCursor(pointed, surfaceAt(pointed, p), p)
         startDragWindow = false
-        lastApplyDragTime = 0
         if dragTile?.client === c {
             dropDraggedTile(at: p)
             if config.dragTileToTile { printstatus(); return }
@@ -362,12 +360,13 @@ package extension MangoServer {
             case .resize:
                 if c.isFloating || c.scratchpadShown {
                     c.isCustomSize = true
-                    if lastApplyDragTime == 0 || time &- lastApplyDragTime >= dragRefreshIntervalMs(c.mon) {
+                    // not in mango: one resize per refresh interval stands for frame_serial (macOS gives no frame events)
+                    if let m = c.mon, m.lastResizeTime == 0 || time &- m.lastResizeTime >= dragRefreshIntervalMs(m) {
+                        m.lastResizeTime = time
                         pointerResizeFloatingWindow(c, p.x, p.y)
-                        lastApplyDragTime = time
                     }
                 } else {
-                    resizeTileClient(c, isdrag: true, offsetX: 0, offsetY: 0, cursor: p, time: time)
+                    resizeTileClient(c, isdrag: true, offsetX: 0, offsetY: 0, cursor: p)
                 }
             }
             return p

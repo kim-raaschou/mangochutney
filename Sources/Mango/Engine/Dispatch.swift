@@ -987,25 +987,24 @@ package extension MangoServer {
         }
     }
 
-    func resizeTileClient(_ gc: Client, isdrag: Bool = false, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint = .zero,
-                          time: UInt32 = 0) {
+    func resizeTileClient(_ gc: Client, isdrag: Bool = false, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint = .zero) {
         guard let m = gc.mon, !gc.isFullscreen, !gc.isMaximizeScreen, overviewState?.monitor !== m else { return }
         let layout = m.pertag[TagMask.getTagsFirstTagNum(gc.tags) ?? m.getMonCurtag].layout
         switch layout {
         case .tile, .deck, .centerTile, .rightTile:
-            resizeTileMaster(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, time: time,
+            resizeTileMaster(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor,
                              type: layout, vertical: false)
         case .verticalTile, .verticalDeck:
-            resizeTileMaster(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, time: time,
+            resizeTileMaster(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor,
                              type: layout, vertical: true)
         case .scroller:
-            resizeTileScroller(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, time: time, vertical: false)
+            resizeTileScroller(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, vertical: false)
         case .verticalScroller:
-            resizeTileScroller(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, time: time, vertical: true)
+            resizeTileScroller(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, vertical: true)
         case .dwindle:
-            resizeTileDwindle(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, time: time)
+            resizeTileDwindle(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor)
         case .grid, .verticalGrid, .fair, .verticalFair:
-            resizeTileGridFair(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor, time: time)
+            resizeTileGridFair(gc, isdrag: isdrag, offsetX: offsetX, offsetY: offsetY, cursor: cursor)
         default:
             break
         }
@@ -1013,7 +1012,7 @@ package extension MangoServer {
 
     // not in mango: resize_tile_master_horizontal and _vertical in one; `vertical` says which
     func resizeTileMaster(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint,
-                          time: UInt32, type: LayoutKind, vertical: Bool) {
+                          type: LayoutKind, vertical: Bool) {
         guard let m = gc.mon else { return }
         let tiled = tiledClients(m)
         guard let gi = tiled.firstIndex(where: { $0 === gc }) else { return }
@@ -1124,14 +1123,11 @@ package extension MangoServer {
             arrange(m, .move)
             return
         }
-        if lastApplyDragTime == 0 || time &- lastApplyDragTime >= dragRefreshIntervalMs(m) {
-            arrange(m, .none)
-            lastApplyDragTime = time
-        }
+        arrange(m, .none)
     }
 
     func resizeTileScroller(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint,
-                            time: UInt32, vertical: Bool) {
+                            vertical: Bool) {
         guard let m = gc.mon else { return }
         let pt = m.pertag[TagMask.getTagsFirstTagNum(gc.tags) ?? m.getMonCurtag]
         let col = pt.state.scrollerState.column(of: gc.id).compactMap { clientByIdAll($0) }
@@ -1217,13 +1213,10 @@ package extension MangoServer {
             arrange(m, .move)
             return
         }
-        if lastApplyDragTime == 0 || time &- lastApplyDragTime >= dragRefreshIntervalMs(m) {
-            arrange(m, .none)
-            lastApplyDragTime = time
-        }
+        arrange(m, .none)
     }
 
-    func resizeTileDwindle(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint, time: UInt32) {
+    func resizeTileDwindle(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint) {
         guard let m = gc.mon else { return }
         let tree = m.current.state.dwindleRoot
         if !isdrag {
@@ -1231,16 +1224,13 @@ package extension MangoServer {
             arrange(m)
             return
         }
-        if lastApplyDragTime == 0 || time &- lastApplyDragTime >= dragRefreshIntervalMs(m) {
-            if tree.dwindleResizeClient(gc.id, startDragWindow: &startDragWindow, dragBeginCursor: &dragBeginCursor,
-                                        cursor: cursor, smartResize: config.dwindleSmartResize) {
-                arrange(m, .none)
-            }
-            lastApplyDragTime = time
+        if tree.dwindleResizeClient(gc.id, startDragWindow: &startDragWindow, dragBeginCursor: &dragBeginCursor,
+                                    cursor: cursor, smartResize: config.dwindleSmartResize) {
+            arrange(m, .none)
         }
     }
 
-    func resizeTileGridFair(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint, time: UInt32) {
+    func resizeTileGridFair(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint) {
         guard let m = gc.mon, !gc.isFullscreen, !gc.isMaximizeScreen, overviewState?.monitor !== m else { return }
         let tiled = tiledClients(m)
         guard tiled.count > 1 else { return }
@@ -1361,14 +1351,7 @@ package extension MangoServer {
                 if c.gridRowIdx == adjR { c.gridRowPer = CGFloat(newAdj) }
             }
         }
-        if !isdrag {
-            arrange(m, .none)
-            return
-        }
-        if lastApplyDragTime == 0 || time &- lastApplyDragTime >= dragRefreshIntervalMs(m) {
-            arrange(m, .none)
-            lastApplyDragTime = time
-        }
+        arrange(m, .none)
     }
 
     func clientExchange(_ c1: Client, _ c2: Client) {

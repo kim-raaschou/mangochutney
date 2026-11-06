@@ -71,6 +71,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Layoutet holder menulinjen og Dock'en fri | De svarer til mangos bjælker med eksklusiv zone |
 | Ingen skygge, blur, dæmpning, gennemsigtighed eller runde hjørner fra mango; ingen luk- og fade-animationer | macOS tegner andre apps' vinduer; gennemsigtighed kræver SIP slået fra |
 | Animationer skrives via Accessibility (højst 60 Hz) | Ingen compositor |
+| En flydende resize med musen sker højst én gang pr. skærmens opdateringsinterval; mango én gang pr. tegnet billede (`frame_serial`, 09828ec) | Kernen får ingen billedbegivenheder fra macOS |
 | Overview og switcher viser billeder (Skærmoptagelse), stillbilleder taget ved åbning; de rigtige vinduer bliver under dem, så `warp_cursor` sætter markøren på kortet (mangos `geom` i overview) | Andre apps' vinduer kan ikke skaleres; en strøm pr. vindue koster meget |
 | Kantgrebet (`enable_border_resize`) tager kun et klik, som event tap'en har taget fra appen; den afgør det ud fra mangos `hover_resize_edge` ved forrige bevægelse. Er markøren lige kommet på eller af striben, kan det ene klik gå til appen, eller gå tabt | Tap'en skal afgøre klikket med det samme, før appen får det, og kan ikke vente på mango |
 | `mangonag` er ikke et eget program: porten tegner dens bjælke i mangos proces ud fra de argumenter, `error_nag` giver (`-o`, `-t`, `-e`, `-l`, `-s`, `-b` …), med mangonags farver, skrift, fire linjer, ANSI-farver og knapper; bjælken står under menulinjen (eller over Dock'en) | mangonag er en Wayland-klient på en layer surface, tegnet med cairo og pango; et program at kalde selv har en Mac ikke brug for (macOS' notifikationer) |
@@ -109,7 +110,6 @@ strøges her:
 | `7a97c59` | ny nøgle `special_tag_cross_monitor` |
 | `57a48e6` | `transform` i IPC's `get monitor` |
 | `cd1764c` | mangos nye navne for vinduets tilstand (`set_…`) |
-| `283246a`, `09828ec` | fokus efter en popup; `resize`-dispatch i takt med skærmen (tjekkes) |
 
 ## 5. Struktur
 

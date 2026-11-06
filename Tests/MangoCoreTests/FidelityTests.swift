@@ -422,8 +422,8 @@ final class FidelityTests: MangoTestCase {
         let left = tiled.filter { $0.gridColIdx == 0 }, right = tiled.filter { $0.gridColIdx == 2 }
         let g = try XCTUnwrap(middle.geom)
         let grab = CGPoint(x: g.minX + 5, y: g.midY)
-        r.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: grab, time: 1)
-        r.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: CGPoint(x: grab.x - 80, y: grab.y), time: 100)
+        r.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: grab)
+        r.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: CGPoint(x: grab.x - 80, y: grab.y))
         XCTAssertGreaterThan(middle.gridColPer, 1, "the middle column grows to the left")
         XCTAssertTrue(left.allSatisfy { $0.gridColPer < 1 }, "the left column gives the room")
         XCTAssertTrue(right.allSatisfy { $0.gridColPer == 1 }, "the right column is not touched")

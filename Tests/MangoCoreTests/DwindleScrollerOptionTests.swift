@@ -43,14 +43,14 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         XCTAssertEqual(dragRight(r, by: 100), before - 100, accuracy: 2)
     }
 
-    /// mango drag_refresh_interval_ms: a drag lays out at most once a frame (60 Hz when the
-    /// monitor's rate is not known); the motion within the frame is not laid out.
-    func testADragLaysOutAtMostOnceAFrame() {
+    /// mango 09828ec: a tiled drag lays out on every motion, however soon after the last.
+    /// (A floating resize keeps one a frame: 60 Hz when the monitor's rate is not known.)
+    func testATiledDragLaysOutOnEveryMotion() {
         let r = dwindle(2)
-        XCTAssertEqual(r.server.dragRefreshIntervalMs(r.monitor), 16)
         let width = dragRight(r, by: 100)
         r.server.pointerProcessMotion(CGPoint(x: 0, y: 0), time: 1110)
-        XCTAssertEqual(r.server.clientByIdAll(900_400)!.geom!.width, width, "10 ms later: not laid out")
+        XCTAssertNotEqual(r.server.clientByIdAll(900_400)!.geom!.width, width, "1 ms later: laid out")
+        XCTAssertEqual(r.server.dragRefreshIntervalMs(r.monitor), 16)
         r.monitor.screen.refresh = 120_000
         XCTAssertEqual(r.server.dragRefreshIntervalMs(r.monitor), 8)
     }

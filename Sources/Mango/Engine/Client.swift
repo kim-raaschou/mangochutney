@@ -150,6 +150,7 @@ public final class Monitor {
     public var seltags = 0
     public var pertag: [Pertag] = []
     public var sel: ClientID?
+    var lastResizeTime: UInt32 = 0   // not in mango: last_resize_frame, as the time of that frame
     public var prevsel: ClientID?
     public var gaps: Gaps
     public var specialGaps: Gaps

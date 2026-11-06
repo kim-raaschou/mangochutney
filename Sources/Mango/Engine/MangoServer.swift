@@ -51,7 +51,6 @@ public final class MangoServer {
     var startDragWindow = false
     var confinePointerLast: ClientID?
     var dragBeginCursor: CGPoint = .zero
-    var lastApplyDragTime: UInt32 = 0
     package var dragTile: DragTile?
     package var system: WindowSystem!
     /// Port extension: not in mango. Where the port's extensions join (PortHooks.swift).
@@ -275,6 +274,7 @@ public final class MangoServer {
         return nil
     }
 
+    // not in mango: a frame's length, for frame_serial (mango 0.18.2's drag_refresh_interval_ms)
     func dragRefreshIntervalMs(_ m: Monitor?) -> UInt32 {
         var refreshMhz = m?.screen.refresh ?? 0
         if refreshMhz <= 0 { refreshMhz = 60000 }
