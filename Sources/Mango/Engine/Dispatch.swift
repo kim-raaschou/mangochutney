@@ -322,15 +322,17 @@ package extension MangoServer {
             if r == nil { r = clients.first { $0.isMinimized && !$0.isNamedScratchpad } }
             guard let r else { return nil }
             if !r.ignoreMinimize { system.unminimize(r) }   // not in mango: macOS's own minimize undone
+            let isFloatingBeforeScratchpad = r.isFloatingBeforeScratchpad
             r.isInScratchpad = false
+            r.isFloatingBeforeScratchpad = false
             r.isNamedScratchpad = false
             r.isMinimized = false
             r.isCustomSize = false
             if let f = focused, f !== r, f.tags != 0 { r.tags = f.tags } else { r.tags = sm.tagset[sm.seltags] }
             r.oldTags = r.tags
             r.mon = sm
-            clientSetFloating(r, false)
-            arrange(sm)
+            r.isPendingOpenAnimation = true
+            clientSetFloating(r, isFloatingBeforeScratchpad)
             clientFocus(r)
             pointerWarpToClient(r)
         case "toggle_scratchpad":
@@ -1736,20 +1738,36 @@ package extension MangoServer {
 
     func toggleScratchpad() {
         if overviewState?.monitor === selectedMonitor { return }
-        var hit = false
+        var shown: Client?
+        var hidden: Client?
         for c in clients {
             if !config.scratchpadCrossMonitor && c.mon !== selectedMonitor { continue }
             if config.singleScratchpad && c.isNamedScratchpad && c.scratchpadShown {
                 setMinimized(c)
                 continue
             }
-            if c.isNamedScratchpad || hit { continue }
-            hit = switchScratchpadClientState(c)
+            if c.isNamedScratchpad { continue }
+            if shown == nil && c.scratchpadShown {
+                shown = c
+            } else if c.isInScratchpad {
+                hidden = c   // LIFO insertion puts the oldest scratchpad last.
+            }
+        }
+
+        if let shown {
+            _ = switchScratchpadClientState(shown)
+        } else if let hidden {
+            _ = switchScratchpadClientState(hidden)
         }
     }
 
     func setMinimized(_ c: Client) {
         guard let m = c.mon, grab?.client !== c else { return }
+
+        if !c.isInScratchpad {
+            c.isFloatingBeforeScratchpad = c.isFloating
+        }
+
         c.isGlobal = false
         c.oldTags = m.tagset[m.seltags]
         c.tags = 0
@@ -1758,7 +1776,7 @@ package extension MangoServer {
         clientFocus(clientFocusTop(selectedMonitor))
         arrange(m)
         clients.removeAll { $0 === c }
-        clients.append(c)
+        clients.insert(c, at: 0)
     }
 
     func showHideClient(_ c: Client) {

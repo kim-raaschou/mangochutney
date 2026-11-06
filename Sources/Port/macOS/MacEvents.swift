@@ -34,7 +34,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     /// A window there when mango started: mango's rules (client_apply_rules, before the map),
     /// on the monitor it is on, where it is; laid out once all are in.
     private func mapInitial(_ c: Client) {
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         c.mon = nil
         server.clientInsertTilingOrder(c)
         server.focusStack.insert(c.id, at: 0)
@@ -82,7 +82,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.floatGeom = d.floatFrame
         c.scrollerProportion = d.scrollerProportion
         c.isCustomSize = d.isCustomSize
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         server.layoutStateInsert(c, on: mon)
         c.mon = mon
         c.tags = d.tags

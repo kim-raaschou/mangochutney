@@ -180,7 +180,7 @@ final class EngineRig {
                                  title: "t\(id)", subrole: "AXStandardWindow", isDialog: false, frame: frame, isMinimized: false, isFullscreen: false, isAppHidden: false)
         let c = Client(window: w, monitor: monitor, tags: tags)
         c.isFloating = floating
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         app.frames[id] = frame
         server.clients.append(c)
         server.focusStack.insert(id, at: 0)   // mango mapnotify

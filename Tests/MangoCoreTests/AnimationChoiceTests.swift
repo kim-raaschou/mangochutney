@@ -19,13 +19,13 @@ final class AnimationChoiceTests: MangoTestCase {
     /// zoom_initial_ratio around the centre. Only the first resize is OPEN.
     func testOpen() {
         let (r, c) = rig()
-        c.isNew = true
+        c.isPendingOpenAnimation = true
         let a = r.server.clientAnimation(c, to: target, .move, current: now, shown: true)
         XCTAssertEqual(a.action, .open)
         XCTAssertEqual(a.durationMs, r.server.config.animationDurationOpen)
         XCTAssertEqual(a.from, target.offsetBy(dx: 0, dy: r.screen.frame.maxY - target.minY))
         XCTAssertEqual(r.server.clientAnimation(c, to: target, .move, current: now, shown: true).action, .move)
-        c.isNew = true
+        c.isPendingOpenAnimation = true
         c.animationTypeOpen = .zoom
         r.server.config.zoomInitialRatio = 0.5
         XCTAssertEqual(r.server.clientAnimation(c, to: target, .move, current: now, shown: true).from,
@@ -36,17 +36,17 @@ final class AnimationChoiceTests: MangoTestCase {
     /// its centre, just outside the monitor.
     func testSlideFromTheNearestEdge() {
         let (r, c) = rig()
-        c.isNew = true
+        c.isPendingOpenAnimation = true
         c.isFloating = true
         let m = r.screen.frame
         let nearLeft = CGRect(x: 10, y: 400, width: 300, height: 200)
         XCTAssertEqual(r.server.clientAnimation(c, to: nearLeft, .move, current: now, shown: true).from,
                        CGRect(x: m.minX - 300, y: 400, width: 300, height: 200))
-        c.isNew = true
+        c.isPendingOpenAnimation = true
         let nearTop = CGRect(x: 700, y: 40, width: 300, height: 200)
         XCTAssertEqual(r.server.clientAnimation(c, to: nearTop, .move, current: now, shown: true).from,
                        CGRect(x: 700, y: m.minY - 200, width: 300, height: 200))
-        c.isNew = true
+        c.isPendingOpenAnimation = true
         let nearRight = CGRect(x: 1400, y: 500, width: 300, height: 200)
         XCTAssertEqual(r.server.clientAnimation(c, to: nearRight, .move, current: now, shown: true).from,
                        CGRect(x: m.maxX, y: 500, width: 300, height: 200))
@@ -59,15 +59,15 @@ final class AnimationChoiceTests: MangoTestCase {
         let m = r.screen.frame
         r.monitor.current.layout = .tile
         let d = r.window(2)
-        d.isNew = true
+        d.isPendingOpenAnimation = true
         r.server.config.newIsMaster = true
         XCTAssertEqual(r.server.clientAnimation(d, to: target, .move, current: now, shown: true).from.minX,
                        m.minX - target.width, "new master: from the left")
-        d.isNew = true
+        d.isPendingOpenAnimation = true
         r.server.config.newIsMaster = false
         XCTAssertEqual(r.server.clientAnimation(d, to: target, .move, current: now, shown: true).from.minX,
                        m.maxX, "the second window: from the right")
-        d.isNew = true
+        d.isPendingOpenAnimation = true
         r.monitor.current.layout = .scroller
         XCTAssertEqual(r.server.clientAnimation(d, to: target, .move, current: now, shown: true).from.minY,
                        m.maxY, "scroller: from below")
@@ -77,7 +77,7 @@ final class AnimationChoiceTests: MangoTestCase {
     /// A move: MOVE, from where it is, the move duration and curve.
     func testMove() {
         let (r, c) = rig()
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         let a = r.server.clientAnimation(c, to: target, .move, current: now, shown: true)
         XCTAssertEqual(a, ClientAnimation(action: .move, from: now, durationMs: r.server.config.animationDurationMove,
                                           curve: r.server.config.animationCurveMove))
@@ -87,7 +87,7 @@ final class AnimationChoiceTests: MangoTestCase {
     /// width away on the side it comes from; one that was hidden otherwise appears in place.
     func testTagIn() {
         let (r, c) = rig()
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         let w = r.screen.frame.width
         let fwd = r.server.clientAnimation(c, to: target, .tag(forward: true), current: now, shown: false)
         XCTAssertEqual(fwd.action, .tag)
@@ -103,7 +103,7 @@ final class AnimationChoiceTests: MangoTestCase {
     /// the selected one moves from where it is. Only the first move; then MOVE again.
     func testEnteringOverview() {
         let (r, c) = rig()
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         r.monitor.sel = nil
         c.overining = true
         let card = CGRect(x: 100, y: 100, width: 400, height: 300)
@@ -122,7 +122,7 @@ final class AnimationChoiceTests: MangoTestCase {
     /// No animation: animations off, no_animation, a grabbed window, or an arrange without.
     func testNoAnimation() {
         let (r, c) = rig()
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         XCTAssertEqual(r.server.clientAnimation(c, to: target, .none, current: now, shown: true).from, target)
         c.noAnimation = true
         XCTAssertEqual(r.server.clientAnimation(c, to: target, .move, current: now, shown: true).durationMs, 0)
@@ -135,7 +135,7 @@ final class AnimationChoiceTests: MangoTestCase {
     /// right; the TAG duration.
     func testTagOut() {
         let (r, c) = rig()
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         c.geom = target
         c.frame = target
         let m = r.screen.frame
@@ -150,7 +150,7 @@ final class AnimationChoiceTests: MangoTestCase {
     func testLeavingATagSlidesOut() {
         let (r, c) = rig()
         r.server.arrange(r.monitor, .none)
-        XCTAssertFalse(c.isNew)
+        XCTAssertFalse(c.isPendingOpenAnimation)
         _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         XCTAssertTrue(c.tagouting, "sliding out")
         XCTAssertFalse(c.parked, "not hidden yet")
@@ -167,7 +167,7 @@ final class AnimationChoiceTests: MangoTestCase {
     /// an animated switch; a scratchpad brought here (scratchpad_tagin) too.
     func testSpecialAndScratchpadSlideInFromAbove() {
         let (r, c) = rig()
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         let top = r.screen.frame.minY
         c.tags = TagMask.special
         let a = r.server.clientAnimation(c, to: target, .tag(forward: true), current: now, shown: false)

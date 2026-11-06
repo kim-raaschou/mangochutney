@@ -58,7 +58,7 @@ final class RuleFieldTests: MangoTestCase {
         let w = DiscoveredWindow(id: id, pid: pid, element: r.app.element(for: id), bundleId: bundleId, appName: "OBS",
                                  title: "OBS", subrole: "AXStandardWindow", isDialog: false, frame: float, isMinimized: false, isFullscreen: false, isAppHidden: false)
         let c = Client(window: w, monitor: r.monitor, tags: 1)
-        c.isNew = false
+        c.isPendingOpenAnimation = false
         r.app.frames[id] = float
         r.server.clients.append(c)
         return c

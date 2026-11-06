@@ -25,7 +25,7 @@ package extension MangoServer {
         c.tagouting = false
         var a = ClientAnimation(action: .move, from: current, durationMs: config.animationDurationMove,
                                 curve: config.animationCurveMove)
-        if c.overining && !c.isNew {
+        if c.overining && !c.isPendingOpenAnimation {
             c.overining = false
             a.action = .overview
             a.durationMs = config.animationDurationTag
@@ -37,9 +37,9 @@ package extension MangoServer {
             a.durationMs = config.animationDurationTag
             a.curve = config.animationCurveTag
             if shown && wasTagouting { a.from = current } else { a.from = setArrangeVisible(c, target) }
-            c.isNew = false
-        } else if c.isNew {
-            c.isNew = false
+            c.isPendingOpenAnimation = false
+        } else if c.isPendingOpenAnimation {
+            c.isPendingOpenAnimation = false
             a.action = .open
             a.durationMs = config.animationDurationOpen
             a.curve = config.animationCurveOpen
@@ -123,7 +123,7 @@ package extension MangoServer {
 
     func setArrangeHidden(_ m: Monitor, _ c: Client, _ anim: ArrangeAnimation) {
         if c.tagouting { return }
-        let animates = !c.isNew && !c.parked && config.animations && !c.noAnimation && grab?.client !== c
+        let animates = !c.isPendingOpenAnimation && !c.parked && config.animations && !c.noAnimation && grab?.client !== c
         let special = c.tags & TagMask.special != 0
         if !special && c.isInScratchpad && c.isMinimized {
             if animates {

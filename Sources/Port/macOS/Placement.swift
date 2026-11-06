@@ -57,9 +57,9 @@ extension MacWindowSystem {
         let wasParked = c.parked
         c.parked = false
         c.parkRetries = 0
-        if !wasParked && !c.isNew && c.frame == target && !animator.isAnimating(c.id) { return }
+        if !wasParked && !c.isPendingOpenAnimation && c.frame == target && !animator.isAnimating(c.id) { return }
 
-        let moving = !wasParked && !c.isNew
+        let moving = !wasParked && !c.isPendingOpenAnimation
         c.writes += 1
         // mango's resize decides the animation; the port draws it.
         let a = server.clientAnimation(c, to: target, anim, current: c.frame, shown: !wasParked)

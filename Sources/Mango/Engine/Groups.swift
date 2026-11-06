@@ -88,6 +88,7 @@ package extension MangoServer {
         c.isFullscreen = w.isFullscreen
         c.isMaximizeScreen = w.isMaximizeScreen
         c.isInScratchpad = w.isInScratchpad
+        c.isFloatingBeforeScratchpad = w.isFloatingBeforeScratchpad
         c.isMinimized = w.isMinimized
         c.groupParked = false
         if !isGroupChangeMember { clientGroupReplace(w, c) }

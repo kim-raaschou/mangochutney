@@ -105,8 +105,6 @@ strøges her:
 
 | mango-commit | Hvad |
 |---|---|
-| `6fbf46c`, `202b1da` | minimerede vinduer kommer tilbage sidst-ind-først-ud, med deres tilstand og animation |
-| `499a164` | flisetilstanden sættes, før vinduet konfigureres første gang |
 | `7a97c59` | ny nøgle `special_tag_cross_monitor` |
 | `cd1764c` | mangos nye navne for vinduets tilstand (`set_…`) |
 

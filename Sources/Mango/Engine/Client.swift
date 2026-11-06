@@ -95,7 +95,8 @@ public final class Client {
     public var floatGeom: CGRect
 /// Not in mango: without the border (mango's box includes it).
     public var geom: CGRect?
-    public var isNew = true
+    public var isPendingOpenAnimation = true
+    public var isFloatingBeforeScratchpad = false
     public var overining = false
     public var tagouting = false
     public var scratchpadTagin = false

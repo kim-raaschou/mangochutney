@@ -176,22 +176,40 @@ final class FidelityTests: MangoTestCase {
         XCTAssertEqual(other.scrollerProportion, 0.9, "only the head")
     }
 
-    /// toggle_scratchpad: one window per call, down the client list; a hidden one goes last.
+    /// toggle_scratchpad (mango 6fbf46c): one window per call. A minimized window goes first
+    /// in the client list, so the oldest is last and shown first; hidden again, it goes first.
     func testToggleScratchpadOneAtATime() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2), _ = r.window(3)
         r.server.arrange(r.monitor)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: b)
+        XCTAssertEqual(r.server.clients.first?.id, 2, "the last minimized first")
         func shown() -> [ClientID] { r.server.clients.filter { $0.scratchpadShown }.map(\.id) }
         _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
-        XCTAssertEqual(shown().count, 1, "one, not the whole pool")
-        let first = shown()[0]
+        XCTAssertEqual(shown(), [1], "one, not the whole pool: the oldest")
         _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
         XCTAssertEqual(shown(), [], "the shown one hides")
-        XCTAssertEqual(r.server.clients.last?.id, first, "and goes last")
+        XCTAssertEqual(r.server.clients.first?.id, 1, "and goes first")
         _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
-        XCTAssertEqual(shown(), [first == 1 ? 2 : 1], "then the other")
+        XCTAssertEqual(shown(), [2], "then the other")
+    }
+
+    /// mango 202b1da, 6fbf46c: restore_minimized takes the last minimized window first, back
+    /// to the floating state it had before.
+    func testRestoreMinimizedIsLastInFirstOutWithItsFloating() {
+        let r = EngineRig()
+        let a = r.window(1, floating: true), b = r.window(2)
+        r.server.arrange(r.monitor)
+        _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
+        _ = r.server.dispatch(Dispatch(name: "minimized"), target: b)
+        _ = r.server.dispatch(Dispatch(name: "restore_minimized"))
+        XCTAssertFalse(b.isMinimized, "the last minimized first")
+        XCTAssertFalse(b.isFloating)
+        XCTAssertTrue(a.isMinimized)
+        _ = r.server.dispatch(Dispatch(name: "restore_minimized"))
+        XCTAssertFalse(a.isMinimized)
+        XCTAssertTrue(a.isFloating, "floating again, as before it was minimized")
     }
 
     /// smart_move_window: stops at a floating window in the way (with the inner gap), and
@@ -700,19 +718,19 @@ final class FidelityTests: MangoTestCase {
         XCTAssertFalse(a.isInScratchpad)
     }
 
-    /// mango set_minimized: the window goes last in the client list with no tags, so
-    /// restore_minimized (first minimized in list order) brings back the one minimized first.
-    func testMinimizedGoesLastInTheClientList() {
+    /// mango set_minimized (6fbf46c): the window goes first in the client list with no tags,
+    /// so restore_minimized (first minimized in list order) brings back the last minimized.
+    func testMinimizedGoesFirstInTheClientList() {
         let r = EngineRig()
         let a = r.map(1), _ = r.map(2), c = r.map(3)
         d(r, "minimized", [], c)
         d(r, "minimized", [], a)
-        XCTAssertEqual(r.server.clients.last?.id, a.id)
+        XCTAssertEqual(r.server.clients.first?.id, a.id)
         XCTAssertEqual(a.tags, 0)
         XCTAssertEqual(a.oldTags, 1)
         d(r, "restore_minimized")
-        XCTAssertFalse(c.isMinimized, "the one minimized first")
-        XCTAssertTrue(a.isMinimized)
+        XCTAssertFalse(a.isMinimized, "the last minimized")
+        XCTAssertTrue(c.isMinimized)
     }
 
     /// mango minimize_window: refused in overview.
