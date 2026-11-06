@@ -781,6 +781,29 @@ final class FidelityTests: MangoTestCase {
         return r.server.monitors.first { $0.screen.name == "Side" }!
     }
 
+    /// mango 7a97c59, special_tag_cross_monitor: the special tag shown on a monitor brings
+    /// its windows there, and the monitor that showed it goes back to its tags.
+    func testSpecialTagCrossMonitor() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        let a = r.map(1)
+        d(r, "tag_special_tag", [], a)
+        XCTAssertTrue(r.server.isSpecialActive(r.monitor))
+        XCTAssertTrue(a.mon === r.monitor)
+
+        r.server.toggleSpecialTagMon(side)
+        XCTAssertTrue(a.mon === r.monitor, "off (mango's default): the window stays")
+        r.server.toggleSpecialTagMon(side)
+
+        r.server.config.specialTagCrossMonitor = true
+        r.monitor.pertag[0].layout = .grid
+        r.server.toggleSpecialTagMon(side)
+        XCTAssertTrue(a.mon === side, "on: the special tag's windows come along")
+        XCTAssertTrue(r.server.isSpecialActive(side))
+        XCTAssertFalse(r.server.isSpecialActive(r.monitor), "the other monitor goes back to its tags")
+        XCTAssertEqual(side.pertag[0].layout, .grid, "with the special tag's layout")
+    }
+
     /// mango tag_monitor: the window takes the target's tags in view, the view there
     /// collapses to its first tag, the target is selected and the window focused.
     func testTagmonViewsTheWindowsFirstTagOnTheTarget() {

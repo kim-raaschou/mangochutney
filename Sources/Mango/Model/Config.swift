@@ -58,6 +58,7 @@ public struct Config: Sendable {
     public var monocleNoBorder = false
     public var monocleNoGap = false
     public var monocleNoRadius = false
+    public var specialTagCrossMonitor = false
     public var deckTabMode = true
     public var tabBarHeight = 33
     public var groupBarHeight = 33

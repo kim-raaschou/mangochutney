@@ -105,7 +105,6 @@ strøges her:
 
 | mango-commit | Hvad |
 |---|---|
-| `7a97c59` | ny nøgle `special_tag_cross_monitor` |
 | `cd1764c` | mangos nye navne for vinduets tilstand (`set_…`) |
 
 ## 5. Struktur

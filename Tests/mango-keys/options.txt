@@ -180,6 +180,7 @@ special_gap_inner_horizontal
 special_gap_inner_vertical
 special_gap_outer_horizontal
 special_gap_outer_vertical
+special_tag_cross_monitor
 split_color
 swipe_min_threshold
 sync_obj_enable

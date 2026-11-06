@@ -349,8 +349,10 @@ package extension MangoServer {
                 let back: UInt32 = cm.prevTag > 0 ? 1 << UInt32(cm.prevTag - 1) : (cm.curtag > 0 ? 1 << UInt32(cm.curtag - 1) : 1)
                 if silent { tagSilent(c, back, on: cm) } else { tagClient(c, back) }
             } else if silent {
+                specialTagPrepareTarget(cm)
                 tagSilent(c, TagMask.special, on: cm)
             } else {
+                specialTagPrepareTarget(cm)
                 tagClient(c, TagMask.special)
                 if !isSpecialActive(cm) { toggleSpecialTagMon(selectedMonitor) }
             }
@@ -1716,24 +1718,50 @@ package extension MangoServer {
     }
 
     func tagMonitor(_ c: Client, to m: Monitor, newtags: UInt32) {
-        guard let oldmon = c.mon else { return }
-        if oldmon === m {
+        guard c.mon != nil else { return }
+        if c.mon === m {
             clientViewOnMonitor(newtags, on: selectedMonitor, changeFocus: true)
             return
         }
-        if oldmon.sel == c.id { oldmon.sel = nil }
-        clientSetMonitor(c, m, newtags, focus: true)
-        clientUpdateOldmonnameRecord(c, m)
-        c.parked = false   // not in mango: the system places it on the new display
-        let from = oldmon.screen.workArea, to = m.screen.workArea
-        c.floatGeom.size = CGSize(width: (c.floatGeom.width * to.width / max(1, from.width)).rounded(.towardZero),
-                                  height: (c.floatGeom.height * to.height / max(1, from.height)).rounded(.towardZero))
-        selectedMonitor = m
-        c.floatGeom = clientCenterGeometry(c, m, c.floatGeom)
-        clientViewOnMonitor(getTagsFirstTag(c.tags), on: selectedMonitor, changeFocus: true)
+
+        if !clientSetMonitorAdapted(c, m, newtags, focus: true) { return }
+
+        selectedMonitor = c.mon
+        let target = getTagsFirstTag(c.tags)
+
+        clientViewOnMonitor(target, on: selectedMonitor, changeFocus: true)
         clientFocus(c)
         arrange(selectedMonitor)
-        if config.warpcursor { pointerWarpToMonitor(m) }
+        if config.warpcursor, let cm = c.mon { pointerWarpToMonitor(cm) }
+    }
+
+    private func specialTagMigrateClients(_ target: Monitor) {
+        var layoutCopied = false
+
+        for c in clients {
+            guard let oldmon = c.mon, oldmon !== target, c.tags & TagMask.special != 0 else { continue }
+
+            if !layoutCopied {
+                monitorCopyTagLayout(target, oldmon, 0)
+                layoutCopied = true
+            }
+            _ = clientSetMonitorAdapted(c, target, TagMask.special, focus: false)
+        }
+    }
+
+    func specialTagPreviousTagset(_ m: Monitor) -> UInt32 {
+        let previous = m.tagset[m.seltags ^ 1] & ~TagMask.special
+        return previous != 0 ? previous : (m.prevTag > 0 ? 1 << UInt32(m.prevTag - 1) : 1)
+    }
+
+    func specialTagPrepareTarget(_ target: Monitor) {
+        guard config.specialTagCrossMonitor else { return }
+
+        for m in monitors where m !== target && overviewState?.monitor !== m && isSpecialActive(m) {
+            clientViewOnMonitor(specialTagPreviousTagset(m), on: m, changeFocus: false)
+        }
+
+        specialTagMigrateClients(target)
     }
 
     func toggleScratchpad() {
@@ -1819,13 +1847,11 @@ package extension MangoServer {
         guard let old = c.mon, c.isInScratchpad else { return false }
         let shown = c.scratchpadShown
         if config.scratchpadCrossMonitor && old !== selectedMonitor {
-            let from = old.screen.workArea, to = selectedMonitor.screen.workArea
-            let w = (c.floatGeom.width * to.width / from.width).rounded(.down)
-            let h = (c.floatGeom.height * to.height / from.height).rounded(.down)
-            c.floatGeom = clientCenterGeometry(c, CGRect(origin: c.floatGeom.origin, size: CGSize(width: w, height: h)),
-                                               in: to).rounded()
             c.mon = selectedMonitor
             clientUpdateOldmonnameRecord(c, selectedMonitor)
+
+            clientAdaptGeometryToMonitor(c, old)
+
             if shown {
                 c.tags = getTagsFirstTag(selectedMonitor.tagset[selectedMonitor.seltags])
                 arrange(selectedMonitor)

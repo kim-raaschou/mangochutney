@@ -492,8 +492,9 @@ public final class MangoServer {
         guard overviewState?.monitor !== m else { return }
         selectedMonitor = m
         if isSpecialActive(m) {
-            clientViewOnMonitor(getMonitorActiveTagset(m), on: m)
+            clientViewOnMonitor(specialTagPreviousTagset(m), on: m, changeFocus: true)
         } else {
+            specialTagPrepareTarget(m)
             clientViewOnMonitor(TagMask.special, on: m)
         }
     }
@@ -794,6 +795,44 @@ public final class MangoServer {
         let st = m.current.state
         st.scrollerState.insert(c.id, afterFocused: m.sel)
         st.dwindleRoot.dwindleInsertWithConfig(c.id, nextTo: m.sel, config: config, cursor: system.pointer)
+    }
+
+    func clientAdaptGeometryToMonitor(_ c: Client, _ oldmon: Monitor) {
+        guard let cm = c.mon else { return }
+        let from = oldmon.screen.workArea, to = cm.screen.workArea
+        guard from.width > 0, from.height > 0, to.width > 0, to.height > 0 else { return }
+
+        c.floatGeom.size = CGSize(width: (c.floatGeom.width * to.width / from.width).rounded(.towardZero),
+                                  height: (c.floatGeom.height * to.height / from.height).rounded(.towardZero))
+        c.floatGeom = clientCenterGeometry(c, cm, c.floatGeom)
+    }
+
+    func clientSetMonitorAdapted(_ c: Client, _ m: Monitor, _ newtags: UInt32, focus: Bool) -> Bool {
+        guard let oldmon = c.mon, oldmon !== m else { return false }
+
+        clientSetMonitor(c, m, newtags, focus: focus)
+        if c.mon !== m { return false }
+
+        clientUpdateOldmonnameRecord(c, m)
+        c.parked = false   // not in mango: the system places it on the new display
+        clientAdaptGeometryToMonitor(c, oldmon)
+        return true
+    }
+
+    func monitorCopyTagLayout(_ target: Monitor, _ source: Monitor, _ tag: Int) {
+        guard tag < target.pertag.count, tag < source.pertag.count else { return }
+
+        let dst = target.pertag[tag]
+        let src = source.pertag[tag]
+
+        dst.settings = src.settings
+        dst.noHide = src.noHide
+        dst.noRenderBorder = src.noRenderBorder
+        dst.openAsFloating = src.openAsFloating
+        dst.layout = src.layout
+
+        /* Layout trees and scroller nodes are monitor-owned and rebuilt on the
+         * target after the clients have moved. */
     }
 
     package func clientSetMonitor(_ c: Client, _ m: Monitor?, _ newtags: UInt32, focus: Bool) {
