@@ -18,12 +18,12 @@ public enum ConfigOptions {
         switch key {
         case "env":
             guard let comma = value.firstIndex(of: ",") else {
-                return .invalid("Invalid env format (expected NAME,value): \(value)")
+                return .invalid("Invalid bind format: \(mangoHighlight(value))")
             }
             let name = value[..<comma].trimmingCharacters(in: .whitespaces)
             var v = value[value.index(after: comma)...].trimmingCharacters(in: .whitespaces)
             guard !name.isEmpty, !value[value.index(after: comma)...].isEmpty else {
-                return .invalid("Invalid env format (expected NAME,value): \(value)")
+                return .invalid("Invalid bind format: \(mangoHighlight(value))")
             }
             if v.contains("~/") {
                 v = v.replacingOccurrences(of: "~/", with: homeDirectory() + "/")
@@ -118,11 +118,11 @@ public enum ConfigOptions {
         t["animation_duration_tag"] = int(\.animationDurationTag)
         t["animation_duration_close"] = int(\.animationDurationClose)
         t["animation_duration_focus"] = int(\.animationDurationFocus)
-        t["animation_curve_move"] = curve(\.animationCurveMove)
-        t["animation_curve_open"] = curve(\.animationCurveOpen)
-        t["animation_curve_tag"] = curve(\.animationCurveTag)
-        t["animation_curve_close"] = curve(\.animationCurveClose)
-        t["animation_curve_focus"] = curve(\.animationCurveFocus)
+        t["animation_curve_move"] = curve(\.animationCurveMove, "animation_curve_move")
+        t["animation_curve_open"] = curve(\.animationCurveOpen, "animation_curve_open")
+        t["animation_curve_tag"] = curve(\.animationCurveTag, "animation_curve_tag")
+        t["animation_curve_close"] = curve(\.animationCurveClose, "animation_curve_close")
+        t["animation_curve_focus"] = curve(\.animationCurveFocus, "animation_curve_focus")
 
         t["scroller_structs"] = int(\.scrollerStructs)
         t["scroller_default_proportion"] = double(\.scrollerDefaultProportion)
@@ -134,14 +134,16 @@ public enum ConfigOptions {
         t["edge_scroller_pointer_focus"] = bool(\.edgeScrollerPointerFocus)
         t["edge_scroller_focus_allow_speed"] = double(\.edgeScrollerFocusAllowSpeed)
         t["scroller_proportion_preset"] = { config, value in
-            let parts = value.split(separator: ",", omittingEmptySubsequences: false)
-                .map { $0.trimmingCharacters(in: .whitespaces) }
+            let floatCount = value.filter { $0 == "," }.count + 1
             var out: [Double] = []
-            for p in parts {
-                guard let d = ValueParse.scanDouble(p) else {
-                    return .invalid("Invalid float value in scroller_proportion_preset: \(p)")
+            for token in value.split(separator: ",").map(String.init) where out.count < floatCount {
+                guard let d = ValueParse.scanDouble(token) else {
+                    return .invalid("Invalid float value in scroller_proportion_preset: \(mangoHighlight(token))")
                 }
                 out.append(min(max(d, 0.1), 1.0))
+            }
+            if out.count != floatCount {
+                return .invalid("Invalid scroller_proportion_preset format: \(mangoHighlight(value))")
             }
             config.scrollerProportionPreset = out
             return .applied
@@ -182,7 +184,7 @@ public enum ConfigOptions {
         t["group_bar_close_button_enable"] = bool(\.groupBarCloseButtonEnable)
         t["group_bar_button_size"] = int(\.groupBarButtonSize, 4...64)
         t["group_bar_button_margin"] = int(\.groupBarButtonMargin, 0...50)
-        t["group_bar_button_color"] = color(\.groupBarButtonColor)
+        t["group_bar_button_color"] = color(\.groupBarButtonColor, "group_bar_button_color")
         t["monocle_right_button_close"] = bool(\.monocleRightButtonClose)
         t["title_message_bar_height"] = int(\.titleMessageBarHeight, 0...500)
         t["title_message_bar_gap"] = int(\.titleMessageBarGap, 0...500)
@@ -202,16 +204,16 @@ public enum ConfigOptions {
         t["no_radius_when_single"] = bool(\.noRadiusWhenSingle)
         t["focused_opacity"] = double(\.focusedOpacity)
         t["unfocused_opacity"] = double(\.unfocusedOpacity)
-        t["root_color"] = color(\.rootcolor)
-        t["border_color"] = color(\.bordercolor)
-        t["focus_color"] = color(\.focuscolor)
-        t["urgent_color"] = color(\.urgentcolor)
-        t["maximized_screen_color"] = color(\.maximizescreencolor)
-        t["scratchpad_color"] = color(\.scratchpadcolor)
-        t["global_color"] = color(\.globalcolor)
-        t["overlay_color"] = color(\.overlaycolor)
-        t["drop_color"] = color(\.dropcolor)
-        t["split_color"] = color(\.splitcolor)
+        t["root_color"] = color(\.rootcolor, "rootcolor")
+        t["border_color"] = color(\.bordercolor, "bordercolor")
+        t["focus_color"] = color(\.focuscolor, "focuscolor")
+        t["urgent_color"] = color(\.urgentcolor, "urgentcolor")
+        t["maximized_screen_color"] = color(\.maximizescreencolor, "maximizescreencolor")
+        t["scratchpad_color"] = color(\.scratchpadcolor, "scratchpadcolor")
+        t["global_color"] = color(\.globalcolor, "globalcolor")
+        t["overlay_color"] = color(\.overlaycolor, "overlaycolor")
+        t["drop_color"] = color(\.dropcolor, "dropcolor")
+        t["split_color"] = color(\.splitcolor, "splitcolor")
         t["scratchpad_width_ratio"] = double(\.scratchpadWidthRatio, 0.1...1)
         t["scratchpad_height_ratio"] = double(\.scratchpadHeightRatio, 0.1...1)
         t["special_dim"] = double(\.specialDim, 0...1)
@@ -288,9 +290,9 @@ public enum ConfigOptions {
         }
     }
 
-    static func color(_ kp: WritableKeyPath<Config, RGBA>) -> Setter {
+    static func color(_ kp: WritableKeyPath<Config, RGBA>, _ name: String) -> Setter {
         { config, value in
-            guard let c = parseColor(value) else { return .invalid("Invalid color format: \(value)") }
+            guard let c = parseColor(value) else { return .invalid("Invalid \(name) format: \(mangoHighlight(value))") }
             config[keyPath: kp] = c
             return .applied
         }
@@ -302,20 +304,20 @@ public enum ConfigOptions {
             config[keyPath: kp].fontDesc = value
             return .applied
         }
-        t[k + "fg_color"] = optionalColor(kp.appending(path: \.fgColor))
-        t[k + "bg_color"] = optionalColor(kp.appending(path: \.bgColor))
-        t[k + "focus_fg_color"] = optionalColor(kp.appending(path: \.focusFgColor))
-        t[k + "focus_bg_color"] = optionalColor(kp.appending(path: \.focusBgColor))
-        t[k + "border_color"] = optionalColor(kp.appending(path: \.borderColor))
+        t[k + "fg_color"] = optionalColor(kp.appending(path: \.fgColor), k + "fg_color")
+        t[k + "bg_color"] = optionalColor(kp.appending(path: \.bgColor), k + "bg_color")
+        t[k + "focus_fg_color"] = optionalColor(kp.appending(path: \.focusFgColor), k + "focus_fg_color")
+        t[k + "focus_bg_color"] = optionalColor(kp.appending(path: \.focusBgColor), k + "focus_bg_color")
+        t[k + "border_color"] = optionalColor(kp.appending(path: \.borderColor), k + "border_color")
         t[k + "border_width"] = optionalInt(kp.appending(path: \.borderWidth), 0...100)
         t[k + "corner_radius"] = optionalInt(kp.appending(path: \.cornerRadius), 0...100)
         t[k + "padding_x"] = optionalInt(kp.appending(path: \.paddingX), 0...100)
         t[k + "padding_y"] = optionalInt(kp.appending(path: \.paddingY), 0...100)
     }
 
-    static func optionalColor(_ kp: WritableKeyPath<Config, RGBA?>) -> Setter {
+    static func optionalColor(_ kp: WritableKeyPath<Config, RGBA?>, _ name: String) -> Setter {
         { config, value in
-            guard let c = parseColor(value) else { return .invalid("Invalid color format: \(value)") }
+            guard let c = parseColor(value) else { return .invalid("Invalid \(name) format: \(mangoHighlight(value))") }
             config[keyPath: kp] = c
             return .applied
         }
@@ -329,10 +331,10 @@ public enum ConfigOptions {
         }
     }
 
-    static func curve(_ kp: WritableKeyPath<Config, BezierCurve>) -> Setter {
+    static func curve(_ kp: WritableKeyPath<Config, BezierCurve>, _ name: String) -> Setter {
         { config, value in
             guard let v = parseDoubleArray(value, 4), v.count == 4 else {
-                return .invalid("Invalid bezier curve (expected 4 non-negative numbers): \(value)")
+                return .invalid("Failed to parse \(name): \(mangoHighlight(value))")
             }
             config[keyPath: kp] = BezierCurve(x1: v[0], y1: v[1], x2: v[2], y2: v[3])
             return .applied

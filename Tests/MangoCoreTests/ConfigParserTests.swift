@@ -212,7 +212,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(parsed.errors[0].message.contains("Failed to open"))
         XCTAssertTrue(parsed.errors[1].file.hasSuffix("bad.conf"))
         XCTAssertEqual(parsed.errors[1].line, 1)
-        XCTAssertEqual(parsed.errors[1].message, "Unknown keyword: unknown_thing")
+        XCTAssertEqual(parsed.errors[1].message.plain, "Unknown keyword: unknown_thing")
         XCTAssertEqual(parsed.sourcedFiles.map(\.lastPathComponent),
                        ["config.conf", "extra.conf", "does-not-exist.conf", "missing.conf", "bad.conf"])
     }
@@ -275,7 +275,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(b[2].flags, [.locked, .release])
         XCTAssertEqual(b[3].flags, [.passthrough, .allowConflict])
         XCTAssertEqual(b[4].flags, [.keysym, .locked, .release, .passthrough, .allowConflict])
-        XCTAssertEqual(parsed.errors.map(\.message), ["Unknown keyword: bindx"])
+        XCTAssertEqual(parsed.errors.map(\.message.plain), ["Unknown keyword: bindx"])
     }
 
     func testModifiersIncludingHyper() {
@@ -452,7 +452,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(r[2].globalKeyBinding, "alt-a")
         XCTAssertEqual(r[3].isTerm, true)
         XCTAssertEqual(parsed.errors.map(\.line), [4])
-        XCTAssertEqual(parsed.errors.first?.message, "Unknown window rule option: bogus_option")
+        XCTAssertEqual(parsed.errors.first?.message.plain, "Unknown window rule option:bogus_option", "mango's text, no space")
 
         guard case .failure = RuleParser.parseWindowRule("app_id:y,bogus:1", once: false) else {
             return XCTFail("expected failure")
@@ -482,7 +482,8 @@ final class ConfigParserTests: MangoTestCase {
 
     func testUnknownKeyword() {
         let parsed = parse("does_not_exist=1")
-        XCTAssertEqual(parsed.errors, [ConfigError(file: "test.conf", line: 1, message: "Unknown keyword: does_not_exist")])
+        XCTAssertEqual(parsed.errors.map(\.description.plain), ["test.conf:1: Unknown keyword: does_not_exist"])
+        XCTAssertEqual(parsed.errors.first?.message, "Unknown keyword: \u{1B}[1m\u{1B}[31mdoes_not_exist\u{1B}[0m", "mango's colours round the value")
     }
 
     func testWaylandOnlyKeysAreIgnored() {

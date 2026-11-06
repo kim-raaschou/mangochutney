@@ -123,11 +123,10 @@ public final class MangoServer {
     // not in mango: the server's side of parse_config, the config read, its errors and the nag
     func parseConfig() {
         configErrorStoreBegin()
-        let parsed = ConfigParser.parseConfig(fileAt: configURL)
+        let parsed = ConfigParser.parseConfig(fileAt: configURL, emits: true)
         config = parsed.config
         configErrors = parsed.errors
         configFiles = parsed.sourcedFiles
-        for e in parsed.errors { e.emit() }   // not in mango: printed after the parse, not as each line is read
         configErrorStoreEnd()
         configErrorNagUpdate()
     }

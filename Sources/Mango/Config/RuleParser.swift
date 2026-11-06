@@ -85,24 +85,24 @@ public enum RuleParser {
             case "force_tiled_state": flag { rule.forceTiledState = $0 }
             case "global_key_binding":
                 guard let dash = val.firstIndex(of: "-"), dash != val.startIndex else {
-                    errors.append("Invalid global_key_binding: \(val)")
+                    errors.append("Invalid globalkeybinding: \(mangoHighlight(val))")
                     keep = false
                     continue
                 }
                 let modStr = String(val[..<dash]).trimmingCharacters(in: .whitespaces)
                 let keyStr = String(val[val.index(after: dash)...]).trimmingCharacters(in: .whitespaces)
                 if Modifiers.parse(modStr) == nil {
-                    errors.append("Unknown modifier in global_key_binding: \(modStr)")
+                    errors.append("Unknown modifier: \(mangoHighlight(modStr))")
                     keep = false
                 } else if keyStr.isEmpty || (ConfigParser.port?.keyCodes(keyStr) ?? []).isEmpty {   // the boundary: xkb's keymap
-                    errors.append("Unknown key in global_key_binding: \(keyStr)")
+                    errors.append("Unknown key: \(mangoHighlight(keyStr))")
                     keep = false
                 } else {
                     rule.globalKeyBinding = val
                 }
             default:
                 if !(ConfigParser.port?.knowsWindowRuleField(key) ?? false) {   // the port's: not in mango
-                    errors.append("Unknown window rule option: \(key)")
+                    errors.append("Unknown window rule option:\(mangoHighlight(key))")
                 }
             }
         }
@@ -147,7 +147,7 @@ public enum RuleParser {
             case "scroller_ignore_proportion_single":
                 if let n = ValueParse.int(val) { rule.scrollerIgnoreProportionSingle = n != 0 } else { errors.append(bad) }
             default:
-                errors.append("Unknown tag rule option: \(key)")
+                errors.append("Unknown tag rule option:\(mangoHighlight(key))")
             }
         }
         return (rule, errors)

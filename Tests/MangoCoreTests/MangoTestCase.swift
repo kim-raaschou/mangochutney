@@ -19,3 +19,8 @@ func keepConfigErrorsInTests() {
         setenv("XDG_RUNTIME_DIR", dir, 1)
     }
 }
+
+extension String {
+    /// The text without mango's ANSI escapes (\033[…m), as a test compares it.
+    var plain: String { replacingOccurrences(of: "\u{1B}\\[[0-9;]*m", with: "", options: .regularExpression) }
+}

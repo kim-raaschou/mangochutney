@@ -53,7 +53,6 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Dækkede vinduer animeres ikke | Alle animeres | Hver frame er en Accessibility-skrivning; usynligt | Ingen |
 | Layout-paletten viser alle 14 layouts i et 5×3-gitter, når `circle_layout` mangler | `layouts[]`-rækkefølgen | Palettens opstilling | `switch_layout` følger mangos rækkefølge |
 | Den medfølgende config (`Resources/config.conf`) er mangos `assets/config.conf` med mangos værdier; hvert sted, den ikke er det, står i en region mærket `# not mango default` (til `# end not mango default` eller filens slutning) med mangos linje nævnt: tasterne på Hyper, rofi og mangos midterklik udeladt, portens `chutney_*`-blok og Escape, der lukker overview (`bindp=NONE,Escape,leaveoverview`). | `assets/config.conf` | Tasterne må ikke tage macOS' og apps' genveje; portens nøgler | Brug mangos linjer i stedet for regionerne |
-| Config-fejlene skrives (til stderr og `error_store`), når hele filen er læst, ikke mens hver linje læses; teksten er mangos, men uden mangos farvekoder om værdien | Mens hver linje læses | Parseren samler fejlene, som `mango -p` også viser | Ingen |
 | `error_nag` tjekker for fejl, når `setup` er færdig, ikke på en timer på 1 ms | `config_error_nag_init`s timer | Porten er klar, når `setup` er færdig | Ingen |
 | Efter et greb kører kun den del af `pointer_process_motion(0, …)`, der sætter kantgrebets markør, ikke resten (sloppy focus, hot area) | Hele `pointer_process_motion` | Den var aldrig med; markøren skulle med for kantgrebet | Ingen synlig: næste bevægelse gør resten |
 

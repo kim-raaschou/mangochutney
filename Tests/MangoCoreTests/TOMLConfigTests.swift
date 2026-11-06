@@ -259,7 +259,7 @@ final class TOMLConfigTests: MangoTestCase {
         [global]
         just text
         """)
-        XCTAssertEqual(p.errors.map(\.message), [
+        XCTAssertEqual(p.errors.map(\.message.plain), [
             "Bind keymode is required, e.g. [bind.default]",
             "Unknown bind flag: fast",
             "Unknown toml rule type: window",
@@ -277,11 +277,11 @@ final class TOMLConfigTests: MangoTestCase {
         no_such_field = 1
         """)
         XCTAssertEqual(p.errors.map(\.line), [1])
-        XCTAssertEqual(p.errors.first?.message, "Unknown window rule option: no_such_field")
+        XCTAssertEqual(p.errors.first?.message.plain, "Unknown window rule option:no_such_field")
     }
 
     func testUnknownOptionIsReportedWithItsLine() {
         let p = parse("[global]\nborder_px = 2\nborder_pxx = 3\n")
-        XCTAssertEqual(p.errors.map(\.description), ["t.toml:3: Unknown keyword: border_pxx"])
+        XCTAssertEqual(p.errors.map(\.description.plain), ["t.toml:3: Unknown keyword: border_pxx"])
     }
 }

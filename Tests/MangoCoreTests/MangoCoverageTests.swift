@@ -281,7 +281,7 @@ final class MangoCoverageTests: MangoTestCase {
     func testMisspeltIgnoredKeyIsUnknownLikeInMango() {
         // The ignored lists are exact: a typo is reported, not silently swallowed.
         let parsed = ConfigParser.parse(text: "cursor_sise=24\nblurr=1\n", baseDirectory: nil, fileName: "t")
-        XCTAssertEqual(parsed.errors.map(\.message), ["Unknown keyword: cursor_sise", "Unknown keyword: blurr"])
+        XCTAssertEqual(parsed.errors.map(\.message.plain), ["Unknown keyword: cursor_sise", "Unknown keyword: blurr"])
     }
 
     func testListIgnoredMentionsEveryIgnoredName() {

@@ -2,7 +2,7 @@ import Foundation
 
 extension String: @retroactive Error {}
 
-// not in mango: an error kept for after the parse (mango prints each as the line is read)
+// not in mango: an error kept as well as printed, for mango -p and the tests
 public struct ConfigError: Error, CustomStringConvertible, Equatable {
     public var file: String
     public var line: Int
@@ -23,7 +23,7 @@ public struct ConfigError: Error, CustomStringConvertible, Equatable {
 
     /// The error as mango prints it: mango_error, then report_config_line_error with the line as read.
     public func emit() {
-        mangoError(false, verbosity, message + "\n")
+        if !message.isEmpty { mangoError(false, verbosity, message + "\n") }
         guard reportsLine, line > 0 else { return }
         var text = ""
         if let data = FileManager.default.contents(atPath: file) {
@@ -33,6 +33,9 @@ public struct ConfigError: Error, CustomStringConvertible, Equatable {
         reportConfigLineError(file, line, text)
     }
 }
+
+// not in mango: \033[1m\033[31m%s\033[0m, which mango's config errors put round a value
+func mangoHighlight(_ s: String) -> String { "\u{1B}[1m\u{1B}[31m\(s)\u{1B}[0m" }
 
 /// mango report_config_line_error (value_parse.c)
 public func reportConfigLineError(_ fullPath: String, _ lineNumber: Int, _ line: String) {
@@ -68,9 +71,11 @@ public enum ConfigParser {
         return !fm.fileExists(atPath: conf.path) && fm.fileExists(atPath: toml.path) ? toml : conf
     }
 
-    // not in mango: `text`, the file's text given instead of read, named `name`
-    public static func parseConfig(fileAt url: URL, text: (String, name: String)? = nil) -> ParsedConfig {
+    // not in mango: `text`, the file's text given instead of read, named `name`; `emits`, the
+    // errors printed as they are found (mango's server), or only kept (mango -p, the tests)
+    public static func parseConfig(fileAt url: URL, text: (String, name: String)? = nil, emits: Bool = false) -> ParsedConfig {
         var state = ParserState(baseDirectory: url.deletingLastPathComponent())
+        state.emits = emits
         state.parseConfigFile(url.standardizedFileURL, mustExist: true, from: nil, text: text)
         // not in mango: HYPER is chutney_hyper_modifier, known once the file is read
         for ref in state.hyperRefs {
@@ -183,6 +188,7 @@ package struct ParserState {
     var errors: [ConfigError] = []
     var notes: [ConfigNote] = []
     var sourcedFiles: [URL] = []
+    var emits = false
     var vars: [String: String] = [:]
     var keyMode: String {
         get { config.keymode }
@@ -206,11 +212,13 @@ package struct ParserState {
     // not in mango: the mouse, axis and gesture checks (check_*_binding_conflicts) here too
     mutating func checkKeyBindingConflicts() {
         func report(_ kind: String, _ mode: String, _ a: BindingLocation, _ b: BindingLocation) {
-            errors.append(ConfigError(file: b.file, line: b.line,
-                                      message: "\(kind) conflict in keymode \(mode):\n"
-                                          + "  File \"\(a.file)\", line \(a.line)\n"
-                                          + "  File \"\(b.file)\", line \(b.line)",
-                                      verbosity: .info, reportsLine: false))
+            let e = ConfigError(file: b.file, line: b.line,
+                                message: "\(kind) conflict in keymode \(mode):\n"
+                                    + "  File \"\(a.file)\", line \(a.line)\n"
+                                    + "  File \"\(b.file)\", line \(b.line)",
+                                verbosity: .info, reportsLine: false)
+            errors.append(e)
+            if emits { e.emit() }
         }
         func modeOf(_ a: String, _ b: String) -> String? {
             a == "common" || b == "common" ? "common" : (a == b ? a : nil)
@@ -264,7 +272,9 @@ package struct ParserState {
     }
 
     mutating func recordConfigLineError(_ file: String, _ line: Int, _ message: String) {
-        errors.append(ConfigError(file: file, line: line, message: message))
+        let e = ConfigError(file: file, line: line, message: message)
+        errors.append(e)
+        if emits { e.emit() }
     }
 
     func resolveConfigPath(_ path: String) -> URL {
@@ -302,7 +312,7 @@ package struct ParserState {
             guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue,
                   let data = FileManager.default.contents(atPath: path) else {
                 if mustExist {
-                    recordConfigLineError(reportFile, reportLine, "Failed to open config file: \(from?.2 ?? path)")
+                    recordConfigLineError(reportFile, reportLine, "Failed to open config file: \(mangoHighlight(from?.2 ?? path))")
                 }
                 return
             }
@@ -333,17 +343,17 @@ package struct ParserState {
         let processed = ConfigParser.removeComment(raw)
         guard let eq = processed.firstIndex(of: "="), eq != processed.startIndex,
               processed.index(after: eq) != processed.endIndex else {
-            recordConfigLineError(file, line, "Invalid line format: \(raw.trimmingCharacters(in: .whitespaces))")
+            recordConfigLineError(file, line, "Invalid line format: \(mangoHighlight(raw + "\n"))")
             return
         }
         let key = processed[..<eq].trimmingCharacters(in: .whitespaces)
         var value = processed[processed.index(after: eq)...].trimmingCharacters(in: .whitespaces)
         guard !key.isEmpty else {
-            recordConfigLineError(file, line, "Invalid line format: \(raw.trimmingCharacters(in: .whitespaces))")
+            recordConfigLineError(file, line, "Invalid line format: \(mangoHighlight(raw + "\n"))")
             return
         }
         if value.utf8.count > ConfigParser.maxValueBytes {
-            recordConfigLineError(file, line, "Configuration value exceeds \(ConfigParser.maxValueBytes) bytes: \(key)")
+            recordConfigLineError(file, line, "Configuration value exceeds \(ConfigParser.maxValueBytes) bytes: \(mangoHighlight(raw + "\n"))")
             return
         }
         value = ConfigParser.stripQuotes(value)
@@ -363,13 +373,13 @@ package struct ParserState {
 
         case "var":
             guard let comma = value.firstIndex(of: ",") else {
-                recordConfigLineError(file, line, "Invalid variable format (expected name,value): \(value)")
+                recordConfigLineError(file, line, "Invalid variable format (expected \u{1B}[1mname,value\u{1B}[0m): \(mangoHighlight(value))")
                 return
             }
             let name = value[..<comma].trimmingCharacters(in: .whitespaces)
             let v = value[value.index(after: comma)...].trimmingCharacters(in: .whitespaces)
             guard ConfigParser.isValidVarName(name) else {
-                recordConfigLineError(file, line, "Invalid variable name (allowed: [A-Za-z_][A-Za-z0-9_]*): \(name)")
+                recordConfigLineError(file, line, "Invalid variable name (allowed: [A-Za-z_][A-Za-z0-9_]*): \(mangoHighlight(name))")
                 return
             }
             vars[name] = v
@@ -459,7 +469,7 @@ package struct ParserState {
             if let (kind, n) = ConfigParser.port?.optionNote(key, applied: true) { note(file, line, kind, key, n) }
         case .ignored:
             if let (kind, n) = ConfigParser.port?.optionNote(key, applied: false) { note(file, line, kind, key, n) }
-        case .unknown: recordConfigLineError(file, line, "Unknown keyword: \(key)")
+        case .unknown: recordConfigLineError(file, line, "Unknown keyword: \(mangoHighlight(key))")
         case .invalid(let msg): recordConfigLineError(file, line, msg)
         }
     }
@@ -497,18 +507,18 @@ public enum BindingParser {
 
     public static func parseKeyBinding(keyword: String, value: String, mode: String,
                                        hyperModifier: String) -> Result<KeyBinding, String> {
-        guard isKeyBindKeyword(keyword) else { return .failure("Unknown keyword: \(keyword)") }
+        guard isKeyBindKeyword(keyword) else { return .failure("Unknown keyword: \(mangoHighlight(keyword))") }
         let fields = splitFields(value)
         guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
-            return .failure("Invalid bind format: \(value)")
+            return .failure("Invalid bind format: \(mangoHighlight(value))")
         }
         guard let mods = Modifiers.parse(fields[0], hyperModifier: hyperModifier) else {
-            return .failure("Unknown modifier: \(fields[0])")
+            return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
         }
         let keyName = fields[1]
         let codes = ConfigParser.port?.keyCodes(keyName) ?? []   // the boundary: xkb's keymap is the port's
         if codes.isEmpty && !keyName.lowercased().hasPrefix("xf86") {
-            return .failure("Unknown key: \(keyName)")
+            return .failure("Unknown key: \(mangoHighlight(keyName))")
         }
         let dispatch: Dispatch
         switch parseFuncName(Array(fields[2...])) {
@@ -522,15 +532,15 @@ public enum BindingParser {
     public static func parseMouseBinding(value: String, mode: String, hyperModifier: String) -> Result<MouseBinding, String> {
         let fields = splitFields(value)
         guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
-            return .failure("Invalid mousebind format: \(value)")
+            return .failure("Invalid mousebind format: \(mangoHighlight(value))")
         }
         guard let mods = Modifiers.parse(fields[0], hyperModifier: hyperModifier) else {
-            return .failure("Unknown modifier: \(fields[0])")
+            return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
         }
         guard let button = parseButton(fields[1]) else {
-            return .failure("Unknown button: \(fields[1])")
+            return .failure("Unknown button: \(mangoHighlight(fields[1]))")
         }
-        return parseFuncName(Array(fields[2...])).map {
+        return parseFuncName(Array(fields[2...]), in: "mousebind").map {
             MouseBinding(mode: mode, mods: mods, button: button, dispatch: $0)
         }
     }
@@ -538,14 +548,14 @@ public enum BindingParser {
     public static func parseAxisBinding(value: String, mode: String, hyperModifier: String) -> Result<AxisBinding, String> {
         let fields = splitFields(value)
         guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
-            return .failure("Invalid axisbind format: \(value)")
+            return .failure("Invalid axisbind format: \(mangoHighlight(value))")
         }
         guard let mods = Modifiers.parse(fields[0], hyperModifier: hyperModifier) else {
-            return .failure("Unknown modifier: \(fields[0])")
+            return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
         }
         let dir = Direction(mangoName: fields[1])
         let undir = dir == nil && fields[1].lowercased() != "alldir"
-        return parseFuncName(Array(fields[2...])).map {
+        return parseFuncName(Array(fields[2...]), in: "axisbind").map {
             var b = AxisBinding(mode: mode, mods: mods, direction: dir, dispatch: $0)
             b.isUndir = undir
             return b
@@ -555,27 +565,28 @@ public enum BindingParser {
     public static func parseGestureBinding(value: String, mode: String, hyperModifier: String) -> Result<GestureBinding, String> {
         let fields = splitFields(value)
         guard fields.count >= 4, fields[0...3].allSatisfy({ !$0.isEmpty }) else {
-            return .failure("Invalid gesturebind format: \(value)")
+            return .failure("Invalid gesturebind format: \(mangoHighlight(value))")
         }
         guard let mods = Modifiers.parse(fields[0], hyperModifier: hyperModifier) else {
-            return .failure("Unknown modifier: \(fields[0])")
+            return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
         }
         let dir = Direction(mangoName: fields[1])
         let undir = dir == nil && fields[1].lowercased() != "alldir"
         let fingers = ValueParse.atoi(fields[2])
-        return parseFuncName(Array(fields[3...])).map {
+        return parseFuncName(Array(fields[3...]), in: "axisbind").map {
             var b = GestureBinding(mode: mode, mods: mods, direction: dir, fingers: fingers, dispatch: $0)
             b.isUndir = undir
             return b
         }
     }
 
-    public static func parseFuncName(_ fields: [String]) -> Result<Dispatch, String> {
+    // not in mango: `kind`, the keyword its "Unknown dispatch in …" names
+    public static func parseFuncName(_ fields: [String], in kind: String = "bind") -> Result<Dispatch, String> {
         guard let first = fields.first else { return .failure("Missing dispatcher") }
         let name = first.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return .failure("Missing dispatcher") }
         guard Dispatch.isKnown(name) else {
-            return .failure("Unknown dispatch: \(name)")
+            return .failure("Unknown dispatch in \(kind): \(mangoHighlight(name))")
         }
 
         var args: [String] = []

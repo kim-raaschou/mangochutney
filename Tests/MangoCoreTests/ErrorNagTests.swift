@@ -24,11 +24,12 @@ final class ErrorNagTests: MangoTestCase {
         XCTAssertEqual(fake.nagArgv, ["mangonag", "-o", "Built-in", "-t", "error", "-e", "top", "-l", "-s", "Close",
                                       "-b", "Edit", "nvim +2 '\(conf.path)'"])
         let lines = fake.nagInput.components(separatedBy: "\n")
-        XCTAssertEqual(lines[0], "[ERROR]: Invalid line format: not a line")
-        XCTAssertTrue(lines[1].contains("[Index]") && lines[1].contains(conf.path), lines[1])
-        XCTAssertTrue(lines[2].contains("not a line"), lines[2])
-        // Each error is three lines and its colour reset, as mango's store keeps them.
-        XCTAssertEqual(lines[3], "\u{2026} (+5 more lines)")
+        // mango prints the line as read, its newline inside the colour, so the reset is a line
+        // of its own; then report_config_line_error's two lines and their reset.
+        XCTAssertEqual(lines[0], "[ERROR]: Invalid line format: \u{1B}[1m\u{1B}[31mnot a line")
+        XCTAssertEqual(lines[1], "\u{1B}[0m")
+        XCTAssertTrue(lines[2].contains("[Index]") && lines[2].contains(conf.path), lines[2])
+        XCTAssertEqual(lines[3], "\u{2026} (+6 more lines)")
 
         try "border_px=2\n".write(to: conf, atomically: true, encoding: .utf8)
         r.server.reloadConfig()
