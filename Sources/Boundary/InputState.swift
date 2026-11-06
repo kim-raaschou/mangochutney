@@ -19,6 +19,8 @@ package struct InputState {
     /// The pointer's moves are wanted (sloppy focus, hot area, cursor hiding).
     package var wantsMouseMoved = false
     package var cursorHideOnKeypress = false
+    /// mango's hover_resize_edge: the pointer is on a border resize strip, with this cursor.
+    package var hoverResizeCursor: String?
     /// xkb_rules_options caps:hyper: the modifiers Caps Lock held stands for (mango's
     /// hyper); nil: Caps Lock is no hyper key.
     package var capsHyper: Modifiers?
@@ -48,4 +50,31 @@ package struct BarButton: Equatable {
     package init(client: ClientID, isTab: Bool, onClose: Bool) {
         self.client = client; self.isTab = isTab; self.onClose = onClose
     }
+}
+
+/// wlroots enum wlr_edges.
+package struct WlrEdges: OptionSet, Hashable, Sendable {
+    package let rawValue: UInt32
+    package init(rawValue: UInt32) { self.rawValue = rawValue }
+    package static let top = WlrEdges(rawValue: 1)
+    package static let bottom = WlrEdges(rawValue: 2)
+    package static let left = WlrEdges(rawValue: 4)
+    package static let right = WlrEdges(rawValue: 8)
+}
+
+/// wlroots wlr_xcursor_get_resize_name (xcursor/xcursor.c).
+package func wlrXcursorGetResizeName(_ edges: WlrEdges) -> String {
+    if edges.contains(.top) {
+        if edges.contains(.right) { return "ne-resize" }
+        if edges.contains(.left) { return "nw-resize" }
+        return "n-resize"
+    }
+    if edges.contains(.bottom) {
+        if edges.contains(.right) { return "se-resize" }
+        if edges.contains(.left) { return "sw-resize" }
+        return "s-resize"
+    }
+    if edges.contains(.right) { return "e-resize" }
+    if edges.contains(.left) { return "w-resize" }
+    return "se-resize"   // fallback
 }

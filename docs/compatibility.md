@@ -39,7 +39,6 @@ macOS draws and manages other apps' windows, the keyboard, the pointer and the d
 | Keyword | `switchbind=` | lid switch events are not available to apps on macOS |
 | Options | `animation_curve_focus`, `animation_duration_focus`, `animation_fade_in`, `animation_fade_out`, `fade_in_begin_opacity`, `fade_out_begin_opacity`, `focused_opacity`, `unfocused_opacity` | another app's window opacity can only be changed with SIP off |
 | Options | `float_full_to_top` | macOS has no layers for other apps' windows: the window focused last is on top |
-| Options | `border_resize_size`, `enable_border_resize` | only the app under the pointer can change its shape; macOS gives every window its own resize edges, and dragging a tiled one's moves the split |
 | Options | `animation_curve_close`, `animation_duration_close`, `animation_type_close`, `zoom_end_ratio` | the window is already gone when macOS reports it closed |
 | Window-rule fields | `allow_shortcuts_inhibit` | Wayland protocol without a macOS counterpart |
 | Window-rule fields | `focused_opacity`, `no_fade_in`, `no_fade_out`, `unfocused_opacity` | another app's window opacity can only be changed with SIP off |

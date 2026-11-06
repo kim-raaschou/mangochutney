@@ -127,14 +127,16 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     /// Not in mango: macOS has focused the window already (a click, the Dock, ⌘Tab) and says
     /// so afterwards. A click on a window in view is mango's click, which focuses it; in
-    /// overview it is the window chosen; a parked group member takes its group's place; a
+    /// overview another window than mango's is the window chosen; a parked group member takes its group's place; a
     /// hidden scratchpad window stays hidden. Only a window out of view is mango's
     /// activation request.
     func windowFocused(id: CGWindowID) {
         guard let c = server.clientByIdAll(id), let m = c.mon else { return }
         Log.debug("focus: macOS focused \(c.appName) \(id); mango's is \(server.focused.map { "\($0.appName) \($0.id)" } ?? "none")")
         if let ov = server.overviewState {
-            if ov.jump == nil { server.leaveOverview(select: c) }
+            // mango's own focus said back (focusdir, focusstack in overview): the overview stays. An echo
+            // that comes after mango has moved on again is taken as a window chosen.
+            if ov.jump == nil, server.focused !== c { server.leaveOverview(select: c) }
             return
         }
         if c.groupParked { server.clientFocusGroupMember(c); return }

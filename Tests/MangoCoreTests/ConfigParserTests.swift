@@ -86,7 +86,7 @@ final class ConfigParserTests: MangoTestCase {
     }
 
     /// The port's keys, at the end of config.conf. They set no mango key: only chutney_ keys,
-    /// the palettes' bindings and the app's own files, read last.
+    /// the port's bindings and the app's own files, read last.
     func testShippedConfigReadsTheMacOSDefaultsLast() throws {
         let parsed = ConfigParser.parseConfig(fileAt: defaultConfigURL)
         XCTAssertEqual(parsed.sourcedFiles.map(\.lastPathComponent), ["config.conf", "chutney_theme.conf", "chutney_menu.conf"])
@@ -109,7 +109,7 @@ final class ConfigParserTests: MangoTestCase {
         let port = try XCTUnwrap(text.range(of: ConfigFiles.portMarker))
         for line in text[port.lowerBound...].components(separatedBy: "\r\n") where !line.hasPrefix("#") && line.contains("=") {
             let key = line.prefix { $0 != "=" }
-            XCTAssertTrue(key.hasPrefix("chutney_") || key == "source_optional" || line.contains(",chutney_toggle_"),
+            XCTAssertTrue(key.hasPrefix("chutney_") || key == "source_optional" || key.hasPrefix("bind"),
                           "the port's keys set a mango key: \(line)")
         }
     }

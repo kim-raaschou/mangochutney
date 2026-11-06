@@ -100,6 +100,9 @@ public final class Client {
     public var tagouting = false
     public var scratchpadTagin = false
     public var overviewBackupGeom: CGRect?
+    public var overviewIsFloatingBak = false
+    public var overviewIsFullscreenBak = false
+    public var overviewIsMaximizeScreenBak = false
 
     package init(id: ClientID, pid: pid_t, platform: PlatformWindow, bundleId: String, appName: String, title: String,
          monitor: Monitor, tags: UInt32, frame: CGRect) {

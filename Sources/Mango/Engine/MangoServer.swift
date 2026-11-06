@@ -44,7 +44,9 @@ public final class MangoServer {
     package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
     var switcherState: SwitcherState? { didSet { publishInputState() } }
     var publishedGlobalKeys = false
-    package var grab: Grab?
+    package var grab: Grab? {
+        didSet { if (oldValue == nil) != (grab == nil) { publishInputState() } }   // not in mango: the event tap's snapshot
+    }
     var startDragWindow = false
     var confinePointerLast: ClientID?
     var dragBeginCursor: CGPoint = .zero
@@ -55,6 +57,8 @@ public final class MangoServer {
     package var portHooks = PortHooks()
     package var groupBarDrag: (client: Client, start: CGPoint)?
     var cursorHidden = false
+    package var hoverResizeEdge: WlrEdges = []
+    var hoverResizeFloating = false
     var cursorHideTimerArmed = false
     var lastPointerActivity: CFTimeInterval = 0
     var swipeDrive: SwipeDrive?
@@ -627,7 +631,8 @@ public final class MangoServer {
 
     func pointerWarpToClient(_ c: Client) {
         guard let m = c.mon else { return }
-        let g = c.geom ?? c.frame
+        // not in mango: in the overview mango's geom is the card; ours is the window under it
+        let g = (overviewState?.monitor === m ? overviewState?.cards[c.id] : nil) ?? c.geom ?? c.frame
         if m.screen.frame.contains(g) { system.warp(to: g.center) }
     }
 

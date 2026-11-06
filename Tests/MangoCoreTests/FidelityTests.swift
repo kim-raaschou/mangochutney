@@ -408,6 +408,27 @@ final class FidelityTests: MangoTestCase {
         XCTAssertGreaterThan(first.geom!.width, before + 100, "kept on the windows")
     }
 
+    /// resize_tile_grid_fair: a drag moves the edge on the side it grabs (cursor_in_left_half);
+    /// mango overwrites that with the keyboard's neighbour, the one to the right (a mango bug,
+    /// docs/afvigelser.md §6).
+    func testAGridDragMovesTheEdgeItGrabs() throws {
+        let r = EngineRig()
+        r.monitor.current.layout = .grid
+        for id in 1...6 { r.map(CGWindowID(id)) }
+        r.server.arrange(r.monitor)
+        let tiled = r.server.tiledClients(r.monitor)
+        XCTAssertEqual(Set(tiled.map(\.gridColIdx)), [0, 1, 2], "three columns")
+        let middle = try XCTUnwrap(tiled.first { $0.gridColIdx == 1 })
+        let left = tiled.filter { $0.gridColIdx == 0 }, right = tiled.filter { $0.gridColIdx == 2 }
+        let g = try XCTUnwrap(middle.geom)
+        let grab = CGPoint(x: g.minX + 5, y: g.midY)
+        r.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: grab, time: 1)
+        r.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: CGPoint(x: grab.x - 80, y: grab.y), time: 100)
+        XCTAssertGreaterThan(middle.gridColPer, 1, "the middle column grows to the left")
+        XCTAssertTrue(left.allSatisfy { $0.gridColPer < 1 }, "the left column gives the room")
+        XCTAssertTrue(right.allSatisfy { $0.gridColPer == 1 }, "the right column is not touched")
+    }
+
     /// mango's scratchpad fields: set_minimized puts a window in the scratchpad hidden
     /// (is_in_scratchpad, isminimized); shown it stays in the scratchpad but is not
     /// minimized (SCRATCHPAD_SHOWN), and IPC says so as mango's does.
@@ -1093,6 +1114,71 @@ final class FidelityTests: MangoTestCase {
         r.server.mac.windowFocused(id: b.id)
         XCTAssertTrue(r.server.focused === b)
         XCTAssertFalse(b.isUrgent)
+    }
+
+    /// mango: focusdir in the overview moves the focus and the overview stays. macOS says the
+    /// focus back afterwards; that is not a window chosen. Another window macOS focuses is.
+    func testFocusdirInTheOverviewKeepsIt() {
+        let r = EngineRig()
+        for id in 1...4 { r.map(CGWindowID(id)) }
+        r.server.arrange(r.monitor)
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
+        let f = try! XCTUnwrap(r.server.focused)
+        r.server.config.warpcursor = true
+        _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["left"]))
+        _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
+        let fake = r.server.system as! FakeWindowSystem
+        XCTAssertEqual(fake.warps.last, r.server.overviewState?.cards[f.id]?.center, "warp_cursor: to the card")
+        r.server.mac.windowFocused(id: f.id)   // macOS says mango's focus back
+        XCTAssertNotNil(r.server.overviewState, "the overview stays")
+        let other = r.server.clients.first { $0 !== f }!
+        r.server.mac.windowFocused(id: other.id)   // ⌘Tab, the Dock
+        XCTAssertNil(r.server.overviewState, "another window is the one chosen")
+        XCTAssertTrue(r.server.focused === other)
+    }
+
+    /// mango overview_backup / overview_restore: in the overview no window floats or is
+    /// fullscreen or maximized; leaving gives each its own back. A fullscreen window's card
+    /// no longer stops focusdir (direction_select).
+    func testTheOverviewClearsAndRestoresTheStates() {
+        let r = EngineRig()
+        let a = r.map(1), b = r.map(2), c = r.map(3)
+        r.server.arrange(r.monitor)
+        a.isFloating = true
+        b.isFullscreen = true
+        c.isMaximizeScreen = true
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        XCTAssertEqual([a.isFloating, b.isFullscreen, c.isMaximizeScreen], [false, false, false])
+        var moved = false
+        for d in ["left", "right", "up", "down"] {
+            r.server.clientFocus(b)
+            _ = r.server.dispatch(Dispatch(name: "focusdir", args: [d]))
+            if r.monitor.sel != b.id { moved = true }
+        }
+        XCTAssertTrue(moved, "the fullscreen window's card is no stop")
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        XCTAssertEqual([a.isFloating, b.isFullscreen, c.isMaximizeScreen], [true, true, true])
+    }
+
+    /// focus_direction in the overview: left and right go by the cards, also on a monocle tag
+    /// (a mango bug, docs/afvigelser.md §6); outside it monocle's left and right go by the stack.
+    func testMonocleInTheOverviewGoesByTheCards() throws {
+        let r = EngineRig()
+        r.monitor.current.layout = .monocle
+        for id in 1...4 { r.map(CGWindowID(id)) }
+        r.server.arrange(r.monitor)
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        let cards = try XCTUnwrap(r.server.overviewState?.cards)
+        let top = cards.values.map(\.minY).min()!
+        let start = try XCTUnwrap(cards.filter { $0.value.minY == top }.max { $0.value.minX < $1.value.minX })
+        r.server.clientFocus(r.server.clientByIdAll(start.key)!)
+        _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
+        XCTAssertEqual(r.monitor.sel, start.key, "no card to the right of the top row's last")
+        _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["left"]))
+        let to = try XCTUnwrap(r.monitor.sel.flatMap { cards[$0] })
+        XCTAssertLessThan(to.midX, start.value.midX, "a card to the left")
+        XCTAssertEqual(to.minY, top, "in the same row")
     }
 
     /// mango handle_client_request_minimize: with ignore_minimize (mango's default) the

@@ -83,7 +83,9 @@ Your mango config loads as it is, and `mmsg` works the same. Not everything is p
 <!-- mango-glance:end -->
 
 Blur, shadows, other apps' opacity, input devices, display modes and the layer shell are out of
-reach, and windows on hidden tags are moved to a corner of the screen.
+reach, and windows on hidden tags are moved to a corner of the screen. Start Arc (and other
+Chromium browsers) with `open -a Arc --args --disable-backgrounding-occluded-windows`, or its
+windows on hidden tags show old, smaller pictures in the overview ([On macOS](docs/guide.md#on-macos)).
 [Compatibility](docs/compatibility.md) has the full list, and `mango -p` checks your config. The
 Mac additions are all named `chutney_` and are off unless set; delete them and it behaves as mango,
 with the keys still on Hyper (⌃⌥⌘ held).

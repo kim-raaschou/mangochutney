@@ -71,6 +71,11 @@ package protocol WindowSystem: AnyObject {
     /// mango pointer_hide_cursor and pointer_cursor_activity (pointer.c), the cursor image.
     /// The pointer hidden (cursor_hide_timeout, cursor_hide_on_keypress) or shown.
     func setCursorHidden(_ hidden: Bool)
+    /// wlroots wlr_cursor_set_xcursor: the cursor image by its xcursor name; nil gives the
+    /// cursor back to the window under it (wlr_seat_pointer_clear_focus).
+    func setCursor(_ name: String?)
+    /// wlroots wlr_scene_node_at, its surface: the window under `p`; nil where mango has none.
+    func surfaceAt(_ p: CGPoint) -> ClientID?
     /// Not in mango: the port's side (wlr_scene_node_raise_to_top).
     /// A window to the front (wlr_scene_node_raise_to_top).
     func raise(_ c: Client)

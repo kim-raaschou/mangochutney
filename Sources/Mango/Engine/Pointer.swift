@@ -6,12 +6,13 @@ package enum Pointer {
         case switcher
         case overview
         case mouseBinding(MouseBinding)
+        case borderResize
         case none
     }
 
     package static func pointerProcessButtonPress(button: Int, at p: CGPoint, mods: Modifiers, switcherActive: Bool,
                                                   overviewFrame: CGRect?, mouseBindings: [MouseBinding],
-                                                  mode: String) -> ButtonPress {
+                                                  mode: String, hoverResizeEdge: Bool = false) -> ButtonPress {
         if switcherActive && (button == 0 || button == 1) { return .switcher }
         if let f = overviewFrame, f.contains(p), button == 0 || button == 1 { return .overview }
         let mods = mods.subtracting(.fn)
@@ -20,6 +21,7 @@ package enum Pointer {
         }) {
             return .mouseBinding(b)
         }
+        if button == 0 && hoverResizeEdge { return .borderResize }
         return .none
     }
 

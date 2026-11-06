@@ -121,14 +121,12 @@ public enum MangoCompat {
         let closeAnim = NoEffect.impossible("the window is already gone when macOS reports it closed")
         let fade = NoEffect.impossible("another app's window opacity can only be changed with SIP off")
         let corners = NoEffect.impossible("macOS draws window corners; the border follows them")
-        let border = NoEffect.impossible("only the app under the pointer can change its shape; macOS gives every window its own resize edges, and dragging a tiled one's moves the split")
         var t: [String: NoEffect] = [
             "animation_fade_in": fade, "animation_fade_out": fade,
             "fade_in_begin_opacity": fade, "fade_out_begin_opacity": fade,
             "focused_opacity": fade, "unfocused_opacity": fade,
             "animation_type_close": closeAnim, "animation_duration_close": closeAnim, "animation_curve_close": closeAnim,
             "float_full_to_top": .impossible("macOS has no layers for other apps' windows: the window focused last is on top"),
-            "enable_border_resize": border, "border_resize_size": border,
         ]
         t["animation_duration_focus"] = fade   // mango's focus animation fades the opacity
         t["animation_curve_focus"] = fade

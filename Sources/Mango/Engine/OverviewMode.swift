@@ -24,8 +24,8 @@ package extension MangoServer {
         }
         guard !members.isEmpty else { return }
         for c in members {
-            c.overviewBackupGeom = c.isFloating ? c.floatGeom : (c.geom ?? c.frame)
             c.overining = true
+            overviewBackup(c)
         }
         let sizes = members.map { c -> (id: ClientID, size: CGSize) in
             let f = c.overviewBackupGeom!
@@ -156,6 +156,35 @@ package extension MangoServer {
         updateBorders()
     }
 
+    // Saves the window old state when switching from the normal view to overview.
+    func overviewBackup(_ c: Client) {
+        c.overviewIsFloatingBak = c.isFloating
+        c.overviewIsFullscreenBak = c.isFullscreen
+        c.overviewIsMaximizeScreenBak = c.isMaximizeScreen
+        c.overviewBackupGeom = c.isFloating ? c.floatGeom : (c.geom ?? c.frame)   // not in mango: our geom is without the border, a floating one's is floatGeom
+        if c.isFloating {
+            c.isFloating = false
+        }
+
+        if c.isFullscreen || c.isMaximizeScreen {
+            c.isFullscreen = false // Clears the window fullscreen flag.
+            c.isMaximizeScreen = false
+        }
+    }
+
+    // Restores window state when switching back from overview to the normal view.
+    func overviewRestore(_ c: Client, thumbnails: Bool) {
+        guard let b = c.overviewBackupGeom else { return }
+        c.isFloating = c.overviewIsFloatingBak
+        c.isFullscreen = c.overviewIsFullscreenBak
+        c.isMaximizeScreen = c.overviewIsMaximizeScreenBak
+        c.overviewIsFloatingBak = false
+        c.overviewIsFullscreenBak = false
+        c.overviewIsMaximizeScreenBak = false
+        if !thumbnails && !c.isFloating { c.geom = b }   // not in mango: the pictures are the cards; the windows kept their place
+        c.overviewBackupGeom = nil
+    }
+
     // not in mango: set_overview's leaving branch, which toggle_overview with a tc runs
     func leaveOverview(select: Client?) {
         guard let ov = overviewState else { return }
@@ -175,9 +204,8 @@ package extension MangoServer {
         }
         m.tagset[m.seltags] = target
         for id in ov.members {
-            guard let c = clientByIdAll(id), let b = c.overviewBackupGeom else { continue }
-            if !ov.thumbnails && !c.isFloating { c.geom = b }
-            c.overviewBackupGeom = nil
+            guard let c = clientByIdAll(id) else { continue }
+            overviewRestore(c, thumbnails: ov.thumbnails)
         }
         clientViewOnMonitor(target, on: m, changeFocus: true)
         fixMonTagsetFromOverview(m)

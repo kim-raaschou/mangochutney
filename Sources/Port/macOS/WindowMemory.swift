@@ -31,7 +31,7 @@ final class WindowMemory {
     func leaving(_ server: MangoServer, _ c: Client, group: [ClientID], groupFocus: ClientID?, order: [ClientID]) {
         let snapshot = departed.orderSnapshot(leaving: c.id, order: order)
         departed.remember(c.id, DepartedWindow(
-            tags: c.tags, displayID: c.mon?.screen.displayID, isFloating: c.isFloating, isGlobal: c.isGlobal,
+            tags: c.tags, displayID: c.mon?.screen.displayID, isFloating: Self.isFloating(c), isGlobal: c.isGlobal,
             isOverlay: c.isOverlay, isMinimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
             isNamedScratchpad: c.isNamedScratchpad, floatFrame: c.floatGeom,
             scrollerProportion: c.scrollerProportion, orderSnapshot: snapshot, at: CACurrentMediaTime(),
@@ -69,6 +69,12 @@ final class WindowMemory {
         if let m = focus.mon { server.arrange(m) }
     }
 
+    /// Whether the window floats; in the overview mango has cleared it (overview_backup) and
+    /// keeps it in overview_isfloatingbak.
+    static func isFloating(_ c: Client) -> Bool {
+        c.overviewBackupGeom != nil ? c.overviewIsFloatingBak : c.isFloating
+    }
+
     // MARK: The saved layout (survives a restart of mango)
 
     /// Every managed window, plus the ones that are away (sleep) or not seen yet since
@@ -76,7 +82,7 @@ final class WindowMemory {
     func currentLayout(_ server: MangoServer) -> SavedLayout {
         var windows: [SavedLayout.Window] = server.clientsAll.map { c in
             SavedLayout.Window(id: c.id, bundleId: c.bundleId, tags: c.tags, displayID: c.mon?.screen.displayID,
-                               homeDisplayID: c.oldmonname, isFloating: c.isFloating, isGlobal: c.isGlobal,
+                               homeDisplayID: c.oldmonname, isFloating: Self.isFloating(c), isGlobal: c.isGlobal,
                                isOverlay: c.isOverlay, isMinimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
                                isNamedScratchpad: c.isNamedScratchpad, floatFrame: c.floatGeom,
                                scrollerProportion: c.scrollerProportion, orderSnapshot: nil,

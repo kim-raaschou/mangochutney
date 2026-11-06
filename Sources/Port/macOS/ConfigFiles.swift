@@ -8,7 +8,7 @@ import Mango
 /// own (chutney_theme.conf, chutney_menu.conf).
 public enum ConfigFiles {
     /// The line where the port's keys begin in the shipped config.conf.
-    static let portMarker = "# Mango Chutney: the macOS port's own keys"
+    static let portMarker = "# not mango default: from here to the end, the macOS port's own keys"
 
     /// Writes the default config on first run (no file at `configURL`).
     static func ensure(_ configURL: URL) {

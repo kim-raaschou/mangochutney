@@ -42,6 +42,8 @@ final class InputRouter: @unchecked Sendable {
         var tabShortcuts = 0
         /// cursor_hide_on_keypress, and the pointer is shown.
         var cursorHideOnKeypress = false
+        /// mango's hover_resize_edge, with its cursor: a press there begins a border resize.
+        var hoverResizeCursor: String?
         /// global_key_binding chords with a window to send them to, in rule order.
         var globalKeys: [RoutedGlobalKey] = []
     }
@@ -54,6 +56,9 @@ final class InputRouter: @unchecked Sendable {
     /// mango's keyboard state (lock): last_hold_keycode (a click, a matching scroll or a
     /// swipe clears it), the swallowed keys, the keys sent to another app.
     private var keyboard = KeyboardState()
+    /// The border resize strip's cursor, set as the pointer moves on it (CursorHider; tests
+    /// record it instead).
+    var setCursor: (String) -> Void = { CursorHider.setCursorFromTap($0) }
     /// Sends a key to an app (KeyForward; tests record it instead).
     var forward: (_ keyCode: UInt16, _ mods: Modifiers, _ down: Bool, _ pid: pid_t) -> Void = {
         KeyForward.post(keyCode: $0, mods: $1, down: $2, to: $3)
@@ -242,14 +247,16 @@ final class InputRouter: @unchecked Sendable {
         let p = ev.location, button = ev.button
         let mods = ev.mods
         if ev.isDown {
-            onMain { $0.pointerProcessButtonPress(button: button, pressed: true, at: p, mods: mods) }
             // Whether the press is mango's, decided here as mango's pointer_process_button_press does.
-            switch Pointer.pointerProcessButtonPress(button: button, at: p, mods: ev.mods, switcherActive: s.switcherActive,
-                                                     overviewFrame: s.overviewFrame, mouseBindings: s.mouseBindings,
-                                                     mode: s.keymode) {
+            let decision = Pointer.pointerProcessButtonPress(button: button, at: p, mods: ev.mods, switcherActive: s.switcherActive,
+                                                             overviewFrame: s.overviewFrame, mouseBindings: s.mouseBindings,
+                                                             mode: s.keymode, hoverResizeEdge: s.hoverResizeCursor != nil)
+            let strip = decision == .borderResize
+            onMain { $0.pointerProcessButtonPress(button: button, pressed: true, at: p, mods: mods, borderResizeTaken: strip) }
+            switch decision {
             case .switcher, .overview:
                 return true
-            case .mouseBinding:
+            case .mouseBinding, .borderResize:
                 grabbing = true
                 return true
             case .none:
@@ -300,7 +307,9 @@ final class InputRouter: @unchecked Sendable {
     func mouseMoved(_ p: CGPoint) {
         let speed = lastMovePoint.map { hypot(p.x - $0.x, p.y - $0.y) } ?? 0
         lastMovePoint = p
-        guard snapshot.wantsMouseMoved else { return }
+        let s = snapshot
+        if let name = s.hoverResizeCursor { setCursor(name) }
+        guard s.wantsMouseMoved else { return }
         lock.lock()
         let schedule = pendingMove == nil
         pendingMove = (p, speed)

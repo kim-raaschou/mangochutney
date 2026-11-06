@@ -439,6 +439,7 @@ class MacWindowSystem: WindowSystem {
     }
 
     func startInput() {
+        CursorHider.prepareTapCursors()
         router.server = server
         let r = router
         tap.onKey = { [unowned tap] ev in r.key(ev, modifierOnlySinceDown: tap.lastKeyPressWasModifierOnly) }
@@ -506,6 +507,7 @@ class MacWindowSystem: WindowSystem {
             s.hyperTap = Self.hyperTap(key: hyperKey, tap: hyperTap)
             s.wantsMouseMoved = state.wantsMouseMoved
             s.cursorHideOnKeypress = state.cursorHideOnKeypress
+            s.hoverResizeCursor = state.hoverResizeCursor
         }
         tabBarsChanged()   // the port's tab keys (chutney_tab_bar_shortcuts), with the rest
     }
@@ -518,6 +520,11 @@ class MacWindowSystem: WindowSystem {
     func setCursorHidden(_ hidden: Bool) {
         if hidden { CursorHider.hide() } else { CursorHider.show() }
     }
+
+    func setCursor(_ name: String?) { CursorHider.setCursor(name) }
+
+    func surfaceAt(_ p: CGPoint) -> ClientID? { CursorHider.windowAt(p) }
+
 
     func raise(_ c: Client) { writer(for: c.pid)?.raise(c.element) }
 

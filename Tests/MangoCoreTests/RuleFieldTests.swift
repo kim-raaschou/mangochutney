@@ -149,8 +149,19 @@ final class DragCornerTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.dragCorner = 4
         _ = grab(r, at: CGPoint(x: 750, y: 250))   // near the top right
-        XCTAssertEqual(r.server.grab?.right, true)
-        XCTAssertEqual(r.server.grab?.bottom, false)
+        XCTAssertEqual(r.server.grab?.resizeEdge, [.right, .top])
         XCTAssertEqual(r.server.grab?.startMouse, CGPoint(x: 800, y: 200))
+    }
+
+    /// mango's geom holds the border: drag_warp_cursor puts the pointer on its outer corner.
+    func testTheWarpGoesToTheBordersOuterCorner() {
+        let r = EngineRig()
+        r.server.renderBorder = true
+        let c = grab(r, at: CGPoint(x: 300, y: 300))
+        let bw = r.server.borderWidth(c, on: r.monitor)
+        XCTAssertGreaterThan(bw, 0)
+        XCTAssertEqual(r.server.grab?.startMouse, CGPoint(x: 800 + bw, y: 600 + bw))
+        r.server.pointerProcessMotion(CGPoint(x: 850 + bw, y: 640 + bw), time: 0)
+        XCTAssertEqual(c.floatGeom, CGRect(x: 200, y: 200, width: 650, height: 440))
     }
 }

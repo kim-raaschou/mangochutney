@@ -114,6 +114,8 @@ The default keys, all on Hyper. **Hyper K** lists them, and every other binding 
 | Hyper [ / ] | focus the monitor left / right; with ⇧ the window goes there |
 | Hyper W, then arrows | resize the window (⇧: move it); Escape or Return leaves |
 | Hyper + drag, Hyper + right-drag | move, resize a window |
+| drag a window's edge | resize it (mango's border resize: a 10-point strip inside the edge; a tiled window's edges that face another window, every edge of a floating one) |
+| Escape, in the overview | leave it; Hyper + arrows move between the cards, a click picks one |
 | Hyper + scroll | previous / next tag |
 | 3 and 4 fingers | focus, tags, overview |
 
@@ -402,6 +404,12 @@ What follows from that:
   (macOS 15 and later), or drag the sliver into view.
 - **The Hyper key still Hyper** (after `kill -9` or a crash): the key keeps its move until Mango
   Chutney starts again, which clears it, or until macOS restarts.
+- **Arc and other Chromium browsers:** Chromium stops drawing a window macOS calls hidden, and a
+  window parked for a hidden tag is hidden to macOS. Given a new size there, an Arc window keeps its
+  old, smaller picture until it is shown, so its card in the overview is small. Quit Arc and start
+  it with Chromium's switch, and it keeps drawing:
+  `open -a Arc --args --disable-backgrounding-occluded-windows`. A start from the Dock or at login
+  does not carry the switch. Hidden Arc windows then use a little more power.
 
 ## mmsg
 

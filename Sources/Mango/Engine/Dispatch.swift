@@ -1266,14 +1266,43 @@ package extension MangoServer {
         }
         let deltaX = Float(ox) * Float(gc.oldGridColPer) / Float(max(1, gc.dragBeginGeom.width))
         let deltaY = Float(oy) * Float(gc.oldGridRowPer) / Float(max(1, gc.dragBeginGeom.height))
+        var adjC = gc.gridColIdx, adjR = gc.gridRowIdx
+        var signX: Float = 1, signY: Float = 1
+
+        if isdrag {
+            if gc.cursorInLeftHalf {
+                adjC -= 1
+                signX = -1
+            } else {
+                adjC += 1
+                signX = 1
+            }
+
+            if gc.cursorInUpperHalf {
+                adjR -= 1
+                signY = -1
+            } else {
+                adjR += 1
+                signY = 1
+            }
+        }
+        // Keyboard hotkey logic unchanged.
         let maxCol = tiled.map(\.gridColIdx).max() ?? 0, minCol = tiled.map(\.gridColIdx).min() ?? 0
         let maxRow = tiled.map(\.gridRowIdx).max() ?? 0, minRow = tiled.map(\.gridRowIdx).min() ?? 0
-        var adjC = gc.gridColIdx + 1, adjR = gc.gridRowIdx + 1
-        var signX: Float = 1, signY: Float = 1
-        if gc.gridColIdx == maxCol { adjC = gc.gridColIdx - 1; signX = -1 }
-        if gc.gridRowIdx == maxRow { adjR = gc.gridRowIdx - 1; signY = -1 }
-        if gc.gridColIdx == minCol { adjC = gc.gridColIdx + 1; signX = 1 }
-        if gc.gridRowIdx == minRow { adjR = gc.gridRowIdx + 1; signY = 1 }
+
+        // not in mango: for the keyboard only; mango overwrites the drag's neighbour with it
+        // (a mango bug, docs/afvigelser.md §6)
+        if !isdrag {
+            adjC = gc.gridColIdx + 1
+            adjR = gc.gridRowIdx + 1
+            signX = 1
+            signY = 1
+
+            if gc.gridColIdx == maxCol { adjC = gc.gridColIdx - 1; signX = -1 }
+            if gc.gridRowIdx == maxRow { adjR = gc.gridRowIdx - 1; signY = -1 }
+            if gc.gridColIdx == minCol { adjC = gc.gridColIdx + 1; signX = 1 }
+            if gc.gridRowIdx == minRow { adjR = gc.gridRowIdx + 1; signY = 1 }
+        }
         let dx = deltaX * signX, dy = deltaY * signY
         let myOldCol = Float(gc.oldGridColPer), myOldRow = Float(gc.oldGridRowPer)
         var adjOldCol: Float = -1, adjOldRow: Float = -1
@@ -1411,7 +1440,8 @@ package extension MangoServer {
 
     func focusDirection(_ dir: Direction) {
         let m = selectedMonitor!
-        if m.layout == .monocle, let sel = focused, !sel.isFloating, dir.isHorizontal {
+        // not in mango: not in the overview, whose cards are no monocle (a mango bug, docs/afvigelser.md §6)
+        if m.layout == .monocle, overviewState?.monitor !== m, let sel = focused, !sel.isFloating, dir.isHorizontal {
             focusStack(dir == .right ? .next : .prev)
             return
         }

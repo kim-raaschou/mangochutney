@@ -128,6 +128,14 @@ final class FakeWindowSystem: MacWindowSystem {
     override func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }
     override func showConfigErrors(_ errors: [ConfigError], configURL: URL) { configErrors = errors.count }
     override func setCursorHidden(_ hidden: Bool) { cursorHidden = hidden }
+    /// The cursor mango asked for last (never set); `.some(nil)`: given back to the window.
+    var cursorName: String??
+    override func setCursor(_ name: String?) { cursorName = .some(name) }
+    /// The window under a point: the topmost fake window, or `surfaceOverride` (a popup).
+    var surfaceOverride: ClientID?
+    override func surfaceAt(_ p: CGPoint) -> ClientID? {
+        surfaceOverride ?? server.clientsAll.first { !$0.parked && $0.frame.contains(p) }?.id
+    }
     /// xkb_rules_options as mango applied them; the keyboard is never touched.
     var keyboardOptions: String?
     override func setKeyboardOptions(_ options: String) { keyboardOptions = options }
