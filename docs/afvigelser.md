@@ -33,6 +33,8 @@ mango selv melder "Unknown keyword" for hver `chutney_`-linje og læser resten.
 | `chutney_physical_pixels` | `border_px` og gaps i skærmens pixels, ikke punkter | nej | Punkter |
 | `chutney_ignore_apps` | Apps, der aldrig styres | nej | Alle styres |
 | `chutney_hyper_modifier` | Hvad `HYPER` betyder i en binding | `super+ctrl+alt` | Mangos Mod3 |
+| `chutney_hyper_tap` | Hyper-tasten trykket alene (Caps Lock eller en funktionstast): `none`, `original` eller `escape` | nej (standard `none`) | Ingen |
+| `chutney_set_proportion_all` (dispatcher) | `set_proportion` for alle vinduer på tagget i visning | nej | `set_proportion` på ét vindue |
 
 `Resources/config.conf` er mangos `assets/config.conf`, men med mangos bindinger på Hyper
 (`var=mod,HYPER`, `var=mods,HYPER+SHIFT`), fordi ⌘, ⌥ og ⌃ er macOS' og appernes. Resten følger
@@ -77,6 +79,11 @@ Gælder for alle. Står i koden mærket "not in mango".
 | En dialog arver ikke sit hovedvindues tags og skærm | Accessibility siger ikke pålideligt, hvem der ejer en dialog |
 | Vinduer, der er der ved start eller kommer igen efter dvale, beholder deres plads; layout, tags og grupper gemmes og kommer igen efter en genstart og dvale | En genstart af mango lukker ikke vinduerne, og macOS melder vinduer væk og tilbage omkring dvale |
 | Titelbjælkens anden linje er appens bundle id | macOS' nærmeste svar på `app_id` |
+| `app_id` i en vinduesregel og i `toggle_named_scratchpad` matcher også appens navn (`Safari`), ikke kun bundle id'et (`com.apple.Safari`) | macOS har intet `app_id`; bundle id'et er det nærmeste, navnet det, man kender |
+| `monitor_name` i regler og skærmnavnene i IPC er macOS' navn for skærmen (`BenQ RD280U`), ikke udgangen (`DP-1`) | macOS navngiver ikke udgange |
+| `tag_rule`s `monitor_make` er skærmens PNP-id (`BNQ`), ikke fabrikantens navn (wlroots: `BenQ Corporation`); `monitor_model` og `monitor_serial` er EDID'ens som hos wlroots. En skærm, macOS ikke har dem for, matcher ikke (som en skærm uden EDID hos mango), og to ens skærme uden serienummer får intet | macOS har EDID'ens felter i IORegistry (Apple silicon), men ingen PNP-navnetabel |
+| Et klik fokuserer ikke det vindue, der allerede har fokus, og intet i overview; mangos `buttonpress` kalder `focusclient` hver gang | macOS har fokuseret vinduet med klikket; i overview er kortene billeder |
+| `last_open_surface` (i `get` og `watch`) er altid tom | Den sættes, når en layer-shell-flade åbner; macOS har ingen layer shell |
 | `confine_pointer` sætter markøren tilbage, når den er nået over kanten | macOS flytter markøren, før mango ser bevægelsen |
 | `xkb_rules_options`: kun de muligheder, der flytter taster, med macOS' egen omlægning | macOS har ingen xkb |
 | Systemets trackpad-gestures konkurrerer med `gesturebind` | macOS ejer dem |
@@ -96,7 +103,7 @@ Hvor koden står, når den ikke står som i mango.
 
 - **Kernen (`Sources/Mango`)** har mangos funktioner med mangos navne og kun mangos egne
   kommentarer eller mærker om, hvor vi afviger (CLAUDE.md regel 8). En funktion med andet navn
-  end mangos har én linje `/// mango <funktion> (<fil>)`; der er 12 tilbage: tastaturets tråd,
+  end mangos har én linje `/// mango <funktion> (<fil>)`; der er 14 tilbage: tastaturets tråd,
   cursor-timeren, `Log` og nogle få, der allerede har mangos navn.
 - **Bevidst i kernen, mærket:** parkeringen (`c.parked`, mango klipper i scenen), scrollerens
   kolonner i tag-tilstanden (mango bruger `ScrollerStackNode` i klientlisten), overview med
@@ -106,6 +113,10 @@ Hvor koden står, når den ikke står som i mango.
   float-felt, afrundet som C) og `LayoutInput.sanitized()` (C laver et tal, der ikke er
   endeligt, om til et heltal uden videre; Swift stopper programmet). `oldmonname` holder
   skærmens display-ID, ikke navnet, for to skærme kan have samme navn.
+- **Faner:** fanekæden holdes for de tags, der er i visning, som `tab_member_kept` holder den;
+  mango kæder den pr. vindue (`Tabs.swift`).
+- **Lag:** `client_reparent_group` (et vindue og dets gruppebjælke flyttes til flise-, flyde- eller
+  toplaget i scenen) har ingen funktion i kernen; porten ordner vinduerne i `restack`.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
   subrole); appens egne flyt under et træk tager porten ud (`grabBegan`, `grabEnded`).
 - **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `EventLoop`

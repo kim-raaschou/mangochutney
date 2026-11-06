@@ -21,7 +21,7 @@
 - `9e111d2`: en linje i portens tabel `MangoCompat`, som må ligge i kernen.
 - `16ff071` og `d06e237`: en lækage. Hotkeys-palettens tekst for en port-dispatcher og en adgangsændring ligger i kernens `Engine/Shortcuts.swift`. Den fil (164 linjer) er reelt portens.
 
-Alle kroge går gennem `PortHooks`. Der er omkring 140 mærker "not in mango" i kernen, og de står ærligt mærket.
+Alle kroge går gennem `PortHooks`. Der er omkring 210 mærker "not in mango" i kernen (6. november 2026), og de står ærligt mærket.
 
 ### Reglen fra 2. november: kernen indeholder kun det, der findes i mangoWm
 
@@ -35,7 +35,7 @@ Det skal ud af kernen efter den regel:
 | Portens tabeller | `Config/MangoCompat`, `Config/PortOptions` | ~440 | Porten. Parseren får dem gennem en krog |
 | Port-funktioner | `Engine/Shortcuts`, `Engine/DepartedWindows`, `Engine/SavedLayout`, `Engine/SwipeTracker` | ~430 | Porten, med en krog hvor mangos kode bruger dem |
 | Portens felter i `Config` | omkring 20 `chutney*`-felter i `Model/Config.swift` | ~60 | Porten, fx en tabel med portens værdier |
-| Mærket port-logik inde i mangos filer | omkring 140 mærker, mest i `MangoServer`, `WindowSystem`, `Dispatch`, `Input`, `Tabs` | ? | Gås igennem én ad gangen: et kald over grænsen bliver, port-logik flyttes ud bag en krog |
+| Mærket port-logik inde i mangos filer | omkring 210 mærker, mest i `MangoServer`, `WindowSystem`, `Dispatch`, `Input`, `Tabs` | ? | Gås igennem én ad gangen: et kald over grænsen bliver, port-logik flyttes ud bag en krog |
 
 Rækkefølgen er de hele filer først, fordi de er mekaniske at flytte. Mærkerne kommer bagefter og kræver en vurdering hver især.
 

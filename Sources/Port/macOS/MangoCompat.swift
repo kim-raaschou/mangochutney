@@ -136,8 +136,8 @@ public enum MangoCompat {
 
     // MARK: - Port extensions
 
-    /// Options of the port that mango does not have: a config that uses them does not
-    /// load in mango.
+    /// Options of the port that mango does not have: mango reports "Unknown keyword" for
+    /// each and reads the rest.
     public static let portExtensionOptions: [String: String] = {
         var t: [String: String] = [
         "chutney_hyper_modifier": "what HYPER means in a bind",

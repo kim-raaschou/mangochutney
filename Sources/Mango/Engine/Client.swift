@@ -199,7 +199,7 @@ public final class Monitor {
         var ruleLayout: LayoutKind?
         for r in config.tagRules {
             if let id = r.id, id != tag { continue }
-            guard r.tagRuleMatchesMonitor(name: screen.name) else { continue }
+            guard r.tagRuleMatchesMonitor(screen) else { continue }
             if let ln = r.layoutName, let k = LayoutKind(name: ln) { ruleLayout = k }
             if let v = r.masterCount { p.settings.nmaster = v }
             if let v = r.masterFactor { p.settings.mfact = CGFloat(v) }
@@ -230,7 +230,7 @@ public final class Monitor {
             var ruleLayout: LayoutKind?
             for r in config.tagRules {
                 if let id = r.id, id != i { continue }
-                guard r.tagRuleMatchesMonitor(name: screen.name) else { continue }
+                guard r.tagRuleMatchesMonitor(screen) else { continue }
                 if let ln = r.layoutName, let k = LayoutKind(name: ln) { ruleLayout = k }
                 if let v = r.masterCount { p.settings.nmaster = v }
                 if let v = r.masterFactor { p.settings.mfact = CGFloat(v) }

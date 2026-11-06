@@ -128,7 +128,7 @@ public struct WindowRule: Equatable, Sendable {
         var matched = false
         if let appId {
             let hit = id.range(of: appId, options: .regularExpression) != nil
-                || appName.range(of: appId, options: .regularExpression) != nil
+                || appName.range(of: appId, options: .regularExpression) != nil   // not in mango: the app's name too (macOS app ids are bundle ids)
             if !hit { return false }
             matched = true
         }
@@ -158,11 +158,11 @@ public struct TagRule: Equatable, Sendable {
 
     public init() {}
 
-    public func tagRuleMatchesMonitor(name: String, make: String = "", model: String = "", serial: String = "") -> Bool {
-        if let monitorName, name.range(of: monitorName, options: .regularExpression) == nil { return false }
-        if let monitorMake, monitorMake != make { return false }
-        if let monitorModel, monitorModel != model { return false }
-        if let monitorSerial, monitorSerial != serial { return false }
+    public func tagRuleMatchesMonitor(_ m: Screen) -> Bool {
+        if let monitorName, m.name.range(of: monitorName, options: .regularExpression) == nil { return false }
+        if let monitorMake, m.make == nil || monitorMake != m.make { return false }
+        if let monitorModel, m.model == nil || monitorModel != m.model { return false }
+        if let monitorSerial, m.serial == nil || monitorSerial != m.serial { return false }
         return true
     }
 }

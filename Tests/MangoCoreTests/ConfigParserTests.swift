@@ -34,6 +34,11 @@ final class ConfigParserTests: MangoTestCase {
         if let keys = lines.firstIndex(of: "# Key Bindings"), let gestures = lines.firstIndex(of: "# Gesture Bindings") {
             lines.removeSubrange(keys..<gestures)
         }
+        // A region marked "# not mango default" ... "# end not mango default" is the port's.
+        while let start = lines.firstIndex(where: { $0.hasPrefix("# not mango default:") }),
+              let end = lines[start...].firstIndex(of: "# end not mango default") {
+            lines.removeSubrange(start...end)
+        }
         return lines.filter { !$0.hasPrefix("# Mango Chutney:") }
     }
 

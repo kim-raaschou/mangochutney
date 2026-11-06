@@ -477,7 +477,7 @@ public final class IPCServer {
             } else if cmd == "get last_open_surface" || cmd.hasPrefix("get last_open_surface ") {
                 let m = cmd == "get last_open_surface" ? server.selectedMonitor : server.monitorByName(String(cmd.dropFirst(22)))
                 guard let m else { return IPCJSON.monitorNotFound }
-                return .object([("monitor", .string(m.screen.name)), ("last_open_surface", .string(""))])
+                return .object([("monitor", .string(m.screen.name)), ("last_open_surface", .string(""))]) // not in mango: no layer shell on macOS
             } else if cmd.hasPrefix("get monitor ") {
                 guard let m = server.monitorByName(String(cmd.dropFirst(12))) else { return IPCJSON.monitorNotFound }
                 return server.buildMonitorJson(m)

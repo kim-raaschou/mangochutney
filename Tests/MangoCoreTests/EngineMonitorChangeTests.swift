@@ -82,4 +82,20 @@ final class EngineMonitorChangeTests: MangoTestCase {
         XCTAssertEqual(a.masterMfactPer, 0.3, accuracy: 0.001)
         XCTAssertEqual(b.masterMfactPer, 0.7, accuracy: 0.001)
     }
+
+    /// mango tag_rule_matches_monitor: make, model and serial must equal wlr_output's, and an
+    /// unknown (NULL) value never matches.
+    func testTagRuleMatchesMakeModelSerial() {
+        var benq = external
+        benq.make = "BNQ"; benq.model = "BenQ RD280U"; benq.serial = "J7R0095701Q"
+        func rule(_ s: String) -> TagRule {
+            ConfigParser.parse(text: "tag_rule=id:1,\(s),master_factor:0.7", baseDirectory: nil, fileName: "t").config.tagRules[0]
+        }
+        XCTAssertTrue(rule("monitor_make:BNQ").tagRuleMatchesMonitor(benq))
+        XCTAssertTrue(rule("monitor_model:BenQ RD280U,monitor_serial:J7R0095701Q").tagRuleMatchesMonitor(benq))
+        XCTAssertFalse(rule("monitor_make:DEL").tagRuleMatchesMonitor(benq))
+        XCTAssertFalse(rule("monitor_serial:J7R").tagRuleMatchesMonitor(benq))
+        XCTAssertFalse(rule("monitor_make:BNQ").tagRuleMatchesMonitor(laptop))
+        XCTAssertTrue(rule("monitor_name:LG").tagRuleMatchesMonitor(benq))
+    }
 }

@@ -226,7 +226,7 @@ package extension MangoServer {
             ("scale", .double(Double(Float(m.screen.scale)))),
             ("layout_index", .int(m.layout.rawValue)),
             ("layout_symbol", .string(m.layout.symbol)),
-            ("last_open_surface", .string("")),
+            ("last_open_surface", .string("")), // not in mango: set by layer-shell maps, which macOS does not have
             ("tag_num", .int(config.tagNum)),
             ("hide_clients", .int(overviewState != nil ? 1 : 0)),
             ("tags", buildTagsJson(m)),

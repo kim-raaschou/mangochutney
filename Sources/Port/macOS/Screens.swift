@@ -22,13 +22,15 @@ public enum Screens {
         let h = primaryHeight
         return NSScreen.screens.map { s in
             let id = (s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
+            let ident = DisplayIdentity.of(id)
             return Screen(displayID: id,
                           name: s.localizedName,
                           frame: flip(s.frame, primaryHeight: h),
                           workArea: flip(s.visibleFrame, primaryHeight: h),
                           scale: s.backingScaleFactor,
                           isMain: s.frame.origin == .zero,
-                          refresh: Int32(s.maximumFramesPerSecond * 1000))
+                          refresh: Int32(s.maximumFramesPerSecond * 1000),
+                          make: ident?.make, model: ident?.model, serial: ident?.serial)
         }
         // Sort left-to-right, then top-to-bottom, so "left"/"right" monitors are stable.
         .sorted { a, b in a.frame.minX != b.frame.minX ? a.frame.minX < b.frame.minX : a.frame.minY < b.frame.minY }

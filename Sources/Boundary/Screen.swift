@@ -12,10 +12,15 @@ public struct Screen: Equatable, Sendable {
     public var isMain: Bool
     /// Refresh rate in mHz (wlr_output->refresh); 0: not known.
     public var refresh: Int32
+    /// wlr_output->make, ->model, ->serial; nil: not known (NULL in wlroots).
+    public var make: String?
+    public var model: String?
+    public var serial: String?
 
     public init(displayID: CGDirectDisplayID, name: String, frame: CGRect, workArea: CGRect, scale: Double, isMain: Bool,
-                refresh: Int32 = 0) {
+                refresh: Int32 = 0, make: String? = nil, model: String? = nil, serial: String? = nil) {
         self.displayID = displayID; self.name = name; self.frame = frame
         self.workArea = workArea; self.scale = scale; self.isMain = isMain; self.refresh = refresh
+        self.make = make; self.model = model; self.serial = serial
     }
 }
