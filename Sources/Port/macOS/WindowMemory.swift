@@ -142,14 +142,14 @@ final class WindowMemory {
     }
 
     nonisolated private static func write(_ layout: SavedLayout, to url: URL) {
-        do { try layout.write(to: url) } catch { Log.error("cannot write \(url.path): \(error.localizedDescription)") }
+        do { try layout.write(to: url) } catch { wlrLog(.error, "cannot write \(url.path): \(error.localizedDescription)") }
     }
 
     /// At start, before the first scan: the saved windows become departed ones (restored
     /// as each is found), and each display shows the tags it showed, in the layouts they
     /// had: a restart keeps what a reload of the config keeps.
     func restore(_ server: MangoServer) {
-        if session.isEmpty { Log.info("no window server session id: the layout is not kept across restarts") }
+        if session.isEmpty { wlrLog(.info, "no window server session id: the layout is not kept across restarts") }
         guard let url = layoutURL, let saved = SavedLayout.load(from: url, session: session) else { return }
         let now = CACurrentMediaTime()
         for (id, d) in saved.departed(at: now) { departed.remember(id, d) }
@@ -173,6 +173,6 @@ final class WindowMemory {
             }
         }
         lastSaved = saved
-        Log.info("restoring \(saved.windows.count) window(s) from \(url.path)")
+        wlrLog(.info, "restoring \(saved.windows.count) window(s) from \(url.path)")
     }
 }

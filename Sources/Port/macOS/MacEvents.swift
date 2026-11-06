@@ -29,7 +29,6 @@ extension MacWindowSystem: AppWatcherDelegate {
         } else {
             server.handleClientMap(c)
         }
-        Log.debug("focus: new window \(w.id) mapped; mango's is \(server.focused.map { "\($0.appName) \($0.id)" } ?? "none")")
     }
 
     /// A window there when mango started: mango's rules (client_apply_rules, before the map),
@@ -56,7 +55,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.mon = mon
         server.clientResetMonTags(c, mon, tags)
         server.checkMatchTagFloatingRule(c, mon)
-        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.mac.isFloatType)")
+        wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.mac.isFloatType)")
         scheduleInitialSettle()
     }
 
@@ -87,9 +86,9 @@ extension MacWindowSystem: AppWatcherDelegate {
         server.layoutStateInsert(c, on: mon)
         c.mon = mon
         c.tags = d.tags
-        Log.info("\(c.appName): window \(c.id) is back; restored its tag and place")
+        wlrLog(.info, "\(c.appName): window \(c.id) is back; restored its tag and place")
         memory.returned(server, c)
-        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.mac.isFloatType) (returned)")
+        wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.mac.isFloatType) (returned)")
         if initial { scheduleInitialSettle(); return }
         if let cm = c.mon { server.arrange(cm, .move) }
         server.printstatus()
@@ -111,7 +110,7 @@ extension MacWindowSystem: AppWatcherDelegate {
                 self.server.printstatus()
                 if self.server.clients.count != self.loggedWindowCount {
                     self.loggedWindowCount = self.server.clients.count
-                    Log.info("managing \(self.server.clients.count) window(s)")
+                    wlrLog(.info, "managing \(self.server.clients.count) window(s)")
                 }
             }
         }
@@ -132,7 +131,6 @@ extension MacWindowSystem: AppWatcherDelegate {
     /// activation request.
     func windowFocused(id: CGWindowID) {
         guard let c = server.clientByIdAll(id), let m = c.mon else { return }
-        Log.debug("focus: macOS focused \(c.appName) \(id); mango's is \(server.focused.map { "\($0.appName) \($0.id)" } ?? "none")")
         if let ov = server.overviewState {
             // mango's own focus said back (focusdir, focusstack in overview): the overview stays. An echo
             // that comes after mango has moved on again is taken as a window chosen.
@@ -184,7 +182,6 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func appActivated(pid: pid_t) {
-        Log.debug("focus: \(NSRunningApplication(processIdentifier: pid)?.localizedName ?? "pid \(pid)") became active")
         restack(pid: pid)   // activation brings the app's windows above our overlays
         watcher.requestFocusReport(pid: pid)   // answers via windowFocused
     }
@@ -216,7 +213,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         // nothing. Take the window as it is now; arrange then puts it back where the
         // layout has it (or parks it again) if it is not there.
         if s.minimized == true || s.fullscreen == true || s.appHidden {
-            Log.info("\(c.appName): window \(c.id) went away while its element was dead (minimized \(s.minimized ?? false), fullscreen \(s.fullscreen ?? false), hidden \(s.appHidden))")
+            wlrLog(.info, "\(c.appName): window \(c.id) went away while its element was dead (minimized \(s.minimized ?? false), fullscreen \(s.fullscreen ?? false), hidden \(s.appHidden))")
             if s.minimized == true { minimizedByMacOS(c, true) }
             if s.fullscreen == true { goAway(c, .fullscreen) }
             if s.appHidden { goAway(c, .hidden) }
@@ -232,7 +229,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     func appResponding(pid: pid_t, responding: Bool) {
         if responding {
             for (id, e) in away where e.client.pid == pid && e.reasons.contains(.stuck) {
-                Log.info("\(e.client.appName): window \(id) answers again")
+                wlrLog(.info, "\(e.client.appName): window \(id) answers again")
                 comeBack(id, .stuck)
             }
             return

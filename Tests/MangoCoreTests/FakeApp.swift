@@ -112,7 +112,7 @@ final class FakeWindowSystem: MacWindowSystem {
     override func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) { groupStrips = strips }
     /// The overlays mango asked for; none is drawn, the pointer is never hidden.
     var overviewCards: [OverviewCard]?, jumpLabelCount = 0, switcherTiles: [SwitcherTile]?
-    var titleMessageBar: String?, specialDimAlpha: Double?, shownDropArea: CGRect?, configErrors = 0, cursorHidden = false
+    var titleMessageBar: String?, specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
     override func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
     override func updateOverview(_ cards: [OverviewCard]) { overviewCards = cards }
     override func captureOverviewCards(scale: CGFloat) {}
@@ -126,7 +126,8 @@ final class FakeWindowSystem: MacWindowSystem {
     override func hideTitleMessageBar() { titleMessageBar = nil }
     override func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) { specialDimAlpha = alpha }
     override func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }
-    override func showConfigErrors(_ errors: [ConfigError], configURL: URL) { configErrors = errors.count }
+    override func nagSpawn(_ argv: [String], input: String) { nagArgv = argv; nagInput = input }
+    override func nagKill() { nagArgv = nil }
     override func setCursorHidden(_ hidden: Bool) { cursorHidden = hidden }
     /// The cursor mango asked for last (never set); `.some(nil)`: given back to the window.
     var cursorName: String??
@@ -155,6 +156,7 @@ final class EngineRig {
                         workArea: CGRect(x: 0, y: 37, width: 1728, height: 1080), scale: 2, isMain: true)
 
     init() {
+        keepConfigErrorsInTests()
         server.config.animations = false
         server.renderBorder = false   // mango's render_border off: frames are the tiles
         server.rebuildMonitors(screens: [screen])

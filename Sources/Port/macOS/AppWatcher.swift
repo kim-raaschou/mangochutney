@@ -221,13 +221,10 @@ public final class AppWorker: @unchecked Sendable {
             // Timed out: the app is busy or hung. Its windows are not gone; try again later.
             if !answered {
                 // Still starting: it has no windows to keep, and it is not hung.
-                let onScreen = AppWorker.onScreenWindowCount(pid: pid)
-                Log.debug(String(format: "%@ not ready %.1f s after it was seen (finished launching %@, %d window(s) on screen)",
-                                 name, CACurrentMediaTime() - startedAt, nsApp.isFinishedLaunching ? "yes" : "no", onScreen))
                 return
             }
             if !unresponsive {
-                Log.info("\(name) is not responding; keeping its windows")
+                wlrLog(.info, "\(name) is not responding; keeping its windows")
                 post(.responding(false))
             }
             unresponsive = true
@@ -236,13 +233,9 @@ public final class AppWorker: @unchecked Sendable {
         if !answered {
             answered = true
             AXUIElementSetMessagingTimeout(ax, AX.messagingTimeout)
-            let waited = CACurrentMediaTime() - startedAt
-            if waited > Double(AX.messagingTimeout) {
-                Log.debug(String(format: "%@ answered %.1f s after it was seen", name, waited))
-            }
         }
         if unresponsive {
-            Log.info("\(name) is responding again")
+            wlrLog(.info, "\(name) is responding again")
             post(.responding(true))
         }
         unresponsive = false
@@ -258,18 +251,14 @@ public final class AppWorker: @unchecked Sendable {
                 return dw
             }))
         for (id, el) in out.reacquired {
-            Log.debug("\(name): window \(id) listed again; new element (\(notified ? "notified" : "rescan"))")
             post(.reacquired(id, el, ReacquiredState(frame: el.frame, minimized: Self.answeredBool(el, kAXMinimizedAttribute),
                                                      fullscreen: Self.answeredBool(el, "AXFullScreen"), appHidden: nsApp.isHidden)))
         }
         if !out.found.isEmpty { post(.discovered(out.found)) }
-        for id in out.orphaned {
-            Log.debug("\(name): window \(id) element invalid, window still there; keeping it")
-        }
         for (id, why) in out.gone {
             switch why {
-            case .elementInvalid: Log.debug("\(name): window \(id) gone (no longer listed, element invalid)")
-            case .notOnScreen: Log.debug("\(name): window \(id) gone (no longer on screen)")
+            case .elementInvalid: wlrLog(.debug, "\(name): window \(id) gone (no longer listed, element invalid)")
+            case .notOnScreen: wlrLog(.debug, "\(name): window \(id) gone (no longer on screen)")
             }
             post(.destroyed(id))
         }
@@ -315,7 +304,7 @@ public final class AppWorker: @unchecked Sendable {
         let type = Self.windowType(el.getWindowType(axApp: ax, KnownBundleId(rawValue: bundleId),
                                                     nsApp.activationPolicy, level), level: level)
         let frame = el.frame ?? .zero
-        Log.debug("classified \(id) \(bundleId) '\(el.title)' as \(type): subrole \(el.subrole ?? "-") level \(level.map { "\($0)" } ?? "-") frame \(frame)")
+        wlrLog(.debug, "classified \(id) \(bundleId) '\(el.title)' as \(type): subrole \(el.subrole ?? "-") level \(level.map { "\($0)" } ?? "-") frame \(frame)")
         guard type != .popup else { return nil }
         return DiscoveredWindow(id: id, pid: pid, element: el, bundleId: bundleId, appName: name,
                                 title: el.title, subrole: el.subrole ?? "", isDialog: type == .dialog,
@@ -399,7 +388,7 @@ public final class AppWorker: @unchecked Sendable {
             reportFocus()
         case kAXUIElementDestroyedNotification:
             if let id = windowID(of: element, orphans: true) {
-                Log.debug("\(name): window \(id) gone (destroyed notification)")
+                wlrLog(.debug, "\(name): window \(id) gone (destroyed notification)")
                 book.forget(id)
                 unsubscribeWindow(element)
                 post(.destroyed(id))
@@ -494,7 +483,6 @@ public final class AppWatcher {
                 // were refused: its accessibility comes up when it has finished launching,
                 // which is this notification. Ask now, or nothing asks until the user acts.
                 if self.apps[app.processIdentifier] != nil {
-                    Log.debug("\(app.localizedName ?? "?") finished launching; scanning it")
                     self.refresh(pid: app.processIdentifier, recheckRejected: true)
                 } else {
                     self.register(app, initial: false)
@@ -510,7 +498,6 @@ public final class AppWatcher {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if self.apps[app.processIdentifier] == nil {
-                    Log.debug("\(app.localizedName ?? "?") activated before launch notice (finished launching \(app.isFinishedLaunching))")
                     self.register(app, initial: false)
                 }
                 // All apps: the one left behind may have closed a window on the way out.
@@ -530,7 +517,6 @@ public final class AppWatcher {
             }
         }
         nc.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            Log.debug("active Space changed; rescanning")
             MainActor.assumeIsolated { self?.refreshAll() }
         }
         // After sleep every window's AX element has gone invalid: look for the new ones
@@ -596,7 +582,7 @@ public final class AppWatcher {
 
     private func unregister(pid: pid_t) {
         guard let worker = apps.removeValue(forKey: pid) else { return }
-        Log.debug("\(worker.name) (pid \(pid)) ended: its windows are dropped")
+        wlrLog(.debug, "\(worker.name) (pid \(pid)) ended: its windows are dropped")
         worker.stop()
         for (id, o) in owners where o.pid == pid {
             owners.removeValue(forKey: id)

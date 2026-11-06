@@ -396,8 +396,14 @@ final class ConfigParserTests: MangoTestCase {
         mousebind=SUPER,btn_left,moveresize,curresize
         """)
         XCTAssertEqual(parsed.errors.map(\.line), [2, 6, 13, 15], parsed.errors.map(\.description).joined(separator: "\n"))
-        XCTAssertTrue(parsed.errors[0].message.hasPrefix("Conflict"))
-        XCTAssertTrue(parsed.errors[0].message.contains("test.conf:1"))
+        // mango's check_key_binding_conflicts: WLR_INFO, both lines, no [Index] line after it.
+        XCTAssertTrue(parsed.errors[0].message.hasPrefix("Key binding conflict in keymode default:\n  File \""),
+                      parsed.errors[0].message)
+        XCTAssertTrue(parsed.errors[0].message.contains("test.conf\", line 1\n"))
+        XCTAssertTrue(parsed.errors[0].message.hasSuffix("test.conf\", line 2"))
+        XCTAssertEqual(parsed.errors[0].verbosity, .info)
+        XCTAssertFalse(parsed.errors[0].reportsLine)
+        XCTAssertTrue(parsed.errors[3].message.hasPrefix("mousebind conflict in keymode other:"))
         XCTAssertEqual(parsed.config.keyBindings.count, 10, "conflicting binds are kept like mango")
     }
 

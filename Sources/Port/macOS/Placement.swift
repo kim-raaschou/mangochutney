@@ -285,7 +285,7 @@ extension MacWindowSystem {
         if Hider.isParked(actual, in: m.screen.frame) { return }
         guard c.parkRetries < 3 else { return }
         c.parkRetries += 1
-        Log.debug("\(c.appName): window \(c.id) is hidden but in view at \(actual); parking it again")
+        wlrLog(.debug, "\(c.appName): window \(c.id) is hidden but in view at \(actual); parking it again")
         c.frame = actual
         c.parked = false
         hide(c)

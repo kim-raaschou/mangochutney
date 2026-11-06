@@ -64,7 +64,7 @@ public final class MissionControl {
     private func set(active: Bool, because why: String) {
         guard active != isActive else { return }
         isActive = active
-        Log.debug(active ? "Mission Control is up (\(why)); window moves are ignored" : "Mission Control closed (\(why))")
+        wlrLog(.debug, active ? "Mission Control is up (\(why)); window moves are ignored" : "Mission Control closed (\(why))")
         if active {
             // A click or key closes Mission Control in any case; if the Dock's exit notice
             // never comes, this keeps window moves from being ignored for good. Presses, not

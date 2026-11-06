@@ -53,6 +53,8 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Dækkede vinduer animeres ikke | Alle animeres | Hver frame er en Accessibility-skrivning; usynligt | Ingen |
 | Layout-paletten viser alle 14 layouts i et 5×3-gitter, når `circle_layout` mangler | `layouts[]`-rækkefølgen | Palettens opstilling | `switch_layout` følger mangos rækkefølge |
 | Den medfølgende config (`Resources/config.conf`) er mangos `assets/config.conf` med mangos værdier; hvert sted, den ikke er det, står i en region mærket `# not mango default` (til `# end not mango default` eller filens slutning) med mangos linje nævnt: tasterne på Hyper, rofi og mangos midterklik udeladt, portens `chutney_*`-blok og Escape, der lukker overview (`bindp=NONE,Escape,leaveoverview`). | `assets/config.conf` | Tasterne må ikke tage macOS' og apps' genveje; portens nøgler | Brug mangos linjer i stedet for regionerne |
+| Config-fejlene skrives (til stderr og `error_store`), når hele filen er læst, ikke mens hver linje læses; teksten er mangos, men uden mangos farvekoder om værdien | Mens hver linje læses | Parseren samler fejlene, som `mango -p` også viser | Ingen |
+| `error_nag` tjekker for fejl, når `setup` er færdig, ikke på en timer på 1 ms | `config_error_nag_init`s timer | Porten er klar, når `setup` er færdig | Ingen |
 | Efter et greb kører kun den del af `pointer_process_motion(0, …)`, der sætter kantgrebets markør, ikke resten (sloppy focus, hot area) | Hele `pointer_process_motion` | Den var aldrig med; markøren skulle med for kantgrebet | Ingen synlig: næste bevægelse gør resten |
 
 ## 3. Tvunget af macOS
@@ -71,7 +73,8 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Animationer skrives via Accessibility (højst 60 Hz) | Ingen compositor |
 | Overview og switcher viser billeder (Skærmoptagelse), stillbilleder taget ved åbning; de rigtige vinduer bliver under dem, så `warp_cursor` sætter markøren på kortet (mangos `geom` i overview) | Andre apps' vinduer kan ikke skaleres; en strøm pr. vindue koster meget |
 | Kantgrebet (`enable_border_resize`) tager kun et klik, som event tap'en har taget fra appen; den afgør det ud fra mangos `hover_resize_edge` ved forrige bevægelse. Er markøren lige kommet på eller af striben, kan det ene klik gå til appen, eller gå tabt | Tap'en skal afgøre klikket med det samme, før appen får det, og kan ikke vente på mango |
-| Config-fejl i portens banner, ikke `mangonag` | `mangonag` er en Wayland-klient |
+| `mangonag` er ikke et eget program: porten tegner dens bjælke i mangos proces ud fra de argumenter, `error_nag` giver (`-o`, `-t`, `-e`, `-l`, `-s`, `-b` …), med mangonags farver, skrift, fire linjer, ANSI-farver og knapper; bjælken står under menulinjen (eller over Dock'en) | mangonag er en Wayland-klient på en layer surface, tegnet med cairo og pango; et program at kalde selv har en Mac ikke brug for (macOS' notifikationer) |
+| En terminalknap i bjælken (Edit) åbner macOS' Terminal, når hverken `$TERMINAL` eller en af mangos terminaler (foot, alacritty, kitty, wezterm, st, xterm) findes; scriptet hedder `.command` | mango kører den så i `sh` uden terminal, og `vi` kan ikke køre uden en |
 | Et vindue i macOS' egen fuldskærm (den grønne knap), i Dock'en (med `ignore_minimize`, mangos standard), i en skjult app (⌘H) eller i en app, der ikke svarer, mens det er parkeret, unmappes med mangos `handle_client_unmap` og mappes tilbage på sin plads, når det kommer igen. Mango ser det ikke imens, heller ikke i `mmsg get all-clients` | macOS har allerede taget vinduet væk; mango ville have det unmappet |
 | En holdt tasts gentagelser: højst én venter på hovedtråden ad gangen | macOS sender gentagelserne selv; mangos egen gentagelsestimer stabler dem aldrig |
 | Fokus sendes til macOS én gang pr. tur, for det sidst fokuserede vindue | Fokus på macOS er en synkron forespørgsel til WindowServer og appen; mangos `client_focus` sætter kun tilstand |
@@ -91,7 +94,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | `source=` med relativ sti læses fra config-mappen; ingen `/etc/mango`-fallback | Under launchd er arbejdsmappen `/`; macOS har ingen `/etc`-config |
 | Første start skriver `Resources/config.conf` som `config.conf`: mangos config med mangos taster på Hyper (en tast, brugeren vælger som i Raycasts Hyper Key: Caps Lock, en venstre/højre modifier eller F1–F12; `chutney_hyper_key`), ikke mangos egne taster, og de første linjer at prøve nær slutningen. Også et velkomstvindue, der åbner Getting Started | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config. mangos taster (⌘M, ⌘N, ⌥+bogstav, ⌃+pile) er macOS' og appernes genveje |
 | Input besluttes på event tappets tråd; `setkeymode` og `chvt` stopper søgningen efter bindinger | macOS vil have svaret med det samme; dispatcherens svar kendes først på hovedtråden |
-| Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,15 s, som mangos), appens egne rapporter lige efter et træk (0,4 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt | macOS melder ikke alt som en begivenhed |
+| Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,15 s, som mangos), appens egne rapporter lige efter et træk (0,4 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt, mangonags `-T` (kun når den er sat; config-fejlenes bjælke har ingen) | macOS melder ikke alt som en begivenhed |
 
 ## 4. Mangler endnu
 
@@ -122,6 +125,12 @@ Hvor koden står, når den ikke står som i mango.
   toplaget i scenen) har ingen funktion i kernen; porten ordner vinduerne i `restack`.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
   subrole); appens egne flyt under et træk tager porten ud (`grabBegan`, `grabEnded`).
+- **Logning:** mangos `common/log.c` i kernen (`mangoError`, `mangoLogInit`) og wlroots'
+  `wlr_log` på grænsen (`WlrLog.swift`), med wlroots' format og niveau. Porten logger med
+  `wlrLog`, som wlroots gør, og udvidelserne med `mangoError`, som mangos kode gør. Uden `-d`
+  kun fejl (`WLR_ERROR`, mangos standard), med `-d` alt (`WLR_DEBUG`).
+- **Config-fejl:** mangos `error_store.c` og `error_nag.c` i kernen; `nag_spawn` og `nag_kill`
+  er kald over grænsen, og porten viser mangonags bjælke (`Nag.swift`).
 - **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `EventLoop`
   (`wl_event_loop_add_fd` til IPC), `Screen`, `PortHooks`, `ConfigPort` (portens nøgler,
   modifiernavne, tastkoder) og `InputState`.

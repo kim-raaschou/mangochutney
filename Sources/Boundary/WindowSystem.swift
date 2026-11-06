@@ -65,9 +65,10 @@ package protocol WindowSystem: AnyObject {
     /// mango client_set_drop_area (animation/client.c), its scene part.
     /// mango's drop area (drag_tile_to_tile); nil hides it.
     func showDropArea(_ area: CGRect?, color: RGBA)
-    /// mango config_error_nag_update (error_nag.c).
-    /// mango's error_nag for config errors; empty hides it.
-    func showConfigErrors(_ errors: [ConfigError], configURL: URL)
+    /// mango nag_spawn (error_nag.c): mangonag with these arguments and this text on its stdin.
+    func nagSpawn(_ argv: [String], input: String)
+    /// mango nag_kill (error_nag.c): the bar gone.
+    func nagKill()
     /// mango pointer_hide_cursor and pointer_cursor_activity (pointer.c), the cursor image.
     /// The pointer hidden (cursor_hide_timeout, cursor_hide_on_keypress) or shown.
     func setCursorHidden(_ hidden: Bool)

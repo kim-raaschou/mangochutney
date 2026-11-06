@@ -2,18 +2,44 @@ import Foundation
 
 extension String: @retroactive Error {}
 
+// not in mango: an error kept for after the parse (mango prints each as the line is read)
 public struct ConfigError: Error, CustomStringConvertible, Equatable {
     public var file: String
     public var line: Int
     public var message: String
+    /// mango_error's verbosity: WLR_ERROR, or WLR_INFO for a binding conflict.
+    public var verbosity: WlrLogImportance
+    /// Followed by report_config_line_error for the line (not a binding conflict).
+    public var reportsLine: Bool
 
-    public init(file: String, line: Int, message: String) {
+    public init(file: String, line: Int, message: String, verbosity: WlrLogImportance = .error, reportsLine: Bool = true) {
         self.file = file; self.line = line; self.message = message
+        self.verbosity = verbosity; self.reportsLine = reportsLine
     }
 
     public var description: String {
         line > 0 ? "\(file):\(line): \(message)" : "\(file): \(message)"
     }
+
+    /// The error as mango prints it: mango_error, then report_config_line_error with the line as read.
+    public func emit() {
+        mangoError(false, verbosity, message + "\n")
+        guard reportsLine, line > 0 else { return }
+        var text = ""
+        if let data = FileManager.default.contents(atPath: file) {
+            let lines = String(decoding: data, as: UTF8.self).components(separatedBy: "\n")
+            if line <= lines.count { text = lines[line - 1] + (line < lines.count ? "\n" : "") }
+        }
+        reportConfigLineError(file, line, text)
+    }
+}
+
+/// mango report_config_line_error (value_parse.c)
+public func reportConfigLineError(_ fullPath: String, _ lineNumber: Int, _ line: String) {
+    mangoErrorUntagged(.info,
+                       "\u{1B}[1;31m╰─\u{1B}[1;33m[Index]\u{1B}[0m "
+                       + "\u{1B}[1;36m\(fullPath)\u{1B}[0m:\u{1B}[1;35m\(lineNumber)\u{1B}[0m\n"
+                       + "   \u{1B}[1;36m╰─\u{1B}[0;33m\(line)\u{1B}[0m\n\n")
 }
 
 public struct ParsedConfig {
@@ -179,48 +205,50 @@ package struct ParserState {
 
     // not in mango: the mouse, axis and gesture checks (check_*_binding_conflicts) here too
     mutating func checkKeyBindingConflicts() {
-        func report(_ loc: BindingLocation, _ message: String) {
-            errors.append(ConfigError(file: loc.file, line: loc.line, message: message))
+        func report(_ kind: String, _ mode: String, _ a: BindingLocation, _ b: BindingLocation) {
+            errors.append(ConfigError(file: b.file, line: b.line,
+                                      message: "\(kind) conflict in keymode \(mode):\n"
+                                          + "  File \"\(a.file)\", line \(a.line)\n"
+                                          + "  File \"\(b.file)\", line \(b.line)",
+                                      verbosity: .info, reportsLine: false))
         }
-        func modesOverlap(_ a: String, _ b: String) -> Bool { a == b || a == "common" || b == "common" }
+        func modeOf(_ a: String, _ b: String) -> String? {
+            a == "common" || b == "common" ? "common" : (a == b ? a : nil)
+        }
         let keys = config.keyBindings
         for i in keys.indices {
             let b = keys[i]
             guard let code = b.keyCodes.first else { continue }
             let isSym = b.flags.contains(.keysym)
-            if let j = keys[..<i].firstIndex(where: { other in
-                other.mods == b.mods && other.keyCodes.first == code
-                    && other.flags.contains(.keysym) == isSym && modesOverlap(other.mode, b.mode)
-                    && !(other.flags.contains(.allowConflict) && b.flags.contains(.allowConflict))
-            }) {
-                let mode = (keys[j].mode == "common" || b.mode == "common") ? "common" : b.mode
-                report(keyLocs[i], "Conflict: \(b.mods.mangoDescription),\(b.keyName) in key mode \(mode) is already bound at \(Self.describe(keyLocs[j])) (use the c flag on both binds to allow)")
+            for j in keys[..<i].indices {
+                let other = keys[j]
+                guard other.mods == b.mods && other.keyCodes.first == code && other.flags.contains(.keysym) == isSym,
+                      let mode = modeOf(other.mode, b.mode),
+                      !(other.flags.contains(.allowConflict) && b.flags.contains(.allowConflict)) else { continue }
+                report("Key binding", mode, keyLocs[j], keyLocs[i])
             }
         }
         let mice = config.mouseBindings
         for i in mice.indices {
             let b = mice[i]
-            if let j = mice[..<i].firstIndex(where: { $0.mods == b.mods && $0.button == b.button && modesOverlap($0.mode, b.mode) }) {
-                report(mouseLocs[i], "Conflict: mousebind \(b.mods.mangoDescription),\(b.button) in mode \(b.mode) is already bound at \(Self.describe(mouseLocs[j]))")
+            for j in mice[..<i].indices where mice[j].mods == b.mods && mice[j].button == b.button {
+                if let mode = modeOf(mice[j].mode, b.mode) { report("mousebind", mode, mouseLocs[j], mouseLocs[i]) }
             }
         }
         let axes = config.axisBindings
         for i in axes.indices {
             let b = axes[i]
-            if let j = axes[..<i].firstIndex(where: { $0.mods == b.mods && $0.isUndir == b.isUndir
-                                                       && ($0.direction == nil || b.direction == nil || $0.direction == b.direction)
-                                                       && modesOverlap($0.mode, b.mode) }) {
-                report(axisLocs[i], "Conflict: axisbind \(b.mods.mangoDescription),\(b.direction?.rawValue ?? "alldir") in mode \(b.mode) is already bound at \(Self.describe(axisLocs[j]))")
+            for j in axes[..<i].indices where axes[j].mods == b.mods && axes[j].isUndir == b.isUndir
+                && (axes[j].direction == nil || b.direction == nil || axes[j].direction == b.direction) {
+                if let mode = modeOf(axes[j].mode, b.mode) { report("axisbind", mode, axisLocs[j], axisLocs[i]) }
             }
         }
         let gestures = config.gestureBindings
         for i in gestures.indices {
             let b = gestures[i]
-            if let j = gestures[..<i].firstIndex(where: {
-                $0.mods == b.mods && ($0.direction == nil || b.direction == nil || $0.direction == b.direction)
-                    && $0.fingers == b.fingers && modesOverlap($0.mode, b.mode)
-            }) {
-                report(gestureLocs[i], "Conflict: gesturebind \(b.mods.mangoDescription),\(b.direction?.rawValue ?? "alldir"),\(b.fingers) in mode \(b.mode) is already bound at \(Self.describe(gestureLocs[j]))")
+            for j in gestures[..<i].indices where gestures[j].mods == b.mods && gestures[j].fingers == b.fingers
+                && (gestures[j].direction == nil || b.direction == nil || gestures[j].direction == b.direction) {
+                if let mode = modeOf(gestures[j].mode, b.mode) { report("gesturebind", mode, gestureLocs[j], gestureLocs[i]) }
             }
         }
     }
@@ -235,7 +263,7 @@ package struct ParserState {
         if let (kind, why) = ConfigParser.port?.dispatcherNote(d.name) { note(file, line, kind, d.name, why) }
     }
 
-    mutating func reportConfigLineError(_ file: String, _ line: Int, _ message: String) {
+    mutating func recordConfigLineError(_ file: String, _ line: Int, _ message: String) {
         errors.append(ConfigError(file: file, line: line, message: message))
     }
 
@@ -262,7 +290,7 @@ package struct ParserState {
 
         // not in mango: a file that sources itself is reported, not read for ever (a mango bug, docs/afvigelser.md §6).
         if includeStack.contains(path) {
-            reportConfigLineError(reportFile, reportLine, "Recursive source of \(path) ignored")
+            recordConfigLineError(reportFile, reportLine, "Recursive source of \(path) ignored")
             return
         }
 
@@ -274,7 +302,7 @@ package struct ParserState {
             guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue,
                   let data = FileManager.default.contents(atPath: path) else {
                 if mustExist {
-                    reportConfigLineError(reportFile, reportLine, "Failed to open config file: \(from?.2 ?? path)")
+                    recordConfigLineError(reportFile, reportLine, "Failed to open config file: \(from?.2 ?? path)")
                 }
                 return
             }
@@ -305,17 +333,17 @@ package struct ParserState {
         let processed = ConfigParser.removeComment(raw)
         guard let eq = processed.firstIndex(of: "="), eq != processed.startIndex,
               processed.index(after: eq) != processed.endIndex else {
-            reportConfigLineError(file, line, "Invalid line format: \(raw.trimmingCharacters(in: .whitespaces))")
+            recordConfigLineError(file, line, "Invalid line format: \(raw.trimmingCharacters(in: .whitespaces))")
             return
         }
         let key = processed[..<eq].trimmingCharacters(in: .whitespaces)
         var value = processed[processed.index(after: eq)...].trimmingCharacters(in: .whitespaces)
         guard !key.isEmpty else {
-            reportConfigLineError(file, line, "Invalid line format: \(raw.trimmingCharacters(in: .whitespaces))")
+            recordConfigLineError(file, line, "Invalid line format: \(raw.trimmingCharacters(in: .whitespaces))")
             return
         }
         if value.utf8.count > ConfigParser.maxValueBytes {
-            reportConfigLineError(file, line, "Configuration value exceeds \(ConfigParser.maxValueBytes) bytes: \(key)")
+            recordConfigLineError(file, line, "Configuration value exceeds \(ConfigParser.maxValueBytes) bytes: \(key)")
             return
         }
         value = ConfigParser.stripQuotes(value)
@@ -335,13 +363,13 @@ package struct ParserState {
 
         case "var":
             guard let comma = value.firstIndex(of: ",") else {
-                reportConfigLineError(file, line, "Invalid variable format (expected name,value): \(value)")
+                recordConfigLineError(file, line, "Invalid variable format (expected name,value): \(value)")
                 return
             }
             let name = value[..<comma].trimmingCharacters(in: .whitespaces)
             let v = value[value.index(after: comma)...].trimmingCharacters(in: .whitespaces)
             guard ConfigParser.isValidVarName(name) else {
-                reportConfigLineError(file, line, "Invalid variable name (allowed: [A-Za-z_][A-Za-z0-9_]*): \(name)")
+                recordConfigLineError(file, line, "Invalid variable name (allowed: [A-Za-z_][A-Za-z0-9_]*): \(name)")
                 return
             }
             vars[name] = v
@@ -349,7 +377,7 @@ package struct ParserState {
 
         case "source", "source_optional":
             guard !value.isEmpty else {
-                reportConfigLineError(file, line, "Missing path for \(key)")
+                recordConfigLineError(file, line, "Missing path for \(key)")
                 return
             }
             parseConfigFile(resolveConfigPath(value), mustExist: key == "source", from: (file, line, value))
@@ -357,7 +385,7 @@ package struct ParserState {
 
         case "mousebind":
             switch BindingParser.parseMouseBinding(value: value, mode: keyMode, hyperModifier: config.hyperModifier) {
-            case .failure(let msg): reportConfigLineError(file, line, msg)
+            case .failure(let msg): recordConfigLineError(file, line, msg)
             case .success(let b):
                 let loc = BindingLocation(file: file, line: line)
                 noteHyper(.mouse, value, index: config.mouseBindings.count)
@@ -368,7 +396,7 @@ package struct ParserState {
 
         case "axisbind":
             switch BindingParser.parseAxisBinding(value: value, mode: keyMode, hyperModifier: config.hyperModifier) {
-            case .failure(let msg): reportConfigLineError(file, line, msg)
+            case .failure(let msg): recordConfigLineError(file, line, msg)
             case .success(let b):
                 let loc = BindingLocation(file: file, line: line)
                 noteHyper(.axis, value, index: config.axisBindings.count)
@@ -379,7 +407,7 @@ package struct ParserState {
 
         case "gesturebind":
             switch BindingParser.parseGestureBinding(value: value, mode: keyMode, hyperModifier: config.hyperModifier) {
-            case .failure(let msg): reportConfigLineError(file, line, msg)
+            case .failure(let msg): recordConfigLineError(file, line, msg)
             case .success(let b):
                 let loc = BindingLocation(file: file, line: line)
                 noteHyper(.gesture, value, index: config.gestureBindings.count)
@@ -395,7 +423,7 @@ package struct ParserState {
         case "window_rule", "window_rule_once":
             let (rule, problems, keep) = RuleParser.parseWindowRuleChecked(value, once: key == "window_rule_once")
             if keep { config.windowRules.append(rule) }
-            for p in problems { reportConfigLineError(file, line, p) }
+            for p in problems { recordConfigLineError(file, line, p) }
             for (field, _) in RuleParser.tokens(value) {
                 if let (kind, n) = ConfigParser.port?.windowRuleNote(field) { note(file, line, kind, "window_rule \(field)", n) }
             }
@@ -404,7 +432,7 @@ package struct ParserState {
         case "tag_rule":
             let (rule, problems) = RuleParser.parseTagRuleLenient(value)
             config.tagRules.append(rule)
-            for p in problems { reportConfigLineError(file, line, p) }
+            for p in problems { recordConfigLineError(file, line, p) }
             return
 
         default:
@@ -415,7 +443,7 @@ package struct ParserState {
             switch BindingParser.parseKeyBinding(keyword: key, value: value, mode: keyMode,
                                                  hyperModifier: config.hyperModifier) {
             case .failure(let msg):
-                reportConfigLineError(file, line, msg)
+                recordConfigLineError(file, line, msg)
             case .success(let b):
                 guard !b.keyCodes.isEmpty else { return }
                 let loc = BindingLocation(file: file, line: line)
@@ -431,8 +459,8 @@ package struct ParserState {
             if let (kind, n) = ConfigParser.port?.optionNote(key, applied: true) { note(file, line, kind, key, n) }
         case .ignored:
             if let (kind, n) = ConfigParser.port?.optionNote(key, applied: false) { note(file, line, kind, key, n) }
-        case .unknown: reportConfigLineError(file, line, "Unknown keyword: \(key)")
-        case .invalid(let msg): reportConfigLineError(file, line, msg)
+        case .unknown: recordConfigLineError(file, line, "Unknown keyword: \(key)")
+        case .invalid(let msg): recordConfigLineError(file, line, msg)
         }
     }
 
@@ -443,9 +471,6 @@ package struct ParserState {
     }
 
     /// Not in mango: file:line text for conflict messages.
-    static func describe(_ loc: BindingLocation) -> String {
-        "\(loc.file):\(loc.line)"
-    }
 }
 
 public enum BindingParser {

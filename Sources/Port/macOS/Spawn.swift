@@ -19,6 +19,6 @@ public enum Spawn {
         p.standardInput = FileHandle.nullDevice
         p.standardOutput = FileHandle.nullDevice
         p.standardError = FileHandle.nullDevice
-        do { try p.run() } catch { Log.error("spawn failed: \(command): \(error)") }
+        do { try p.run() } catch { wlrLog(.error, "spawn failed: \(command): \(error)") }
     }
 }

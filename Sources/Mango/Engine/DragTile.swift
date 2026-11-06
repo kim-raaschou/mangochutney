@@ -11,7 +11,6 @@ package extension MangoServer {
               tiledClients(m).contains(where: { $0 === c }) else { return }
         dragTile = DragTile(client: c, floatBackup: c.floatGeom)
         setSizePer(m, c)
-        Log.debug("drag tile: \(c.appName) \(c.id) floats while dragged")
         if config.dragTileToTile, config.dragTileSmall {
             let small = CGRect(x: p.x.rounded() - 150, y: p.y.rounded() - 150, width: 300, height: 300)
             system.cancelAnimation(c.id)
@@ -71,11 +70,9 @@ package extension MangoServer {
         guard let d = dragTile, drawsOverlays else { return }
         let onBar = groupBarTargetAt(at: p, except: d.client) != nil
         guard onBar || config.dragTileToTile, let drop = dropTarget(at: p, except: d.client) else {
-            Log.debug("drag tile: no tile near \(p)")
             system.showDropArea(nil, color: config.dropcolor)
             return
         }
-        Log.debug("drag tile: at \(p) on \(drop.tile.appName) \(drop.tile.id), \(drop.direction), area \(drop.area)")
 // not in mango: above the dragged window, which keeps its whole size in a macOS title-bar drag.
         system.showDropArea(drop.area, color: config.dropcolor)
     }
@@ -105,7 +102,6 @@ package extension MangoServer {
             return
         }
         let drop = dropTarget(at: p, except: c)
-        Log.debug("drag tile: dropped at \(p) \(drop.map { "\($0.direction) of \($0.tile.appName) \($0.tile.id)" } ?? "on no tile")")
         c.isFloating = false
         c.floatGeom = d.floatBackup
         // Dropped on another monitor: it joins it (client_set_monitor). The grab's end has

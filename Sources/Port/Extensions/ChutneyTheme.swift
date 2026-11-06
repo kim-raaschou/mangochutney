@@ -68,7 +68,7 @@ public enum ChutneyTheme {
         do {
             try text.write(to: file, atomically: false, encoding: .utf8)   // in place: the watcher keeps it
         } catch {
-            Log.info("chutney_style: could not write \(file.path): \(error)")
+            mangoError(true, .info, "chutney_style: could not write \(file.path): \(error)")
             return false
         }
         MenuSave.lastWritten[file.path] = text
@@ -96,7 +96,7 @@ extension MangoServer {
     func observeMacOSTheme() {
         let changed: () -> Void = { [weak self] in
             guard let self, ChutneyTheme.sync(configURL: self.configURL) else { return }
-            Log.info("chutney_style: \(ChutneyTheme.fileName) written for the new accent colour or light/dark")
+            mangoError(true, .info, "chutney_style: \(ChutneyTheme.fileName) written for the new accent colour or light/dark")
             self.reloadConfig()
         }
         NotificationCenter.default.addObserver(forName: NSColor.systemColorsDidChangeNotification, object: nil, queue: .main) { _ in

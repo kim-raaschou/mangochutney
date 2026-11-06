@@ -50,7 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             startWM()
         } else {
             setStatus("Mango Chutney: needs Accessibility")
-            Log.info("waiting for Accessibility permission (System Settings › Privacy & Security › Accessibility)")
+            wlrLog(.info, "waiting for Accessibility permission (System Settings › Privacy & Security › Accessibility)")
             // No timer: macOS posts `com.apple.accessibility.api` when the list changes.
             // The grant can land a moment after that notice, so the check also runs
             // whenever an app is activated (leaving System Settings is one).
@@ -73,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard server == nil, AX.isTrusted else { return }
         for (center, token) in permissionObservers { center.removeObserver(token) }
         permissionObservers = []
-        Log.info("Accessibility granted")
+        wlrLog(.info, "Accessibility granted")
         startWM()
     }
 
@@ -85,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let server = MangoServer(configURL: configPath)
         server.useMacSystem()   // mango on macOS: the port stands where wlroots does
+        server.cliDebugLog = cliDebugLog
         self.server = server
         server.onStateChange = { [weak self] in MainActor.assumeIsolated { self?.refreshStatus() } }
         server.setup()
@@ -429,6 +430,7 @@ MacConfigPort.install()
 
 var configPath: URL?
 var check = false
+var cliDebugLog = false
 var args = CommandLine.arguments.dropFirst().makeIterator()
 while let a = args.next() {
     switch a {
@@ -446,7 +448,7 @@ while let a = args.next() {
         print("mango \(mangoVersion)")
         exit(0)
     case "-d", "--debug":
-        Log.verbose = true
+        cliDebugLog = true
     case "-h", "--help":
         print("""
         Usage: mango [-c config] [-p] [--list-ignored] [--list-glance] [-d] [-v]
@@ -454,7 +456,7 @@ while let a = args.next() {
           -p, --check           validate the config, list what has no effect on macOS, and exit
           --list-ignored        print the mango names that do nothing on macOS (Markdown)
           --list-glance         print how much of mango works on macOS (Markdown)
-          -d, --debug           verbose logging
+          -d, --debug           Enable debug log
           -v, --version         print version
         """)
         exit(0)

@@ -73,7 +73,7 @@ extension MangoServer {
         // key itself when a reload sets or clears it (the config is then read once more).
         portHooks.configLoaded.append { server in
             guard ChutneyTheme.sync(configURL: server.configURL, style: server.config.chutneyStyle) else { return }
-            Log.info("chutney_style: \(ChutneyTheme.fileName) written for chutney_style=\(server.config.chutneyStyle ? 1 : 0)")
+            mangoError(true, .info, "chutney_style: \(ChutneyTheme.fileName) written for chutney_style=\(server.config.chutneyStyle ? 1 : 0)")
             DispatchQueue.main.async { MainActor.assumeIsolated { server.reloadConfig() } }
         }
         observeMacOSTheme()

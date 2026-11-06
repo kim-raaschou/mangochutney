@@ -34,7 +34,7 @@ public final class MainThreadWatchdog: @unchecked Sendable {
             // Still waiting: sample once if it has been blocked for over 0.3 s (the sample
             // runs a second, so it sees the rest of a half-second block).
             let blocked = now - sent
-            let sample = Log.verbose && blocked > 0.3 && !sampled && now - lastSample > 30
+            let sample = wlrLogGetVerbosity() == .debug && blocked > 0.3 && !sampled && now - lastSample > 30
             if sample { sampled = true; lastSample = now }
             lock.unlock()
             if sample { Self.writeSample(blockedMs: blocked * 1000) }
@@ -50,7 +50,7 @@ public final class MainThreadWatchdog: @unchecked Sendable {
             self.sampled = false
             self.lock.unlock()
             let ms = (CACurrentMediaTime() - sent) * 1000
-            if ms > logAfterMs { Log.info(String(format: "main thread was blocked for %.0f ms", ms)) }
+            if ms > logAfterMs { wlrLog(.info, String(format: "main thread was blocked for %.0f ms", ms)) }
         }
     }
 
@@ -65,9 +65,9 @@ public final class MainThreadWatchdog: @unchecked Sendable {
         p.standardError = FileHandle.nullDevice
         do {
             try p.run()
-            Log.info(String(format: "main thread blocked for %.0f ms: stack sample in %@", blockedMs, path))
+            wlrLog(.info, String(format: "main thread blocked for %.0f ms: stack sample in %@", blockedMs, path))
         } catch {
-            Log.error("main thread blocked for \(Int(blockedMs)) ms; sample failed: \(error)")
+            wlrLog(.error, "main thread blocked for \(Int(blockedMs)) ms; sample failed: \(error)")
         }
     }
 }

@@ -460,8 +460,8 @@ package extension MangoServer {
         case "setoption":
             let value = d.args.dropFirst().joined(separator: ",")
             switch ConfigOptions.parseOption(key: a0, value: value, to: &config) {
-            case .unknown: Log.info("setoption: unknown option \(a0)")
-            case .invalid(let msg): Log.info("setoption: \(msg)")
+            case .unknown: mangoError(false, .error, "Unknown keyword: \u{1B}[1m\u{1B}[31m\(a0)\u{1B}[0m\n")
+            case .invalid(let msg): mangoError(false, .error, msg + "\n")
             case .applied, .ignored: break
             }
             config.overrideConfig()
@@ -483,8 +483,6 @@ package extension MangoServer {
             // Port extension: not in mango. A dispatcher of the port's own (chutney_focus_app).
             if let ext = portHooks.extraDispatchers[d.name] {
                 if let error = ext(self, d) { return error }
-            } else {
-                Log.debug("dispatcher \(d.name) is not supported on macOS")
             }
         }
         printstatus()

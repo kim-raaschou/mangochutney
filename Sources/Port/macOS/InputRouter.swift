@@ -164,12 +164,7 @@ final class InputRouter: @unchecked Sendable {
         let age = ev.ageMs.map { String(format: "%.0f ms", $0) } ?? "?"
         if let a = ev.ageMs, a > 250, ev.isDown {
             // The key spent this long in macOS and in the taps before ours: input lag, not mango.
-            Log.info("input lag: a key event reached mango \(age) after it was pressed")
-        }
-        if !d.actions.contains(where: { if case .binding = $0 { return true } else { return false } }),
-           ev.isDown, !ev.isModifierKey, ev.mods.isSuperset(of: [.ctrl, .alt, .superKey]) {
-            // A hyper chord that matches nothing (wrong key mode?). Key codes only, never text.
-            Log.debug("unbound chord \(ev.mods.mangoDescription)+code:\(ev.keyCode) in key mode \(s.keymode) (\(age) old)")
+            wlrLog(.info, "input lag: a key event reached mango \(age) after it was pressed")
         }
         run(d.actions, ev, age: age)
         // Not in mango: a modifier key's own event always reaches the apps; on macOS one taken
@@ -201,9 +196,6 @@ final class InputRouter: @unchecked Sendable {
         var main: [KeyAction] = []
         for a in actions {
             if case .forward(let pid, let down) = a { forward(ev.keyCode, ev.mods, down, pid); continue }
-            if case .binding(let b, _) = a {
-                Log.debug("bind \(b.mods.mangoDescription),\(b.keyName) -> \(b.dispatch.name) \(b.dispatch.args) (key \(age) old)")
-            }
             main.append(a)
         }
         guard !main.isEmpty else { return }
@@ -222,8 +214,9 @@ final class InputRouter: @unchecked Sendable {
             let started = CACurrentMediaTime()
             server.handleKeyboardKey(main)
             let waited = (started - queued) * 1000, ran = (CACurrentMediaTime() - started) * 1000
-            let line = String(format: "key: waited %.0f ms for the main thread, ran %.0f ms", waited, ran)
-            if waited > 250 || ran > 250 { Log.info(line) } else { Log.debug(line) }
+            if waited > 250 || ran > 250 {
+                wlrLog(.info, String(format: "key: waited %.0f ms for the main thread, ran %.0f ms", waited, ran))
+            }
         }
     }
 

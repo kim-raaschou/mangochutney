@@ -125,7 +125,7 @@ package enum KeyboardOptions {
         IOHIDGetModifierLockState(connect, Int32(kIOHIDCapsLockState), &on)
         guard on else { return }
         IOHIDSetModifierLockState(connect, Int32(kIOHIDCapsLockState), false)
-        Log.info("xkb_rules_options: Caps Lock's key is moved; its lock turned off")
+        wlrLog(.info, "xkb_rules_options: Caps Lock's key is moved; its lock turned off")
     }
 
     /// Sets the keyboard's key mapping (macOS's own hidutil).
@@ -138,9 +138,9 @@ package enum KeyboardOptions {
         do {
             try p.run()
             p.waitUntilExit()
-            if p.terminationStatus != 0 { Log.error("hidutil failed: exit status \(p.terminationStatus)") }
+            if p.terminationStatus != 0 { wlrLog(.error, "hidutil failed: exit status \(p.terminationStatus)") }
         } catch {
-            Log.error("hidutil failed: \(error)")
+            wlrLog(.error, "hidutil failed: \(error)")
         }
     }
 
@@ -160,7 +160,7 @@ package enum KeyboardOptions {
             guard p.terminationStatus == 0 else { return nil }
             return parseUserKeyMapping(String(decoding: data, as: UTF8.self))
         } catch {
-            Log.error("hidutil failed: \(error)")
+            wlrLog(.error, "hidutil failed: \(error)")
             return nil
         }
     }

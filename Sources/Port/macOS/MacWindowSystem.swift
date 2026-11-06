@@ -103,7 +103,7 @@ class MacWindowSystem: WindowSystem {
     /// (the view's top window, then the window), so the request goes once, at the end of the
     /// turn, for the last window focused.
     func focus(_ c: Client, raise: Bool) {
-        if holdFocus { Log.debug("focus: mango focuses \(c.appName) \(c.id), held (a menu or palette is open)"); heldFocus = c; return }
+        if holdFocus { heldFocus = c; return }
         let first = pendingFocus == nil
         pendingFocus = (c, raise || (pendingFocus?.client === c && pendingFocus?.raise == true))
         guard first else { return }
@@ -114,7 +114,6 @@ class MacWindowSystem: WindowSystem {
         guard let (c, raise) = pendingFocus else { return }
         pendingFocus = nil
         guard server.clientByIdAll(c.id) === c else { return }
-        Log.debug("focus: mango focuses \(c.appName) \(c.id)\(raise ? ", raised" : "")")
         NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: raise) { [weak self] in self?.restack() }
     }
 
@@ -260,8 +259,12 @@ class MacWindowSystem: WindowSystem {
     }
 
     /// mangonag's bar, or the port's look over it (chutney_style).
-    func showConfigErrors(_ errors: [ConfigError], configURL: URL) {
-        if errors.isEmpty { nag.hide() } else { nag.show(errors: errors, configURL: configURL, macOS: server.config.chutneyStyle) }
+    func nagSpawn(_ argv: [String], input: String) {
+        nag.spawn(argv, input: input, macOS: server.config.chutneyStyle)
+    }
+
+    func nagKill() {
+        nag.kill()
     }
 
     /// The config was read (also on each setoption): what macOS cannot do is said once,
@@ -274,14 +277,14 @@ class MacWindowSystem: WindowSystem {
             + config.axisBindings.map(\.dispatch.name) + config.gestureBindings.map(\.dispatch.name)
         for name in used where dispatchersWarned.insert(name).inserted {
             if case (.unsupportedDispatcher, let why)? = ConfigParser.port?.dispatcherNote(name) {
-                Log.info("config: \(name): \(why)")
+                wlrLog(.info, "config: \(name): \(why)")
             }
         }
         let wantsOpacity = config.focusedOpacity < 1 || config.unfocusedOpacity < 1
             || config.windowRules.contains { ($0.focusedOpacity ?? 1) < 1 || ($0.unfocusedOpacity ?? 1) < 1 }
         if wantsOpacity && !opacityWarned {
             opacityWarned = true
-            Log.info("config: focused_opacity / unfocused_opacity are not supported on macOS and are ignored "
+            wlrLog(.info, "config: focused_opacity / unfocused_opacity are not supported on macOS and are ignored "
                      + "(changing another process's window alpha needs SLSSetWindowAlpha from the Dock connection, which SIP blocks)")
         }
     }
@@ -315,7 +318,7 @@ class MacWindowSystem: WindowSystem {
         appliedKeyMappings = all
         KeyboardOptions.apply(all)
         if KeyboardOptions.takesCapsLock(m) { KeyboardOptions.capsLockOff() }
-        Log.info(m.isEmpty ? "xkb_rules_options: the keyboard's key mapping cleared"
+        wlrLog(.info, m.isEmpty ? "xkb_rules_options: the keyboard's key mapping cleared"
                            : "xkb_rules_options: \(m.count) key(s) moved")
     }
 
@@ -336,8 +339,8 @@ class MacWindowSystem: WindowSystem {
         missionControl.onExit = { [weak server] in server?.arrangeAll(.none) }
         missionControl.start()
         animator.onFrame = { [weak server] frames in server?.clientDrawFrame(frames) }
-        if Log.verbose { watchdog.start() }   // diagnostics: a periodic ping, so only with -d
-        Log.info("scanning \(watcher.apps.count) app(s)")
+        if wlrLogGetVerbosity() == .debug { watchdog.start() }   // diagnostics: a periodic ping, so only with -d
+        wlrLog(.info, "scanning \(watcher.apps.count) app(s)")
     }
 
     /// Every app mango wrote to gets its own settings back (AXEnhancedUserInterface).
@@ -373,7 +376,7 @@ class MacWindowSystem: WindowSystem {
         if let user = userKeyMappings, appliedKeyMappings != user { KeyboardOptions.apply(user) }
         let restore = DispatchGroup()
         if restarting {
-            Log.info("restarting: hidden windows stay hidden for the next mango")
+            wlrLog(.info, "restarting: hidden windows stay hidden for the next mango")
             restoreAppSettings(restore)
             _ = restore.wait(timeout: .now() + 1)
             return
@@ -447,7 +450,7 @@ class MacWindowSystem: WindowSystem {
         tap.onMouseDragged = { p in r.dragged(p) }
         tap.onMouseMoved = { p in r.mouseMoved(p) }
         tap.onScroll = { ev in r.scroll(ev) }
-        if !tap.start() { Log.error("could not create event tap (Accessibility permission missing?)") }
+        if !tap.start() { wlrLog(.error, "could not create event tap (Accessibility permission missing?)") }
         gestures.onEvent = { [weak server] event, time in
             MainActor.assumeIsolated {
                 switch event {
@@ -553,7 +556,7 @@ class MacWindowSystem: WindowSystem {
         let el = c.element, name = c.appName, id = c.id
         writer(for: c.pid)?.async {
             // Around sleep the element can be dead until the app lists the window again.
-            if el.closeButton == nil { Log.debug("\(name): window \(id) has no close button to press (element invalid?)") }
+            if el.closeButton == nil { wlrLog(.debug, "\(name): window \(id) has no close button to press (element invalid?)") }
             el.close()
         }
     }

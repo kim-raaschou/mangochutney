@@ -38,6 +38,7 @@ public final class MangoServer {
     var renderBorder = true
     package var drawsOverlays = false
     package internal(set) var started = false
+    public var cliDebugLog = false
     var execOnceDone = false
 
     package var overviewState: OverviewState? { didSet { publishInputState() } }
@@ -76,6 +77,10 @@ public final class MangoServer {
         drawsOverlays = true
         system.prepare()
         parseConfig()
+        if cliDebugLog {
+            config.logLevel = .debug
+        }
+        wlrLogInit(config.logLevel)
         resetOption(initial: true)
         configWatcherUpdate()
         rebuildMonitors()
@@ -87,12 +92,12 @@ public final class MangoServer {
         pointerCursorActivity()
 
         let server = IPCServer(server: self, loop: system.eventLoop, version: mangoVersion)
-        do { try server.ipcInit(); ipc = server } catch { Log.error("IPC server failed: \(error)") }
+        do { try server.ipcInit(); ipc = server } catch { wlrLog(.error, "IPC server failed: \(error)") }   // not in mango: ipc_init's failures thrown
 
         started = true
         arrangeAll(.none)
         printstatus()
-        Log.info("mango \(mangoVersion) started: \(monitors.count) monitor(s)")
+        configErrorNagInit()
     }
 
     public func cleanup() {
@@ -102,16 +107,19 @@ public final class MangoServer {
         portHooks.saveLayout?(self, true)   // Port extension: not in mango (written before anything moves)
         system.shutdown()
         ipc?.ipcCleanup()
+        configErrorNagDestroy()
     }
 
-    // not in mango: the server's side of parse_config, the config read and the nag (config_error_nag_update)
+    // not in mango: the server's side of parse_config, the config read, its errors and the nag
     func parseConfig() {
+        configErrorStoreBegin()
         let parsed = ConfigParser.parseConfig(fileAt: configURL)
         config = parsed.config
         configErrors = parsed.errors
         configFiles = parsed.sourcedFiles
-        for e in parsed.errors { Log.error("config: \(e)") }
-        system.showConfigErrors(parsed.errors, configURL: configURL)
+        for e in parsed.errors { e.emit() }   // not in mango: printed after the parse, not as each line is read
+        configErrorStoreEnd()
+        configErrorNagUpdate()
     }
 
     func configWatcherUpdate() {
@@ -145,7 +153,6 @@ public final class MangoServer {
     }
 
     public func reloadConfig() {
-        Log.info("reloading config")
         let oldTagNum = config.tagNum
         parseConfig()
         resetTag(oldTagNum)
@@ -653,7 +660,6 @@ public final class MangoServer {
         clientInsertTilingOrder(c)
         focusStack.insert(c.id, at: 0)
         clientApplyRules(c)
-        Log.debug("new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(clientIsFloatType(c))")
         if let cm = c.mon { arrange(cm, .move) }
         printstatus()
     }

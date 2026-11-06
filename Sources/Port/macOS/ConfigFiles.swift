@@ -15,12 +15,12 @@ public enum ConfigFiles {
         let fm = FileManager.default
         guard !fm.fileExists(atPath: configURL.path) else { return }
         try? fm.createDirectory(at: configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        guard let def = bundled("config") else { Log.info("no default config in the app"); return }
+        guard let def = bundled("config") else { wlrLog(.info, "no default config in the app"); return }
         do {
             try fm.copyItem(at: def, to: configURL)
-            Log.info("wrote default config to \(configURL.path)")
+            wlrLog(.info, "wrote default config to \(configURL.path)")
         } catch {
-            Log.info("could not write the default config to \(configURL.path): \(error)")
+            wlrLog(.info, "could not write the default config to \(configURL.path): \(error)")
         }
     }
 
@@ -43,15 +43,15 @@ public enum ConfigFiles {
 
     static func setHyperKey(_ key: String, tap: String, configURL: URL) {
         guard let current = try? String(contentsOf: configURL, encoding: .utf8), current.contains(hyperKeyLine) else {
-            Log.info("keys: no \(hyperKeyLine.trimmingCharacters(in: .newlines)) line in \(configURL.path); the Hyper key is left as it is")
+            wlrLog(.info, "keys: no \(hyperKeyLine.trimmingCharacters(in: .newlines)) line in \(configURL.path); the Hyper key is left as it is")
             return
         }
         let line = "chutney_hyper_key=\(key)\r\n" + (tap == "none" ? "" : "chutney_hyper_tap=\(tap)\r\n")
         do {
             try current.replacingOccurrences(of: hyperKeyLine, with: line).write(to: configURL, atomically: true, encoding: .utf8)
-            Log.info("keys: Hyper is \(key), pressed alone: \(tap), in \(configURL.path)")
+            wlrLog(.info, "keys: Hyper is \(key), pressed alone: \(tap), in \(configURL.path)")
         } catch {
-            Log.info("keys: could not write the config: \(error)")
+            wlrLog(.info, "keys: could not write the config: \(error)")
         }
     }
 

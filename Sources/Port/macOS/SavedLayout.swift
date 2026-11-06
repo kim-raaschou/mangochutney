@@ -74,7 +74,7 @@ struct SavedLayout: Codable, Equatable {
     static func load(from url: URL, session: String) -> SavedLayout? {
         guard !session.isEmpty, let data = try? Data(contentsOf: url) else { return nil }
         guard let saved = try? JSONDecoder().decode(SavedLayout.self, from: data) else {
-            Log.info("ignoring \(url.path): cannot be read")
+            wlrLog(.info, "ignoring \(url.path): cannot be read")
             return nil
         }
         guard saved.session == session else { return nil }

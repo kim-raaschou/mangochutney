@@ -37,7 +37,6 @@ extension MangoServer {
         if overviewState != nil { leaveOverview(select: nil) }
         let windows = appWindowsInGridOrder(key)
         let rule = FocusAppRule.decide(windows: windows.map(\.id), current: focused?.id, recent: focusHistory)
-        Log.debug("chutney_focus_app \(key): windows \(windows.map(\.id)), focused \(focused?.id.description ?? "none"), recent \(focusHistory.prefix(6)) -> \(rule)")
         switch rule {
         case .launch:
             Spawn.run(command.isEmpty ? "open -b '\(app.replacingOccurrences(of: "'", with: ""))'" : command)

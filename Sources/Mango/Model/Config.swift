@@ -133,6 +133,7 @@ public struct Config: Sendable {
     public var dragTileSmall = true
     public var axisBindApplyTimeout = 100
     public var autoReloadConfig = true
+    public var logLevel: WlrLogImportance = .error
     public var swipeMinThreshold = 1
     public var gestureLive = true
     public var gestureSwipeDistance = 300

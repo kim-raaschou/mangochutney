@@ -273,13 +273,13 @@ public final class IPCServer {
         guard fd >= 0 else { throw IPCServerError.socketFailed(errno) }
         var flags = fcntl(fd, F_GETFD, 0)
         if flags == -1 || fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1 {
-            Log.error("failed to set FD_CLOEXEC on IPC socket")
+            mangoError(true, .error, "failed to set FD_CLOEXEC on IPC socket")
             Darwin.close(fd)
             throw IPCServerError.socketFailed(errno)
         }
         flags = fcntl(fd, F_GETFL, 0)
         if flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1 {
-            Log.error("failed to set O_NONBLOCK on IPC socket")
+            mangoError(true, .error, "failed to set O_NONBLOCK on IPC socket")
             Darwin.close(fd)
             throw IPCServerError.socketFailed(errno)
         }
@@ -333,13 +333,13 @@ public final class IPCServer {
         if clientFd < 0 { return }
         var flags = fcntl(clientFd, F_GETFL, 0)
         if flags == -1 || fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 {
-            Log.error("failed to set O_NONBLOCK on IPC client socket")
+            mangoError(true, .error, "failed to set O_NONBLOCK on IPC client socket")
             Darwin.close(clientFd)
             return
         }
         flags = fcntl(clientFd, F_GETFD, 0)
         if flags == -1 || fcntl(clientFd, F_SETFD, flags | FD_CLOEXEC) == -1 {
-            Log.error("failed to set FD_CLOEXEC on IPC client socket")
+            mangoError(true, .error, "failed to set FD_CLOEXEC on IPC client socket")
             Darwin.close(clientFd)
             return
         }
@@ -455,8 +455,8 @@ public final class IPCServer {
                 json = IPCJSON.noClientFound
             } else if !Dispatch.isKnown(dispatch.name) {
                 json = IPCJSON.unknownFunction
-            } else if let problem = server.dispatch(dispatch, target: c) {
-                Log.debug("dispatch \(dispatch.name): \(problem)")
+            } else {
+                _ = server.dispatch(dispatch, target: c)
             }
             sendStaticJson(fd, json.serialized)
         case .watch, .unknown:

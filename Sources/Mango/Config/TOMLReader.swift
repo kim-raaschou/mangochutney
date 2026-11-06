@@ -46,7 +46,7 @@ package extension ParserState {
         }
         if section.skip { return }
         guard let eq = stmt.firstIndex(of: "=") else {
-            reportConfigLineError(file, line, "Invalid toml line format: \(stmt)")
+            recordConfigLineError(file, line, "Invalid toml line format: \(stmt)")
             return
         }
         var key = stmt[..<eq].trimmingCharacters(in: .whitespaces)
@@ -87,7 +87,7 @@ package extension ParserState {
             let type = name.hasPrefix("rule.") ? String(name.dropFirst(5)) : name
             guard Self.tomlRuleTypes.contains(type) else {
                 section.skip = true
-                reportConfigLineError(file, line, name.hasPrefix("rule.") ? "Unknown toml rule type: \(type)" : "Unknown toml section: \(name)")
+                recordConfigLineError(file, line, name.hasPrefix("rule.") ? "Unknown toml rule type: \(type)" : "Unknown toml section: \(name)")
                 return
             }
             section.kind = .rule
@@ -101,14 +101,14 @@ package extension ParserState {
         let parts = suffix.split(separator: ".").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         guard let mode = parts.first else {
             section.skip = true
-            reportConfigLineError(file, line, "Bind keymode is required, e.g. [\(base).default]")
+            recordConfigLineError(file, line, "Bind keymode is required, e.g. [\(base).default]")
             return
         }
         var letters = ""
         for flag in parts.dropFirst() {
             guard let l = Self.tomlBindFlags[flag] else {
                 section.skip = true
-                reportConfigLineError(file, line, "Unknown bind flag: \(flag)")
+                recordConfigLineError(file, line, "Unknown bind flag: \(flag)")
                 return
             }
             letters.append(l)
@@ -133,7 +133,7 @@ package extension ParserState {
         case .bind:
             let combo = ConfigParser.expandConfigVariables(key, vars: vars)
             guard let prefix = Self.tomlBindPrefix(base: section.bindType, combo: combo) else {
-                reportConfigLineError(file, line, "Invalid \(section.bindType) key: \(key)")
+                recordConfigLineError(file, line, "Invalid \(section.bindType) key: \(key)")
                 return
             }
             let actions = raw.hasPrefix("[") ? Self.tomlForeachArrayElement(raw) : [raw]

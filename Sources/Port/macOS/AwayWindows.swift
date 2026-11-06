@@ -23,13 +23,12 @@ extension MacWindowSystem {
         c.parked = false
         animator.cancel(c.id)
         server.handleClientUnmap(c)
-        Log.info("\(c.appName): window \(c.id) is away (\(reason)); out of the layout until it is back")
+        wlrLog(.info, "\(c.appName): window \(c.id) is away (\(reason)); out of the layout until it is back")
     }
 
     /// A window found away (at start, or before mango saw it): kept until it is back.
     func foundAway(_ c: Client, _ reasons: Set<AwayReason>) {
         away[c.id] = (c, reasons)
-        Log.debug("\(c.appName): window \(c.id) found away \(reasons)")
     }
 
     /// `reason` is over. `focus`: macOS has focused it (a click in the Dock).
@@ -46,7 +45,7 @@ extension MacWindowSystem {
         } else {
             server.handleClientMap(c)
         }
-        Log.info("\(c.appName): window \(c.id) is back from \(reason)")
+        wlrLog(.info, "\(c.appName): window \(c.id) is back from \(reason)")
         if focus { windowFocused(id: id) }
     }
 }
