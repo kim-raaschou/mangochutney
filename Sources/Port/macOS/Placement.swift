@@ -172,7 +172,13 @@ extension MacWindowSystem {
         // follows the window and not where it was meant to go.
         guard let actual = actual ?? windowServerFrame(c.id), server.clientByIdAll(c.id) === c, !c.parked,
               !animator.isAnimating(c.id), server.grab?.client !== c else { return }
-        if let t = c.geom, MangoServer.frameDistance(actual, t) <= 0.5 { c.retryCount = 0 }
+        if let t = c.geom, MangoServer.frameDistance(actual, t) <= 0.5 { c.retryCount = 0; c.refusedSize = nil }
+        // A size learned from an old frame (an app that applies sizes late answers the
+        // first read-back with the size it had) is not its minimum: once the window shows
+        // a smaller size, that size is what it keeps, or none when it fits its tile.
+        if let t = c.geom, let rs = c.refusedSize, actual.width < rs.width - 0.5 || actual.height < rs.height - 0.5 {
+            c.refusedSize = actual.width > t.width + 0.5 || actual.height > t.height + 0.5 ? actual.size : nil
+        }
         let d = abs(actual.minX - c.frame.minX) + abs(actual.minY - c.frame.minY)
             + abs(actual.width - c.frame.width) + abs(actual.height - c.frame.height)
         // Compare with the layout too: the app's own move notification may already have

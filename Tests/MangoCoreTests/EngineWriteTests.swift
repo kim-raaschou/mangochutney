@@ -235,6 +235,29 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertEqual(r.app.frames[1], tile, "and the window has it")
     }
 
+    /// The old frame a late app answers with is learned as its minimum size, and must not
+    /// stay one: a window that had the whole screen and goes to the stack's foot, where it
+    /// is too wide, grows inward from the corner, and does not land on the master's corner.
+    func testAnOldFrameLearnedAsAMinimumIsForgotten() {
+        let r = EngineRig()
+        let a = r.window(1)
+        r.app.minSize[1] = CGSize(width: 900, height: 400)
+        r.app.appliesAfter = 0.3
+        r.server.arrange(r.monitor, .none)
+        r.settle(1.5)
+        for id: CGWindowID in [2, 3, 4] { r.window(id) }
+        r.server.arrange(r.monitor, .none)
+        r.settle(2)
+        XCTAssertNil(a.mac.refusedSize, "it took its tile: no minimum")
+        r.server.clients.append(r.server.clients.removeFirst())   // 1 last: the stack's foot
+        r.server.arrange(r.monitor, .none)
+        r.settle(4)
+        let bounds = r.server.mac.layoutBounds(r.monitor)
+        XCTAssertEqual(r.app.frames[1]?.size, CGSize(width: 900, height: 400))
+        XCTAssertEqual(r.app.frames[1]?.maxX, bounds.maxX, "in from the right edge")
+        XCTAssertEqual(r.app.frames[1]?.maxY, bounds.maxY, "in from the bottom edge")
+    }
+
 }
 
 /// mango's show_scratchpad: a scratchpad is sized by the ratios and centred the first time
