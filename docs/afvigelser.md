@@ -110,7 +110,6 @@ strøges her:
 | `499a164` | flisetilstanden sættes, før vinduet konfigureres første gang |
 | `7a97c59` | ny nøgle `special_tag_cross_monitor` |
 | `57a48e6` | `transform` i IPC's `get monitor` |
-| `6f322a3` | config-overvågningen følger den rigtige sti (symlinks) |
 | `cd1764c` | mangos nye navne for vinduets tilstand (`set_…`) |
 | `023a05b`, `55aaf1d` | `monocle_no_radius` (ny nøgle) og grænser for blur-værdier |
 | `283246a`, `09828ec` | fokus efter en popup; `resize`-dispatch i takt med skærmen (tjekkes) |

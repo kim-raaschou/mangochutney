@@ -77,3 +77,23 @@ final class ErrorNagTests: MangoTestCase {
         XCTAssertFalse(asked, "a debug message is not even made at WLR_ERROR")
     }
 }
+
+/// mango 6f322a3: config auto reload watches the file a symlinked config points at.
+@MainActor
+final class ConfigWatchPathTests: MangoTestCase {
+    func testASymlinkedConfigIsWatchedAtItsTarget() throws {
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("watch-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent("dotfiles"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let real = dir.appendingPathComponent("dotfiles/config.conf")
+        try "border_px=2\n".write(to: real, atomically: true, encoding: .utf8)
+        let link = dir.appendingPathComponent("config.conf")
+        try FileManager.default.createSymbolicLink(atPath: link.path, withDestinationPath: "dotfiles/config.conf")
+
+        let r = EngineRig()
+        let fake = try XCTUnwrap(r.server.system as? FakeWindowSystem)
+        r.server.configURL = link
+        r.server.reloadConfig()
+        XCTAssertEqual(fake.watchedConfig.map(\.path), [real.path])
+    }
+}

@@ -122,8 +122,14 @@ public final class MangoServer {
         configErrorNagUpdate()
     }
 
+    // not in mango: config_watcher_update's track_path for each file once, the watching the port's
     func configWatcherUpdate() {
-        system.watchConfig(config.autoReloadConfig ? [configURL] + configFiles : [])
+        guard config.autoReloadConfig else { return system.watchConfig([]) }
+        var paths: [String] = []
+        for url in [configURL] + configFiles {
+            if let p = resolveWatchPath(url.path), !paths.contains(p) { paths.append(p) }
+        }
+        system.watchConfig(paths.map { URL(fileURLWithPath: $0) })
     }
 
     func resetOption(initial: Bool = false) {
