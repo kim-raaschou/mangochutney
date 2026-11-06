@@ -1,6 +1,6 @@
 # Afvigelser fra mango
 
-Hvor Mango Chutney gør andet end mango 0.18.2 (`~/sources/mango`), og hvorfor. Kun det, der
+Hvor Mango Chutney gør andet end mango 0.18.5 (`~/sources/mango`, commit `21f80a9`), og hvorfor. Kun det, der
 gælder nu; det rettede og hvordan vi kom hertil står i [afvigelser-historik.md](afvigelser-historik.md).
 Hver mango-nøgle, macOS ikke kan, står med grunden i [compatibility.md](compatibility.md) og
 i `mango -p`.
@@ -98,7 +98,23 @@ Gælder for alle. Står i koden mærket "not in mango".
 
 ## 4. Mangler endnu
 
-Intet: alt af mango, som macOS tillader, er bygget (`switch_keyboard_layout` er fravalgt, afsnit 2).
+Alt af mango 0.18.2, som macOS tillader, er bygget (`switch_keyboard_layout` er fravalgt,
+afsnit 2). Fra 0.18.2 til 0.18.5 (31 commits) mangler disse; de porteres ét ad gangen og
+strøges her:
+
+| mango-commit | Hvad |
+|---|---|
+| `66cc5e1` | `focusdir` til en anden skærm fokuserer skærmens øverste vindue (fokushistorikken), og ikke over skærmkanten uden `focus_cross_monitor` |
+| `76b30fc` | `switch_proportion_preset` går altid frem i configens rækkefølge |
+| `6fbf46c`, `202b1da` | minimerede vinduer kommer tilbage sidst-ind-først-ud, med deres tilstand og animation |
+| `499a164` | flisetilstanden sættes, før vinduet konfigureres første gang |
+| `565aca8` | en aktiveringsforespørgsel lukker ikke scratchpad |
+| `7a97c59` | ny nøgle `special_tag_cross_monitor` |
+| `57a48e6` | `transform` i IPC's `get monitor` |
+| `6f322a3` | config-overvågningen følger den rigtige sti (symlinks) |
+| `cd1764c` | mangos nye navne for vinduets tilstand (`set_…`) |
+| `023a05b`, `55aaf1d` | `monocle_no_radius` (ny nøgle) og grænser for blur-værdier |
+| `283246a`, `09828ec` | fokus efter en popup; `resize`-dispatch i takt med skærmen (tjekkes) |
 
 ## 5. Struktur
 

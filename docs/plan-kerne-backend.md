@@ -8,7 +8,7 @@ taggene `plan/*`.
 
 CLAUDE.md er bindende. Kort fortalt:
 
-- **`Sources/Mango`, kernen,** indeholder kun det, der findes i mangoWm 0.18.2, med mangos navne,
+- **`Sources/Mango`, kernen,** indeholder kun det, der findes i mangoWm 0.18.5, med mangos navne,
   opbygning, rækkefølge og standarder. Kommentarer er mangos egne eller et kort mærke om, hvor vi
   afviger (`not in mango: …`). En funktion med andet navn end mangos har én linje
   `/// mango <funktion> (<fil>)`.

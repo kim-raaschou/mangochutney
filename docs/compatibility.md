@@ -1,6 +1,6 @@
 # Compatibility with mango
 
-Mango Chutney tracks [mango](https://github.com/mangowm/mango) 0.18.2. Every option, keyword,
+Mango Chutney tracks [mango](https://github.com/mangowm/mango) 0.18.5. Every option, keyword,
 window-rule field and dispatcher of mango works, or is listed here with the reason macOS cannot
 do it. A test (`MangoCoverageTests`) checks this against the names taken from mango's source
 (`Tests/mango-keys`, `script/mango-keys.sh`). A misspelt key is an error, as in mango, and

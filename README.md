@@ -5,7 +5,7 @@
 
   <p>A tiling window manager for macOS, ported from <a href="https://github.com/mangowm/mango">mango</a></p>
 
-<img src="https://img.shields.io/badge/mango-0.18.2-orange?style=flat" alt="mango 0.18.2"/>
+<img src="https://img.shields.io/badge/mango-0.18.5-orange?style=flat" alt="mango 0.18.5"/>
 <img src="https://img.shields.io/badge/macOS-14%2B-blue?style=flat" alt="macOS 14+"/>
 <img src="https://img.shields.io/badge/status-beta-yellow?style=flat" alt="Beta"/>
 

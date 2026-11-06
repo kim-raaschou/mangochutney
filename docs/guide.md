@@ -1,6 +1,6 @@
 # Mango Chutney guide
 
-Mango Chutney is [mango](https://mangowm.github.io/docs) 0.18.2 on macOS: mango's layouts, tags,
+Mango Chutney is [mango](https://mangowm.github.io/docs) 0.18.5 on macOS: mango's layouts, tags,
 rules, dispatchers and config keys work here as they do there, and
 [mango's documentation](https://mangowm.github.io/docs) describes them. This guide has what is
 particular to the Mac: the first start, the keys, the menu bar and palettes, and the port's own

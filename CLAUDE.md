@@ -1,6 +1,6 @@
 # mango for macOS
 
-A Swift port of the mango Wayland compositor (reference: `~/sources/mango`, mango 0.18.2).
+A Swift port of the mango Wayland compositor (reference: `~/sources/mango`, mango 0.18.5, commit 21f80a9).
 The user writes Danish; answer in Danish.
 
 ## Tro mod huset (faithful to mango) — rule 1
