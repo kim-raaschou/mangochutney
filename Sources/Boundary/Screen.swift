@@ -16,6 +16,8 @@ public struct Screen: Equatable, Sendable {
     public var make: String?
     public var model: String?
     public var serial: String?
+    /// wlr_output->transform: enum wl_output_transform (0 normal, 1-3 rotated 90/180/270, 4-7 flipped).
+    public var transform: Int32 = 0
 
     public init(displayID: CGDirectDisplayID, name: String, frame: CGRect, workArea: CGRect, scale: Double, isMain: Bool,
                 refresh: Int32 = 0, make: String? = nil, model: String? = nil, serial: String? = nil) {

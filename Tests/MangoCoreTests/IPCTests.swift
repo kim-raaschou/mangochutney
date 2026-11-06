@@ -195,6 +195,7 @@ final class IPCTests: MangoTestCase {
     func testGetMonitorAndMisc() throws {
         let mon = try object(query("get monitor DP-1"))
         XCTAssertEqual(mon["scale"] as? Int, 2)
+        XCTAssertEqual(mon["transform"] as? String, "normal", "mango 57a48e6")
         XCTAssertEqual(mon["active"] as? Bool, true)
         XCTAssertEqual(query("get monitor X"), #"{"error":"monitor not found"}"#)
         XCTAssertEqual(query("get cursorpos"), #"{"x":12.5,"y":40,"monitor":"DP-1"}"#)

@@ -108,7 +108,6 @@ strøges her:
 | `6fbf46c`, `202b1da` | minimerede vinduer kommer tilbage sidst-ind-først-ud, med deres tilstand og animation |
 | `499a164` | flisetilstanden sættes, før vinduet konfigureres første gang |
 | `7a97c59` | ny nøgle `special_tag_cross_monitor` |
-| `57a48e6` | `transform` i IPC's `get monitor` |
 | `cd1764c` | mangos nye navne for vinduets tilstand (`set_…`) |
 
 ## 5. Struktur

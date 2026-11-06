@@ -212,6 +212,20 @@ package extension MangoServer {
         return .array(out)
     }
 
+    func transformToStr(_ t: Int32) -> String {
+        switch t {
+        case 0: return "normal"
+        case 1: return "90"
+        case 2: return "180"
+        case 3: return "270"
+        case 4: return "flipped"
+        case 5: return "flipped-90"
+        case 6: return "flipped-180"
+        case 7: return "flipped-270"
+        default: return "unknown"
+        }
+    }
+
     func buildMonitorJson(_ m: Monitor) -> JSONValue {
         let f = m.screen.frame
         return .object([
@@ -224,6 +238,7 @@ package extension MangoServer {
             ("width", .int(Int(f.width))),
             ("height", .int(Int(f.height))),
             ("scale", .double(Double(Float(m.screen.scale)))),
+            ("transform", .string(transformToStr(m.screen.transform))),
             ("layout_index", .int(m.layout.rawValue)),
             ("layout_symbol", .string(m.layout.symbol)),
             ("last_open_surface", .string("")), // not in mango: set by layer-shell maps, which macOS does not have

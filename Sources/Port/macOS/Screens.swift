@@ -23,7 +23,7 @@ public enum Screens {
         return NSScreen.screens.map { s in
             let id = (s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
             let ident = DisplayIdentity.of(id)
-            return Screen(displayID: id,
+            var screen = Screen(displayID: id,
                           name: s.localizedName,
                           frame: flip(s.frame, primaryHeight: h),
                           workArea: flip(s.visibleFrame, primaryHeight: h),
@@ -31,6 +31,9 @@ public enum Screens {
                           isMain: s.frame.origin == .zero,
                           refresh: Int32(s.maximumFramesPerSecond * 1000),
                           make: ident?.make, model: ident?.model, serial: ident?.serial)
+            // not in mango: macOS's rotation (0, 90, 180, 270) as wl_output_transform's (0-3)
+            screen.transform = Int32(CGDisplayRotation(id) / 90) % 4
+            return screen
         }
         // Sort left-to-right, then top-to-bottom, so "left"/"right" monitors are stable.
         .sorted { a, b in a.frame.minX != b.frame.minX ? a.frame.minX < b.frame.minX : a.frame.minY < b.frame.minY }
