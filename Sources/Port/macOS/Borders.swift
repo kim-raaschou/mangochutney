@@ -76,6 +76,9 @@ public final class BorderManager {
     public func update(_ specs: [BorderSpec]) {
         var seen: Set<CGWindowID> = []
         for spec in specs {
+            // AppKit stops the program on a frame that is not finite: such a ring is not drawn.
+            let f = spec.frame
+            guard !f.isNull, f.minX.isFinite, f.minY.isFinite, f.width.isFinite, f.height.isFinite else { continue }
             seen.insert(spec.id)
             if let (win, view, old) = windows[spec.id] {
                 // Also when only the overlay moved: macOS relocates our windows itself when

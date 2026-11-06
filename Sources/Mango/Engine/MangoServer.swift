@@ -413,7 +413,14 @@ public final class MangoServer {
                 if c.isOverlay { raise.append(c) }
             } else if let f = result.frames[c.id] {
                 let bw = borderWidth(c, on: m)
-                target = f.insetBy(dx: bw, dy: bw)
+                var box = f
+                if m.layout.isScroller {
+                    box.size.width = max(1 + 2 * bw, box.width)
+                    box.size.height = max(1 + 2 * bw, box.height)
+                } else {
+                    box = clientSetBounds(c, box, m.screen.workArea)
+                }
+                target = box.insetBy(dx: bw, dy: bw)
                 if c.isOverlay { raise.append(c) }
                 if (result.hidden.contains(c.id) && !kind.isMonocleLike) || tabHidden.contains(c.id) { park = true }
             } else {

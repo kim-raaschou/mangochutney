@@ -136,3 +136,46 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         XCTAssertEqual(r.monitor.sel, 900_412, "the lock went with the window inside")
     }
 }
+
+/// A tiled drag (mango 09828ec: laid out on every motion) never gives a window a frame that
+/// is not finite, in any layout, however the pointer goes: back over where it began, past
+/// the screen's edge, in many small steps.
+@MainActor
+final class TiledDragStaysFiniteTests: MangoTestCase {
+    func testEveryLayoutStaysFinite() {
+        for kind in LayoutKind.allCases {
+            for count in [1, 2, 3, 4] {
+                let r = EngineRig()
+                r.server.renderBorder = true
+                r.monitor.current.layout = kind
+                for i in 0..<count { r.window(900_600 + CGWindowID(i)) }
+                r.server.arrange(r.monitor, .none)
+                for c in r.server.clientsAll {
+                    let resize = MouseBinding(mods: [.superKey], button: .right, dispatch: Dispatch(name: "moveresize", args: ["curresize"]))
+                    guard let g = c.geom else { continue }
+                    var p = CGPoint(x: g.midX, y: g.midY)
+                    r.server.mousebind(resize, at: p)
+                    var t: UInt32 = 1000
+                    let steps: [CGPoint] = [.zero, .zero, CGPoint(x: 1, y: 0), CGPoint(x: -1, y: 0), CGPoint(x: 0, y: 1),
+                                            CGPoint(x: 400, y: 300), CGPoint(x: -2000, y: -2000), CGPoint(x: 5000, y: 5000),
+                                            CGPoint(x: -3000, y: -3000)]
+                    for s in steps {
+                        p = CGPoint(x: p.x + s.x, y: p.y + s.y)
+                        t &+= 1
+                        r.server.pointerProcessMotion(p, time: t)
+                        for w in r.server.clientsAll {
+                            let f = w.geom ?? w.frame
+                            XCTAssertTrue(f.minX.isFinite && f.minY.isFinite && f.width.isFinite && f.height.isFinite,
+                                          "\(kind) \(count) windows: \(w.id) at \(f) after \(s)")
+                        }
+                        for b in (r.server.system as! FakeWindowSystem).borderSpecs {
+                            XCTAssertFalse(b.frame.isNull || !b.frame.width.isFinite || !b.frame.minX.isFinite,
+                                           "\(kind) \(count): border \(b.id) at \(b.frame)")
+                        }
+                    }
+                    if let g = r.server.grab { r.server.pointerEndGrabClient(g, at: p) }
+                }
+            }
+        }
+    }
+}
