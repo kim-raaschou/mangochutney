@@ -12,6 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Where each tag stands in the status item's title (x from the title's left edge).
     var tagSpans: [(from: CGFloat, to: CGFloat, monitor: String, tag: Int)] = []
     var mainMenu: NSMenu?
+    /// chutney_overlap_warning: the menu's lines for tags with a window over its neighbour (showOverlaps).
+    var overlapItems: [NSMenuItem] = []
+    /// The suggestions in the menu, by their items' tags.
+    var shownSuggestions: [MenuBarSuggestion] = []
     let layoutPanel = LayoutPanelModel()
     /// What the status item shows now (redrawn only when it changes).
     var shownStatus = ""
@@ -196,9 +200,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // The middle of the text line (its cap height's), where every image's middle goes,
         // on half points so the edges stay sharp on Retina.
         let middle = font.capHeight / 2
-        func text(_ s: String, dim: Bool = false) {
+        func text(_ s: String, dim: Bool = false, overlap: Bool = false) {
             var attrs: [NSAttributedString.Key: Any] = [.font: font]
             if dim { attrs[.foregroundColor] = NSColor.secondaryLabelColor }
+            if overlap { attrs[.foregroundColor] = Self.overlapColor.withAlphaComponent(dim ? 0.6 : 1) }
             title.append(NSAttributedString(string: s, attributes: attrs))
         }
         // An empty attachment of `points` (kerning does not reach an attachment).
@@ -238,7 +243,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if style == "text" {
                     // Every tag three characters wide, in view or not: the item keeps its width.
                     let c = t.number == 0 ? "S" : "\(t.number)"
-                    text(t.active ? "[\(c)]" : " \(c) ", dim: dim)
+                    text(t.active ? "[\(c)]" : " \(c) ", dim: dim, overlap: t.overlap)
                 } else if let img = Self.tagImage(t, style: style, dim: dim) {
                     image(img, height: cell)
                     if i < m.tags.count - 1 { space(near) }
@@ -283,7 +288,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let img = NSImage(systemSymbolName: name, accessibilityDescription: "tag \(t.number)")?
             .withSymbolConfiguration(cfg) else { return nil }
         img.isTemplate = true
+        if t.overlap { return tinted(img, overlapColor.withAlphaComponent(dim ? 0.6 : 1)) }
         return dim ? dimmed(img) : img
+    }
+
+    /// chutney_overlap_warning: a tag with a window over its neighbour, in macOS's warning colour.
+    static let overlapColor = NSColor.systemOrange
+
+    /// The symbol in one colour (not a template: the menu bar leaves it as it is).
+    static func tinted(_ symbol: NSImage, _ color: NSColor) -> NSImage {
+        let img = NSImage(size: symbol.size, flipped: false) { rect in
+            symbol.draw(in: rect)
+            color.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        img.accessibilityDescription = symbol.accessibilityDescription
+        return img
     }
 
     /// The line between two monitors' groups, in the menu bar's text colour, a little lighter.
@@ -389,6 +410,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return tagSpans.first { x >= $0.from && x < $0.to }.map { ($0.monitor, $0.tag) }
     }
 
+    /// chutney_overlap_warning: under the layouts, each tag with a window over its neighbour (the
+    /// tags drawn in colour): by how much, and what would take it off the tag.
+    func showOverlaps(_ menu: NSMenu) {
+        for i in overlapItems { menu.removeItem(i) }
+        overlapItems = []
+        shownSuggestions = []
+        guard let server else { return }
+        let lines = MenuBarStatus.overlapLines(server)
+        guard !lines.isEmpty else { return }
+        var at = 1   // after the layout panel
+        func add(_ i: NSMenuItem) {
+            menu.insertItem(i, at: at)
+            overlapItems.append(i)
+            at += 1
+        }
+        // In their own colours: a line without an action is drawn greyed out otherwise.
+        let font = NSFont.menuFont(ofSize: 0)
+        let bold = NSFont.boldSystemFont(ofSize: font.pointSize)
+        for tag in lines {
+            let h = NSMenuItem(title: tag.heading, action: nil, keyEquivalent: "")
+            h.isEnabled = false
+            h.attributedTitle = NSAttributedString(string: tag.heading, attributes: [.font: bold, .foregroundColor: NSColor.labelColor])
+            h.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "overlap")?
+                .withSymbolConfiguration(.init(paletteColors: [Self.overlapColor]))
+            add(h)
+            for w in tag.windows {
+                let i = NSMenuItem(title: "\(w.app): \(w.by)", action: nil, keyEquivalent: "")
+                i.isEnabled = false
+                let t = NSMutableAttributedString(string: w.app, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
+                t.append(NSAttributedString(string: "  \(w.by)", attributes: [.font: font, .foregroundColor: Self.overlapColor]))
+                i.attributedTitle = t
+                i.indentationLevel = 1
+                add(i)
+            }
+            // A click runs it.
+            for s in tag.suggestions {
+                let i = NSMenuItem(title: s.title, action: #selector(applySuggestion(_:)), keyEquivalent: "")
+                i.target = self
+                i.tag = shownSuggestions.count
+                i.indentationLevel = 1
+                i.image = NSImage(systemSymbolName: "arrow.turn.down.right", accessibilityDescription: nil)
+                shownSuggestions.append(s)
+                add(i)
+            }
+        }
+        let sep = NSMenuItem.separator()
+        menu.insertItem(sep, at: 1)
+        overlapItems.append(sep)
+    }
+
+    @objc func applySuggestion(_ sender: NSMenuItem) {
+        guard let server, shownSuggestions.indices.contains(sender.tag) else { return }
+        MenuBarStatus.apply(server, shownSuggestions[sender.tag])
+    }
+
     /// Open the menu from the status item (the native way, anchored under it).
     func showMainMenu() { showMenu(mainMenu) }
 
@@ -400,6 +476,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        if menu === mainMenu { showOverlaps(menu) }
         menuOpen = true
         publishTagHits()
         server?.holdNativeFocus = true

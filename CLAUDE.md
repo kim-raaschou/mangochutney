@@ -25,7 +25,7 @@ recognise must be marked as port or extension.
    boundary).
 6. **What is not mango is apart and marked.**
    - macOS layer (Accessibility, parking, native focus) lives in `Port/macOS`.
-   - Port extensions (`focus_app`, `chutney_style`, `auto_float_oversized`, …) live in
+   - Port extensions (`focus_app`, `chutney_style`, `chutney_overlap_warning`, …) live in
      `Port/Extensions`, are off when their key is absent, and change nothing of mango's
      behaviour when off. They hook in only through `PortHooks`. Their config keys are the
      port's (`PortOptions`).

@@ -172,6 +172,10 @@ extension MacWindowSystem {
         // follows the window and not where it was meant to go.
         guard let actual = actual ?? windowServerFrame(c.id), server.clientByIdAll(c.id) === c, !c.parked,
               !animator.isAnimating(c.id), server.grab?.client !== c else { return }
+        // Not in mango: larger than its tile, or not any more: the state's watchers are told (the
+        // menu bar's chutney_overlap_warning).
+        let refused = c.refusedSize
+        defer { if c.refusedSize != refused { server.onStateChange?() } }
         if let t = c.geom, MangoServer.frameDistance(actual, t) <= 0.5 { c.retryCount = 0; c.refusedSize = nil }
         // A size learned from an old frame (an app that applies sizes late answers the
         // first read-back with the size it had) is not its minimum: once the window shows

@@ -86,6 +86,12 @@ extension Config {
     package var chutneyPhysicalPixels: Bool {
         get { bool("chutney_physical_pixels", false) } set { set("chutney_physical_pixels", newValue) }
     }
+    /// A tiled window its app keeps larger than its tile (it goes over its neighbour): the menu
+    /// bar draws its tag in orange, and the menu says by how much and offers to move it to an
+    /// empty tag or float it.
+    package var chutneyOverlapWarning: Bool {
+        get { bool("chutney_overlap_warning", false) } set { set("chutney_overlap_warning", newValue) }
+    }
     /// The hotkeys palette (chutney_toggle_hotkeys_palette): the most rows it shows (its height
     /// follows them; a longer group gets two columns, a search its best matches), the rows used
     /// of late on its front page (0: none), its width in points, and the installed apps in its

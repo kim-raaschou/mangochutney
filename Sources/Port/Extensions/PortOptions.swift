@@ -67,6 +67,7 @@ enum PortOptions {
         t["chutney_tab_bar_shortcuts"] = O.bool(\.chutneyTabBarShortcuts)
         t["chutney_border_unfocused"] = O.bool(\.chutneyBorderUnfocused)
         t["chutney_physical_pixels"] = O.bool(\.chutneyPhysicalPixels)
+        t["chutney_overlap_warning"] = O.bool(\.chutneyOverlapWarning)
         t["chutney_hotkeys_max_rows"] = O.int(\.chutneyHotkeysMaxRows, 3...60)
         t["chutney_hotkeys_recent"] = O.int(\.chutneyHotkeysRecent, 0...20)
         t["chutney_hotkeys_width"] = O.double(\.chutneyHotkeysWidth, 360...3000)
