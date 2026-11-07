@@ -36,13 +36,16 @@ public final class TabBarManager {
     public var onRightClick: ((CGWindowID) -> Void)?
     private var panels: [CGWindowID: (NSPanel, TabStripView, TabStrip)] = [:]
     private var style: TabStripStyle?
+    private var keyFocus: CGWindowID?
 
     public init() {}
 
-    /// Strips keyed by the focused member they sit above; others are removed.
-    public func update(_ strips: [TabStrip], style: TabStripStyle) {
-        let restyle = style != self.style
+    /// Strips keyed by the focused member they sit above; others are removed. `keyFocus`: the
+    /// window with the focus (the macOS look rings a tab only while its window has it).
+    public func update(_ strips: [TabStrip], style: TabStripStyle, keyFocus: CGWindowID? = nil) {
+        let restyle = style != self.style || keyFocus != self.keyFocus
         self.style = style
+        self.keyFocus = keyFocus
         var seen: Set<CGWindowID> = []
         // A strip that moved to another member (the focus went along the tabs) takes a panel
         // no strip keeps, instead of a new one: making a panel is the costly part.
@@ -118,6 +121,7 @@ public final class TabBarManager {
             glass.materialHidden = strip.plain
         }
         view.frame = panel.contentView?.bounds ?? .zero
+        view.keyFocus = keyFocus
         view.show(strip, style: style)
     }
 }
@@ -133,6 +137,9 @@ final class TabStripView: NSView {
     private var ids: [CGWindowID] = []
     private var frames: [CGRect] = []
     private var shown: (TabStrip, TabStripStyle)?
+    /// The window with the focus, and the one the tabs were drawn for.
+    var keyFocus: CGWindowID?
+    private var shownKeyFocus: CGWindowID?
 
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -158,13 +165,14 @@ final class TabStripView: NSView {
 
     func show(_ strip: TabStrip, style: TabStripStyle, recolor: Bool = false) {
         // The same tabs at another size (every frame of an animation): lay them out again.
-        if !recolor, let (old, oldStyle) = shown, oldStyle == style, old.segments == strip.segments,
+        if !recolor, let (old, oldStyle) = shown, oldStyle == style, shownKeyFocus == keyFocus, old.segments == strip.segments,
            old.barHeight == strip.barHeight, old.cornerRadius == strip.cornerRadius, tabs.count == strip.segments.count {
             shown = (strip, style)
             layout(strip)
             return
         }
         shown = (strip, style)
+        shownKeyFocus = keyFocus
         wantsLayer = true
         guard let root = layer else { return }
         // Drawn anew in one go: no implicit fades between frames of an animation.
@@ -199,10 +207,13 @@ final class TabStripView: NSView {
             var separator: CALayer?
             let boxed = d.bgColor != nil || (d.borderWidth ?? 0) > 0   // mango's cells: no separators
             if seg.focused {
-                // A ring in the focus colour, like the focused window's border.
+                // A ring in the focus colour, like the focused window's border, while its window
+                // has the focus: as macOS, the selected tab of a window without it is not
+                // accented (a floating window in front has it). mango's decorate keys as set.
                 tab.backgroundColor = d.focusBgColor.map(cg) ?? resolved.pill
                 tab.borderColor = d.borderColor.map(cg) ?? cg(style.accent)
-                tab.borderWidth = d.borderWidth.map { CGFloat($0) } ?? style.accentWidth
+                let ring = seg.id == keyFocus || d.borderColor != nil || d.borderWidth != nil
+                tab.borderWidth = ring ? d.borderWidth.map { CGFloat($0) } ?? style.accentWidth : 0
             } else if boxed {
                 tab.backgroundColor = d.bgColor.map(cg)
                 tab.borderColor = d.borderColor.map(cg) ?? resolved.separator

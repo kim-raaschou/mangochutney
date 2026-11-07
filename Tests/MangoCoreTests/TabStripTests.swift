@@ -203,6 +203,24 @@ final class TabStripViewTests: MangoTestCase {
         XCTAssertEqual(title.frame.midX, tab.frame.width / 2, accuracy: 0.5, "still centred")
     }
 
+    /// The selected tab's ring in the focus colour only while its window has the focus: with a
+    /// floating window in front, the tab stays selected (its pill) without the ring.
+    func testTheSelectedTabIsRingedOnlyWhileItsWindowHasTheFocus() {
+        let v = TabStripView(frame: CGRect(x: 0, y: 0, width: 400, height: 40))
+        let style = TabStripStyle(accent: RGBA(r: 1, g: 0, b: 0, a: 1), accentWidth: 2)
+        v.keyFocus = 0
+        v.show(strip(width: 400), style: style)
+        XCTAssertEqual(v.layer!.sublayers![0].borderWidth, 2, "its window has the focus")
+        v.keyFocus = 99   // a floating window
+        v.show(strip(width: 400), style: style)
+        XCTAssertEqual(v.layer!.sublayers![0].borderWidth, 0)
+        XCTAssertNotNil(v.layer!.sublayers![0].backgroundColor, "still the selected one")
+        var mango = style
+        mango.decorate.borderColor = RGBA(r: 0, g: 0, b: 1, a: 1)
+        v.show(strip(width: 400), style: mango)
+        XCTAssertEqual(v.layer!.sublayers![0].borderWidth, 2, "mango's decorate keys as set")
+    }
+
     func testATabTooNarrowForItsNumberHidesIt() {
         let v = TabStripView(frame: CGRect(x: 0, y: 0, width: 60, height: 40))
         var s = strip(width: 60)
