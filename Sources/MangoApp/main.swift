@@ -404,7 +404,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         MenuBarStatus.apply(server, shownSuggestions[sender.tag])
     }
 
-    func showMainMenu() { showMenu(mainMenu) }
 
     func showMenu(_ menu: NSMenu?) {
         guard let item = statusItem, let menu else { return }

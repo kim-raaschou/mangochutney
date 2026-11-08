@@ -291,11 +291,6 @@ public final class AppWorker: @unchecked Sendable {
         }
     }
 
-    static func onScreenWindowCount(pid: pid_t) -> Int {
-        guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return 0 }
-        return info.filter { ($0[kCGWindowOwnerPID as String] as? pid_t) == pid && ($0[kCGWindowLayer as String] as? Int) == 0 }.count
-    }
-
     func requestFocusReport() {
         thread.perform { [self] in reportFocus() }
     }

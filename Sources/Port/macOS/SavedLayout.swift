@@ -23,7 +23,6 @@ struct SavedLayout: Codable, Equatable {
 
     struct TagLayout: Codable, Equatable {
         var layout: String
-        var prevLayout: String? = nil
         var configuredLayout: String?
     }
 

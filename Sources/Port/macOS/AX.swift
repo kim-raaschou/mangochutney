@@ -24,11 +24,6 @@ public enum AX {
         return el
     }
 
-    public static func systemWide() -> AXUIElement {
-        let el = AXUIElementCreateSystemWide()
-        AXUIElementSetMessagingTimeout(el, messagingTimeout)
-        return el
-    }
 }
 
 public extension AXUIElement {
@@ -56,11 +51,6 @@ public extension AXUIElement {
         AXUIElementSetAttributeValue(self, name as CFString, value)
     }
 
-    func isSettable(_ name: String) -> Bool {
-        var settable: DarwinBoolean = false
-        return AXUIElementIsAttributeSettable(self, name as CFString, &settable) == .success && settable.boolValue
-    }
-
     var pid: pid_t? {
         var p: pid_t = 0
         return AXUIElementGetPid(self, &p) == .success ? p : nil
@@ -86,12 +76,9 @@ public extension AXUIElement {
         (attribute(kAXWindowsAttribute) as [AXUIElement]?) ?? []
     }
     var focusedWindow: AXUIElement? { attribute(kAXFocusedWindowAttribute) }
-    var mainWindow: AXUIElement? { attribute(kAXMainWindowAttribute) }
 
     var closeButton: AXUIElement? { attribute(kAXCloseButtonAttribute) }
-    var zoomButton: AXUIElement? { attribute(kAXZoomButtonAttribute) }
     var fullscreenButton: AXUIElement? { attribute(kAXFullScreenButtonAttribute) }
-    var minimizeButton: AXUIElement? { attribute(kAXMinimizeButtonAttribute) }
     var isEnabled: Bool { (attribute(kAXEnabledAttribute) as Bool?) ?? true }
 
     var position: CGPoint? {
@@ -133,7 +120,6 @@ public extension AXUIElement {
     func press() { AXUIElementPerformAction(self, kAXPressAction as CFString) }
 
     func setMinimized(_ v: Bool) { setAttribute(kAXMinimizedAttribute, v as CFBoolean) }
-    func setFullscreen(_ v: Bool) { setAttribute("AXFullScreen", v as CFBoolean) }
     func setMain() { setAttribute(kAXMainAttribute, kCFBooleanTrue) }
 
     func close() { closeButton?.press() }
@@ -141,17 +127,6 @@ public extension AXUIElement {
     var enhancedUserInterface: Bool {
         get { (attribute("AXEnhancedUserInterface") as Bool?) ?? false }
         set { setAttribute("AXEnhancedUserInterface", newValue as CFBoolean) }
-    }
-
-    static func elementAt(_ point: CGPoint) -> AXUIElement? {
-        var el: AXUIElement?
-        let err = AXUIElementCopyElementAtPosition(AX.systemWide(), Float(point.x), Float(point.y), &el)
-        return err == .success ? el : nil
-    }
-
-    var containingWindow: AXUIElement? {
-        if role == kAXWindowRole { return self }
-        return attribute(kAXWindowAttribute)
     }
 }
 
