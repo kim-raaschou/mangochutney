@@ -31,10 +31,6 @@ public enum KeyNames {
         return "US"
     }
 
-    public static func invalidateLayoutCache() {
-        tableLock.lock(); cachedTable = nil; tableLock.unlock()
-    }
-
     typealias LayoutTable = KeySyms.LayoutTable
 
     private static let tableLock = NSLock()

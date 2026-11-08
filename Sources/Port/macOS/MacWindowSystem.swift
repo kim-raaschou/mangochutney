@@ -56,7 +56,7 @@ class MacWindowSystem: WindowSystem {
     func stackingOrder() -> [StackedWindow] {
         stackingOverride?() ?? AppWorker.stackingOrder()
     }
-    var lockObservers: [NSObjectProtocol] = []
+    var observers: [NSObjectProtocol] = []
 
     init(_ server: MangoServer) {
         self.server = server
@@ -392,9 +392,14 @@ class MacWindowSystem: WindowSystem {
             MainActor.assumeIsolated { server?.switcherClose() }
         }
         let dnc = DistributedNotificationCenter.default(), ws = NSWorkspace.shared.notificationCenter
-        lockObservers = [
+        let layoutChanged: @Sendable (Notification) -> Void = { [weak server] _ in
+            MainActor.assumeIsolated { server?.printstatus() }
+        }
+        observers = [
             dnc.addObserver(forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: .main, using: close),
             ws.addObserver(forName: NSWorkspace.sessionDidResignActiveNotification, object: nil, queue: .main, using: close),
+            dnc.addObserver(forName: Notification.Name("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged"),
+                            object: nil, queue: .main, using: layoutChanged),
         ]
     }
 
