@@ -63,24 +63,12 @@ extension Config {
     package var chutneyOverlapWarning: Bool {
         get { bool("chutney_overlap_warning", false) } set { set("chutney_overlap_warning", newValue) }
     }
-    package var chutneyHotkeysMaxRows: Int {
-        get { int("chutney_hotkeys_max_rows", 14) } set { port["chutney_hotkeys_max_rows"] = String(newValue) }
-    }
-    package var chutneyHotkeysRecent: Int {
-        get { int("chutney_hotkeys_recent", 4) } set { port["chutney_hotkeys_recent"] = String(newValue) }
-    }
-    package var chutneyHotkeysWidth: Double {
-        get { double("chutney_hotkeys_width", 680) } set { port["chutney_hotkeys_width"] = String(newValue) }
-    }
     package var chutneyHotkeysApps: Bool {
         get { bool("chutney_hotkeys_apps", true) } set { set("chutney_hotkeys_apps", newValue) }
     }
     package var chutneyLayoutPaletteKeys: [String] {
         get { list("chutney_layout_palette_keys", ["left", "down", "up", "right"]) }
         set { port["chutney_layout_palette_keys"] = newValue.joined(separator: ",") }
-    }
-    package var chutneyLayoutPaletteWidth: Double {
-        get { double("chutney_layout_palette_width", 560) } set { port["chutney_layout_palette_width"] = String(newValue) }
     }
     package var chutneyIgnoreApps: [String] {
         get { list("chutney_ignore_apps", []) } set { port["chutney_ignore_apps"] = newValue.joined(separator: ",") }

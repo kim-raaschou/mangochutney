@@ -223,9 +223,6 @@ search, closes the group, then the palette.
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `chutney_hotkeys_max_rows` | `14` | The most rows shown (3–60). |
-| `chutney_hotkeys_recent` | `4` | The rows used most, on the front page (0–20; `0`: none). |
-| `chutney_hotkeys_width` | `680` | The palette's width in points (360–3000). |
 | `chutney_hotkeys_apps` | `1` | Installed apps (from Spotlight) in the search. |
 
 ### Layout palette
@@ -238,7 +235,6 @@ click on a tick puts a layout in or out of `circle_layout`.
 | Setting | Default | Description |
 | :--- | :--- | :--- |
 | `chutney_layout_palette_keys` | `left,down,up,right` | Four keys that move the selection, in the order left, down, up, right (`h,j,k,l` for vim's); the arrows always work. |
-| `chutney_layout_palette_width` | `560` | The palette's width in points (300–2000); its cells and icons follow. |
 
 With [`chutney_style`](#theming) both palettes look as Spotlight does; otherwise they have the
 port's own look in mango's colours.

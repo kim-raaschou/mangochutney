@@ -62,11 +62,7 @@ enum PortOptions {
         t["chutney_border_unfocused"] = O.bool(\.chutneyBorderUnfocused)
         t["chutney_physical_pixels"] = O.bool(\.chutneyPhysicalPixels)
         t["chutney_overlap_warning"] = O.bool(\.chutneyOverlapWarning)
-        t["chutney_hotkeys_max_rows"] = O.int(\.chutneyHotkeysMaxRows, 3...60)
-        t["chutney_hotkeys_recent"] = O.int(\.chutneyHotkeysRecent, 0...20)
-        t["chutney_hotkeys_width"] = O.double(\.chutneyHotkeysWidth, 360...3000)
         t["chutney_hotkeys_apps"] = O.bool(\.chutneyHotkeysApps)
-        t["chutney_layout_palette_width"] = O.double(\.chutneyLayoutPaletteWidth, 300...2000)
         t["chutney_layout_palette_keys"] = { config, value in
             let keys = value.lowercased().split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             let arrows: Set<String> = ["left", "down", "up", "right"]

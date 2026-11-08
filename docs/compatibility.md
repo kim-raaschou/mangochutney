@@ -74,15 +74,11 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_border_unfocused` | draw borders around unfocused windows too |
 | `chutney_floating_color` | fixed border colour of floating windows, focused or not |
 | `chutney_hotkeys_apps` | the installed apps (from Spotlight) in the hotkeys palette's search |
-| `chutney_hotkeys_max_rows` | the most rows the hotkeys palette shows (chutney_toggle_hotkeys_palette); its height follows them |
-| `chutney_hotkeys_recent` | the rows used of late on the hotkeys palette's front page (0: none) |
-| `chutney_hotkeys_width` | the hotkeys palette's width in points |
 | `chutney_hyper_key` | the key held as HYPER, as Raycast's Hyper Key: caps_lock, a left_ or right_ control, shift, option or command, f1 … f12 (macOS's own key mapping) |
 | `chutney_hyper_modifier` | what HYPER means in a bind |
 | `chutney_hyper_tap` | Caps Lock or a function key that is Hyper, pressed alone: none, original (the key itself) or escape |
 | `chutney_ignore_apps` | bundle ids that are never managed |
 | `chutney_layout_palette_keys` | the keys that move the layout palette's selection: left,down,up,right (or h,j,k,l); the arrows always work |
-| `chutney_layout_palette_width` | the layout palette's width in points; its cells and icons follow |
 | `chutney_menu_bar` | menu-bar item with the current tags and layout |
 | `chutney_menu_bar_layout` | the layout's icon in the menu bar |
 | `chutney_menu_bar_logo` | the mango logo in the menu bar: color, mono (the menu bar's colour) or 0 |

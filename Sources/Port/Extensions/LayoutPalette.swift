@@ -17,7 +17,6 @@ public final class LayoutPalette {
     public func show(_ server: MangoServer) {
         self.server = server
         model.look = HotkeysLook(config: server.config)
-        model.width = CGFloat(server.config.chutneyLayoutPaletteWidth)
         model.circle = server.config.circleLayout
         model.editing = false
         model.grid = LayoutPaletteGrid(circle: model.circle, selecting: server.selectedMonitor?.layout ?? .tile)

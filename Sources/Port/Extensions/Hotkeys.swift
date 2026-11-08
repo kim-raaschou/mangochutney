@@ -17,9 +17,6 @@ public final class HotkeysPalette {
     public func show(_ server: MangoServer) {
         self.server = server
         let config = server.config
-        model.maxRows = config.chutneyHotkeysMaxRows
-        model.recentCount = config.chutneyHotkeysRecent
-        model.width = CGFloat(config.chutneyHotkeysWidth)
         model.look = HotkeysLook(config: config)
         model.legend = ModifierLegend.text(config)
         let hyper = Modifiers.parse(config.chutneyHyperModifier, hyperModifier: "") ?? []
