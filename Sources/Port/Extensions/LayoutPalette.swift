@@ -45,7 +45,6 @@ public final class LayoutPalette {
             p.contentView = glass
             panel = p
         }
-        panel?.appearance = model.look.macOS ? nil : NSAppearance(named: .darkAqua)
         (panel?.contentView as? GlassBacking)?.cornerRadius = model.look.cornerRadius
         place()
         server.holdNativeFocus = true
@@ -178,7 +177,7 @@ final class LayoutPaletteModel: ObservableObject {
     @Published var editing = false
     var onChoose: (LayoutKind) -> Void = { _ in }
     var onTick: (LayoutKind) -> Void = { _ in }
-    @Published var look = HotkeysLook(macOS: false)
+    @Published var look = HotkeysLook()
     @Published var width: CGFloat = 560
 
     var cell: CGSize {
@@ -212,8 +211,6 @@ struct LayoutPaletteView: View {
                 .frame(maxWidth: .infinity, minHeight: model.footerHeight, alignment: .bottom)
         }
         .padding(look.padding)
-        .background(look.background)
-        .overlay { if !look.macOS { Rectangle().stroke(look.frame, lineWidth: 1) } }
     }
 
     @ViewBuilder
@@ -227,7 +224,7 @@ struct LayoutPaletteView: View {
             }
         }
         .frame(width: model.cell.width - 6, height: model.cell.height - 6)
-        .background { RoundedRectangle(cornerRadius: look.macOS ? 8 : 0).fill(selected ? look.selectionFill : .clear) }
+        .background { RoundedRectangle(cornerRadius: 8).fill(selected ? look.selectionFill : .clear) }
         .overlay(alignment: .topTrailing) {
             if model.editing, let kind {
                 let ticked = CircleLayout.contains(model.circle, kind)

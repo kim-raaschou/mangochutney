@@ -308,11 +308,6 @@ final class HotkeysPaletteTests: MangoTestCase {
         guard case .row(let notes) = m.items.first else { return XCTFail("no Notes") }
         XCTAssertEqual(notes.iconPath, "/System/Applications/Notes.app")
     }
-
-    func testTheMacOSLookWritesHyperAsAMenuDoes() {
-        XCTAssertTrue(HotkeysLook(macOS: true).height(rows: 5) < HotkeysLook(macOS: false).height(rows: 5),
-                      "macOS's rows are denser")
-    }
 }
 
 extension HotkeysPaletteTests {

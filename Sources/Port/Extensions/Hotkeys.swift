@@ -53,7 +53,6 @@ public final class HotkeysPalette {
             p.contentView = glass
             panel = p
         }
-        panel?.appearance = model.look.macOS ? nil : NSAppearance(named: .darkAqua)
         (panel?.contentView as? GlassBacking)?.cornerRadius = model.look.cornerRadius
         panel?.invalidateShadow()
         let id = server.selectedMonitor?.screen.displayID
@@ -210,42 +209,29 @@ final class HotkeysPanel: NSPanel {
 }
 
 struct HotkeysLook {
-    var macOS: Bool
     var marking: Color = .accentColor
-    var root = Color(Config().rootcolor)
-    var border = Color(Config().bordercolor)
 
-    init(macOS: Bool) { self.macOS = macOS }
+    init() {}
 
-    init(config: Config) {
-        macOS = config.chutneyStyle
-        marking = PortAccent.color(config)
-        root = Color(config.rootcolor)
-        border = Color(config.bordercolor)
-    }
+    init(config: Config) { marking = PortAccent.color(config) }
 
-    var cornerRadius: CGFloat { macOS ? 14 : 0 }
-    var rowHeight: CGFloat { macOS ? 34 : 38 }
+    var cornerRadius: CGFloat { 14 }
+    var rowHeight: CGFloat { 34 }
     var rowSpacing: CGFloat { 2 }
-    var searchHeight: CGFloat { macOS ? 44 : 40 }
-    var padding: CGFloat { macOS ? 10 : 20 }
-    var placeholder: String { macOS ? "Search hotkeys, windows and apps" : "Go…" }
+    var searchHeight: CGFloat { 44 }
+    var padding: CGFloat { 10 }
+    var placeholder: String { "Search hotkeys, windows and apps" }
 
-    func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        macOS ? .system(size: size, weight: weight) : .system(size: size, weight: weight, design: .monospaced)
-    }
+    func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font { .system(size: size, weight: weight) }
 
-    var text: Color { macOS ? Color.primary : Color(white: 0.9) }
-    var dim: Color { macOS ? Color.primary : Color(white: 0.6) }
+    var text: Color { .primary }
+    var dim: Color { .primary }
     var accent: Color { marking }
     var selectionFill: Color { marking }
     var selectionText: Color { .white }
-    var background: Color { macOS ? .clear : root }
-    var frame: Color { border }
 
     func height(rows: Int) -> CGFloat {
-        2 * padding + searchHeight + (macOS ? 9 : 20) + 16
-            + CGFloat(max(rows, 1)) * (rowHeight + rowSpacing)
+        2 * padding + searchHeight + 9 + 16 + CGFloat(max(rows, 1)) * (rowHeight + rowSpacing)
     }
 }
 
@@ -254,24 +240,20 @@ struct HotkeysView: View {
     private var look: HotkeysLook { model.look }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: look.macOS ? 4 : 10) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                if look.macOS {
-                    Image(systemName: "magnifyingglass").font(look.font(18)).foregroundStyle(look.dim)
-                }
+                Image(systemName: "magnifyingglass").font(look.font(18)).foregroundStyle(look.dim)
                 if let s = model.openSection, model.query.isEmpty {
-                    Text(look.macOS ? s : "\(s) ›").foregroundStyle(look.macOS ? look.accent : look.dim)
-                    if look.macOS {
-                        Image(systemName: "chevron.right").font(look.font(12)).foregroundStyle(look.dim)
-                    }
+                    Text(s).foregroundStyle(look.accent)
+                    Image(systemName: "chevron.right").font(look.font(12)).foregroundStyle(look.dim)
                 }
-                HotkeysSearchField(text: $model.query, placeholder: look.placeholder, macOS: look.macOS) { model.field = $0 }
+                HotkeysSearchField(text: $model.query, placeholder: look.placeholder) { model.field = $0 }
                 Text(model.legend).font(look.font(12)).foregroundStyle(look.dim).fixedSize()
             }
-            .font(look.font(look.macOS ? 20 : 15))
-            .padding(.horizontal, look.macOS ? 8 : 4)
+            .font(look.font(20))
+            .padding(.horizontal, 8)
             .frame(height: look.searchHeight)
-            if look.macOS { Divider().padding(.bottom, 4) }
+            Divider().padding(.bottom, 4)
 
             let page = model.page
             if page.items.isEmpty {
@@ -297,12 +279,10 @@ struct HotkeysView: View {
             footer
                 .font(look.font(11))
                 .foregroundStyle(look.dim)
-                .padding(.horizontal, look.macOS ? 8 : 0)
+                .padding(.horizontal, 8)
         }
         .padding(look.padding)
         .frame(width: model.width, height: look.height(rows: model.page.rows))
-        .background(look.background)
-        .overlay { if !look.macOS { Rectangle().stroke(look.frame, lineWidth: 2) } }
     }
 
     private var footer: Text {
@@ -332,8 +312,8 @@ struct HotkeysView: View {
     @ViewBuilder
     private func row(_ item: HotkeysModel.Item, selected: Bool) -> some View {
         let fg = selected ? look.selectionText : look.text
-        let dim = selected && look.macOS ? Color.white.opacity(0.75) : look.dim
-        HStack(spacing: look.macOS ? 10 : 14) {
+        let dim = selected ? Color.white.opacity(0.75) : look.dim
+        HStack(spacing: 10) {
             switch item {
             case .group(let s, let n):
                 symbol(HotkeysModel.icon(s), selected: selected)
@@ -356,24 +336,24 @@ struct HotkeysView: View {
                 }
                 Spacer(minLength: 12)
                 if let place = r.place, !place.isEmpty {
-                    Text(place).font(look.font(look.macOS ? 13 : 14)).foregroundStyle(dim).padding(.trailing, 6)
+                    Text(place).font(look.font(13)).foregroundStyle(dim).padding(.trailing, 6)
                 }
                 keys(r.keys, dim: dim)
             }
         }
-        .font(look.font(look.macOS ? 13 : 14))
+        .font(look.font(13))
         .foregroundStyle(fg)
         .opacity(isRunnable(item) ? 1 : 0.45)
-        .padding(.horizontal, look.macOS ? 10 : 16).frame(height: look.rowHeight)
+        .padding(.horizontal, 10).frame(height: look.rowHeight)
         .background {
-            RoundedRectangle(cornerRadius: look.macOS ? 7 : 0)
+            RoundedRectangle(cornerRadius: 7)
                 .fill(selected ? look.selectionFill : Color.clear)
         }
     }
 
     private func symbol(_ name: String, selected: Bool) -> some View {
         Image(systemName: name)
-            .foregroundStyle(look.macOS && !selected ? look.dim : (selected ? look.selectionText : look.text))
+            .foregroundStyle(selected ? look.selectionText : look.dim)
             .frame(width: 24)
     }
 
@@ -382,35 +362,17 @@ struct HotkeysView: View {
         return true
     }
 
-    @ViewBuilder
     private func keys(_ keys: [String], dim: Color) -> some View {
-        if look.macOS {
-            Text(keyText(keys)).font(look.font(13)).foregroundStyle(dim)
-        } else {
-            HStack(spacing: 4) { ForEach(Array(keys.enumerated()), id: \.offset) { keycap($0.element) } }
-        }
+        Text(keyText(keys)).font(look.font(13)).foregroundStyle(dim)
     }
 
     private func keyText(_ keys: [String]) -> String {
-        guard look.macOS else { return keys.joined(separator: " ") }
         var out = ""
         for k in keys {
             if k == "›" { out += " › "; continue }
             out += k == "Hyper" ? "Hyper " : k
         }
         return out
-    }
-
-    @ViewBuilder
-    private func keycap(_ s: String) -> some View {
-        if s == "›" {
-            Text(s).font(look.font(12)).foregroundStyle(look.dim)
-        } else {
-            Text(s)
-                .font(look.font(12))
-                .padding(.horizontal, 6).padding(.vertical, 2)
-                .overlay { RoundedRectangle(cornerRadius: 3).stroke(look.dim.opacity(0.6), lineWidth: 1) }
-        }
     }
 }
 
@@ -429,7 +391,6 @@ enum AppIcons {
 struct HotkeysSearchField: NSViewRepresentable {
     @Binding var text: String
     var placeholder: String
-    var macOS: Bool
     var made: (NSTextField) -> Void
 
     func makeNSView(context: Context) -> NSTextField {
@@ -444,12 +405,12 @@ struct HotkeysSearchField: NSViewRepresentable {
     }
 
     private func style(_ f: NSTextField) {
-        let font = macOS ? NSFont.systemFont(ofSize: 20) : NSFont.monospacedSystemFont(ofSize: 15, weight: .regular)
+        let font = NSFont.systemFont(ofSize: 20)
         f.font = font
-        f.textColor = macOS ? .labelColor : NSColor(red: 0.86, green: 0.82, blue: 0.72, alpha: 1)
+        f.textColor = .labelColor
         f.placeholderAttributedString = NSAttributedString(string: placeholder, attributes: [
             .font: font,
-            .foregroundColor: macOS ? NSColor.placeholderTextColor : NSColor(red: 0.55, green: 0.53, blue: 0.48, alpha: 1),
+            .foregroundColor: NSColor.placeholderTextColor,
         ])
     }
 

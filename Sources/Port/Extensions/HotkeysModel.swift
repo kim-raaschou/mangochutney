@@ -102,7 +102,7 @@ final class HotkeysModel: ObservableObject {
     var recentCount = 4
     var maxRows = 14
     var width: CGFloat = 680
-    var look = HotkeysLook(macOS: false)
+    var look = HotkeysLook()
     var onLayout: ((Int) -> Void)?
 
     func load(_ shortcuts: [ShortcutRow], hyper: Modifiers, context: HotkeysContext = HotkeysContext(),
