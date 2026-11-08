@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// The hotkeys palette (chutney_toggle_hotkeys_palette, port extension): its rows, search, keys and
-/// what Return runs. The model only: nothing is drawn.
 @MainActor
 final class HotkeysPaletteTests: MangoTestCase {
     let hyper: Modifiers = [.superKey, .ctrl, .alt]
@@ -64,7 +62,7 @@ final class HotkeysPaletteTests: MangoTestCase {
         let m = model(config)
         var ran: [HotkeyRow] = []
         m.run = { ran.append($0) }
-        m.move(3)               // Tags
+        m.move(3)
         m.enter()
         XCTAssertEqual(m.openSection, "Tags")
         XCTAssertEqual(m.selectedRow?.keys, ["Hyper", "1–2"])
@@ -72,7 +70,7 @@ final class HotkeysPaletteTests: MangoTestCase {
         XCTAssertTrue(m.digit(2))
         XCTAssertEqual(ran.map(\.dispatch), ["view"])
         XCTAssertEqual(ran.first?.args, ["2", "0"])
-        m.move(1)               // send window to tag 1: a single row
+        m.move(1)
         m.enter()
         XCTAssertEqual(ran.last?.dispatch, "tag")
     }
@@ -103,7 +101,6 @@ final class HotkeysPaletteTests: MangoTestCase {
         XCTAssertEqual([ran, refused], [0, 1], "moveresize needs a drag")
     }
 
-    /// An app's name finds its key, though the binding names its bundle id.
     func testTheAppsNameFindsItsKey() {
         let m = model("""
         chutney_hyper_modifier=super+ctrl+alt
@@ -148,8 +145,6 @@ final class HotkeysPaletteTests: MangoTestCase {
         XCTAssertEqual(ran, ["resizewin"])
     }
 
-    // MARK: what mango looks like now
-
     func testABindingShowsItsStateAndIsDimmedWhenItWouldDoNothing() {
         let conf = """
         chutney_hyper_modifier=super+ctrl+alt
@@ -184,8 +179,6 @@ final class HotkeysPaletteTests: MangoTestCase {
         XCTAssertEqual(refused, 1)
     }
 
-    // MARK: use
-
     func testTheRowsUsedMostComeFirstWithoutASearch() {
         let conf = "chutney_hyper_modifier=super+ctrl+alt\nbind=hyper,q,killclient,\nbind=hyper,2,view,2,0\nbind=hyper,3,view,3,0\n"
         let m = model(conf, usage: ["b|default|view|3,0": 5, "b|default|killclient|": 1])
@@ -208,8 +201,6 @@ final class HotkeysPaletteTests: MangoTestCase {
         XCTAssertEqual(HotkeysUsage.scores(entries, now: t0)["b|x"], 2)
         XCTAssertEqual(HotkeysUsage.scores(entries, now: t0.addingTimeInterval(7 * 86400))["b|x"], 1, "a week halves it")
     }
-
-    // MARK: windows and apps
 
     func testTheOpenWindowsAreRowsThatGoToTheWindow() {
         let wins = [HotkeysWindow(id: 7, app: "Arc", bundleID: "company.thebrowser.Browser", title: "Omarchy Manual", tag: 2),
@@ -258,8 +249,6 @@ final class HotkeysPaletteTests: MangoTestCase {
                       "the app's name and the title together find the window")
     }
 
-    // MARK: no scrolling
-
     func testALongBrowseTakesTwoColumnsAndALongSearchItsBestRows() {
         let binds = (0..<20).map { "bind=hyper,F\($0 + 1),spawn,app\($0)" }.joined(separator: "\n")
         let m = model("chutney_hyper_modifier=super+ctrl+alt\n" + binds)
@@ -288,8 +277,6 @@ final class HotkeysPaletteTests: MangoTestCase {
         XCTAssertEqual(heights, [2, 7], "two matches, then the seven groups")
     }
 
-    // MARK: Spotlight
-
     func testSpotlightsAppsAreTheOnesAPersonOpens() {
         XCTAssertTrue(SpotlightApps.isApp("/Applications/Arc.app"))
         XCTAssertTrue(SpotlightApps.isApp("/Users/me/Applications/JetBrains Toolbox/IntelliJ IDEA.app"))
@@ -307,8 +294,6 @@ final class HotkeysPaletteTests: MangoTestCase {
         guard case .row(let top) = m.items.first else { return XCTFail("no app") }
         XCTAssertEqual(top.action, "open Notion", "Spotlight's use count breaks the tie")
     }
-
-    // MARK: icons
 
     func testAppsWindowsAndAppBindingsShowTheirAppsIcon() {
         let conf = "chutney_hyper_modifier=super+ctrl+alt\nbind=hyper,a,chutney_focus_app,company.thebrowser.Browser\nbind=hyper,q,killclient,\n"
@@ -331,7 +316,6 @@ final class HotkeysPaletteTests: MangoTestCase {
 }
 
 extension HotkeysPaletteTests {
-    /// An app's row says where its windows are: the tags in order, the special tag, minimized.
     func testAnAppsPlaceIsItsWindowsTags() {
         func w(_ id: Int, _ tag: Int?) -> HotkeysWindow {
             HotkeysWindow(id: ClientID(id), app: "Code", bundleID: "com.microsoft.VSCode", title: "t\(id)", tag: tag)
@@ -341,7 +325,6 @@ extension HotkeysPaletteTests {
         XCTAssertNil(HotkeysModel.places([w(1, 1)])["com.apple.Safari"])
     }
 
-    /// An app's key says what Return does now, by chutney_focus_app's rules.
     func testAnAppsKeySaysWhatReturnDoes() {
         let ws = [HotkeysWindow(id: 1, app: "Arc", bundleID: "a", title: "x", tag: 1),
                   HotkeysWindow(id: 2, app: "Arc", bundleID: "a", title: "y", tag: 2)]
@@ -354,7 +337,6 @@ extension HotkeysPaletteTests {
         XCTAssertEqual(next(.focus(2), 2, inApp: true), "the other Arc window")
     }
 
-    /// SUPER is ⌘ and HYPER what chutney_hyper_modifier says, in the menu and the palette.
     func testTheLegendSaysWhatSuperAndHyperAre() {
         var c = Config()
         XCTAssertEqual(ModifierLegend.text(c), "Super ⌘   Hyper ⌃⌥⌘")
@@ -364,8 +346,6 @@ extension HotkeysPaletteTests {
     }
 }
 
-/// A number typed after a colon in the palette's search (port extension): the argument of a
-/// dispatcher that takes a share of the screen, offered even without a key.
 @MainActor
 final class HotkeysTypedArgumentTests: MangoTestCase {
     func model(_ config: String) -> HotkeysModel {
@@ -401,7 +381,6 @@ final class HotkeysTypedArgumentTests: MangoTestCase {
         XCTAssertNil(m.typedArguments(try XCTUnwrap(selected(m))), "no number: its own arguments")
     }
 
-    /// The typed share is held to mango's range for a scroller width, 0.1 to 1.
     func testTheShareStaysInMangosRange() throws {
         let m = model("bind=alt,e,set_proportion,1.0")
         for (typed, share) in [("w:2", "0.1"), ("w:10", "0.1"), ("w:250", "1"), ("w:0.05", "0.1"), ("w:45", "0.45")] {
@@ -412,8 +391,6 @@ final class HotkeysTypedArgumentTests: MangoTestCase {
         XCTAssertNil(m.typedArguments(try XCTUnwrap(selected(m))), "0: the row's own")
     }
 
-    /// With a number typed, the rows that take it come first: "set w:2" found System
-    /// Settings' key before the column width.
     func testARowThatTakesTheNumberComesFirst() throws {
         let m = model("""
         bind=alt,e,set_proportion,1.0

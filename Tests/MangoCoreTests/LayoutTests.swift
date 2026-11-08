@@ -4,8 +4,6 @@ import CoreGraphics
 @testable import Port
 
 final class LayoutTests: MangoTestCase {
-
-    // 1920x1080 work area below a 25pt menu bar.
     let work = CGRect(x: 0, y: 25, width: 1920, height: 1080)
     let monitor = CGRect(x: 0, y: 0, width: 1920, height: 1105)
     let gaps = Gaps(ih: 5, iv: 5, oh: 10, ov: 10)
@@ -20,11 +18,6 @@ final class LayoutTests: MangoTestCase {
 
     func ids(_ n: Int) -> [ClientID] { (1...n).map { ClientID($0) } }
 
-    // MARK: Generic invariants
-
-    /// Every client framed, integral, >= 1; visible frames don't overlap,
-    /// keep at least the inner gap between them and (optionally) lie inside
-    /// the work area.
     func checkInvariants(_ name: String, _ input: LayoutInput, _ r: LayoutResult,
                          insideWork: Bool = true, file: StaticString = #filePath, line: UInt = #line) {
         for c in input.clients {
@@ -43,7 +36,6 @@ final class LayoutTests: MangoTestCase {
             for b in visible[(i + 1)...] {
                 let fa = r.frames[a]!, fb = r.frames[b]!
                 XCTAssertEqual(fa.overlapArea(fb), 0, "\(name): \(a) \(fa) overlaps \(b) \(fb)", file: file, line: line)
-                // Gap: separation along the axis on which they are apart.
                 let dx = max(fb.minX - fa.maxX, fa.minX - fb.maxX)
                 let dy = max(fb.minY - fa.maxY, fa.minY - fb.maxY)
                 let sep = max(dx, dy)
@@ -75,7 +67,7 @@ final class LayoutTests: MangoTestCase {
 
     func testStatelessLayoutsWithTwoMasters() {
         var pt = PertagSettings(); pt.nmaster = 2
-        for (name, layout) in statelessLayouts where !name.contains("deck") {  // deck masters share no gap (as mango)
+        for (name, layout) in statelessLayouts where !name.contains("deck") {
             for n in [1, 2, 3, 5] {
                 let input = makeInput(ids(n), pertag: pt)
                 checkInvariants("\(name) nmaster=2 n=\(n)", input, layout(input))
@@ -98,8 +90,6 @@ final class LayoutTests: MangoTestCase {
                 let input = makeInput(ids(n), focused: 1)
                 let r = s.arrange(input, vertical: vertical)
                 checkInvariants("scroller v=\(vertical) n=\(n)", input, r, insideWork: false)
-                // The focused column is fully inside the work area; every
-                // non-hidden frame touches the monitor.
                 XCTAssertTrue(work.contains(r.frames[1]!), "focused \(r.frames[1]!)")
                 for id in ids(n) where !r.hidden.contains(id) {
                     XCTAssertTrue(r.frames[id]!.intersects(monitor))
@@ -109,16 +99,12 @@ final class LayoutTests: MangoTestCase {
         }
     }
 
-    // MARK: Exact geometry
-
     func testTileGeometry() {
         let input = makeInput([1, 2, 3])
         let r = TileLayouts.tile(input)
-        // mw = (1920 + 5) * 0.55 = 1058
         XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 1053, height: 1060))
         XCTAssertEqual(r.frames[2], CGRect(x: 1068, y: 35, width: 842, height: 527))
         XCTAssertEqual(r.frames[3], CGRect(x: 1068, y: 567, width: 842, height: 528))
-        // Single client fills the work area minus outer gaps.
         let one = TileLayouts.tile(makeInput([1]))
         XCTAssertEqual(one.frames[1], CGRect(x: 10, y: 35, width: 1900, height: 1060))
     }
@@ -130,7 +116,6 @@ final class LayoutTests: MangoTestCase {
     }
 
     func testCenterTile() {
-        // 3 clients (odd n): master centered, first stack client left, second right.
         let r = TileLayouts.centerTile(makeInput([1, 2, 3]))
         let m = r.frames[1]!, a = r.frames[2]!, b = r.frames[3]!
         XCTAssertEqual(m.midX, work.midX, accuracy: 3)
@@ -138,16 +123,13 @@ final class LayoutTests: MangoTestCase {
         XCTAssertGreaterThan(b.minX, m.maxX)
         XCTAssertEqual(a.minX, 10)
         XCTAssertEqual(b.maxX, 1910)
-        // 2 clients + center_when_single_stack: master centered, stack right.
         let r2 = TileLayouts.centerTile(makeInput([1, 2]))
         XCTAssertEqual(r2.frames[1]!.midX, work.midX, accuracy: 3)
         XCTAssertGreaterThan(r2.frames[2]!.minX, r2.frames[1]!.maxX)
-        // Without it: master left, stack right.
         var cfg = Config(); cfg.centerWhenSingleStack = false
         let r3 = TileLayouts.centerTile(makeInput([1, 2], config: cfg))
         XCTAssertEqual(r3.frames[1]!.minX, 10)
         XCTAssertEqual(r3.frames[2]!.maxX, 1910)
-        // Only a master: centered unless overspread.
         let r4 = TileLayouts.centerTile(makeInput([1]))
         XCTAssertEqual(r4.frames[1]!.midX, work.midX, accuracy: 3)
         XCTAssertLessThan(r4.frames[1]!.width, 1900)
@@ -161,7 +143,6 @@ final class LayoutTests: MangoTestCase {
         let deck = TileLayouts.deck(input)
         XCTAssertEqual(deck.hidden, [2, 4])
         XCTAssertEqual(deck.frames[2], deck.frames[3])
-        // Focus on the master: first stack client is shown.
         let deck2 = TileLayouts.deck(makeInput([1, 2, 3, 4], focused: 1))
         XCTAssertEqual(deck2.hidden, [3, 4])
         let vdeck = TileLayouts.verticalDeck(input)
@@ -191,20 +172,17 @@ final class LayoutTests: MangoTestCase {
         let two = GridLayouts.grid(makeInput([1, 2]))
         XCTAssertEqual(two.frames[1]!.height, CGFloat(Int(1060.0 * 0.65)))
         XCTAssertEqual(two.frames[1]!.minY, two.frames[2]!.minY)
-        // 5 clients: 3 columns x 2 rows, last row (2 clients) centered.
         let five = GridLayouts.grid(makeInput(ids(5)))
         XCTAssertEqual(five.frames[1]!.minY, five.frames[3]!.minY)
         XCTAssertEqual(five.frames[4]!.minY, five.frames[5]!.minY)
         let rowMid = (five.frames[4]!.minX + five.frames[5]!.maxX) / 2
         XCTAssertEqual(rowMid, work.midX, accuracy: 2)
-        // vertical_grid is the transpose: 5 clients -> columns of 3 and 2.
         let v = GridLayouts.verticalGrid(makeInput(ids(5)))
         XCTAssertEqual(v.frames[1]!.minX, v.frames[3]!.minX)
         XCTAssertEqual(v.frames[4]!.minX, v.frames[5]!.minX)
     }
 
     func testFairShapes() {
-        // 5 clients: 3 columns; first column 1 row, the other two 2 rows.
         let r = GridLayouts.fair(makeInput(ids(5)))
         XCTAssertEqual(r.frames[1]!.height, 1060)
         XCTAssertEqual(r.frames[2]!.minX, r.frames[3]!.minX)
@@ -215,29 +193,23 @@ final class LayoutTests: MangoTestCase {
         XCTAssertEqual(v.frames[2]!.minY, v.frames[3]!.minY)
     }
 
-    // MARK: Dwindle
-
     func testDwindleSplitsAndRemove() {
         let t = DwindleTree()
         var r = t.dwindleCore(makeInput([1]))
         XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 1900, height: 1060))
         r = t.dwindleCore(makeInput([1, 2], focused: 1))
-        // Horizontal split: w1 = 1900 * 0.5 - 5/2.
         XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 948, height: 1060))
         XCTAssertEqual(r.frames[2], CGRect(x: 963, y: 35, width: 947, height: 1060))
-        // New client splits the focused (portrait) leaf vertically, below it.
         r = t.dwindleCore(makeInput([1, 2, 3], focused: 2))
         XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 948, height: 1060))
         XCTAssertEqual(r.frames[2]!.minX, 963)
         XCTAssertEqual(r.frames[3]!.minX, 963)
         XCTAssertLessThan(r.frames[2]!.maxY, r.frames[3]!.minY)
         XCTAssertEqual(r.frames[3]!.minY - r.frames[2]!.maxY, 5)
-        // Removing 2: its sibling 3 takes the parent's place.
         t.dwindleRemove(2, config: Config())
         XCTAssertFalse(t.contains(2))
         r = t.dwindleCore(makeInput([1, 3], focused: 3))
         XCTAssertEqual(r.frames[3], CGRect(x: 963, y: 35, width: 947, height: 1060))
-        // Self-heal: clients missing from the input are dropped.
         r = t.dwindleCore(makeInput([3], focused: 3))
         XCTAssertFalse(t.contains(1))
         XCTAssertEqual(r.frames[3], CGRect(x: 10, y: 35, width: 1900, height: 1060))
@@ -255,10 +227,10 @@ final class LayoutTests: MangoTestCase {
         let t = DwindleTree()
         _ = t.dwindleCore(makeInput([1]))
         _ = t.dwindleCore(makeInput([1, 2], focused: 1))
-        t.dwindleResizeClientStep(1, dx: 190, dy: 0, config: Config())   // ratio 0.5 -> 0.6
+        t.dwindleResizeClientStep(1, dx: 190, dy: 0, config: Config())
         var r = t.dwindleCore(makeInput([1, 2], focused: 1))
         XCTAssertEqual(r.frames[1]!.width, CGFloat(Int(1900 * 0.6) - 2))
-        t.dwindleResizeClientStep(1, dx: 10_000, dy: 0, config: Config())  // clamped to 0.95
+        t.dwindleResizeClientStep(1, dx: 10_000, dy: 0, config: Config())
         r = t.dwindleCore(makeInput([1, 2], focused: 1))
         XCTAssertEqual(r.frames[1]!.width, CGFloat(Int(1900 * 0.95) - 2))
         let before = r
@@ -273,12 +245,10 @@ final class LayoutTests: MangoTestCase {
         _ = t.dwindleCore(makeInput([1]))
         _ = t.dwindleCore(makeInput([1, 2], focused: 1))
         _ = t.dwindleCore(makeInput([1, 2, 3], focused: 2))
-        // Move 1 next to 3: it leaves the left half and splits 3's leaf.
         t.dwindleMoveNextTo(1, nextTo: 3, direction: .right, config: Config())
         let r = t.dwindleCore(makeInput([1, 2, 3], focused: 1))
         checkInvariants("dwindle after move", makeInput([1, 2, 3]), r)
         XCTAssertEqual(r.frames[2]!.height, 1060)
-        // Toggling the current split flips 2|3 orientation.
         t.dwindleToggleCurrentSplit(for: 2)
         let r2 = t.dwindleCore(makeInput([1, 2, 3], focused: 1))
         checkInvariants("dwindle after toggle", makeInput([1, 2, 3]), r2)
@@ -297,13 +267,10 @@ final class LayoutTests: MangoTestCase {
         _ = t.dwindleCore(makeInput([1], config: cfg))
         _ = t.dwindleCore(makeInput([1, 2], focused: 1, config: cfg))
         let r = t.dwindleCore(makeInput([1, 2, 3], focused: 2, config: cfg))
-        // Three equal columns (all horizontal splits).
         let ws = [1, 2, 3].map { r.frames[ClientID($0)]!.width }
         XCTAssertEqual(ws.max()! - ws.min()!, 0, accuracy: 3)
         checkInvariants("dwindle manual", makeInput([1, 2, 3], config: cfg), r)
     }
-
-    // MARK: Scroller
 
     func testScrollerStateOperations() {
         let s = ScrollerState()
@@ -311,23 +278,17 @@ final class LayoutTests: MangoTestCase {
         s.insert(2, afterFocused: 1)
         s.insert(3, afterFocused: 1)
         XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [3], [2]])
-        // Stack 3 into its right neighbour's column (tail).
         XCTAssertTrue(s.scrollerApplyStack(3, direction: .right, vertical: false, clientOrder: [1, 2, 3]))
         XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [2, 3]])
         XCTAssertEqual(s.column(of: 3), [2, 3])
         XCTAssertEqual(s.position(of: 3, in: [1, 2, 3])?.column, 1)
         XCTAssertEqual(s.position(of: 3, in: [1, 2, 3])?.row, 1)
-        // Wrong axis is ignored.
         XCTAssertFalse(s.scrollerApplyStack(3, direction: .up, vertical: false, clientOrder: [1, 2, 3]))
-        // Exchange within a stack.
         s.exchangeTwoScrollerClients(2, 3)
         XCTAssertEqual(s.column(of: 2), [3, 2])
-        // Unstack to the left: becomes its own column before the stack.
         XCTAssertTrue(s.scrollerApplyStack(2, direction: .left, vertical: false, clientOrder: [1, 2, 3]))
         XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [2], [3]])
-        // No column to the left of 1.
         XCTAssertFalse(s.scrollerApplyStack(1, direction: .left, vertical: false, clientOrder: [1, 2, 3]))
-        // Exchange across columns swaps whole stacks.
         _ = s.scrollerApplyStack(3, direction: .left, vertical: false, clientOrder: [1, 2, 3])
         XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [2, 3]])
         s.exchangeTwoScrollerClients(1, 3)
@@ -335,7 +296,6 @@ final class LayoutTests: MangoTestCase {
         s.scrollerNodeRemove(2)
         XCTAssertEqual(s.columns(for: [1, 3]), [[3], [1]])
         XCTAssertFalse(s.contains(2))
-        // Vertical scroller stacks along up/down.
         XCTAssertTrue(s.scrollerApplyStack(1, direction: .up, vertical: true, clientOrder: [1, 3]))
         XCTAssertEqual(s.columns(for: [1, 3]), [[3, 1]])
         s.clearScrollerState()
@@ -346,8 +306,6 @@ final class LayoutTests: MangoTestCase {
         let s = ScrollerState()
         var r = s.arrange(makeInput([1, 2, 3], focused: 1), vertical: false)
         XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [2], [3]])
-        // New client 4, put after the focused client in the client list (mango
-        // client_insert_tiling_order), becomes a column there: the columns follow the list.
         let input = makeInput([1, 2, 4, 3], focused: 2, frames: r.frames)
         r = s.arrange(input, vertical: false)
         XCTAssertEqual(s.columns(for: [1, 2, 3, 4]), [[1], [2], [4], [3]])
@@ -356,10 +314,8 @@ final class LayoutTests: MangoTestCase {
         XCTAssertEqual(r.frames[2]!.height, 1060)
         XCTAssertEqual(r.frames[4]!.minX - r.frames[2]!.maxX, 5)
         XCTAssertEqual(r.frames[2]!.minX - r.frames[1]!.maxX, 5)
-        // Columns far off-screen are hidden but keep a frame.
         XCTAssertTrue(r.hidden.contains(3))
         XCTAssertNotNil(r.frames[3])
-        // Stale clients are dropped.
         r = s.arrange(makeInput([1, 4], focused: 4, frames: r.frames), vertical: false)
         XCTAssertEqual(s.columns(for: [1, 4]), [[1], [4]])
     }
@@ -375,7 +331,6 @@ final class LayoutTests: MangoTestCase {
         XCTAssertEqual(b.minY - a.maxY, 5)
         XCTAssertEqual(a.minY, 35)
         XCTAssertEqual(b.maxY, 1095)
-        // Single column (ignore_proportion_single): centered.
         XCTAssertEqual(a.midX, work.midX, accuracy: 1)
     }
 
@@ -385,7 +340,6 @@ final class LayoutTests: MangoTestCase {
         let r = s.arrange(makeInput([1], pertag: pt), vertical: false)
         XCTAssertEqual(r.frames[1], CGRect(x: 485, y: 35, width: 950, height: 1060))
 
-        // Focused column already inside the struts keeps its x; centerwin centers it.
         let s2 = ScrollerState()
         var cfg = Config(); cfg.scrollerPreferOverspread = false
         var frames: [ClientID: CGRect] = [:]
@@ -429,8 +383,6 @@ final class LayoutTests: MangoTestCase {
         }
     }
 
-    // MARK: Overview
-
     func testOverviewPack() {
         let sizes: [(id: ClientID, size: CGSize)] = [
             (1, CGSize(width: 1600, height: 900)), (2, CGSize(width: 800, height: 600)),
@@ -443,13 +395,11 @@ final class LayoutTests: MangoTestCase {
         let list = sizes.map { frames[$0.id]! }
         for (i, f) in list.enumerated() {
             XCTAssertTrue(inner.insetBy(dx: -1, dy: -1).contains(f), "\(f) outside \(inner)")
-            // Aspect ratio preserved, scale <= 1.
             let s = sizes[i].size
             XCTAssertEqual(f.width / s.width, f.height / s.height, accuracy: 0.01)
             XCTAssertLessThanOrEqual(f.width, s.width)
             for g in list[(i + 1)...] { XCTAssertEqual(f.overlapArea(g), 0) }
         }
-        // A single small window is not upscaled and is centered.
         let one = OverviewLayout.overviewScale(clients: [(9, CGSize(width: 400, height: 300))], workArea: work,
                                       gapInner: 5, gapOuter: 30)
         XCTAssertEqual(one[9]!.size, CGSize(width: 400, height: 300))
@@ -457,10 +407,7 @@ final class LayoutTests: MangoTestCase {
         XCTAssertEqual(one[9]!.midY, work.midY, accuracy: 1)
     }
 
-    // MARK: Gaps in the grid layouts (mango reads config.gapp*, but honours togglegaps)
-
     func testGridLayoutsHonourToggleGapsAndIgnoreIncGaps() {
-        // `togglegaps` switched them off (server.enable_gaps): no gaps in grid either.
         var off = makeInput(ids(4))
         off.gaps = .zero
         off.enableGaps = false
@@ -471,22 +418,16 @@ final class LayoutTests: MangoTestCase {
         XCTAssertEqual(v0.frames[1]!.minX, 0)
         XCTAssertEqual(v0.frames[1]!.minY, 25)
 
-        // `incgaps` changes the monitor's gaps only; mango's grid keeps using config.gappoh/gappih.
         var inc = makeInput(ids(4))
         inc.gaps = Gaps(ih: 40, iv: 40, oh: 50, ov: 50)
         XCTAssertEqual(GridLayouts.grid(inc).frames, GridLayouts.grid(makeInput(ids(4))).frames)
 
-        // smart_gaps zeroes the gaps of a lone window in the engine; mango's grid ignores it.
         var smart = makeInput([1])
         smart.config.smartgaps = true
         smart.gaps = .zero
         XCTAssertEqual(GridLayouts.grid(smart).frames, GridLayouts.grid(makeInput([1])).frames)
     }
 
-    // MARK: Robustness
-
-    /// `mmsg dispatch set_proportion,nan` reaches the layouts as NaN (Double("nan") parses); the
-    /// float -> Int conversions would trap and take the window manager down.
     func testNonFiniteInputsDoNotTrap() {
         var pt = PertagSettings()
         pt.mfact = .nan
@@ -506,8 +447,6 @@ final class LayoutTests: MangoTestCase {
         }
     }
 
-    /// No layout may trap or lose a client for odd inputs (tiny work areas, huge gaps,
-    /// more masters than clients, shares that do not add up).
     func testRandomInputsNeverTrapOrDropClients() {
         var rng = SystemRandomNumberGenerator()
         let states = LayoutKind.allCases.map { _ in TagLayoutState() }

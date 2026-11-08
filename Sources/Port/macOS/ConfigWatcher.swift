@@ -1,16 +1,11 @@
 import Foundation
 import Mango
 
-/// Watches the config file (and sourced files) for writes; debounced 150ms. As mango's
-/// watcher (watcher.c, its kqueue backend): a file has changed when its device, inode, size
-/// or modification time has, so a save that replaces the file is seen even with the same text.
 public final class ConfigWatcher {
     private var sources: [DispatchSourceFileSystemObject] = []
     private var pending: DispatchWorkItem?
     private let onChange: ([URL]) -> Void
     private let files: [URL]
-    /// mango's WatchedFile: each file's state when watching began (or last changed); nil
-    /// when it does not exist.
     struct FileState: Equatable {
         var dev: dev_t, ino: ino_t, size: off_t, mtime: timespec
         static func == (a: Self, b: Self) -> Bool {
@@ -37,8 +32,6 @@ public final class ConfigWatcher {
                                                                 eventMask: [.write, .delete, .rename, .extend],
                                                                 queue: .main)
             src.setEventHandler { [weak self] in self?.schedule() }
-            // The descriptor must stay open until the source is really cancelled
-            // (cancel() is asynchronous), so it is closed in the cancel handler.
             src.setCancelHandler { close(fd) }
             src.resume()
             sources.append(src)

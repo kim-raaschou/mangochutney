@@ -1,18 +1,13 @@
 import AppKit
 import Mango
 
-/// The overview drawn as pictures in one overlay window over the work area: cards at
-/// mango's packed positions, with jump letters on them. The real windows stay where
-/// they are. Clicks and keys are handled by the event tap (InputRouter), so the
-/// overlay never takes focus or mouse events.
 @MainActor
 final class OverviewOverlay {
     struct Card {
         var id: ClientID
-        var frame: CGRect        // AX coordinates
+        var frame: CGRect
         var label: String?
         var title: String
-        /// The window's app, for its icon until the picture comes.
         var pid: pid_t
         var focused: Bool
     }
@@ -23,10 +18,7 @@ final class OverviewOverlay {
     private let workArea: CGRect
     private let focusColor: CGColor
     private let borderColor: CGColor
-    /// jump_label_decorate_* (JumpLabelLook).
     private let jumpLook: DecorateStyle
-    /// mango's overview, without chutney_style: the desktop's root_color behind the cards,
-    /// each card the window stretched into it with its border (border_px, border_radius).
     struct MangoLook {
         var root: RGBA
         var borderWidth: CGFloat
@@ -34,13 +26,8 @@ final class OverviewOverlay {
     }
     private let mango: MangoLook?
 
-    /// The overlay's top left corner (AX coordinates): the work area's, raised to `top`.
     private let origin: CGPoint
 
-    /// `top`: the screen's top (AX coordinates). The overlay reaches up under the menu bar,
-    /// just below it in level, so the bar shows the blur through its own material (as
-    /// Mission Control) rather than the sharp desktop over a hard edge. The cards stay in
-    /// the work area.
     init(workArea: CGRect, top: CGFloat? = nil, focusColor: RGBA, borderColor: RGBA, jumpLook: DecorateStyle = DecorateStyle(),
          mango: MangoLook? = nil) {
         self.jumpLook = jumpLook
@@ -76,7 +63,6 @@ final class OverviewOverlay {
         }
     }
 
-    /// Card rect in the overlay's (flipped) view coordinates.
     private func local(_ r: CGRect) -> CGRect {
         CGRect(x: r.minX - origin.x, y: r.minY - origin.y, width: r.width, height: r.height)
     }
@@ -91,7 +77,6 @@ final class OverviewOverlay {
         }
     }
 
-    /// Lays out cards (new positions for overcircle) keeping pictures already captured.
     func update(_ cards: [Card]) {
         guard let rootLayer = root.layer else { return }
         let keep = Set(cards.map(\.id))
@@ -114,7 +99,6 @@ final class OverviewOverlay {
         l.masksToBounds = true
         l.backgroundColor = NSColor(calibratedWhite: 0.16, alpha: 0.95).cgColor
         l.contentsGravity = mango == nil ? .resizeAspect : .resize
-        // Placeholder until the picture arrives: the app icon and title.
         let icon = CALayer()
         icon.name = "icon"
         icon.contents = NSRunningApplication(processIdentifier: c.pid)?.icon
@@ -138,7 +122,7 @@ final class OverviewOverlay {
             t.alignmentMode = .center
             t.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
             badge.addSublayer(t)
-            l.addSublayer(badge)   // sized and placed by layout(_:_:)
+            l.addSublayer(badge)
         }
         parent.addSublayer(l)
         layers[c.id] = l
@@ -164,8 +148,6 @@ final class OverviewOverlay {
 
     private func side(_ b: CGRect) -> CGFloat { min(64, b.width * 0.4, b.height * 0.4) }
 
-    /// Where the window's picture is drawn in its card (`resizeAspect` leaves bars on
-    /// two sides), or the whole card while there is no picture yet.
     static func shownRect(of l: CALayer) -> CGRect {
         let b = l.bounds
         guard let contents = l.contents, CFGetTypeID(contents as CFTypeRef) == CGImage.typeID else { return b }
@@ -176,9 +158,6 @@ final class OverviewOverlay {
         return CGRect(x: b.midX - w / 2, y: b.midY - h / 2, width: w, height: h)
     }
 
-    /// The jump label follows the window as shown: up to 64 pt, never more than half of
-    /// the picture's smaller side (a short, wide window gets a small label inside it),
-    /// at least 18 pt so it stays readable, centred on the picture.
     static func badgeSide(for shown: CGRect) -> CGFloat {
         max(18, min(64, min(shown.width, shown.height) * 0.5))
     }
@@ -200,7 +179,6 @@ final class OverviewOverlay {
         }
     }
 
-    /// Pictures of every card's window, at the card's size on screen.
     func captureCards(scale: CGFloat) {
         let sizes = layers.mapValues { CGSize(width: $0.frame.width * scale, height: $0.frame.height * scale) }
         WindowSnapshot.capture(Array(layers.keys), pixelSize: sizes) { [weak self] id, image in
@@ -214,7 +192,6 @@ final class OverviewOverlay {
         CATransaction.setAnimationDuration(0.12)
         l.contents = image
         for s in l.sublayers ?? [] where s.name == "icon" || s.name == "title" { s.isHidden = true }
-        // The picture may be narrower or shorter than the card: the label follows it.
         for s in l.sublayers ?? [] where s.name == "badge" { layoutBadge(s, on: Self.shownRect(of: l)) }
         CATransaction.commit()
     }

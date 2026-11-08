@@ -2,7 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// chutney_physical_pixels (port extension): border_px and the gaps in the screen's pixels.
 @MainActor
 final class ChutneyPhysicalPixelsTests: MangoTestCase {
     func testOffIsMangosPointsOnIsTheScreensPixels() {

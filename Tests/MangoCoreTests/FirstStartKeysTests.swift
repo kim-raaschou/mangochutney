@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// The config a first start writes (not in mango): mango's config.conf with mango's keys on
-/// Hyper, and the first lines to try near its end.
 final class FirstStartKeysTests: MangoTestCase {
     private var resources: URL {
         URL(fileURLWithPath: #filePath)
@@ -15,8 +13,6 @@ final class FirstStartKeysTests: MangoTestCase {
         try String(contentsOf: resources.appendingPathComponent("config.conf"), encoding: .utf8)
     }
 
-    /// mango's key, mouse and scroll bindings are on Hyper ($mod, $mods); none takes Command,
-    /// Option or Control alone (a key mode's keys are only held inside it). mango's gestures stay.
     func testMangosKeysAreOnHyper() throws {
         let p = ConfigParser.parseConfig(fileAt: resources.appendingPathComponent("config.conf"))
         XCTAssertEqual(p.errors, [], p.errors.map(\.description).joined(separator: "\n"))
@@ -39,8 +35,6 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertEqual(p.config.xkbRulesOptions, "", "Caps Lock as Hyper is chutney_hyper_key's")
     }
 
-    /// The first lines to try, between "Your own settings" and the menu's file: all commented
-    /// out, so they change nothing until a # is taken away, and each line is one of mango's keys.
     func testTheFirstLinesToTryAreCommentedOutAndMangos() throws {
         let lines = try config().components(separatedBy: "\r\n")
         guard let own = lines.firstIndex(where: { $0.hasPrefix("# Your own settings") }),
@@ -59,8 +53,6 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertEqual(p.config.keyBindings.first?.dispatch.name, "spawn")
     }
 
-    /// The first start's Hyper key choice replaces this line in the config it wrote; Caps
-    /// Lock until then.
     func testHyperKeyChoiceFindsItsLine() throws {
         let shipped = try config()
         XCTAssertEqual(shipped.components(separatedBy: ConfigFiles.hyperKeyLine).count, 2, "once")
@@ -72,7 +64,6 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertEqual(p.config.chutneyHyperTap, "escape")
     }
 
-    /// The first lines to try come after the theme's line, so a colour of the user's wins.
     func testYourLinesComeAfterTheTheme() throws {
         let lines = try config().components(separatedBy: "\r\n")
         let theme = try XCTUnwrap(lines.firstIndex(of: "source_optional=chutney_theme.conf"))
@@ -81,7 +72,6 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertTrue(theme < own && own < menu)
     }
 
-    /// Continue writes the chosen key into the config just written.
     func testSetHyperKeyWritesTheChoice() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -94,7 +84,6 @@ final class FirstStartKeysTests: MangoTestCase {
         XCTAssertEqual(p.config.chutneyHyperTap, "original")
     }
 
-    /// mango's watcher: a file replaced by one with the same text has changed (a new inode).
     func testTheWatcherSeesAFileReplaced() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

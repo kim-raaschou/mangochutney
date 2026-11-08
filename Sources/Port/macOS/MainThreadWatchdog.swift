@@ -2,11 +2,6 @@ import Foundation
 import QuartzCore
 import Mango
 
-/// Logs when mango's main thread does not answer for a while: key bindings, AX results
-/// and borders all wait for it, so a blocked main thread looks like dead shortcuts.
-/// A background timer pings the main queue; a ping answered late is logged with how long
-/// it took. With `-d`, a block over 0.3 s also writes a stack sample of mango
-/// (`/usr/bin/sample`) to /tmp, to show what the main thread was waiting for.
 public final class MainThreadWatchdog: @unchecked Sendable {
     private let queue = DispatchQueue(label: "mango.watchdog", qos: .utility)
     private var timer: DispatchSourceTimer?
@@ -31,8 +26,6 @@ public final class MainThreadWatchdog: @unchecked Sendable {
         let now = CACurrentMediaTime()
         lock.lock()
         if let sent = pingSent {
-            // Still waiting: sample once if it has been blocked for over 0.3 s (the sample
-            // runs a second, so it sees the rest of a half-second block).
             let blocked = now - sent
             let sample = wlrLogGetVerbosity() == .debug && blocked > 0.3 && !sampled && now - lastSample > 30
             if sample { sampled = true; lastSample = now }

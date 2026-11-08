@@ -2,9 +2,6 @@ import CoreGraphics
 import Foundation
 import IOKit
 
-/// not in mango: wlroots reads make, model and serial from the EDID; macOS keeps them in the
-/// IORegistry's DisplayAttributes (Apple silicon). make is the PNP ID, as wlroots falls back to
-/// when its PNP table does not know the vendor (docs/afvigelser.md §3).
 enum DisplayIdentity {
     struct Identity { var make: String?; var model: String?; var serial: String? }
 
@@ -17,11 +14,8 @@ enum DisplayIdentity {
         }
         guard let a = hits.first else { return nil }
         let make = a["ManufacturerID"] as? String
-        // di_info_get_model: the product name, else the product code.
         let model = (a["ProductName"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             ?? String(format: "0x%04X", product)
-        // di_info_get_serial: the serial string, else the serial number when not 0.
-        // Two identical screens with no serial cannot be told apart: no serial then.
         var serial = (a["AlphanumericSerialNumber"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             ?? (serialNumber != 0 ? String(format: "0x%08X", serialNumber) : nil)
         if hits.count > 1 { serial = nil }

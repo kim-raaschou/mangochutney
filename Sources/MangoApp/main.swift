@@ -7,17 +7,12 @@ import Port
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var server: MangoServer?
     var statusItem: NSStatusItem?
-    /// The item's menu is open: a press on a tag is the menu's.
     var menuOpen = false
-    /// Where each tag stands in the status item's title (x from the title's left edge).
     var tagSpans: [(from: CGFloat, to: CGFloat, monitor: String, tag: Int)] = []
     var mainMenu: NSMenu?
-    /// chutney_overlap_warning: the menu's lines for tags with a window over its neighbour (showOverlaps).
     var overlapItems: [NSMenuItem] = []
-    /// The suggestions in the menu, by their items' tags.
     var shownSuggestions: [MenuBarSuggestion] = []
     let layoutPanel = LayoutPanelModel()
-    /// What the status item shows now (redrawn only when it changes).
     var shownStatus = ""
     var permissionObservers: [(NotificationCenter, NSObjectProtocol)] = []
     let configPath: URL?
@@ -59,9 +54,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else {
             setStatus("Mango Chutney: needs Accessibility")
             wlrLog(.info, "waiting for Accessibility permission (System Settings › Privacy & Security › Accessibility)")
-            // No timer: macOS posts `com.apple.accessibility.api` when the list changes.
-            // The grant can land a moment after that notice, so the check also runs
-            // whenever an app is activated (leaving System Settings is one).
             let check: (Notification) -> Void = { [weak self] _ in
                 MainActor.assumeIsolated { self?.startIfTrusted() }
             }
@@ -86,13 +78,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func startWM() {
-        // A first start: mango waits for the Hyper key, chosen in the window (Continue).
         guard !Permissions.shared.firstStartPending else {
             setStatus("Mango Chutney: choose your Hyper key")
             return
         }
         let server = MangoServer(configURL: configPath)
-        server.useMacSystem()   // mango on macOS: the port stands where wlroots does
+        server.useMacSystem()
         server.cliDebugLog = cliDebugLog
         self.server = server
         server.onStateChange = { [weak self] in MainActor.assumeIsolated { self?.refreshStatus() } }
@@ -104,20 +95,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         server?.cleanup()
     }
 
-    // MARK: Menu bar
-
     func setupStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let b = item.button {
             b.font = .monospacedSystemFont(ofSize: 12, weight: .medium)
-            // The mango logo (mangowm brand, from the mango repository) in front of the tags.
             if let logo = Self.logo(mono: false) {
                 b.image = logo
                 b.imagePosition = .imageLeft
                 b.imageHugsTitle = true
             }
-            // A click, left or right, opens the menu (the layouts first); a left click on a
-            // tag views it (statusClicked).
             b.target = self
             b.action = #selector(statusClicked(_:))
             b.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -127,19 +113,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(makeLayoutPanelItem(model: layoutPanel))
         menu.addItem(.separator())
         menu.addItem(withTitle: "Reload Config", action: #selector(reload), keyEquivalent: "r")
-        menu.addItem(withTitle: "Edit Config", action: #selector(editConfig), keyEquivalent: "")
         menu.addItem(.separator())
-        // Permissions, the Hyper key (chutney_hyper_key, chutney_hyper_tap) and Start at Login:
-        // the first start's window, each choice kept as it is made.
         menu.addItem(withTitle: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Restart Mango Chutney", action: #selector(restart), keyEquivalent: "")
         menu.addItem(withTitle: "Quit Mango Chutney", action: #selector(quit), keyEquivalent: "q")
         for i in menu.items where i.submenu == nil { i.target = self }
+        menu.addItem(.separator())
+        let version = menu.addItem(withTitle: "Mango Chutney \(mangoVersion)", action: nil, keyEquivalent: "")
+        version.isEnabled = false
         mainMenu = menu
         statusItem = item
-        // The tags' place on the screen follows the item (the clock beside it grows, a
-        // display comes or goes).
         for name in [NSWindow.didMoveNotification, NSApplication.didChangeScreenParametersNotification] {
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] n in
                 MainActor.assumeIsolated {
@@ -152,7 +136,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setStatus("mango")
     }
 
-    /// mango.svg from the app bundle (or Resources/ next to a development build).
     static func logo(mono: Bool) -> NSImage? {
         var url = Bundle.main.url(forResource: "mango", withExtension: "svg")
         if url == nil {
@@ -165,8 +148,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         guard let url, let img = NSImage(contentsOf: url) else { return nil }
         img.size = NSSize(width: 16, height: 16)
-        // The brand colours, or (chutney_menu_bar_logo=mono) its shape in the menu bar's colour,
-        // resolved as it is drawn (in the title a template image is not tinted).
         guard mono else { return img }
         let shape = NSImage(size: img.size, flipped: false) { rect in
             img.draw(in: rect)
@@ -179,26 +160,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func setStatus(_ s: String) {
-        // Only touch the button when the text changes (it is redrawn by the system).
         shownStatus = ""
         if statusItem?.button?.title != s { statusItem?.button?.title = s }
     }
 
-    /// The status item: the logo, each monitor's tags (chutney_menu_bar_tag_style) and layout
-    /// icon (MenuBarStatus: the selected monitor's in full, the others dimmed), the key mode.
     func setStatus(monitors: [MenuBarMonitor], showLayout: Bool, mode: String, style: String, logo: String) {
         let key = "\(monitors)|\(showLayout)|\(mode)|\(style)|\(logo)"
         guard shownStatus != key, let b = statusItem?.button else { return }
         shownStatus = key
         tagSpans = []
-        // Everything in the title, the logo too: one line, one middle, one rhythm.
         b.image = nil
         let font = b.font ?? .monospacedSystemFont(ofSize: 12, weight: .medium)
         let title = NSMutableAttributedString()
-        // The gaps: between the tags, and between the groups (logo, tags, layout, mode).
         let near: CGFloat = 3, apart: CGFloat = 7
-        // The middle of the text line (its cap height's), where every image's middle goes,
-        // on half points so the edges stay sharp on Retina.
         let middle = font.capHeight / 2
         func text(_ s: String, dim: Bool = false, overlap: Bool = false) {
             var attrs: [NSAttributedString.Key: Any] = [.font: font]
@@ -206,7 +180,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if overlap { attrs[.foregroundColor] = Self.overlapColor.withAlphaComponent(dim ? 0.6 : 1) }
             title.append(NSAttributedString(string: s, attributes: attrs))
         }
-        // An empty attachment of `points` (kerning does not reach an attachment).
         func space(_ points: CGFloat) {
             guard title.length > 0 else { return }
             let a = NSTextAttachment()
@@ -222,16 +195,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             a.bounds = CGRect(x: 0, y: ((middle - h / 2) * 2).rounded() / 2, width: w, height: h)
             title.append(NSAttributedString(attachment: a))
         }
-        // The tags' height (an SF Symbol square at 14 points) for the logo and the mode too.
         let cell = Self.tagImage(MenuBarTag(number: 1, active: false), style: style)?.size.height ?? 16
-        // The gaps are measured ink to ink: an SF Symbol has some air at its sides, the logo
-        // and the layout icon less.
         if logo != "off", let img = Self.logo(mono: logo == "mono") {
             image(img, height: cell)
             space(apart + 0.5)
         }
         for (n, m) in monitors.enumerated() {
-            // One monitor is drawn as it always was; with more, the others are dimmed.
             let dim = monitors.count > 1 && !m.selected
             if n > 0 {
                 image(Self.separatorImage, height: 13)
@@ -239,9 +208,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             for (i, t) in m.tags.enumerated() {
                 let start = title.size().width
-                defer { tagSpans.append((start, title.size().width, m.name, t.number)) }   // with the gap after it
+                defer { tagSpans.append((start, title.size().width, m.name, t.number)) }
                 if style == "text" {
-                    // Every tag three characters wide, in view or not: the item keeps its width.
                     let c = t.number == 0 ? "S" : "\(t.number)"
                     text(t.active ? "[\(c)]" : " \(c) ", dim: dim, overlap: t.overlap)
                 } else if let img = Self.tagImage(t, style: style, dim: dim) {
@@ -250,7 +218,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
             }
             if showLayout {
-                // As text: mango's own layout symbol ("T", "DW"), two characters wide.
                 if style == "text" {
                     space(apart)
                     text(m.layout.symbol.padding(toLength: 2, withPad: " ", startingAt: 0), dim: dim)
@@ -261,9 +228,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             space(apart)
         }
-        // The key mode (chutney_menu_bar_mode), always shown so the item keeps its width: its
-        // first letter in the tags' shape, mango's M outlined for the default mode, filled for another
-        // ("w.square.fill"); as text when there is no such symbol or the tags are text.
         if !mode.isEmpty {
             let active = mode != "default"
             if style != "text", let img = Self.modeImage(mode, style: style, active: active) {
@@ -273,14 +237,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 text(active ? "[\(c)]" : " \(c) ")
             }
         } else if title.length > 0 {
-            title.deleteCharacters(in: NSRange(location: title.length - 1, length: 1))   // no gap at the end
+            title.deleteCharacters(in: NSRange(location: title.length - 1, length: 1))
         }
         b.attributedTitle = title
         publishTagHits()
     }
 
-    /// A tag as an SF Symbols number ("3.square.fill", "3.circle"; the special tag a star),
-    /// a template image the menu bar colours itself.
     static func tagImage(_ t: MenuBarTag, style: String, dim: Bool = false) -> NSImage? {
         let shape = style == "circle" ? "circle" : "square"
         let name = (t.number == 0 ? "star" : "\(t.number)") + ".\(shape)" + (t.active ? ".fill" : "")
@@ -292,10 +254,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return dim ? dimmed(img) : img
     }
 
-    /// chutney_overlap_warning: a tag with a window over its neighbour, in macOS's warning colour.
     static let overlapColor = NSColor.systemOrange
 
-    /// The symbol in one colour (not a template: the menu bar leaves it as it is).
     static func tinted(_ symbol: NSImage, _ color: NSColor) -> NSImage {
         let img = NSImage(size: symbol.size, flipped: false) { rect in
             symbol.draw(in: rect)
@@ -307,16 +267,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return img
     }
 
-    /// The line between two monitors' groups, in the menu bar's text colour, a little lighter.
     static let separatorImage = NSImage(size: NSSize(width: 2, height: 14), flipped: false) { rect in
         NSColor.labelColor.withAlphaComponent(0.75).setFill()
         NSBezierPath(roundedRect: CGRect(x: 0.25, y: 0, width: 1.5, height: rect.height), xRadius: 0.75, yRadius: 0.75).fill()
         return true
     }
 
-    /// Another monitor's tag: the symbol in the menu bar's text colour, dimmed as secondary
-    /// text is (resolved as it is drawn: light and dark menu bars). A template image is not
-    /// dimmed by the menu bar, so it is drawn in that colour here.
     static func dimmed(_ symbol: NSImage) -> NSImage {
         let img = NSImage(size: symbol.size, flipped: false) { rect in
             symbol.draw(in: rect)
@@ -328,9 +284,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return img
     }
 
-    /// A key mode as its first letter in the tags' shape: "m.square" for default, "w.square.fill".
     static func modeImage(_ mode: String, style: String, active: Bool) -> NSImage? {
-        // default mode shows mango's M; another mode its own first letter
         guard let c = (active ? mode.lowercased().first : "m"), c.isLetter, c.isASCII else { return nil }
         let shape = style == "circle" ? "circle" : "square"
         let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
@@ -340,11 +294,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return img
     }
 
-    /// The layout's icon from LayoutIcon's frames, in the menu bar's text colour (labelColor,
-    /// resolved as it is drawn: light and dark menu bars). Not a template image: in the
-    /// title's text only SF Symbols are tinted, our own template stays black. Edges on half
-    /// points (a pixel on a Retina screen) stay sharp; cards behind another at least half
-    /// solid, so a pile reads as cards.
     static func layoutImage(_ kind: LayoutKind, dim: Bool = false) -> NSImage {
         let size = NSSize(width: 18, height: 12)
         let frames = LayoutIcon.frames(kind, in: CGRect(origin: .zero, size: size))
@@ -376,7 +325,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc func statusClicked(_ sender: NSStatusBarButton) {
-        if server == nil { startIfTrusted() }   // granted while System Settings stayed in front
+        if server == nil { startIfTrusted() }
         if let server, let e = NSApp.currentEvent, e.type == .leftMouseUp, let t = tag(under: sender) {
             MenuBarStatus.viewTag(server, monitor: t.monitor, tag: t.tag)
             return
@@ -384,9 +333,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showMenu(mainMenu)
     }
 
-    /// Port extension: where each tag stands on the screen, for mango's event tap: a press on
-    /// one is taken there, before the menu bar marks the item (the click below is the
-    /// fallback, for the item's copies on the other displays).
     func publishTagHits() {
         guard let server else { return }
         guard let item = statusItem, item.isVisible, !menuOpen, let b = item.button, let w = b.window,
@@ -400,9 +346,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         })
     }
 
-    /// The tag under the pointer on the status item: the title is drawn in the button's middle.
-    /// The pointer's place on the screen, not the click's: the menu bar hands the item its
-    /// click in the item's middle.
     func tag(under b: NSStatusBarButton) -> (monitor: String, tag: Int)? {
         guard let w = b.window else { return nil }
         let x = b.convert(w.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil).x
@@ -410,8 +353,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return tagSpans.first { x >= $0.from && x < $0.to }.map { ($0.monitor, $0.tag) }
     }
 
-    /// chutney_overlap_warning: under the layouts, each tag with a window over its neighbour (the
-    /// tags drawn in colour): by how much, and what would take it off the tag.
     func showOverlaps(_ menu: NSMenu) {
         for i in overlapItems { menu.removeItem(i) }
         overlapItems = []
@@ -419,13 +360,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let server else { return }
         let lines = MenuBarStatus.overlapLines(server)
         guard !lines.isEmpty else { return }
-        var at = 1   // after the layout panel
+        var at = 1
         func add(_ i: NSMenuItem) {
             menu.insertItem(i, at: at)
             overlapItems.append(i)
             at += 1
         }
-        // In their own colours: a line without an action is drawn greyed out otherwise.
         let font = NSFont.menuFont(ofSize: 0)
         let bold = NSFont.boldSystemFont(ofSize: font.pointSize)
         for tag in lines {
@@ -444,7 +384,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 i.indentationLevel = 1
                 add(i)
             }
-            // A click runs it.
             for s in tag.suggestions {
                 let i = NSMenuItem(title: s.title, action: #selector(applySuggestion(_:)), keyEquivalent: "")
                 i.target = self
@@ -465,14 +404,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         MenuBarStatus.apply(server, shownSuggestions[sender.tag])
     }
 
-    /// Open the menu from the status item (the native way, anchored under it).
     func showMainMenu() { showMenu(mainMenu) }
 
     func showMenu(_ menu: NSMenu?) {
         guard let item = statusItem, let menu else { return }
         item.menu = menu
         item.button?.performClick(nil)
-        // Detached again in menuDidClose, never while it is still open.
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -485,12 +422,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuDidClose(_ menu: NSMenu) {
-        // Fires for submenus too; only the top-level menu closing ends the session.
         guard menu === mainMenu || menu.supermenu == nil else { return }
         menuOpen = false
         publishTagHits()
         if menu === mainMenu { statusItem?.menu = nil }
-        // Let the click that closed the menu land first, then apply any held focus.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
             MainActor.assumeIsolated { self?.server?.holdNativeFocus = false }
         }
@@ -498,8 +433,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func reload() { server?.reloadConfig() }
 
-    /// A Hyper key choice from Settings: kept in the menu's file (chutney_menu_config), read
-    /// last, unless it is the value already in use.
     func saveMenuChoice(_ key: String, _ value: String) {
         guard let server, let url = MenuSave.url(server.config, configURL: server.configURL) else { return }
         let now = key == "chutney_hyper_key" ? server.config.chutneyHyperKey : server.config.chutneyHyperTap
@@ -507,18 +440,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         MenuSave.set(key, value, in: url)
         server.reloadConfig()
     }
-    @objc func editConfig() {
-        ConfigFiles.open(server?.configURL ?? ConfigParser.defaultConfigURL())
-    }
     @objc func quit() { NSApp.terminate(nil) }
 
     @objc func showSettings() { Permissions.shared.showSettings() }
 
     static var loginPlist: String { NSHomeDirectory() + "/Library/LaunchAgents/dev.mangochutney.plist" }
 
-    /// Start at Login: `mmsg service install` / `mmsg service uninstall`, the mmsg next to this
-    /// mango. When this mango is the service itself, uninstall only removes the plist (no
-    /// bootout, which would stop this mango); the service is gone at the next login.
     func setLogin(_ on: Bool) {
         let installed = FileManager.default.fileExists(atPath: Self.loginPlist)
         guard on != installed else { return }
@@ -529,7 +456,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         service(installed ? "uninstall" : "install")
     }
 
-    /// `mmsg service <verb>`, with the mmsg beside this mango.
     func service(_ verb: String) {
         let mmsg = Bundle.main.executableURL!.resolvingSymlinksInPath()
             .deletingLastPathComponent().appendingPathComponent("mmsg").path
@@ -539,11 +465,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         try? p.run()
     }
 
-    /// A new mango once this one has gone (one runs at a time): from the login service when
-    /// it is installed (`mmsg service install`), else the app again. This one quits as
-    /// `chutney_restart` does: hidden windows stay hidden, the next mango restores them.
-    /// The helper waits for the exit by checking every 0.1 s, for the second or so mango
-    /// takes to quit.
     @objc func restart() {
         let pid = ProcessInfo.processInfo.processIdentifier
         let path = Bundle.main.bundlePath
@@ -554,12 +475,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 }
 
-// MARK: - Entry
-
 nonisolated(unsafe) var _signalSources: [DispatchSourceSignal] = []
 
-// Not in mango: the port's answers to mango's config reader (its keys, its notes), before any
-// config is read.
 MacConfigPort.install()
 
 var configPath: URL?
@@ -571,7 +488,7 @@ while let a = args.next() {
     case "-c", "--config":
         if let p = args.next() { configPath = URL(fileURLWithPath: (p as NSString).expandingTildeInPath) }
     case "-p", "--check":
-        check = true   // after every argument, so `-p -c <file>` checks that file
+        check = true
     case "--list-ignored":
         print(MangoCompat.markdown(), terminator: "")
         exit(0)
@@ -603,9 +520,7 @@ if check {
     let url = configPath ?? ConfigParser.defaultConfigURL()
     let parsed = ConfigParser.parseConfig(fileAt: url)
     for e in parsed.errors { print(e) }
-    // Port extension: not in mango. Where the menu's saved settings overrule this file.
     if let menu = MenuSave.url(parsed.config, configURL: url) {
-        // The config reads the menu's file with mango's own source_optional, last.
         if !parsed.sourcedFiles.contains(where: { $0.standardizedFileURL == menu }) {
             print("warning: chutney_menu_config: \(menu.lastPathComponent) is saved to but not read; end the config with source_optional=\(menu.lastPathComponent)")
         }
@@ -613,7 +528,6 @@ if check {
             print("warning: \(c.configFile):\(c.configLine) \(c.key) \(c.configValue) is overridden by \(menu.lastPathComponent) (\(c.menuValue))")
         }
     }
-    // Port extension: not in mango. chutney_style's colours (chutney_theme.conf) over this file's.
     if parsed.config.chutneyStyle {
         let theme = ChutneyTheme.url(configURL: url)
         if !parsed.sourcedFiles.contains(where: { $0.standardizedFileURL == theme }) {
@@ -625,7 +539,6 @@ if check {
             }
         }
     }
-    // Not errors: what a mango user should know about this file on macOS.
     let sections: [(ConfigNote.Kind, String)] = [
         (.notYet, "Not implemented yet, macOS would allow it"),
         (.noEffect, "Cannot work on macOS"),
@@ -635,7 +548,6 @@ if check {
     for (kind, title) in sections {
         let notes = parsed.notes.filter { $0.kind == kind }
         guard !notes.isEmpty else { continue }
-        // One line per name, with every place it is used.
         var order: [String] = []
         var byName: [String: [ConfigNote]] = [:]
         for n in notes {
@@ -657,10 +569,8 @@ if check {
     exit(parsed.errors.isEmpty ? 0 : 1)
 }
 
-// Refuse to run twice.
 let me = ProcessInfo.processInfo.processIdentifier
 let others = NSWorkspace.shared.runningApplications.filter {
-    // and the app from before it was named Mango Chutney
     ["dev.mangochutney", "dev.mango.wm"].contains($0.bundleIdentifier ?? "") && $0.processIdentifier != me
 }
 if !others.isEmpty {
@@ -674,7 +584,6 @@ app.setActivationPolicy(.accessory)
 let delegate = MainActor.assumeIsolated { AppDelegate(configPath: configPath) }
 MainActor.assumeIsolated { app.delegate = delegate }
 
-// Restore windows on SIGTERM / SIGINT (launchctl stop, Ctrl-C).
 for sig in [SIGTERM, SIGINT, SIGHUP] {
     signal(sig, SIG_IGN)
     let src = DispatchSource.makeSignalSource(signal: sig, queue: .main)

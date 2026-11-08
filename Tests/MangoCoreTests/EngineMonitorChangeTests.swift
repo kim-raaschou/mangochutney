@@ -3,8 +3,6 @@ import ApplicationServices
 @testable import Mango
 @testable import Port
 
-/// mango's monitor removal and return (monitor.c, `oldmonname`): windows keep their tags,
-/// floating ones are centred, and they go back when their display returns.
 final class EngineMonitorChangeTests: MangoTestCase {
     let laptop = Screen(displayID: 1, name: "Built-in", frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
                         workArea: CGRect(x: 0, y: 37, width: 1728, height: 1080), scale: 2, isMain: true)
@@ -34,7 +32,7 @@ final class EngineMonitorChangeTests: MangoTestCase {
         let editor = client(server, id: 11, on: ext, tags: 1 << 1, floating: false,
                             frame: CGRect(x: 1800, y: 100, width: 1200, height: 900))
 
-        server.rebuildMonitors(screens: [laptop])   // external disconnected
+        server.rebuildMonitors(screens: [laptop])
         let lap = try XCTUnwrap(server.monitors.first)
         XCTAssertTrue(devMode.mon === lap)
         XCTAssertEqual(devMode.tags, 1 << 8, "dev mode stays on tag 9")
@@ -43,7 +41,7 @@ final class EngineMonitorChangeTests: MangoTestCase {
         XCTAssertEqual(devMode.floatGeom.midY, lap.screen.workArea.midY, accuracy: 1)
         XCTAssertEqual(devMode.oldmonname, 2)
 
-        server.rebuildMonitors(screens: [laptop, external])   // connected again
+        server.rebuildMonitors(screens: [laptop, external])
         XCTAssertEqual(devMode.mon?.screen.displayID, 2, "back home")
         XCTAssertEqual(editor.mon?.screen.displayID, 2)
         XCTAssertEqual(devMode.tags, 1 << 8)
@@ -58,13 +56,11 @@ final class EngineMonitorChangeTests: MangoTestCase {
         let lap = try XCTUnwrap(server.monitors.first { $0.screen.displayID == 1 })
         let c = client(server, id: 12, on: ext, tags: 1, floating: false, frame: CGRect(x: 1800, y: 100, width: 800, height: 600))
         server.rebuildMonitors(screens: [laptop])
-        c.oldmonname = lap.screen.displayID   // a drag onto the laptop: pointer_end_grab_client records it (client_update_oldmonname_record)
+        c.oldmonname = lap.screen.displayID
         server.rebuildMonitors(screens: [laptop, external])
         XCTAssertEqual(c.mon?.screen.displayID, 1, "the user chose the laptop")
     }
 
-    /// A bug in mango (docs/afvigelser.md §6): parse_tagrule gives every window the mfact of
-    /// the last monitor's tag. Here each monitor's windows keep their own monitor's.
     @MainActor
     func testAReloadKeepsEachMonitorsOwnMfact() throws {
         let server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/mango.conf"))
@@ -83,8 +79,6 @@ final class EngineMonitorChangeTests: MangoTestCase {
         XCTAssertEqual(b.masterMfactPer, 0.7, accuracy: 0.001)
     }
 
-    /// mango tag_rule_matches_monitor: make, model and serial must equal wlr_output's, and an
-    /// unknown (NULL) value never matches.
     func testTagRuleMatchesMakeModelSerial() {
         var benq = external
         benq.make = "BNQ"; benq.model = "BenQ RD280U"; benq.serial = "J7R0095701Q"

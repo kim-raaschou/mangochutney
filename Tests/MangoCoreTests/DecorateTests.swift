@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's *_decorate_* keys: mango's defaults underneath, the port's macOS look over what
-/// is not set (chutney_style), the keys set always winning.
 @MainActor
 final class DecorateTests: MangoTestCase {
     func testTheKeysAreReadForEveryBar() {
@@ -37,8 +35,6 @@ final class DecorateTests: MangoTestCase {
         XCTAssertEqual(r.server.mangoBarDecorationApplyConfig(DecorateStyle(), mango: .mangoJumpLabel), .mangoJumpLabel, "without the port: mango")
     }
 
-    /// A jump label with a font or padding set takes mango's size: the letter, its padding
-    /// and the border.
     func testAJumpLabelTakesMangosSize() {
         let square = JumpLabelLook("A", decorate: DecorateStyle(), side: 64, ring: .white)
         XCTAssertEqual(square.size, CGSize(width: 64, height: 64))
@@ -49,13 +45,12 @@ final class DecorateTests: MangoTestCase {
     }
 }
 
-/// The border's corners: mango's border_radius, macOS's with chutney_style.
 @MainActor
 final class BorderRadiusTests: MangoTestCase {
     func testMangosRadiusUnlessChutneyStyle() {
         let r = EngineRig()
         r.server.config.borderRadius = 6
-        r.server.config.borderpx = 2   // the rig draws none
+        r.server.config.borderpx = 2
         r.server.renderBorder = true
         r.server.drawsOverlays = true
         r.server.config.chutneyBorderUnfocused = true

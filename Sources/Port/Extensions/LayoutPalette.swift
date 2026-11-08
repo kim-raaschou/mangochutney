@@ -2,14 +2,6 @@ import AppKit
 import SwiftUI
 import Mango
 
-/// Port extension: not in mango. The layout palette (chutney_toggle_layout_palette, the menu's
-/// "Layouts…"): mango's circle_layout as icons, the layouts switch_layout goes round, in its order,
-/// in rows as even as five a row allows and centred; without circle_layout all 14 in a 5×3
-/// grid, the vertical variants under the horizontal ones. The layout in view is selected when
-/// it opens; the keys move the selection (chutney_layout_palette_keys, the arrows always), Return
-/// or a click sets it with mango's setlayout, Esc closes. Tab shows all 14 with their ticks,
-/// and Space (or a click on the tick) puts the selected one in or out of circle_layout, as the
-/// menu's ticks do. Navigation only: no search.
 @MainActor
 public final class LayoutPalette {
     public static let shared = LayoutPalette()
@@ -18,7 +10,6 @@ public final class LayoutPalette {
     private var keyMonitor: Any?
     private weak var server: MangoServer?
 
-    /// Shown, or closed when it is.
     func toggle(_ server: MangoServer) {
         if panel?.isVisible == true { close() } else { show(server) }
     }
@@ -42,7 +33,6 @@ public final class LayoutPalette {
             p.isOpaque = false
             p.hasShadow = true
             p.onResign = { [weak self] in self?.close() }
-            // The system's material behind the grid, as the hotkeys palette.
             let glass = GlassBacking(material: .popover)
             let host = NSHostingView(rootView: LayoutPaletteView(model: model))
             host.translatesAutoresizingMaskIntoConstraints = false
@@ -59,7 +49,6 @@ public final class LayoutPalette {
         panel?.appearance = model.look.macOS ? nil : NSAppearance(named: .darkAqua)
         (panel?.contentView as? GlassBacking)?.cornerRadius = model.look.cornerRadius
         place()
-        // The palette takes the keys; mango's focus waits until it closes.
         server.holdNativeFocus = true
         if keyMonitor == nil {
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
@@ -67,14 +56,12 @@ public final class LayoutPalette {
                 return self.handle(e) ? nil : e
             }
         }
-        // As the hotkeys palette: mango becomes the active app so the keys come here.
         panel?.makeKeyAndOrderFront(nil)
         if let p = panel { NativeFocus.focusOwn(windowID: CGWindowID(p.windowNumber)) }
         NSApp.activate()
         panel?.makeKeyAndOrderFront(nil)
     }
 
-    /// In the middle of the selected monitor's screen, at the grid's size.
     private func place() {
         let size = model.size
         let id = server?.selectedMonitor?.screen.displayID
@@ -88,14 +75,12 @@ public final class LayoutPalette {
         panel?.invalidateShadow()
     }
 
-    /// Tab: all 14 with their ticks, or back to circle_layout's.
     private func toggleEditing() {
         model.editing.toggle()
         model.grid = LayoutPaletteGrid(circle: model.editing ? [] : model.circle, selecting: model.grid.selected)
         place()
     }
 
-    /// A layout in or out of circle_layout (CircleLayout.set: mango's setoption, saved).
     func tick(_ kind: LayoutKind) {
         guard let server, let names = CircleLayout.toggled(model.circle, kind) else { return }
         CircleLayout.set(names, server: server)
@@ -104,21 +89,20 @@ public final class LayoutPalette {
 
     private func handle(_ e: NSEvent) -> Bool {
         switch e.keyCode {
-        case 36, 76: choose(model.grid.selected)   // ↩
-        case 48: toggleEditing()                    // ⇥
-        case 49 where model.editing: tick(model.grid.selected)   // space
-        case 53: close()                            // Esc, from either view
+        case 36, 76: choose(model.grid.selected)
+        case 48: toggleEditing()
+        case 49 where model.editing: tick(model.grid.selected)
+        case 53: close()
         default:
             guard e.modifierFlags.intersection([.command, .control, .option]).isEmpty,
                   let (dx, dy) = LayoutPaletteGrid.direction(keyCode: e.keyCode, characters: e.charactersIgnoringModifiers,
                                                              keys: server?.config.chutneyLayoutPaletteKeys ?? [])
-            else { return true }   // the palette keeps every key while it is open
+            else { return true }
             model.grid.move(dx, dy)
         }
         return true
     }
 
-    /// mango's setlayout for the tag in view, once the palette is gone.
     func choose(_ kind: LayoutKind) {
         close()
         server?.dispatch(Dispatch(name: "setlayout", args: [kind.name]))
@@ -135,9 +119,7 @@ public final class LayoutPalette {
     }
 }
 
-/// The palette's grid: where each layout stands and which is selected.
 public struct LayoutPaletteGrid: Equatable {
-    /// All 14, 5×3, the vertical variants under the horizontal ones; the last cell is empty.
     public static let all: [[LayoutKind?]] = [
         [.tile, .scroller, .grid, .deck, .fair],
         [.verticalTile, .verticalScroller, .verticalGrid, .verticalDeck, .verticalFair],
@@ -150,9 +132,6 @@ public struct LayoutPaletteGrid: Equatable {
     public private(set) var row = 0
     public private(set) var column = 0
 
-    /// `circle`: mango's circle_layout. Its layouts in its order, in as few rows as five a row
-    /// allows and as even as they can be (six are 3 + 3, seven 4 + 3), drawn centred; a name
-    /// that is no layout is left out (it never matches in mango either), and none at all is all 14.
     public init(circle: [String] = [], selecting kind: LayoutKind) {
         let kinds = CircleLayout.kinds(circle)
         let rows = (kinds.count + Self.columns - 1) / Self.columns
@@ -166,11 +145,8 @@ public struct LayoutPaletteGrid: Equatable {
     }
 
     public var selected: LayoutKind { cells[row][column]! }
-    /// The widest row: the palette is as wide as it.
     public var width: Int { cells.map(\.count).max() ?? 0 }
 
-    /// One step; it stops at the edges and on an empty cell. Up and down go to the cell drawn
-    /// nearest above or below, the shorter row being centred.
     public mutating func move(_ dx: Int, _ dy: Int) {
         let r = row + dy
         guard cells.indices.contains(r) else { return }
@@ -182,8 +158,6 @@ public struct LayoutPaletteGrid: Equatable {
         column = c
     }
 
-    /// The step a key makes: the arrows always, and the configured keys in the order
-    /// left, down, up, right.
     public static func direction(keyCode: UInt16, characters: String?, keys: [String]) -> (Int, Int)? {
         switch keyCode {
         case 123: return (-1, 0)
@@ -201,22 +175,17 @@ public struct LayoutPaletteGrid: Equatable {
 @MainActor
 final class LayoutPaletteModel: ObservableObject {
     @Published var grid = LayoutPaletteGrid(selecting: .tile)
-    /// mango's circle_layout as it is now (the ticks).
     @Published var circle: [String] = []
-    /// Tab: all 14 shown with their ticks.
     @Published var editing = false
     var onChoose: (LayoutKind) -> Void = { _ in }
     var onTick: (LayoutKind) -> Void = { _ in }
     @Published var look = HotkeysLook(macOS: false)
-    /// chutney_layout_palette_width: the whole palette; a cell is a fifth of what is inside the padding.
     @Published var width: CGFloat = 560
 
-    /// A fifth of chutney_layout_palette_width inside the padding, however many layouts there are.
     var cell: CGSize {
         let w = (width - look.padding * 2) / CGFloat(LayoutPaletteGrid.columns)
         return CGSize(width: w, height: w * 0.8)
     }
-    /// The line under the grid that says what Tab and Space do.
     var footerHeight: CGFloat { 22 }
     var size: CGSize {
         CGSize(width: cell.width * CGFloat(max(grid.width, 2)) + look.padding * 2,
@@ -230,7 +199,6 @@ struct LayoutPaletteView: View {
     var body: some View {
         let look = model.look
         VStack(spacing: 0) {
-            // Each row centred: a shorter one stands in the middle.
             ForEach(0..<model.grid.cells.count, id: \.self) { r in
                 HStack(spacing: 0) {
                     ForEach(0..<model.grid.cells[r].count, id: \.self) { c in
@@ -278,11 +246,7 @@ struct LayoutPaletteView: View {
     }
 }
 
-/// Port extension: not in mango. The ticks of the menu's layouts and the layout palette:
-/// mango's circle_layout, the layouts switch_layout goes round. Without it every layout is in
-/// (mango goes round all of them).
 public enum CircleLayout {
-    /// The layouts it names, in its order, once each; names that are no layout are left out.
     public static func kinds(_ circle: [String]) -> [LayoutKind] {
         var kinds: [LayoutKind] = []
         for name in circle { if let k = LayoutKind(name: name), !kinds.contains(k) { kinds.append(k) } }
@@ -293,8 +257,6 @@ public enum CircleLayout {
         kinds(circle).isEmpty || kinds(circle).contains(kind)
     }
 
-    /// The list with `kind` ticked in (last in the round) or out; nil for the last one, which
-    /// stays (none would be all 14 again).
     public static func toggled(_ circle: [String], _ kind: LayoutKind) -> [String]? {
         var names = kinds(circle).isEmpty ? LayoutKind.allCases.map(\.name) : circle
         if contains(circle, kind) {
@@ -306,8 +268,6 @@ public enum CircleLayout {
         return names
     }
 
-    /// mango's setoption, then saved in the menu's file (chutney_menu_config), as the menu's
-    /// other settings.
     @MainActor
     public static func set(_ names: [String], server: MangoServer) {
         let value = names.joined(separator: ",")

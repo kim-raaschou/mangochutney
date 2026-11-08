@@ -3,7 +3,6 @@ import QuartzCore
 @testable import Mango
 @testable import Port
 
-/// Jump labels follow the window as it is shown in its overview card.
 @MainActor
 final class OverviewBadgeTests: MangoTestCase {
     func image(_ w: Int, _ h: Int) -> CGImage {
@@ -22,7 +21,7 @@ final class OverviewBadgeTests: MangoTestCase {
         let l = CALayer()
         l.bounds = CGRect(x: 0, y: 0, width: 400, height: 300)
         XCTAssertEqual(OverviewOverlay.shownRect(of: l), l.bounds, "no picture yet: the card")
-        l.contents = image(800, 100)   // a wide, short window
+        l.contents = image(800, 100)
         let r = OverviewOverlay.shownRect(of: l)
         XCTAssertEqual(r.width, 400, accuracy: 0.01)
         XCTAssertEqual(r.height, 50, accuracy: 0.01)

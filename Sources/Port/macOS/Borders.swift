@@ -1,31 +1,20 @@
 import AppKit
 import Mango
 
-/// Not in mango: the ring is drawn *around* the window (macOS windows cannot be clipped
-/// like mango clips Wayland surfaces), so its inner edge follows the window's own
-/// rounded corners (chutney_style, PortHooks.borderRadius).
 public enum BorderGeometry {
-    /// Corner radius of standard macOS windows, measured on macOS 27 (16 pt) and
-    /// Sonoma/Sequoia (10 pt). The ring follows it; macOS draws the corners.
     public static var cornerRadius: CGFloat {
         ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 ? 16 : 10
     }
 
-    /// Frame of the overlay window: the window frame grown by the border width.
     public static func overlayFrame(window: CGRect, width: CGFloat) -> CGRect {
         window.insetBy(dx: -width, dy: -width)
     }
 
-    /// Radius of the ring's outer edge (a layer border is drawn inward from it), so its
-    /// inner edge has the window's radius.
     public static func outerRadius(corner: CGFloat, width: CGFloat) -> CGFloat {
         corner > 0 ? corner + width : 0
     }
 }
 
-/// The ring is the view's layer border: Core Animation renders it in the window
-/// server, so the window has no backing store. (Drawing it in `draw(_:)` gave every
-/// border a buffer the size of its window, ~40 MB for a large Retina window.)
 final class BorderView: NSView {
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -38,8 +27,6 @@ final class BorderView: NSView {
 
     private var splitLayer: CALayer?
 
-    /// `split`: one side of the ring, between the rounded corners, in its own colour
-    /// (mango's split indicator).
     func set(color: NSColor, width: CGFloat, radius: CGFloat, split: (side: BorderSpec.SplitSide, color: NSColor)? = nil) {
         guard let layer else { return }
         CATransaction.begin()
@@ -53,7 +40,7 @@ final class BorderView: NSView {
             s.backgroundColor = split.color.cgColor
             let b = bounds
             s.frame = split.side == .bottom
-                ? CGRect(x: radius, y: 0, width: max(0, b.width - 2 * radius), height: width)   // AppKit: y up
+                ? CGRect(x: radius, y: 0, width: max(0, b.width - 2 * radius), height: width)
                 : CGRect(x: b.width - width, y: radius, width: width, height: max(0, b.height - 2 * radius))
         } else {
             splitLayer?.removeFromSuperlayer()
@@ -63,10 +50,6 @@ final class BorderView: NSView {
     }
 }
 
-/// Border overlays: one transparent, click-through NSWindow per managed
-/// window, ordered directly above it in the window server's z-order. They are only
-/// re-ordered when created and on `restack()` (focus, activation), not on every
-/// update: during an animation `update` runs every frame.
 @MainActor
 public final class BorderManager {
     private var windows: [CGWindowID: (NSWindow, BorderView, BorderSpec)] = [:]
@@ -76,13 +59,10 @@ public final class BorderManager {
     public func update(_ specs: [BorderSpec]) {
         var seen: Set<CGWindowID> = []
         for spec in specs {
-            // AppKit stops the program on a frame that is not finite: such a ring is not drawn.
             let f = spec.frame
             guard !f.isNull, f.minX.isFinite, f.minY.isFinite, f.width.isFinite, f.height.isFinite else { continue }
             seen.insert(spec.id)
             if let (win, view, old) = windows[spec.id] {
-                // Also when only the overlay moved: macOS relocates our windows itself when
-                // a display goes away, and the primary screen's height (the flip) changes.
                 if old != spec || Self.distance(win.frame, Self.appKitFrame(spec)) > 0.5 {
                     apply(spec, to: win, view: view)
                     windows[spec.id] = (win, view, spec)
@@ -112,8 +92,6 @@ public final class BorderManager {
         }
     }
 
-    /// Re-stack above the target (call after focus changes): those of `ids` (nil: all) that are
-    /// not in place already. Each order waits for the window server, about 2 ms.
     public func restack(_ ids: Set<CGWindowID>? = nil, inPlace: (CGWindowID, CGWindowID) -> Bool = { _, _ in false }) {
         for (id, (win, _, _)) in windows where ids?.contains(id) ?? true {
             if !inPlace(CGWindowID(truncatingIfNeeded: win.windowNumber), id) { win.order(.above, relativeTo: Int(id)) }

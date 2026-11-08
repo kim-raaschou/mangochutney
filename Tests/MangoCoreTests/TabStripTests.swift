@@ -3,7 +3,6 @@ import AppKit
 @testable import Mango
 @testable import Port
 
-/// mango's tab mode: members, the room above them, the segments.
 @MainActor
 final class TabStripTests: MangoTestCase {
     func rig(_ kind: LayoutKind, windows: Int) -> EngineRig {
@@ -26,8 +25,6 @@ final class TabStripTests: MangoTestCase {
         XCTAssertEqual(tabbed.height, plain.height - 33)
     }
 
-    /// mango's is_tab_hidden: a member that is not the strip's focus is hidden (parked
-    /// here, as a window on a hidden tag), not left behind the shown one.
     func testMembersOtherThanTheFocusedOneAreHidden() {
         let r = rig(.monocle, windows: 3)
         r.server.clientFocus(r.server.clientByIdAll(900_101)!, raise: false)
@@ -41,7 +38,6 @@ final class TabStripTests: MangoTestCase {
         XCTAssertEqual(r.app.frames[900_102], r.server.clientByIdAll(900_102)!.geom, "shown where the layout has it")
     }
 
-    /// Without tab mode mango hides none of them: they lie behind the focused one.
     func testWithoutTabModeNoMonocleWindowIsHidden() {
         let r = rig(.monocle, windows: 3)
         r.server.config.monocleTabMode = false
@@ -49,7 +45,6 @@ final class TabStripTests: MangoTestCase {
         XCTAssertFalse(r.server.clientsAll.contains { $0.parked })
     }
 
-    /// The deck: the master stays, and of the stack only the focused member is shown.
     func testTheDeckHidesItsStackButTheFocusedMember() {
         let r = rig(.deck, windows: 4)
         r.server.clientFocus(r.server.clientByIdAll(900_102)!, raise: false)
@@ -67,13 +62,11 @@ final class TabStripTests: MangoTestCase {
 
     func testTheDeckTabsItsStackNotItsMaster() {
         let r = rig(.deck, windows: 3)
-        r.server.arrange(r.monitor, .none)   // mango: ismaster is reset_size_per_mon's, set by arrange
+        r.server.arrange(r.monitor, .none)
         let ids = r.server.tabMembers(r.monitor).map(\.id)
         XCTAssertEqual(ids, [900_101, 900_102], "the master (first) is not a member")
     }
 
-    /// mango tab_chain_focus: the selected member, else the one the chain showed last
-    /// (is_tab_focus), else the first.
     func testTheSelectedMemberIsFocusedElseTheOneShownLast() {
         let r = rig(.monocle, windows: 3)
         let members = r.server.tabMembers(r.monitor)
@@ -107,10 +100,10 @@ final class TabStripTests: MangoTestCase {
         r.server.config.chutneyTabBarShortcuts = true
         r.server.mac.router.server = r.server
         r.server.publishInputState()
-        _ = r.server.mac.router.key(cmd(55, modifier: true), modifierOnlySinceDown: true)   // ⌘ down
+        _ = r.server.mac.router.key(cmd(55, modifier: true), modifierOnlySinceDown: true)
         r.settle()
         XCTAssertTrue(r.server.mac.tabNumbersShown)
-        _ = r.server.mac.router.key(cmd(8), modifierOnlySinceDown: false)                   // ⌘C
+        _ = r.server.mac.router.key(cmd(8), modifierOnlySinceDown: false)
         r.settle()
         XCTAssertFalse(r.server.mac.tabNumbersShown)
     }
@@ -119,7 +112,7 @@ final class TabStripTests: MangoTestCase {
         let r = rig(.monocle, windows: 3)
         r.server.config.chutneyTabBarShortcuts = true
         r.server.publishInputState()
-        XCTAssertTrue(r.server.mac.router.key(cmd(20), modifierOnlySinceDown: false))       // ⌘3
+        XCTAssertTrue(r.server.mac.router.key(cmd(20), modifierOnlySinceDown: false))
         r.server.mac.windowDestroyed(id: 900_102)
         XCTAssertFalse(r.server.mac.router.key(cmd(20), modifierOnlySinceDown: false), "two tabs left: ⌘3 is the app's")
     }
@@ -140,7 +133,7 @@ final class TabStripTests: MangoTestCase {
         r.server.publishInputState()
         r.server.mac.router.publish { $0.bindings = [KeyBinding(mods: .superKey, keyName: "2", keyCodes: [19],
                                                         dispatch: Dispatch(name: "view", args: ["2"]))] }
-        r.server.mac.router.server = nil   // the bind's dispatch is not under test
+        r.server.mac.router.server = nil
         XCTAssertTrue(r.server.mac.router.key(cmd(19), modifierOnlySinceDown: false))
     }
 
@@ -167,7 +160,6 @@ final class TabStripTests: MangoTestCase {
     }
 }
 
-/// A strip that only changes size (every frame of an animation) keeps its tab layers.
 @MainActor
 final class TabStripViewTests: MangoTestCase {
     func strip(width: CGFloat, titles: [String] = ["a", "b"]) -> TabStrip {
@@ -203,15 +195,13 @@ final class TabStripViewTests: MangoTestCase {
         XCTAssertEqual(title.frame.midX, tab.frame.width / 2, accuracy: 0.5, "still centred")
     }
 
-    /// The selected tab's ring in the focus colour only while its window has the focus: with a
-    /// floating window in front, the tab stays selected (its pill) without the ring.
     func testTheSelectedTabIsRingedOnlyWhileItsWindowHasTheFocus() {
         let v = TabStripView(frame: CGRect(x: 0, y: 0, width: 400, height: 40))
         let style = TabStripStyle(accent: RGBA(r: 1, g: 0, b: 0, a: 1), accentWidth: 2)
         v.keyFocus = 0
         v.show(strip(width: 400), style: style)
         XCTAssertEqual(v.layer!.sublayers![0].borderWidth, 2, "its window has the focus")
-        v.keyFocus = 99   // a floating window
+        v.keyFocus = 99
         v.show(strip(width: 400), style: style)
         XCTAssertEqual(v.layer!.sublayers![0].borderWidth, 0)
         XCTAssertNotNil(v.layer!.sublayers![0].backgroundColor, "still the selected one")

@@ -2,16 +2,11 @@ import Foundation
 import Carbon.HIToolbox
 import Mango
 
-/// The keyboard layout for mango's key names (KeySyms): the current ASCII-capable layout,
-/// read with Carbon (`TISCopyCurrentASCIICapableKeyboardLayoutInputSource` + `UCKeyTranslate`).
 public enum KeyNames {
     public static var systemKeyBase: UInt16 { KeySyms.systemKeyBase }
 
-    /// mango's key name to key codes in the current keyboard layout.
     public static func keyCodes(forName name: String) -> [UInt16] { KeySyms.parseKey(forName: name, layout: layoutTable) }
 
-    /// Not in mango: a key code back to mango's name for it (`a`, `Return`, `code:200`), in the
-    /// current keyboard layout (the jump labels).
     public static func name(forKeyCode code: UInt16) -> String {
         if let n = KeySyms.namedKeyReverse[code] { return n }
         if let ch = layoutTable.reverse[code] { return String(ch) }
@@ -19,10 +14,8 @@ public enum KeyNames {
         return "code:\(code)"
     }
 
-    /// The current layout for mango's config (before it is read).
     static func install() { KeySyms.layout = { layoutTable } }
 
-    /// Short name of the current keyboard layout, e.g. "com.apple.keylayout.Danish" -> "Danish".
     public static func currentLayoutName() -> String {
         guard let source = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue() else {
             return "US"
@@ -38,12 +31,9 @@ public enum KeyNames {
         return "US"
     }
 
-    /// Drop the cached layout table (call when the input source changes).
     public static func invalidateLayoutCache() {
         tableLock.lock(); cachedTable = nil; tableLock.unlock()
     }
-
-    // MARK: - Layout table
 
     typealias LayoutTable = KeySyms.LayoutTable
 
@@ -58,8 +48,6 @@ public enum KeyNames {
         return t
     }
 
-    /// Key codes that belong to the numeric keypad (excluded from the char table so
-    /// `plus`/`asterisk` resolve to the main keyboard).
     private static let keypadCodes: Set<UInt16> = [65, 67, 69, 71, 75, 76, 78, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 95]
 
     private static func buildLayoutTable() -> LayoutTable {
@@ -73,7 +61,6 @@ public enum KeyNames {
         data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
             guard let base = raw.baseAddress else { return }
             let layout = base.assumingMemoryBound(to: UCKeyboardLayout.self)
-            // Pass 1: unshifted, pass 2: shifted (modifier state = shiftKey >> 8).
             for modifiers: UInt32 in [0, UInt32((shiftKey >> 8) & 0xFF)] {
                 for code: UInt16 in 0..<128 where !keypadCodes.contains(code) {
                     var deadKeyState: UInt32 = 0

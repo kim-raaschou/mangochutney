@@ -2,11 +2,8 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's switcher (switcher.c): which windows, in what order, the panel's geometry,
-/// and how a choice is made.
 @MainActor
 final class SwitcherTests: MangoTestCase {
-    /// Two windows on tag 1 (900_201 focused last) and one on tag 2.
     func rig() -> EngineRig {
         let r = EngineRig()
         r.window(900_200)
@@ -23,8 +20,6 @@ final class SwitcherTests: MangoTestCase {
 
     var highlighted: (EngineRig) -> ClientID? { { r in r.server.switcherState.map { $0.tiles[$0.index] } } }
 
-    /// mango's numbers for three 800×600 windows on a 1728×1117 monitor, worked by hand:
-    /// tile_h 268 (two columns win), pictures 357 wide, one row of 369-wide tiles.
     func testThePanelIsLaidOutAsMangoDoes() {
         let size = CGSize(width: 800, height: 600)
         let l = SwitcherLayout.switcherLayout(sizes: [size, size, size], monitor: CGRect(x: 0, y: 0, width: 1728, height: 1117))
@@ -41,7 +36,6 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertNil(SwitcherLayout.titleMessageBarGeometry(below: panel, height: 0, gap: 20))
     }
 
-    /// Focus order, most recent first; next starts on the second window, prev on the last.
     func testNextStartsOnThePreviousWindowAndPrevOnTheLeastRecent() {
         let r = rig()
         open(r)
@@ -78,7 +72,6 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 2)
     }
 
-    /// Through the event tap: releasing a modifier chooses, and goes on to the app.
     func testReleasingAModifierChoosesTheHighlightedWindow() {
         let r = rig()
         r.server.mac.router.server = r.server
@@ -112,9 +105,9 @@ final class SwitcherTests: MangoTestCase {
     func testAWindowThatGoesLeavesTheSwitcher() {
         let r = rig()
         open(r, "all_tag_next")
-        open(r)   // the current tag again
+        open(r)
         open(r, "all_tag_next")
-        open(r, "all_tag_next")   // highlight on 900_202, the third
+        open(r, "all_tag_next")
         XCTAssertEqual(highlighted(r), 900_202)
         r.server.mac.windowDestroyed(id: 900_200)
         XCTAssertEqual(r.server.switcherState?.tiles, [900_201, 900_202])
@@ -127,13 +120,12 @@ final class SwitcherTests: MangoTestCase {
 
     func testNotInOverview() {
         let r = rig()
-        r.server.overviewState = OverviewState(monitor: r.monitor, previousSel: nil, cards: [:])   // drawn by nothing
+        r.server.overviewState = OverviewState(monitor: r.monitor, previousSel: nil, cards: [:])
         open(r)
         XCTAssertNil(r.server.switcherState)
     }
 }
 
-/// A window's picture is taken in its own proportions, whatever box it is shown in.
 final class SnapshotSizeTests: MangoTestCase {
     func testAWideLowWindowFitsInsideTheBoxInItsProportions() {
         XCTAssertEqual(WindowSnapshot.fitted(CGSize(width: 580, height: 180), in: CGSize(width: 714, height: 298)),
@@ -143,7 +135,6 @@ final class SnapshotSizeTests: MangoTestCase {
     }
 }
 
-/// mango's title_message_bar_decorate_* and its Pango font descriptions.
 final class TitleBarDecorateTests: MangoTestCase {
     func testPangoDescriptions() {
         let d = FontDescription("monospace Bold 13")
@@ -169,8 +160,6 @@ final class TitleBarDecorateTests: MangoTestCase {
         XCTAssertNil(Config().titleMessageBardata.cornerRadius, "unset: the macOS style")
     }
 
-    /// Each picture fills its tile in its own proportions, a much smaller window less;
-    /// never stretched.
     @MainActor
     func testEachPictureFillsItsTileInItsProportions() {
         let big = SwitcherPanel.Tile(id: 1, frame: CGRect(x: 0, y: 0, width: 412, height: 280),

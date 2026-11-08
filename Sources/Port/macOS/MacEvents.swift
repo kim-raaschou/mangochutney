@@ -1,21 +1,10 @@
 import AppKit
 import Mango
 
-/// The Accessibility events of other apps' windows, given to mango's handlers as wlroots
-/// gives them (handle_client_map, handle_client_unmap and handle_client_destroy,
-/// handle_client_activation_request, handle_client_request_minimize,
-/// handle_client_set_title), plus userMoved, the macOS layer's own. What only macOS has
-/// (hidden and frozen apps, windows that come back around sleep, native fullscreen, our
-/// own writes settling) stays here (docs/plan-kerne-backend.md, trin 5).
 extension MacWindowSystem: AppWatcherDelegate {
-    /// A window found. A new one is mango's handle_client_map. Not in mango: one that was
-    /// there when mango started, or is back after sleep or a restart, is placed here instead
-    /// (mango starts with no windows, and has none that come back): it keeps its place, takes
-    /// no focus, and a window back gets its old tags, monitor and place in the order.
     func windowDiscovered(_ w: DiscoveredWindow) {
         guard server.clientByIdAll(w.id) == nil else { return }
         let c = Client(window: w, monitor: server.selectedMonitor, tags: 0)
-        // not in mango: a window macOS has away is mapped when it is back
         var reasons: Set<AwayReason> = []
         if w.isMinimized { reasons.insert(.minimized) }
         if w.isFullscreen { reasons.insert(.fullscreen) }
@@ -31,15 +20,12 @@ extension MacWindowSystem: AppWatcherDelegate {
         }
     }
 
-    /// A window there when mango started: mango's rules (client_set_rules, before the map),
-    /// on the monitor it is on, where it is; laid out once all are in.
     private func mapInitial(_ c: Client) {
         c.isPendingOpenAnimation = false
         c.mon = nil
         server.clientInsertTilingOrder(c)
         server.focusStack.insert(c.id, at: 0)
         let frame = c.floatGeom
-        // mango's rules start from the selected monitor: the one the window is on
         let selected = server.selectedMonitor
         server.selectedMonitor = server.monitorAtPoint(c.frame.center) ?? selected
         let (mon, tags) = server.clientSetRules(c, mapped: false)
@@ -59,8 +45,6 @@ extension MacWindowSystem: AppWatcherDelegate {
         scheduleInitialSettle()
     }
 
-    /// A window back after sleep or a restart: mango's rules, then what it had when it left;
-    /// between its old neighbours in the order, last in the focus stack, not focused.
     func mapBack(_ c: Client, _ d: DepartedWindow, initial: Bool) {
         c.mon = nil
         server.clients.insert(c, at: DepartedWindow.insertionIndex(of: c.id, snapshot: d.orderSnapshot,
@@ -94,8 +78,6 @@ extension MacWindowSystem: AppWatcherDelegate {
         server.printstatus()
     }
 
-    /// The windows found at start are laid out once, after the events already waiting, so
-    /// the apps whose first scans arrived together are laid out in one go (no timer).
     private func scheduleInitialSettle() {
         guard !initialSettlePending else { return }
         initialSettlePending = true
@@ -116,24 +98,16 @@ extension MacWindowSystem: AppWatcherDelegate {
         }
     }
 
-    /// A window gone on macOS is unmapped and destroyed at once.
     func windowDestroyed(id: CGWindowID) {
-        if away.removeValue(forKey: id) != nil { return }   // unmapped already
+        if away.removeValue(forKey: id) != nil { return }
         guard let c = server.clientByIdAll(id) else { return }
         server.handleClientUnmap(c)
         server.handleClientDestroy(c)
     }
 
-    /// Not in mango: macOS has focused the window already (a click, the Dock, ⌘Tab) and says
-    /// so afterwards. A click on a window in view is mango's click, which focuses it; in
-    /// overview another window than mango's is the window chosen; a parked group member takes its group's place; a
-    /// hidden scratchpad window stays hidden. Only a window out of view is mango's
-    /// activation request.
     func windowFocused(id: CGWindowID) {
         guard let c = server.clientByIdAll(id), let m = c.mon else { return }
         if let ov = server.overviewState {
-            // mango's own focus said back (focusdir, focusstack in overview): the overview stays. An echo
-            // that comes after mango has moved on again is taken as a window chosen.
             if ov.jump == nil, server.focused !== c { server.leaveOverview(select: c) }
             return
         }
@@ -153,10 +127,6 @@ extension MacWindowSystem: AppWatcherDelegate {
         minimizedByMacOS(c, minimized)
     }
 
-    /// Not in mango: the Dock has minimized the window already (⌘M, the yellow button).
-    /// Without ignore_minimize mango takes the minimize: the window comes back from the Dock
-    /// at once and mango's handler puts it in its minimized pool. With it (mango's default)
-    /// mango refuses, which macOS cannot: the window is away in the Dock (AwayWindows).
     func minimizedByMacOS(_ c: Client, _ minimized: Bool) {
         if minimized && c.ignoreMinimize { goAway(c, .minimized); return }
         if minimized { unminimize(c) }
@@ -178,12 +148,12 @@ extension MacWindowSystem: AppWatcherDelegate {
     func screensChanged() {
         animator.screensChanged()
         server.handleOutputLayoutChange()
-        parkAgainAfterScreensChanged()   // not in mango: the hidden windows' corners moved too
+        parkAgainAfterScreensChanged()
     }
 
     func appActivated(pid: pid_t) {
-        restack(pid: pid)   // activation brings the app's windows above our overlays
-        watcher.requestFocusReport(pid: pid)   // answers via windowFocused
+        restack(pid: pid)
+        watcher.requestFocusReport(pid: pid)
     }
 
     func appHidden(pid: pid_t, hidden: Bool) {
@@ -198,7 +168,6 @@ extension MacWindowSystem: AppWatcherDelegate {
     func windowReacquired(id: CGWindowID, element: AXUIElement, state s: ReacquiredState) {
         memory.departed.endWave()
         if let c = away[id]?.client {
-            // Away while the element was dead: back if what kept it away is over.
             c.element = element
             if s.minimized == false { comeBack(id, .minimized) }
             if s.fullscreen == false { comeBack(id, .fullscreen) }
@@ -206,12 +175,9 @@ extension MacWindowSystem: AppWatcherDelegate {
             return
         }
         guard let c = server.clientByIdAll(id) else { return }
-        c.element = element   // even without a monitor (display change): it is the only live one
+        c.element = element
         guard let m = c.mon else { return }
         animator.cancel(c.id)
-        // While the element was dead our writes went nowhere and the app reported
-        // nothing. Take the window as it is now; arrange then puts it back where the
-        // layout has it (or parks it again) if it is not there.
         if s.minimized == true || s.fullscreen == true || s.appHidden {
             wlrLog(.info, "\(c.appName): window \(c.id) went away while its element was dead (minimized \(s.minimized ?? false), fullscreen \(s.fullscreen ?? false), hidden \(s.appHidden))")
             if s.minimized == true { minimizedByMacOS(c, true) }
@@ -236,15 +202,11 @@ extension MacWindowSystem: AppWatcherDelegate {
         }
         for c in server.clientsAll where c.pid == pid {
             guard let m = c.mon, Self.isStuckAway(realFrame: windowServerFrame(c.id), screen: m.screen.frame) else { continue }
-            // Frozen while parked: frames written to it are not applied until it answers.
             if let real = windowServerFrame(c.id) { c.frame = real }
             goAway(c, .stuck)
         }
     }
 
-    /// A frozen app's window counts as away when the window server has it parked (a
-    /// sliver in a corner) or nowhere on its screen. A frozen window that is in view stays
-    /// in the layout where it is.
     nonisolated static func isStuckAway(realFrame: CGRect?, screen: CGRect) -> Bool {
         guard let f = realFrame else { return false }
         return Hider.isParked(f, in: screen) || !f.intersects(screen)
@@ -257,17 +219,12 @@ extension MacWindowSystem: AppWatcherDelegate {
         moved(c, to: frame, resized: resized)
     }
 
-    /// A move/resize we did not cause: user drag, or the app moved itself.
     func moved(_ c: Client, to actual: CGRect, resized: Bool) {
         guard !missionControl.isActive else { return }
         if animator.isAnimating(c.id) { return }
         if server.grab?.client === c { return }
         if c.parked { keepHidden(c, seenAt: actual); return }
         if CACurrentMediaTime() < c.ignoreMovesUntil {
-            // Our own write settling. `c.frame` was set to the *requested* frame;
-            // the app may have clamped it (minimum size, aspect ratio, ...). Record
-            // what it actually did so borders follow the real window and the next
-            // arrange does not skip it as "already in place".
             if actual != c.frame {
                 c.frame = actual
                 server.updateBorders()

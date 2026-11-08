@@ -2,8 +2,6 @@ import XCTest
 @testable import Port
 @testable import Mango
 
-/// The docs (README.md and docs/guide.md) keep up with the code: every chutney_ key and
-/// dispatcher has its row, and the links between the pages lead somewhere.
 final class ChutneyDocsTests: MangoTestCase {
     private let root = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
@@ -15,7 +13,6 @@ final class ChutneyDocsTests: MangoTestCase {
         }
     }
 
-    /// A key or dispatcher is documented by a table row of its own: "| `name` | …".
     func testEveryPortKeyAndDispatcherHasItsRow() throws {
         let text = try pages().map(\.text).joined(separator: "\n")
         for name in MangoCompat.portExtensionOptions.keys.sorted() + MangoCompat.portDispatchers.sorted() {
@@ -23,7 +20,6 @@ final class ChutneyDocsTests: MangoTestCase {
         }
     }
 
-    /// Relative links lead to a file that exists.
     func testLinksBetweenPagesLeadToAPage() throws {
         let link = try Regex(#"\]\(([^)#:\s]+)(#[^)]*)?\)"#)
         for (url, text) in try pages() {

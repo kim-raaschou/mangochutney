@@ -2,12 +2,8 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's hotarea_disable_on_fullscreen, special_dim's hold on the pointer and
-/// cursor_hide_on_keypress.
 @MainActor
 final class SmallOptionTests: MangoTestCase {
-    /// mango toggle_hotarea: quiet under a fullscreen window (hotarea_disable_on_fullscreen);
-    /// otherwise entering the corner opens the overview once, until the pointer leaves it.
     func testTheHotCorner() {
         let r = EngineRig()
         r.server.config.enableHotarea = true
@@ -28,8 +24,6 @@ final class SmallOptionTests: MangoTestCase {
         XCTAssertNil(r.server.overviewState, "left and entered again: toggled")
     }
 
-    /// While the special tag is shown its dim lies over the other windows: the pointer
-    /// finds only the special tag's windows.
     func testTheSpecialDimTakesThePointer() {
         let r = EngineRig()
         r.window(900_601, frame: CGRect(x: 100, y: 100, width: 800, height: 600))

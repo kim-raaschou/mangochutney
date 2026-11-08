@@ -2,13 +2,10 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's swipe drive (swipe_drive_update, _begin, _end): locking, progress, finishing or
-/// undoing, through mango's own handler.
 @MainActor
 final class SwipeDriveTests: MangoTestCase {
     func s(_ dx: Double, _ dy: Double = 0) -> Swipe { .init(dx: dx, dy: dy, fingers: 4) }
 
-    /// A rig whose four-finger swipe `direction` drives `name`; the fake starts its animation.
     func rig(_ name: String = "viewtoright", _ direction: Direction = .right, minSpeed: Double = 50) -> (EngineRig, FakeWindowSystem) {
         let r = EngineRig()
         r.map(1)
@@ -35,7 +32,6 @@ final class SwipeDriveTests: MangoTestCase {
         XCTAssertNil(l.server.swipeDriving, "to the left: no binding")
     }
 
-    /// mango starts the way SWIPE_LOCK_DISTANCE before where the swipe locked.
     func testProgressAndUndo() {
         let (r, fake) = rig()
         update(r, s(20), 0)

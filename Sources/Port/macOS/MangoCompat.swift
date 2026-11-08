@@ -1,30 +1,9 @@
 import Foundation
 import Mango
 
-/// Not in mango: the port's compatibility table, given to mango's config reader through
-/// ConfigPort (MacConfigPort, below). How each name in mango's configuration maps onto the
-/// macOS port.
-///
-/// Every global option, keyword, rule field and dispatcher of mango (the lists in
-/// `Tests/mango-keys`, extracted from mango's source by `script/mango-keys.sh`) is one of:
-///
-/// - implemented: it has an effect, as in mango or with a difference the README states;
-/// - accepted without effect: parsed and validated like in mango, but the engine does not
-///   use it, either because macOS cannot do it (`.impossible`) or because the port has not
-///   implemented it yet (`.notImplemented`);
-/// - ignored: accepted without parsing the value, because it belongs to a part of mango that
-///   has no macOS counterpart (blur, libinput, xkb, ...).
-///
-/// `MangoCoverageTests` requires every mango name to be in one of these classes, so
-/// "a stock mango config loads with zero unknown keys" is tested. `mango -p` reports the
-/// non-implemented names a config uses, and `mango --list-ignored` prints these tables.
 public enum MangoCompat {
-
-    /// Why a mango name does nothing on macOS.
     public enum NoEffect: Equatable, Sendable {
-        /// macOS does not let a window manager do this (the reason says why).
         case impossible(String)
-        /// Possible on macOS; the port does not implement it yet.
         case notImplemented
 
         public var text: String {
@@ -39,13 +18,9 @@ public enum MangoCompat {
         public let name: String
         public let reason: String
         public let keys: [String]
-        /// Possible on macOS, not implemented yet (else: macOS does not allow it).
         public var notYet = false
     }
 
-    // MARK: - Global options without a setter
-
-    /// mango options that are accepted without reading the value, grouped by reason.
     public static let ignoredOptionGroups: [Group] = [
         Group(name: "Blur", reason: "scenefx effect; macOS draws other apps' windows", keys: [
             "blur", "blur_layer", "blur_optimized", "blur_params_brightness", "blur_params_contrast",
@@ -100,7 +75,6 @@ public enum MangoCompat {
         ]),
     ]
 
-    /// Keywords whose whole line is accepted and ignored.
     public static let ignoredKeywords: [String: String] = [
         "switchbind": "lid switch events are not available to apps on macOS",
         "monitor_rule": "display mode, scale, position and HDR are macOS display settings",
@@ -108,15 +82,11 @@ public enum MangoCompat {
         "device_rule": "input devices are configured in macOS settings",
     ]
 
-    /// Keywords the config parser handles itself (structure, not settings).
     public static let parserKeywords: Set<String> = [
         "key_mode", "var", "source", "source_optional", "env", "exec", "exec_once",
         "window_rule", "window_rule_once", "tag_rule", "mousebind", "axisbind", "gesturebind",
     ]
 
-    // MARK: - Global options with a setter but no effect
-
-    /// Options that are parsed and validated like in mango, but the engine never reads.
     public static let optionsWithoutEffect: [String: NoEffect] = {
         let closeAnim = NoEffect.impossible("the window is already gone when macOS reports it closed")
         let fade = NoEffect.impossible("another app's window opacity can only be changed with SIP off")
@@ -128,16 +98,12 @@ public enum MangoCompat {
             "animation_type_close": closeAnim, "animation_duration_close": closeAnim, "animation_curve_close": closeAnim,
             "float_full_to_top": .impossible("macOS has no layers for other apps' windows: the window focused last is on top"),
         ]
-        t["animation_duration_focus"] = fade   // mango's focus animation fades the opacity
+        t["animation_duration_focus"] = fade
         t["animation_curve_focus"] = fade
-        t["zoom_end_ratio"] = closeAnim         // the end of the zoom close animation
+        t["zoom_end_ratio"] = closeAnim
         return t
     }()
 
-    // MARK: - Port extensions
-
-    /// Options of the port that mango does not have: mango reports "Unknown keyword" for
-    /// each and reads the rest.
     public static let portExtensionOptions: [String: String] = {
         var t: [String: String] = [
         "chutney_hyper_modifier": "what HYPER means in a bind",
@@ -167,7 +133,6 @@ public enum MangoCompat {
         return t
     }()
 
-    /// What the port's dispatchers do (README, --list-ignored).
     static let portDispatcherText: [String: String] = [
         "chutney_focus_app": "one key per app: start it, or go to its window",
         "chutney_restart": "quit, with hidden windows left hidden for the next mango (make install, mmsg service restart)",
@@ -176,13 +141,8 @@ public enum MangoCompat {
         "chutney_toggle_layout_palette": "the layout palette: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one",
     ]
 
-    /// The port's own dispatchers, mango has none of them (`mango -p` and the README list
-    /// them as port extensions).
     public static let portDispatchers: Set<String> = Set(portDispatcherText.keys)
 
-    // MARK: - Window rules
-
-    /// Window-rule fields accepted without reading the value.
     public static let ignoredWindowRuleFields: [String: String] = [
         "shield_when_capture": "screen-capture protocol; macOS decides what captures show",
         "allow_shortcuts_inhibit": "Wayland protocol without a macOS counterpart",
@@ -194,7 +154,6 @@ public enum MangoCompat {
         "force_tearing": "tearing is a display setting",
     ]
 
-    /// Window-rule fields that are parsed and validated, but the engine never reads.
     public static let windowRuleFieldsWithoutEffect: [String: NoEffect] = [
         "no_shadow": .impossible("macOS draws window shadows"),
         "no_blur": .impossible("macOS draws other apps' windows"),
@@ -212,9 +171,6 @@ public enum MangoCompat {
         "force_tiled_state": .impossible("macOS has no tiled state to tell an app"),
     ]
 
-    // MARK: - Dispatchers
-
-    /// mango dispatchers the port accepts in a bind but that do nothing.
     public static let unsupportedDispatchers: [String: String] = [
         "create_virtual_output": "virtual outputs are a wlroots feature",
         "destroy_all_virtual_output": "virtual outputs are a wlroots feature",
@@ -230,12 +186,8 @@ public enum MangoCompat {
         "chvt": "macOS has no virtual terminals",
     ]
 
-    /// The dispatchers above that macOS would allow; the others it does not.
     public static let dispatchersNotYet: Set<String> = []
 
-    // MARK: - How much of mango works
-
-    /// mango's window-rule fields and keywords (`Tests/mango-keys`; a test keeps them in step).
     public static let mangoWindowRuleFieldCount = 49
     public static let mangoKeywordCount = 18
 
@@ -244,8 +196,6 @@ public enum MangoCompat {
         public var total: Int { works + notYet + impossible }
     }
 
-    /// mango's global options: every name the port has a setter for or accepts, without
-    /// the port's own.
     public static var optionTally: Tally {
         var t = Tally()
         for g in ignoredOptionGroups { if g.notYet { t.notYet += g.keys.count } else { t.impossible += g.keys.count } }
@@ -278,8 +228,6 @@ public enum MangoCompat {
         return t
     }
 
-    // MARK: - Lookup
-
     public enum OptionStatus: Equatable {
         case implemented
         case noEffect(NoEffect)
@@ -295,13 +243,10 @@ public enum MangoCompat {
         return t
     }()
 
-    /// Not in mango: the port's compatibility table.
-    /// The reason a global option or keyword is ignored, or nil when it is not ignored.
     public static func ignoredReason(_ key: String) -> String? {
         ignoredOptionReasons[key] ?? ignoredKeywords[key]
     }
 
-    /// Not in mango: the port's compatibility table.
     public static func status(ofOption key: String) -> OptionStatus {
         if portExtensionOptions[key] != nil { return .portExtension }
         if let n = optionsWithoutEffect[key] { return .noEffect(n) }
@@ -311,31 +256,22 @@ public enum MangoCompat {
         return .unknown
     }
 
-    /// Not in mango: the port's compatibility table.
-    /// Possible on macOS, not implemented yet (else, when it has no effect, macOS does not allow it).
     public static func isNotYet(option key: String) -> Bool {
         if case .notImplemented? = optionsWithoutEffect[key] { return true }
         return ignoredOptionGroups.contains { $0.notYet && $0.keys.contains(key) }
     }
 
-    /// Not in mango: the port's compatibility table.
     public static func isNotYet(windowRuleField field: String) -> Bool {
         if case .notImplemented? = windowRuleFieldsWithoutEffect[field] { return true }
         return false
     }
 
-    /// Not in mango: the port's compatibility table.
-    /// For `mango -p` and `--list-ignored`: a short note on a window-rule field, or nil when
-    /// the field is implemented (or unknown).
     public static func windowRuleNote(_ field: String) -> String? {
         if let r = ignoredWindowRuleFields[field] { return r }
         if let n = windowRuleFieldsWithoutEffect[field] { return n.text }
         return nil
     }
 
-    // MARK: - Markdown (mango --list-ignored, README)
-
-    /// How much of mango works, in one table (`mango --list-glance`, README's status).
     public static func glanceMarkdown() -> String {
         func row(_ cells: String...) -> String { "| " + cells.joined(separator: " | ") + " |" }
         var out: [String] = []
@@ -349,7 +285,6 @@ public enum MangoCompat {
         return out.joined(separator: "\n") + "\n"
     }
 
-    /// Every mango name that does nothing on macOS, and the port's own (`mango --list-ignored`).
     public static func markdown() -> String {
         func row(_ cells: String...) -> String { "| " + cells.joined(separator: " | ") + " |" }
         func codes<S: Sequence>(_ keys: S) -> String where S.Element == String {
@@ -362,7 +297,6 @@ public enum MangoCompat {
         out.append("")
         var notYet: [String] = []
         for g in ignoredOptionGroups where g.notYet { notYet.append(row(g.name, codes(g.keys), g.reason)) }
-        // A kind with nothing left to do gets no row.
         for (what, names, note) in [
             ("Other options", Array(optionsWithoutEffect.filter { isNotYet($0.value) }.keys), "not implemented yet"),
             ("Window-rule fields", Array(windowRuleFieldsWithoutEffect.filter { isNotYet($0.value) }.keys), "not implemented yet"),
@@ -412,13 +346,9 @@ public enum MangoCompat {
     }
 }
 
-/// Not in mango: the port's answers to mango's config reader (ConfigPort): its own keys
-/// (PortOptions) and dispatchers, what HYPER is on a Mac, and MangoCompat's notes for
-/// `mango -p`. Set as `ConfigParser.port` before a config is read.
 package struct MacConfigPort: ConfigPort {
     package init() {}
 
-    /// Sets it as mango's config reader's port; the app and `mango -p` do so first thing.
     package static func install() { ConfigParser.port = MacConfigPort() }
 
     package func setter(_ key: String) -> ConfigOptions.Setter? { PortOptions.setters[key] }
@@ -457,7 +387,6 @@ package struct MacConfigPort: ConfigPort {
 
     package func hyperModifier(_ config: Config) -> String { config.chutneyHyperModifier }
 
-    /// The macOS names of mango's modifiers, and the fn key.
     package func keyCodes(_ name: String) -> [UInt16] { KeySyms.parseKey(forName: name) }
 
     package func modifier(_ name: String) -> Modifiers? {

@@ -2,26 +2,22 @@ import XCTest
 @testable import Port
 @testable import Mango
 
-/// mango's input decisions in the core (Keyboard, Pointer), without the port's event tap.
 final class InputDecisionTests: MangoTestCase {
     func bind(_ mods: Modifiers, _ code: UInt16, mode: String = "default", flags: KeyBindingFlags = [],
               _ name: String = "x") -> KeyBinding {
         KeyBinding(mode: mode, mods: mods, keyName: "k\(code)", keyCodes: [code], flags: flags, dispatch: Dispatch(name: name))
     }
 
-    /// keyboard_check_keybinding: the first match ends the search, setkeymode too even with `c`.
     func testKeyboardCheckKeybinding() {
         let bs = [bind(.superKey, 38, flags: .allowConflict, "setkeymode"), bind(.superKey, 38, "second")]
         let out = Keyboard.keyboardCheckKeybinding(bs, mode: "default", keyCode: 38, mods: .superKey, isDown: true,
                                                    keyModifier: nil, lastHoldKeycodeIsThisKey: true)
         XCTAssertEqual(out.map(\.dispatch.name), ["setkeymode"])
-        // A modifier key's press is matched with the modifiers from before it.
         let mod = Keyboard.keyboardCheckKeybinding([bind([], 55, "tap")], mode: "default", keyCode: 55, mods: .superKey,
                                                    isDown: true, keyModifier: .superKey, lastHoldKeycodeIsThisKey: true)
         XCTAssertEqual(mod.map(\.dispatch.name), ["tap"])
     }
 
-    /// pointer_process_button_press: the switcher, then the overview, then a mouse binding.
     func testButtonPressOrder() {
         let mb = MouseBinding(mode: "default", mods: .superKey, button: .left, dispatch: Dispatch(name: "moveresize"))
         let p = CGPoint(x: 10, y: 10), ov = CGRect(x: 0, y: 0, width: 100, height: 100)
@@ -36,7 +32,6 @@ final class InputDecisionTests: MangoTestCase {
         XCTAssertEqual(press(0, mods: []), .none)
     }
 
-    /// handle_cursor_axis: fires after the timeout or when the wheel turns; renews otherwise.
     func testHandleCursorAxis() {
         let ab = AxisBinding(mode: "default", mods: .superKey, direction: .down, dispatch: Dispatch(name: "viewtoright"))
         func axis(_ d: Direction, now: Double, at: Double, dir: Int) -> (AxisBinding, Bool, Int)? {
@@ -52,9 +47,6 @@ final class InputDecisionTests: MangoTestCase {
         KeyInput(keyCode: code, mods: mods, isDown: down, isRepeat: false, keyModifier: modifier)
     }
 
-    /// handle_keyboard_key: a bound press is swallowed and so is its release
-    /// (keyboard_is_bound_key); a modifier released commits the switcher; a release ends a
-    /// comboview.
     func testHandleKeyboardKey() {
         var st = KeyboardState()
         let b = bind(.superKey, 38, "focusstack")
@@ -73,8 +65,6 @@ final class InputDecisionTests: MangoTestCase {
                        [.endTagCombo, .switcherCommit])
     }
 
-    /// After the bindings: jump mode takes Escape and a label's key; a global_key_binding
-    /// goes to its app, press and release.
     func testHandleUnboundKey() {
         var st = KeyboardState()
         XCTAssertEqual(Keyboard.handleUnboundKey(key(53, []), state: &st, jumpActive: true, isEscape: true,

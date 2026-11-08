@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's no_force_center and global_key_binding window-rule fields, and the centring
-/// they change.
 @MainActor
 final class RuleFieldTests: MangoTestCase {
     let float = CGRect(x: 100, y: 120, width: 600, height: 400)
@@ -33,8 +31,6 @@ final class RuleFieldTests: MangoTestCase {
         XCTAssertTrue(c.noForceCenter)
     }
 
-    /// mango tag_monitor: the floating size scaled by the two work areas, centred on the
-    /// new monitor.
     func testTagmonScalesAndCentresAFloatingWindow() {
         let r = EngineRig()
         let big = Screen(displayID: 2, name: "Big", frame: CGRect(x: 1728, y: 0, width: 2560, height: 1440),
@@ -51,9 +47,6 @@ final class RuleFieldTests: MangoTestCase {
         XCTAssertEqual(c.floatGeom.midY, big.workArea.midY, accuracy: 1)
     }
 
-    // MARK: global_key_binding
-
-    /// A window of another app (its own pid), as an OBS window would be.
     func otherApp(_ r: EngineRig, _ id: CGWindowID, pid: pid_t, bundleId: String) -> Client {
         let w = DiscoveredWindow(id: id, pid: pid, element: r.app.element(for: id), bundleId: bundleId, appName: "OBS",
                                  title: "OBS", subrole: "AXStandardWindow", isDialog: false, frame: float, isMinimized: false, isFullscreen: false, isAppHidden: false)
@@ -115,7 +108,6 @@ final class RuleFieldTests: MangoTestCase {
     }
 }
 
-/// mango's drag_corner and drag_warp_cursor: a mousebind resize of a floating window.
 @MainActor
 final class DragCornerTests: MangoTestCase {
     let start = CGRect(x: 200, y: 200, width: 600, height: 400)
@@ -148,12 +140,11 @@ final class DragCornerTests: MangoTestCase {
     func testCornerFourTakesTheNearest() {
         let r = EngineRig()
         r.server.config.dragCorner = 4
-        _ = grab(r, at: CGPoint(x: 750, y: 250))   // near the top right
+        _ = grab(r, at: CGPoint(x: 750, y: 250))
         XCTAssertEqual(r.server.grab?.resizeEdge, [.right, .top])
         XCTAssertEqual(r.server.grab?.startMouse, CGPoint(x: 800, y: 200))
     }
 
-    /// mango's geom holds the border: drag_warp_cursor puts the pointer on its outer corner.
     func testTheWarpGoesToTheBordersOuterCorner() {
         let r = EngineRig()
         r.server.renderBorder = true

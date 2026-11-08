@@ -2,7 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// Regression tests for the follow-ups from the Fable/Sonnet review.
 final class EngineFollowupTests: MangoTestCase {
     func testClampMatchesMangoOverrideConfig() {
         var c = Config()

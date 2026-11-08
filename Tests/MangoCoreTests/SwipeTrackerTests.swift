@@ -2,16 +2,12 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// A swipe as mango gets it from libinput: reported when a finger lifts, in libinput's
-/// units, then judged by swipe_min_threshold (pointer_process_swipe_end).
 final class SwipeTrackerTests: MangoTestCase {
-    /// Three fingers from `from` along `path` (millimetres), then lifted one by one.
     func swipe(_ fingers: Int = 3, from: CGPoint = CGPoint(x: 80, y: 50), path: [CGPoint]) -> [Swipe] {
         var t = SwipeTracker()
         var out: [Swipe] = []
         func feed(_ n: Int, _ p: CGPoint) { if case .end(let s)? = t.frame(fingers: n, centre: p) { out.append(s) } }
         feed(fingers, from)
-        // The fingers move there in small steps, as the trackpad reports them.
         var at = from
         for p in path {
             for i in 1...40 {
@@ -38,7 +34,6 @@ final class SwipeTrackerTests: MangoTestCase {
         XCTAssertNil(t.frame(fingers: 0, centre: .zero), "one swipe, not one per finger")
     }
 
-    /// mango pointer_process_swipe_end: the gesture binding of the swipe's direction fires.
     @MainActor func fires(_ s: Swipe, _ direction: Direction, minThreshold: Int = 1) -> Bool {
         let r = EngineRig()
         r.server.config.swipeMinThreshold = minThreshold
@@ -58,7 +53,6 @@ final class SwipeTrackerTests: MangoTestCase {
     }
 
     @MainActor func testSwipeMinThreshold() {
-        // 7 mm, of which the last 5 (about 197 units) after the swipe began.
         let s = swipe(path: [CGPoint(x: 87, y: 50)]).first!
         XCTAssertTrue(fires(s, .right, minThreshold: 150))
         XCTAssertFalse(fires(s, .right, minThreshold: 250))
@@ -68,8 +62,6 @@ final class SwipeTrackerTests: MangoTestCase {
         XCTAssertTrue(swipe(path: [CGPoint(x: 81, y: 50)]).isEmpty, "1 mm: libinput begins no gesture")
     }
 
-    /// A fourth finger starts another gesture; lifting it ends that one, and the three
-    /// left start yet another.
     func testAFingerCountChangeIsANewGesture() {
         var t = SwipeTracker()
         _ = t.frame(fingers: 3, centre: CGPoint(x: 80, y: 50))

@@ -2,12 +2,8 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// Port extension: not in mango (chutney_overlap_warning). A tiled window its app keeps larger
-/// than its tile goes over its neighbour, as without the key; the menu bar marks its tag and the
-/// menu says by how much and offers to move it to an empty tag or float it.
 @MainActor
 final class OverlapWarningTests: MangoTestCase {
-    /// Windows 1–3 in tile, 1 wider than its tile can be.
     func rig(on: Bool = true) -> EngineRig {
         let r = EngineRig()
         r.server.config.chutneyOverlapWarning = on
@@ -48,7 +44,6 @@ final class OverlapWarningTests: MangoTestCase {
         XCTAssertTrue(MenuBarStatus.overlapLines(r.server).isEmpty)
     }
 
-    /// The menu bar is drawn again when a window turns out larger than its tile.
     func testTheMenuBarIsToldWhenAWindowGoesOver() {
         let r = EngineRig()
         r.server.config.chutneyOverlapWarning = true
@@ -62,8 +57,6 @@ final class OverlapWarningTests: MangoTestCase {
         XCTAssertGreaterThan(told, 0)
     }
 
-    /// monocle without its tabs: the windows under the one shown are not parked, but not seen,
-    /// so they do not count. (With monocle_tab_mode they are parked.)
     func testInMonocleOnlyTheWindowShownCounts() {
         let r = EngineRig()
         r.server.config.chutneyOverlapWarning = true
@@ -80,7 +73,6 @@ final class OverlapWarningTests: MangoTestCase {
         XCTAssertEqual(MenuBarStatus.overlapLines(r.server).first?.windows.count, 1, "shown now")
     }
 
-    /// A window moved off the tag in view no longer counts, at once, while it still slides away.
     func testAWindowMovedAwayNoLongerCountsAtOnce() {
         let r = rig()
         r.server.config.animations = true
@@ -89,7 +81,6 @@ final class OverlapWarningTests: MangoTestCase {
         XCTAssertEqual(MenuBarStatus.monitors(r.server)[0].tags.map(\.overlap), [false, false])
     }
 
-    /// Without the key: nothing marked, nothing in the menu, and the layout is mango's.
     func testWithoutTheKeyNothingIsMarked() {
         let r = rig(on: false)
         XCTAssertNotNil(r.server.clientByIdAll(1)!.refusedSize)

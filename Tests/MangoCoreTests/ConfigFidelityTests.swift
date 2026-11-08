@@ -3,26 +3,18 @@ import Foundation
 @testable import Mango
 @testable import Port
 
-/// Parser fidelity against mango's own documentation and default config, plus the clamps of
-/// mango's `override_config()`.
 final class ConfigFidelityTests: MangoTestCase {
-
     private func parse(_ text: String) -> ParsedConfig {
         ConfigParser.parse(text: text, baseDirectory: FileManager.default.temporaryDirectory, fileName: "test.conf")
     }
 
     private var packageRoot: URL {
         URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // MangoCoreTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // package root
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
     }
 
-    // MARK: mango's docs
-
-    /// Every distinct `key=value` line from the ```ini blocks of mango's docs/** (placeholder
-    /// syntax lines such as `bind[flags]=MODIFIERS,KEY,...` removed). Wayland-only keys are
-    /// accepted and ignored, so each line must load with zero errors on its own.
     static let docExamples = """
     allow_tearing=1
     animation_curve_close=0.46,1.0,0.29,0.99
@@ -249,10 +241,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(count, 213)
     }
 
-    /// The shipped config is mango's assets/config.conf with macOS values: every key and
-    /// every gesture's dispatcher of mango's file appears in it, active or commented out,
-    /// in mango's order (see also `make config-diff`). Not in mango: the key, mouse and scroll
-    /// bindings are mango's set on Hyper (docs/afvigelser.md), so they are left out here.
     func testShippedConfigFollowsMangosFile() throws {
         let root = ProcessInfo.processInfo.environment["MANGO_SOURCES"] ?? NSHomeDirectory() + "/sources/mango"
         let mangoURL = URL(fileURLWithPath: root + "/assets/config.conf")
@@ -268,7 +256,6 @@ final class ConfigFidelityTests: MangoTestCase {
                 let key = line[..<eq].trimmingCharacters(in: .whitespaces)
                 guard !key.isEmpty, key.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) else { return nil }
                 let value = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
-                // Bindings: the dispatcher (fields after modifiers and key), not the keys.
                 if key.hasSuffix("bind") || key.hasPrefix("bind") {
                     let fields = value.split(separator: ",", omittingEmptySubsequences: false)
                     let skip = key == "gesturebind" ? 3 : 2
@@ -289,8 +276,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(missing, [], "mango entries missing from Resources/config.conf, or out of mango's order")
     }
 
-    /// mango's stock `assets/config.conf` (CRLF line endings included) from a local checkout
-    /// (`MANGO_SOURCES`, default ~/sources/mango). Skipped when it is not there.
     func testMangoStockConfigLoadsWithoutErrors() throws {
         let root = ProcessInfo.processInfo.environment["MANGO_SOURCES"]
             ?? NSHomeDirectory() + "/sources/mango"
@@ -301,12 +286,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertGreaterThan(parsed.config.keyBindings.count, 50)
     }
 
-    // MARK: the live session's config
-
-    /// The shipped config with the values of the live session's ~/.config/mango/config.conf:
-    /// focused_opacity=0.1, unfocused_opacity=0.5,
-    /// default_master_factor=0.62, gaps 15/15/12/12 and border_px=1. Opacity cannot be
-    /// implemented on macOS but must parse; everything must load with zero errors.
     func testLiveSessionConfigLoadsWithoutErrors() throws {
         var text = try String(contentsOf: packageRoot.appendingPathComponent("Resources/config.conf"), encoding: .utf8)
         let edits = [
@@ -320,7 +299,6 @@ final class ConfigFidelityTests: MangoTestCase {
             ("border_px=4", "border_px=1"),
         ]
         for (old, new) in edits {
-            // Whole lines only ("focused_opacity=1.0" is also the tail of "unfocused_opacity=1.0").
             XCTAssertTrue(text.contains("\r\n" + old + "\r\n"), "Resources/config.conf no longer contains \(old)")
             text = text.replacingOccurrences(of: "\r\n" + old + "\r\n", with: "\r\n" + new + "\r\n")
         }
@@ -333,8 +311,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual([c.gappih, c.gappiv, c.gappoh, c.gappov], [15, 15, 12, 12])
         XCTAssertEqual(c.borderpx, 1)
     }
-
-    // MARK: clamps (mango override_config)
 
     func testClampsOfOptionsConfigClampDoesNotKnow() {
         let c = parse("""
@@ -377,7 +353,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(c.specialGappoh, 0)
         XCTAssertEqual(c.specialGappiv, 1000)
         XCTAssertEqual(c.tagAnimationDirection, 1)
-        // overcircle_center_ratio below the range: mango clamps to 0.1 (Config.clamp alone allows 0).
         XCTAssertEqual(parse("overcircle_center_ratio=0").config.overcircleCenterRatio, 0.1)
     }
 
@@ -389,8 +364,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(config.hotareaSize, 1)
     }
 
-    /// mango's atof never fails; the port reads a non-finite number as 0 (within reason:
-    /// strtod's inf and nan would poison the layout math), then the clamp applies.
     func testNonFiniteNumbersReadAsZero() {
         for bad in ["nan", "inf", "-inf", "1e999", "infinity", "abc"] {
             let parsed = parse("default_master_factor=\(bad)")
@@ -403,8 +376,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(parse("border_px=2.9").config.borderpx, 2)
     }
 
-    // MARK: paths
-
     func testDefaultConfigPathIgnoresXDGConfigHome() {
         let previous = getenv("XDG_CONFIG_HOME").map { String(cString: $0) }
         setenv("XDG_CONFIG_HOME", "/tmp/not-mangos-business", 1)
@@ -415,11 +386,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(path, NSHomeDirectory() + "/.config/mango/config.conf")
     }
 
-    // MARK: HYPER
-
-    /// Conflicts are checked once HYPER is known: with chutney_hyper_modifier at the end of the
-    /// file, HYPER and HYPER+SHIFT are different chords (they were both the default
-    /// cmd+ctrl+alt+shift while the binds were read).
     func testConflictsAreCheckedAfterHyperIsResolved() {
         let ok = ConfigParser.parse(text: """
         bind=HYPER,x,killclient

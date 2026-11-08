@@ -169,7 +169,8 @@ others dimmed: macOS draws the same item on every display. Its menu holds:
   `circle_layout` (the layouts Hyper N goes round and Hyper L shows). Below: the master width and
   count and the layout's own options (new is master, scroller widths, dwindle's splits, the tab
   modes, …), by mango's names.
-- Reload Config (⌘R) and Edit Config.
+- Reload Config (⌘R). Your config opens from Settings (**Open Your Config**).
+- At the bottom, the version running (as `mango -v` and `mmsg get version`).
 - **Settings… (⌘,)**, the first start's window, in two tabs. **General**: the permissions, your
   Hyper key and Quick Press, the two keys to remember and Start at Login, then **Your config**:
   open it, mango's documentation (every key the config has) and this guide. **Look**: the gaps

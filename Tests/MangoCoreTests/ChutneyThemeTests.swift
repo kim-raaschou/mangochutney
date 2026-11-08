@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// chutney_theme.conf (not in mango): chutney_style's colours as plain mango config, read after
-/// mango's example colours; a colour set after it wins.
 final class ChutneyThemeTests: MangoTestCase {
     let purple = RGBA(r: 0.6, g: 0.2, b: 0.8, a: 1)
     var dir: URL!
@@ -24,7 +22,7 @@ final class ChutneyThemeTests: MangoTestCase {
     func testTheColoursAsMangoConfig() {
         let text = ChutneyTheme.text(macOS: true, resolve: { _ in self.purple })
         XCTAssertTrue(text.contains("\nfocus_color=0x9933ccff\n"))
-        XCTAssertTrue(text.contains("\ndrop_color=0x9933cc55\n"))   // mango's see-through alpha
+        XCTAssertTrue(text.contains("\ndrop_color=0x9933cc55\n"))
         XCTAssertEqual(ChutneyTheme.text(macOS: false, resolve: { _ in self.purple }), ChutneyTheme.header + "\n")
     }
 

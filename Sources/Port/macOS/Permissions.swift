@@ -2,16 +2,12 @@ import AppKit
 import ApplicationServices
 import SwiftUI
 
-/// The permissions the port asks macOS for (not in mango: a compositor needs none). One
-/// window lists them, says what each is for, opens the right page of System Settings and
-/// sees a grant as it lands, after Karabiner-Elements and OmniWM.
 public enum Permission: CaseIterable, Identifiable {
     case accessibility
     case screenRecording
 
     public var id: Self { self }
 
-    /// Windows cannot be managed without it.
     var isRequired: Bool { self == .accessibility }
 
     var title: String {
@@ -38,7 +34,6 @@ public enum Permission: CaseIterable, Identifiable {
         }
     }
 
-    /// When the switch is on but the grant does not take.
     var hint: String {
         switch self {
         case .accessibility:
@@ -56,7 +51,6 @@ public enum Permission: CaseIterable, Identifiable {
         }
     }
 
-    /// Puts Mango Chutney in the System Settings list and shows macOS's own prompt.
     func request() {
         switch self {
         case .accessibility: _ = AX.requestTrust()
@@ -73,11 +67,9 @@ public enum Permission: CaseIterable, Identifiable {
     }
 }
 
-/// What is granted now, and what the window shows.
 public struct PermissionState: Equatable {
     public var accessibility: Bool
     public var screenRecording: Bool
-    /// The user chose to go on without Screen Recording; it is not asked for again.
     public var skipScreenRecording: Bool
 
     public init(accessibility: Bool, screenRecording: Bool, skipScreenRecording: Bool) {
@@ -93,11 +85,8 @@ public struct PermissionState: Equatable {
         }
     }
 
-    /// At launch: whenever Accessibility is missing, and for Screen Recording until the user
-    /// has said to go on without it.
     public var showAtLaunch: Bool { !accessibility || (!screenRecording && !skipScreenRecording) }
 
-    /// When a picture of a window is wanted (the overview): unless the user said no.
     public var showForCapture: Bool { !screenRecording && !skipScreenRecording }
 
     public var allGranted: Bool { accessibility && screenRecording }
@@ -106,35 +95,24 @@ public struct PermissionState: Equatable {
 @MainActor
 final class PermissionsModel: ObservableObject {
     @Published var state: PermissionState
-    /// A first start: the window also asks for the Hyper key and offers Start at Login.
     @Published var firstStart = false
-    /// Settings, from the menu: the same choices, each kept as soon as it is made.
     @Published var settings = false
-    /// Settings can keep a Hyper key choice (mango runs, and has a menu file).
     @Published var canSave = true
-    /// Settings' tab: general (permissions, keys, login, the config) or look.
     @Published var settingsTab = "general"
-    /// The Look tab, the app's own view (gaps, border, animations, the menu bar).
     var look: AnyView?
-    /// The menu file, and how many of its choices win over the config.
     @Published var menuFile: URL?
     @Published var overrides = 0
-    /// The key held as Hyper (chutney_hyper_key), chosen on a first start; nil: not yet.
     @Published var hyperKey: String? {
         didSet { if settings, hyperKey != oldValue { onChoice("chutney_hyper_key", hyperKey ?? "none") } }
     }
-    /// Caps Lock or a function key that is Hyper, pressed alone (chutney_hyper_tap): none,
-    /// original or escape.
     @Published var hyperTap = "none" {
         didSet { if settings, hyperTap != oldValue { onChoice("chutney_hyper_tap", hyperTap) } }
     }
-    /// Offered on a first start: `mmsg service install` on Continue. In settings at once.
     @Published var startAtLogin = false {
         didSet { if settings, startAtLogin != oldValue { onStartAtLogin(startAtLogin) } }
     }
     var onChoice: (String, String) -> Void = { _, _ in }
     var onStartAtLogin: (Bool) -> Void = { _ in }
-    /// After a first start's Continue: the welcome, with the first lines of config to try.
     @Published var welcome = false
     var onContinue: () -> Void = {}
     var onOpenConfig: () -> Void = {}
@@ -145,23 +123,16 @@ final class PermissionsModel: ObservableObject {
     init(state: PermissionState) { self.state = state }
 }
 
-/// The permissions window. It refreshes when System Settings reports a change or another
-/// app is activated (leaving System Settings is one); no timer.
 @MainActor
 public final class Permissions {
     public static let shared = Permissions()
 
-    /// The app's own restart and quit (set by the app at launch).
     public var restart: () -> Void = {}
     public var quit: () -> Void = { NSApp.terminate(nil) }
-    /// The login service (`mmsg service install`; set by the app at launch).
     public var installLoginService: () -> Void = {}
-    /// After a first start's Continue has written the config: mango may start.
     public var firstStartDone: () -> Void = {}
-    /// Settings: the choices as they are, and where a change goes (set by the app at launch).
     public struct Choices {
         public var hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL
-        /// The menu file, and how many of its choices win over a line of the config.
         public var menuFile: URL?, overrides: Int
         public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL,
                     menuFile: URL? = nil, overrides: Int = 0) {
@@ -172,10 +143,7 @@ public final class Permissions {
     public var currentChoices: () -> Choices? = { nil }
     public var saveChoice: (String, String) -> Void = { _, _ in }
     public var setStartAtLogin: (Bool) -> Void = { _ in }
-    /// Settings' Look tab (set by the app at launch).
     public var lookView: () -> AnyView? = { nil }
-    /// A first start not yet through Continue: mango waits, so nothing is written and no
-    /// key is moved before the choice.
     public var firstStartPending: Bool { firstStartConfig != nil }
 
     private static let skipKey = "skipScreenRecording"
@@ -183,16 +151,12 @@ public final class Permissions {
     private var model: PermissionsModel?
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
     private var askedForCapture = false
-    /// A first start's config, where the chosen keys are written.
     private var firstStartConfig: URL?
-    /// The config the first start wrote, opened from the welcome.
     private var yourConfig: URL?
     private static let gettingStarted =
         URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/guide.md#getting-started")!
 
-    /// The guide's Getting Started: the two keys to remember, the first start.
     public static func openGettingStarted() { NSWorkspace.shared.open(gettingStarted) }
-    /// Mango Chutney's guide, and mango's own documentation (the config's keys).
     static let guide = URL(string: "https://github.com/kim-raaschou/mangochutney/blob/main/docs/guide.md")!
     static let mangoDocs = URL(string: "https://mangowm.github.io/docs/")!
 
@@ -202,26 +166,21 @@ public final class Permissions {
                         skipScreenRecording: UserDefaults.standard.bool(forKey: Self.skipKey))
     }
 
-    /// At launch, before mango writes its default config: on a first start the window also
-    /// asks for the Hyper key and offers Start at Login.
     public func prepareFirstStart(_ configURL: URL) {
         guard ConfigFiles.isFirstStart(configURL) else { return }
         firstStartConfig = configURL
     }
 
-    /// At launch: shows the window when something is missing, or on a first start.
     public func showIfNeeded() {
         if state.showAtLaunch || firstStartConfig != nil { show() }
     }
 
-    /// A picture of a window was wanted without Screen Recording: the window, once per run.
     public func askForCapture() {
         guard !askedForCapture, state.showForCapture else { return }
         askedForCapture = true
         show()
     }
 
-    /// The window, from the menu or when something is missing.
     public func show() {
         let model = self.model ?? PermissionsModel(state: state)
         model.state = state
@@ -238,8 +197,6 @@ public final class Permissions {
                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
             w.title = "Mango Chutney Permissions"
             w.isReleasedWhenClosed = false
-            // Above other apps' windows, System Settings among them, while the grants are given.
-            // The app's own windows are never mango's clients, so it is never tiled.
             w.level = .floating
             w.collectionBehavior = [.moveToActiveSpace]
             w.contentView = host
@@ -252,13 +209,11 @@ public final class Permissions {
         NSApp.activate()
     }
 
-    /// Settings, from the menu: the window with the first start's choices, kept as they are
-    /// made. On a first start not yet through Continue, the first start's window.
     public func showSettings() {
         show()
         guard let model, firstStartConfig == nil else { return }
         let c = currentChoices()
-        model.settings = false   // the choices as they are, not saved again
+        model.settings = false
         model.welcome = false
         model.hyperKey = c?.hyperKey
         model.hyperTap = c?.hyperTap ?? "none"
@@ -274,7 +229,6 @@ public final class Permissions {
         window?.title = "Mango Chutney Settings"
     }
 
-    /// Reads the grants again (the window updates).
     public func refresh() {
         model?.state = state
     }
@@ -293,7 +247,6 @@ public final class Permissions {
             model.welcome = true
             window?.title = "Welcome to Mango Chutney"
             firstStartDone()
-            // The docs open behind the welcome, which floats above them.
             Self.openGettingStarted()
             return
         }
@@ -337,7 +290,6 @@ struct PermissionsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 14) {
-                // The mango logo from the bundle (the app has no icon of its own).
                 Image(nsImage: Bundle.main.url(forResource: "mango", withExtension: "svg")
                     .flatMap(NSImage.init(contentsOf:)) ?? NSApp.applicationIconImage)
                     .resizable()
@@ -421,7 +373,6 @@ struct PermissionsView: View {
     }
 }
 
-/// A first start's choices: Caps Lock as Hyper, and Start at Login.
 private struct FirstStartChoices: View {
     @ObservedObject var model: PermissionsModel
 
@@ -484,7 +435,6 @@ private struct FirstStartChoices: View {
 
 }
 
-/// Settings' way on into mango: everything else is mango's, in the user's config.
 private struct YourConfig: View {
     @ObservedObject var model: PermissionsModel
 
@@ -515,7 +465,6 @@ private struct YourConfig: View {
     }
 }
 
-/// After a first start's Continue: the two keys to remember, then the config.
 private struct Welcome: View {
     let hyperKey: String?
 
@@ -541,8 +490,6 @@ private struct Welcome: View {
     }
 }
 
-/// The two keys to remember, Hyper K and Hyper L, as key caps; on the first start and in
-/// the welcome.
 private struct TwoKeys: View {
     let hyperKey: String?
 
@@ -568,7 +515,6 @@ private struct TwoKeys: View {
         }
     }
 
-    /// One of the two keys: Hyper and the letter as key caps, then what it does.
     private func key(_ letter: String, _ title: String, _ detail: String) -> some View {
         HStack(alignment: .center, spacing: 16) {
             HStack(spacing: 6) {
@@ -638,8 +584,6 @@ private struct PermissionRow: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(granted ? Color.green : Color.orange)
                 if !granted {
-                    // macOS's own prompt, whose button opens System Settings; the second
-                    // button for when macOS does not prompt again.
                     Button("Allow…") { permission.request() }
                     Button("Open Settings") {
                         if let url = permission.settingsURL { NSWorkspace.shared.open(url) }

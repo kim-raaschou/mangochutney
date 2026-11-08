@@ -2,7 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// Windows reported gone and back around sleep keep their tag and place.
 final class EngineDepartedTests: MangoTestCase {
     func departed(tags: UInt32 = 1 << 2, at: CFTimeInterval) -> DepartedWindow {
         DepartedWindow(tags: tags, displayID: 1, isFloating: true, isGlobal: false, isOverlay: false,
@@ -14,7 +13,7 @@ final class EngineDepartedTests: MangoTestCase {
     func testAWindowThatComesBackGetsItsStateOnce() {
         var store = DepartedWindows()
         store.remember(9980, departed(at: 100))
-        let back = store.take(9980, now: 100 + 1140)   // 19 minutes asleep
+        let back = store.take(9980, now: 100 + 1140)
         XCTAssertEqual(back?.tags, 1 << 2)
         XCTAssertEqual(back?.orderSnapshot, [7, 8, 9])
         XCTAssertNil(store.take(9980, now: 1300), "taken once")
@@ -25,7 +24,7 @@ final class EngineDepartedTests: MangoTestCase {
         store.remember(1, departed(at: 0))
         XCTAssertNil(store.take(1, now: DepartedWindows.keepFor + 1))
         store.remember(2, departed(at: 0))
-        store.remember(3, departed(at: DepartedWindows.keepFor + 5))   // remembering prunes old ones
+        store.remember(3, departed(at: DepartedWindows.keepFor + 5))
         XCTAssertNil(store.entries[2])
         XCTAssertNotNil(store.entries[3])
     }
@@ -36,10 +35,6 @@ final class EngineDepartedTests: MangoTestCase {
         XCTAssertNil(store.take(2, now: 1))
     }
 
-    /// The sleep on 25 October: Claude (44) was master, then Ghostty (123). The windows
-    /// left one by one (Arc, Messages, Claude, Mail, Ghostty) and came back in another
-    /// order (Claude, Mail, Arc, Messages, Ghostty). With indices, Ghostty and Claude
-    /// both remembered 0 and Ghostty became master; with neighbours the order holds.
     func testOrderComesBackAsItWasWhateverOrderWindowsLeaveAndReturn() {
         let claude: CGWindowID = 44, ghostty: CGWindowID = 123, arc: CGWindowID = 68
         let mail: CGWindowID = 231, messages: CGWindowID = 149

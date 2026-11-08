@@ -4,8 +4,6 @@ import Darwin
 @testable import Mango
 @testable import Port
 
-// MARK: - Raw socket client (runs off the main thread)
-
 final class RawIPCClient {
     let fd: Int32
     private var buffer: [UInt8] = []
@@ -39,7 +37,6 @@ final class RawIPCClient {
         _ = bytes.withUnsafeBufferPointer { Darwin.send(fd, $0.baseAddress, $0.count, 0) }
     }
 
-    /// Next line without "\n"; nil on EOF/timeout.
     func readLine() -> String? {
         while true {
             if let nl = buffer.firstIndex(of: 10) {
@@ -60,8 +57,6 @@ final class Box<T>: @unchecked Sendable {
     init(_ value: T) { self.value = value }
 }
 
-// MARK: - Tests
-
 @MainActor
 final class IPCTests: MangoTestCase {
     var rig: EngineRig!
@@ -69,7 +64,6 @@ final class IPCTests: MangoTestCase {
     var dp1: Monitor { rig.server.monitors[0] }
     var hdmi: Monitor { rig.server.monitors[1] }
 
-    /// A window of `app` titled `title` on `m`, mapped as mango maps a new one.
     func add(_ id: CGWindowID, _ title: String, _ app: String, on m: Monitor) -> Client {
         rig.server.selectedMonitor = m
         let frame = CGRect(x: m.screen.frame.minX + 100, y: 100, width: 800, height: 600)
@@ -81,8 +75,6 @@ final class IPCTests: MangoTestCase {
         return rig.server.clientByIdAll(id)!
     }
 
-    /// Two monitors, DP-1 and HDMI-A-1: Terminal (focused) and Safari on DP-1 tags 1 and 2,
-    /// Notes on HDMI-A-1 tag 1; the pointer at (12.5, 40).
     override func setUp() async throws {
         try await super.setUp()
         try await MainActor.run {
@@ -118,7 +110,6 @@ final class IPCTests: MangoTestCase {
         try await super.tearDown()
     }
 
-    /// One-shot request on a background thread; the main run loop spins in `wait`.
     func query(_ line: String) -> String? {
         let path = server.socketPath
         let result = Box<String?>(nil)
@@ -127,7 +118,6 @@ final class IPCTests: MangoTestCase {
             if let c = RawIPCClient(path: path) {
                 c.send(line)
                 result.value = c.readLine()
-                // get/dispatch close the connection after the reply.
                 if c.readLine() != nil { result.value = "unexpected second line" }
             }
             done.fulfill()
@@ -176,7 +166,6 @@ final class IPCTests: MangoTestCase {
         let line = try XCTUnwrap(query("get client 2"))
         XCTAssertTrue(line.hasPrefix(#"{"id":2,"pid":\#(getpid()),"foreign_toplevel_id":"2","title":"Safari \"quoted\"","appid":"com.apple.Safari","monitor":"DP-1","tags":[2]"#), line)
         let obj = try object(line)
-        // mango stores the proportion as a C float and cJSON prints it as the double it widens to.
         XCTAssertEqual(try XCTUnwrap(obj["scroller_proportion"] as? Double), 0.8, accuracy: 1e-6)
         XCTAssertTrue(line.contains(#""scroller_proportion":0.800000011920929"#), line)
         XCTAssertEqual(obj["is_floating"] as? Bool, false)
@@ -208,7 +197,6 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(query("get all-layers"), #"{"layers":[]}"#)
     }
 
-    /// macOS display names contain spaces; `get tag` must take the last field as the index.
     func testGetTagWithSpacesInMonitorName() throws {
         rig.server.rebuildMonitors(screens: [
             Screen(displayID: 1, name: "Built-in Retina Display", frame: dp1.screen.frame, workArea: dp1.screen.workArea,
@@ -236,8 +224,6 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(query("dispatch frobnicate,1"), #"{"error":"unknown function"}"#)
     }
 
-    /// mango handle_command dispatch: a parked member is a target only for focusid; a known
-    /// dispatcher answers success whatever it did.
     func testDispatchTargetsAParkedMemberOnlyForFocusid() throws {
         rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, into: rig.server.clientByIdAll(1)!)
         let parked = [1, 2].compactMap { rig.server.clientByIdAll($0) }.first { $0.groupParked }!
@@ -246,7 +232,6 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(query("dispatch focusdir,sideways"), #"{"success":true}"#)
     }
 
-    /// mango ipc.c: group members say so, and a parked member is listed after its group.
     func testAllClientsListsGroupsAsMango() throws {
         rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, into: rig.server.clientByIdAll(1)!)
         let clients = try XCTUnwrap(object(query("get all-clients"))["clients"] as? [[String: Any]])
@@ -279,12 +264,9 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(try object(lines.value.first)["active_tags"] as? [Int], [1])
         XCTAssertEqual(server.watcherCount, 1)
 
-        // No change: nothing is sent.
         server.notifyChanged()
-        // A change to another monitor only: still nothing for this watcher.
         rig.server.clientViewOnMonitor(1 << 2, on: hdmi)
         server.notifyChanged()
-        // Spin the run loop so the coalesced flushes run before the real change.
         let spin = expectation(description: "spin")
         DispatchQueue.main.async { spin.fulfill() }
         wait(for: [spin], timeout: 5)
@@ -305,7 +287,7 @@ final class IPCTests: MangoTestCase {
             if let c = RawIPCClient(path: path) {
                 c.send("watch keymode")
                 _ = c.readLine()
-            } // client deallocated -> socket closed
+            }
             got.fulfill()
         }
         wait(for: [got], timeout: 10)
@@ -319,8 +301,6 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(server.watcherCount, 0)
     }
 
-    // MARK: Pure parsing
-
     func testParseDispatch() {
         func p(_ s: String) -> (Dispatch, ClientID?) { IPCRequest.parseDispatch(s) }
         XCTAssertEqual(p("togglefloating").0, Dispatch(name: "togglefloating"))
@@ -331,7 +311,6 @@ final class IPCTests: MangoTestCase {
         XCTAssertNil(p("movewin,client,abc").1)
         XCTAssertEqual(p("spawn,sh -c 'echo a,b',x").0, Dispatch(name: "spawn", args: ["sh -c 'echo a,b',x"]))
         XCTAssertEqual(p("spawn_shell,echo hi").0, Dispatch(name: "spawn_shell", args: ["echo hi"]))
-        // mango combine_args_until_empty: trimmed tokens, up to the first "0".
         XCTAssertEqual(p("spawn,foo,0,bar").0, Dispatch(name: "spawn", args: ["foo"]))
         XCTAssertEqual(p("spawn,a , b").0, Dispatch(name: "spawn", args: ["a,b"]))
         XCTAssertEqual(p("spawn_on_empty,foo --a=1,2,4").0, Dispatch(name: "spawn_on_empty", args: ["foo --a=1,2", "4"]))

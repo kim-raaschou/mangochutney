@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's resize (animation/client.c), its animation part, in the core (clientAnimation):
-/// the action, duration, curve and start the port draws.
 @MainActor
 final class AnimationChoiceTests: MangoTestCase {
     func rig() -> (EngineRig, Client) {
@@ -15,8 +13,6 @@ final class AnimationChoiceTests: MangoTestCase {
     let target = CGRect(x: 100, y: 100, width: 800, height: 600)
     let now = CGRect(x: 0, y: 0, width: 800, height: 600)
 
-    /// A new window: OPEN, the open duration; slide starts below the screen, zoom at
-    /// zoom_initial_ratio around the centre. Only the first resize is OPEN.
     func testOpen() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = true
@@ -32,8 +28,6 @@ final class AnimationChoiceTests: MangoTestCase {
                        CGRect(x: 300, y: 250, width: 400, height: 300))
     }
 
-    /// set_client_open_animation, slide: a floating window from the work area's edge nearest
-    /// its centre, just outside the monitor.
     func testSlideFromTheNearestEdge() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = true
@@ -52,8 +46,6 @@ final class AnimationChoiceTests: MangoTestCase {
                        CGRect(x: m.maxX, y: 500, width: 300, height: 200))
     }
 
-    /// is_special_animation_rule: the scroller and a single tiled window from below; tile's
-    /// new master (new_is_master) from the left, a second window without it from the right.
     func testSlideBySpecialRule() {
         let (r, c) = rig()
         let m = r.screen.frame
@@ -74,7 +66,6 @@ final class AnimationChoiceTests: MangoTestCase {
         _ = c
     }
 
-    /// A move: MOVE, from where it is, the move duration and curve.
     func testMove() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = false
@@ -83,8 +74,6 @@ final class AnimationChoiceTests: MangoTestCase {
                                           curve: r.server.config.animationCurveMove))
     }
 
-    /// set_tagin_animation: a window coming into view on a tag switch starts a monitor's
-    /// width away on the side it comes from; one that was hidden otherwise appears in place.
     func testTagIn() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = false
@@ -98,9 +87,6 @@ final class AnimationChoiceTests: MangoTestCase {
         XCTAssertEqual(r.server.clientAnimation(c, to: target, .move, current: now, shown: false).from, target)
     }
 
-    /// Entering overview (overining): OVERVIEW with the TAG duration and curve; a card that is
-    /// not the selected window zooms in from 1.2 times its size (set_overview_enter_animation),
-    /// the selected one moves from where it is. Only the first move; then MOVE again.
     func testEnteringOverview() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = false
@@ -119,7 +105,6 @@ final class AnimationChoiceTests: MangoTestCase {
                        "the selected window moves from where it is")
     }
 
-    /// No animation: animations off, no_animation, a grabbed window, or an arrange without.
     func testNoAnimation() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = false
@@ -131,8 +116,6 @@ final class AnimationChoiceTests: MangoTestCase {
         XCTAssertEqual(r.server.clientAnimation(c, to: target, .move, current: now, shown: true).durationMs, 0)
     }
 
-    /// set_tagout_animation: forward, out past the monitor's left edge; back, past its
-    /// right; the TAG duration.
     func testTagOut() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = false
@@ -145,8 +128,6 @@ final class AnimationChoiceTests: MangoTestCase {
         XCTAssertEqual(r.server.setTagoutAnimation(c, on: r.monitor, forward: false).to.minX, max(m.maxX, target.minX + m.width))
     }
 
-    /// set_arrange_hidden: on a tag switch a window of the tag left slides out and is hidden
-    /// at the end (tagouting); with animations off it is hidden at once.
     func testLeavingATagSlidesOut() {
         let (r, c) = rig()
         r.server.arrange(r.monitor, .none)
@@ -163,8 +144,6 @@ final class AnimationChoiceTests: MangoTestCase {
         XCTAssertTrue(c.parked, "hidden at once")
     }
 
-    /// set_arrange_visible: the special tag's windows slide in from just above the monitor on
-    /// an animated switch; a scratchpad brought here (scratchpad_tagin) too.
     func testSpecialAndScratchpadSlideInFromAbove() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = false
@@ -181,7 +160,6 @@ final class AnimationChoiceTests: MangoTestCase {
         XCTAssertFalse(c.scratchpadTagin, "once")
     }
 
-    /// set_arrange_hidden: a scratchpad put away slides up and out before it is hidden.
     func testAScratchpadPutAwaySlidesOutAtTheTop() {
         let (r, c) = rig()
         r.server.arrange(r.monitor, .none)

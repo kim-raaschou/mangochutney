@@ -1,7 +1,6 @@
 import Dispatch
 import Mango
 
-/// Not in mango: wl_event_loop's fd sources on macOS, a read source on the main queue.
 @MainActor
 final class MainEventLoop: EventLoop {
     func addFd(_ fd: Int32, _ readable: @escaping @MainActor () -> Void) -> EventSource {

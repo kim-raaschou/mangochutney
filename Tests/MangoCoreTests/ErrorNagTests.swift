@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's config errors: mango_error into the error store (error_store.c), and the nag
-/// (error_nag.c) started with mangonag's arguments, the store's first three lines and Edit.
 @MainActor
 final class ErrorNagTests: MangoTestCase {
     func testConfigErrorsReachTheNagAsMango() throws {
@@ -24,8 +22,6 @@ final class ErrorNagTests: MangoTestCase {
         XCTAssertEqual(fake.nagArgv, ["mangonag", "-o", "Built-in", "-t", "error", "-e", "top", "-l", "-s", "Close",
                                       "-b", "Edit", "nvim +2 '\(conf.path)'"])
         let lines = fake.nagInput.components(separatedBy: "\n")
-        // mango prints the line as read, its newline inside the colour, so the reset is a line
-        // of its own; then report_config_line_error's two lines and their reset.
         XCTAssertEqual(lines[0], "[ERROR]: Invalid line format: \u{1B}[1m\u{1B}[31mnot a line")
         XCTAssertEqual(lines[1], "\u{1B}[0m")
         XCTAssertTrue(lines[2].contains("[Index]") && lines[2].contains(conf.path), lines[2])
@@ -66,7 +62,6 @@ final class ErrorNagTests: MangoTestCase {
     }
 }
 
-/// mango 6f322a3: config auto reload watches the file a symlinked config points at.
 @MainActor
 final class ConfigWatchPathTests: MangoTestCase {
     func testASymlinkedConfigIsWatchedAtItsTarget() throws {

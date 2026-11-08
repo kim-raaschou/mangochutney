@@ -1,10 +1,6 @@
 import AppKit
 import Mango
 
-/// mango's special dim (special_update_dim): a black rectangle at special_dim over the
-/// whole monitor while the special tag is shown, under the special tag's windows and over
-/// every other window. Like mango's, it takes the pointer: a click on it reaches no
-/// window. A non-activating panel, so a click does not bring mango forward.
 @MainActor
 final class SpecialDimView {
     private let panel: NSPanel
@@ -20,8 +16,6 @@ final class SpecialDimView {
         panel.collectionBehavior = [.stationary, .ignoresCycle, .fullScreenNone, .transient]
     }
 
-    /// Over the monitor `frame` (AX coordinates), just below `below` (the backmost special
-    /// window), or in front of the ordinary windows when there is none.
     func show(frame: CGRect, alpha: Double, below: CGWindowID?) {
         let f = CGRect(x: frame.minX, y: Screens.primaryHeight - frame.maxY, width: frame.width, height: frame.height)
         panel.backgroundColor = NSColor(white: 0, alpha: alpha)

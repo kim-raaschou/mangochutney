@@ -3,8 +3,6 @@ import CoreGraphics
 @testable import Mango
 @testable import Port
 
-/// What a refresh of one app decides (AppWorker.runRefresh), with plain values for
-/// elements: an element is its window id, a dead element is in `dead`.
 final class WindowBookTests: MangoTestCase {
     typealias Book = WindowBook<Int, CGWindowID>
 
@@ -37,7 +35,7 @@ final class WindowBookTests: MangoTestCase {
     func testAWindowNotListedButAliveIsKept() {
         var book = Book()
         _ = book.refresh(listed: list(1), recheck: false, notified: false, answers: answers)
-        let out = book.refresh(listed: [], recheck: false, notified: false, answers: answers)   // minimized
+        let out = book.refresh(listed: [], recheck: false, notified: false, answers: answers)
         XCTAssertTrue(out.gone.isEmpty)
         XCTAssertNotNil(book.windows[1])
     }
@@ -45,7 +43,7 @@ final class WindowBookTests: MangoTestCase {
     func testADeadElementOfAWindowOnScreenIsAnOrphanUntilListedAgain() {
         var book = Book()
         _ = book.refresh(listed: list(1), recheck: false, notified: false, answers: answers)
-        dead = [1]; onScreen = [1]   // asleep
+        dead = [1]; onScreen = [1]
         let asleep = book.refresh(listed: [], recheck: false, notified: false, answers: answers)
         XCTAssertEqual(asleep.orphaned, [1])
         XCTAssertTrue(asleep.gone.isEmpty)
@@ -63,9 +61,9 @@ final class WindowBookTests: MangoTestCase {
     func testTheAppsDestroyedNoticeEndsAnOrphan() {
         var book = Book()
         _ = book.refresh(listed: list(1), recheck: false, notified: false, answers: answers)
-        dead = [1]; onScreen = [1]   // the app's last window closed, still fading out on screen
+        dead = [1]; onScreen = [1]
         XCTAssertEqual(book.refresh(listed: [], recheck: false, notified: false, answers: answers).orphaned, [1])
-        book.forget(1)   // then its destroyed notice
+        book.forget(1)
         XCTAssertTrue(book.orphans.isEmpty)
         XCTAssertNil(book.windows[1])
         onScreen = []
@@ -143,7 +141,7 @@ final class WindowBookTests: MangoTestCase {
     func testADeadElementIsAClosedWindowWhenTheAppListsOthers() {
         var book = Book()
         _ = book.refresh(listed: list(1, 2), recheck: false, notified: false, answers: answers)
-        dead = [1]; onScreen = [1, 2]   // window 1 closed, still fading out on screen
+        dead = [1]; onScreen = [1, 2]
         let out = book.refresh(listed: list(2), recheck: false, notified: false, answers: answers)
         XCTAssertEqual(out.gone.map(\.0), [1], "the app answers: window 1 is closed")
         XCTAssertTrue(out.orphaned.isEmpty)
@@ -152,7 +150,7 @@ final class WindowBookTests: MangoTestCase {
     func testAnOrphanIsGoneWhenItsAppListsWindowsAgainWithoutIt() {
         var book = Book()
         _ = book.refresh(listed: list(1, 2), recheck: false, notified: false, answers: answers)
-        dead = [1, 2]; onScreen = [1, 2]   // asleep: nothing listed
+        dead = [1, 2]; onScreen = [1, 2]
         XCTAssertEqual(Set(book.refresh(listed: [], recheck: false, notified: false, answers: answers).orphaned), [1, 2])
         let awake = book.refresh(listed: [(2, 102)], recheck: false, notified: false, answers: answers)
         XCTAssertEqual(awake.reacquired.map(\.0), [2])

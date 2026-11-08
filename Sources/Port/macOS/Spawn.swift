@@ -2,13 +2,10 @@ import Foundation
 import Mango
 
 public enum Spawn {
-    /// mango `spawn`: fork + setsid + wordexp + execvp. We run through the
-    /// login shell so `~`, `$VAR` and quoting behave like wordexp.
     public static func run(_ command: String, env: [String: String] = [:]) {
         shell(command, env: env)
     }
 
-    /// mango `spawn_shell`: sh -c.
     public static func shell(_ command: String, env: [String: String] = [:]) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/bin/zsh")

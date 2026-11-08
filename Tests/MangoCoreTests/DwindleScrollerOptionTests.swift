@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's dwindle_smart_resize, split indicator (split_color) and the scroller's
-/// edge_scroller_pointer_focus / edge_scroller_focus_allow_speed.
 @MainActor
 final class DwindleScrollerOptionTests: MangoTestCase {
     func dwindle(_ windows: Int) -> EngineRig {
@@ -14,9 +12,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         return r
     }
 
-    /// Grabs the right one of two windows side by side at its middle (right of the split
-    /// line) with a resize mousebind, and drags it `dx` across: the first motion begins the
-    /// drag (start_drag_window), the second is a frame later.
     func dragRight(_ r: EngineRig, by dx: CGFloat) -> CGFloat {
         let resize = MouseBinding(mods: [.superKey], button: .right, dispatch: Dispatch(name: "moveresize", args: ["curresize"]))
         let right = r.server.clientByIdAll(900_401)!.geom!
@@ -27,15 +22,12 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         return r.server.clientByIdAll(900_400)!.geom!.width
     }
 
-    /// mango dwindle_resize_client: the split line follows the pointer's travel from where
-    /// the drag began.
     func testADragMovesTheSplitLineWithThePointer() {
         let r = dwindle(2)
         let before = r.server.clientByIdAll(900_400)!.geom!.width
         XCTAssertEqual(dragRight(r, by: 100), before + 100, accuracy: 2)
     }
 
-    /// dwindle_smart_resize: begun right of the split line, the drag moves it the other way.
     func testSmartResizeInvertsBeyondTheSplitLine() {
         let r = dwindle(2)
         r.server.config.dwindleSmartResize = true
@@ -43,8 +35,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         XCTAssertEqual(dragRight(r, by: 100), before - 100, accuracy: 2)
     }
 
-    /// mango 09828ec: a tiled drag lays out on every motion, however soon after the last.
-    /// (A floating resize keeps one a frame: 60 Hz when the monitor's rate is not known.)
     func testATiledDragLaysOutOnEveryMotion() {
         let r = dwindle(2)
         let width = dragRight(r, by: 100)
@@ -71,7 +61,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         XCTAssertNil(r.server.clientDrawSplitBorder(c, on: r.monitor), "tiled windows only")
     }
 
-    /// A scroller: 900_410 inside the screen, 900_411 and 900_412 partly off its right edge.
     func scroller() -> EngineRig {
         let r = EngineRig()
         r.monitor.current.layout = .scroller
@@ -89,8 +78,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
 
     var startFrames: [CGWindowID: CGRect] = [:]
 
-    /// The pointer onto `id`, with the windows back where scroller() put them (a focus
-    /// arranges the scroller, which moves them).
     func move(_ r: EngineRig, to id: CGWindowID, speed: CGFloat) {
         for (wid, frame) in r.app.frames where wid >= 900_410 && wid <= 900_412 {
             r.server.clientByIdAll(wid)!.frame = startFrames[wid] ?? frame
@@ -124,8 +111,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         XCTAssertEqual(r.monitor.sel, 900_411)
     }
 
-    /// Once a window off the edge has the focus, no other one takes it until the pointer
-    /// has been on a window inside the screen.
     func testTheLock() {
         let r = scroller()
         move(r, to: 900_411, speed: 0)
@@ -137,9 +122,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
     }
 }
 
-/// A tiled drag (mango 09828ec: laid out on every motion) never gives a window a frame that
-/// is not finite, in any layout, however the pointer goes: back over where it began, past
-/// the screen's edge, in many small steps.
 @MainActor
 final class TiledDragStaysFiniteTests: MangoTestCase {
     func testEveryLayoutStaysFinite() {

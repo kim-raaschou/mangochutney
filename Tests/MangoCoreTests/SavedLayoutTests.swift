@@ -3,8 +3,6 @@ import ApplicationServices
 @testable import Mango
 @testable import Port
 
-/// The layout kept on disk so a restart of mango does not put every window on the
-/// current tag.
 final class SavedLayoutTests: MangoTestCase {
     var dir: URL!
 
@@ -73,7 +71,7 @@ final class SavedLayoutTests: MangoTestCase {
         server.mac.memory.queue.sync {}
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
         try FileManager.default.removeItem(at: url)
-        server.mac.memory.save(server)   // nothing changed
+        server.mac.memory.save(server)
         server.mac.memory.queue.sync {}
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
     }
@@ -85,7 +83,7 @@ final class SavedLayoutTests: MangoTestCase {
         server.rebuildMonitors(screens: [Screen(displayID: 1, name: "Built-in", frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
                                             workArea: CGRect(x: 0, y: 37, width: 1728, height: 1080), scale: 2, isMain: true)])
         server.started = true
-        server.registerPortExtensions()   // as start() does: the memory joins mango's map
+        server.registerPortExtensions()
         server.mac.memory.layoutURL = nil
         for (id, w) in SavedLayout(session: "S", order: [], windows: [window(77, tags: 1 << 8, bundle: savedBundle)],
                                    tagsets: [:]).departed(at: CACurrentMediaTime()) {
@@ -139,9 +137,6 @@ final class SavedLayoutTests: MangoTestCase {
         XCTAssertEqual(server.mac.memory.departed.entries[9]?.tags, 1 << 2)
     }
 
-    /// A tag keeps the layout it was switched to, as on a reload of the config: also when
-    /// the tag_rule that set it is gone; one whose rule gives another layout now takes it,
-    /// the one in use becoming the previous one.
     @MainActor
     func testEachTagGetsItsLayoutBackUnlessItsRuleChanged() throws {
         let server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/mango.conf"))
@@ -152,11 +147,11 @@ final class SavedLayoutTests: MangoTestCase {
         let m = server.monitors[0]
         m.pertag[1].layout = .monocle
         m.pertag[2].layout = .grid
-        m.pertag[2].configLayout = .deck                // a rule set deck then; it is gone now
+        m.pertag[2].configLayout = .deck
         m.pertag[3].layout = .grid
-        m.pertag[3].configLayout = .deck                // a rule set deck then, and still does
+        m.pertag[3].configLayout = .deck
         m.pertag[4].layout = .grid
-        m.pertag[4].configLayout = .deck                // now the rule says scroller
+        m.pertag[4].configLayout = .deck
         m.tagset[m.seltags ^ 1] = 1 << 4
         m.prevTag = 5
         let saved = server.mac.memory.currentLayout(server)
@@ -169,7 +164,7 @@ final class SavedLayoutTests: MangoTestCase {
         fresh.system = FakeWindowSystem(fresh)
         fresh.rebuildMonitors(screens: [server.monitors[0].screen])
         let f = fresh.monitors[0]
-        f.pertag[3].configLayout = .deck                // what the config gives now
+        f.pertag[3].configLayout = .deck
         f.pertag[4].configLayout = .scroller
         f.pertag[4].layout = .scroller
         fresh.mac.memory.layoutURL = url

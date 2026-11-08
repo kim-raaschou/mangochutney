@@ -2,10 +2,8 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's window groups: groupjoin, groupfocus, groupleave, the group bar.
 @MainActor
 final class GroupTests: MangoTestCase {
-    /// Three tiles: 900_700 master, 900_701 and 900_702 stacked; 900_701 focused.
     func rig() -> EngineRig {
         let r = EngineRig()
         r.monitor.current.layout = .tile
@@ -22,7 +20,7 @@ final class GroupTests: MangoTestCase {
     func testJoiningTakesThePlaceOfTheWindowJoined() {
         let r = rig()
         let slot = c(r, 900_702).geom!
-        run(r, "groupjoin", "down")   // 900_701 joins 900_702, below it
+        run(r, "groupjoin", "down")
         XCTAssertEqual(r.server.groupMembers(c(r, 900_701)).map(\.id), [900_701, 900_702])
         XCTAssertTrue(c(r, 900_701).isGroupFocus)
         XCTAssertTrue(c(r, 900_702).groupParked, "the member out of view is parked")
@@ -31,8 +29,6 @@ final class GroupTests: MangoTestCase {
         XCTAssertEqual(c(r, 900_701).geom!.minX, slot.minX, accuracy: 1, "in the joined window's column")
     }
 
-    /// mango client_handle_decorate_click: a press on a group bar's member swaps the group's
-    /// focus (client_focus_group_member); the close button closes it.
     func testAPressOnTheGroupBar() {
         let r = rig()
         run(r, "groupjoin", "down")
@@ -43,8 +39,6 @@ final class GroupTests: MangoTestCase {
         XCTAssertEqual((r.server.system as! FakeWindowSystem).closed, [900_702])
     }
 
-    /// mango group_bar_drag_pending: a press on a member, then 5 px of motion: it leaves the
-    /// group and is moved (a grab); less is still the press.
     func testDraggingAMemberOutOfTheGroupBar() {
         let r = rig()
         run(r, "groupjoin", "down")
@@ -61,8 +55,6 @@ final class GroupTests: MangoTestCase {
         XCTAssertNil(r.server.groupBarDrag, "the press is over")
     }
 
-    /// mango pointer_process_button_press: a right click on a tab closes it only with
-    /// monocle_right_button_close; otherwise it is focused as a left click.
     func testARightClickOnATab() {
         let r = rig()
         r.server.pointerProcessButtonPress(button: 1, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_700, isTab: true, onClose: false))
@@ -105,17 +97,15 @@ final class GroupTests: MangoTestCase {
         XCTAssertFalse(c(r, 900_702).isGroupMember)
     }
 
-    /// Not in mango: a member that goes away and comes back (sleep) is in its group again,
-    /// in its place, the member in view still in view; the saved layout keeps the group.
     func testAGroupComesBackWithItsMembers() {
         let r = rig()
-        run(r, "groupjoin", "down")                       // [900_701, 900_702], 900_701 in view
+        run(r, "groupjoin", "down")
         XCTAssertEqual(r.server.mac.memory.currentLayout(r.server).groups, [DepartedGroup(members: [900_701, 900_702], focus: 900_701)])
         r.server.mac.windowDestroyed(id: 900_702)
         XCTAssertFalse(c(r, 900_701).isGroupMember)
         XCTAssertEqual(r.server.mac.memory.departed.groups.count, 1, "kept")
         XCTAssertNotNil(r.server.mac.memory.departed.entries[900_702], "departed")
-        r.map(900_702)                                     // back, through handle_client_map
+        r.map(900_702)
         XCTAssertEqual(r.server.groupMembers(c(r, 900_701)).map(\.id), [900_701, 900_702])
         XCTAssertTrue(c(r, 900_701).isGroupFocus)
         XCTAssertTrue(c(r, 900_702).groupParked)
@@ -126,12 +116,11 @@ final class GroupTests: MangoTestCase {
     func testFocusingAParkedMemberBringsItIn() {
         let r = rig()
         run(r, "groupjoin", "down")
-        r.server.mac.windowFocused(id: 900_702)   // the Dock or ⌘Tab
+        r.server.mac.windowFocused(id: 900_702)
         XCTAssertEqual(r.monitor.sel, 900_702)
         XCTAssertFalse(c(r, 900_702).groupParked)
     }
 
-    /// A tiled group member lies group_bar_height lower; togglegroupbar does it for all.
     func testTheGroupBarTakesRoomAbove() {
         let r = rig()
         let master = c(r, 900_700).geom!
@@ -142,7 +131,6 @@ final class GroupTests: MangoTestCase {
         XCTAssertEqual(c(r, 900_700).geom!.minY, master.minY, accuracy: 1)
     }
 
-    /// The bar's segments are the members; close buttons with group_bar_close_button_enable.
     func testTheGroupBarNamesTheMembers() {
         let r = rig()
         run(r, "groupjoin", "down")
@@ -164,7 +152,7 @@ final class GroupTests: MangoTestCase {
 
     func testDroppingOnAGroupBarJoinsTheGroup() {
         let r = rig()
-        run(r, "groupjoin", "down")   // 900_701 + 900_702, with a bar
+        run(r, "groupjoin", "down")
         let shown = c(r, 900_701).frame
         r.server.clientBeginDragFloat(c(r, 900_700), at: CGPoint(x: 1, y: 1))
         r.server.dropDraggedTile(at: CGPoint(x: shown.midX, y: shown.minY - 10))

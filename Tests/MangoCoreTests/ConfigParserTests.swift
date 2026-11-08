@@ -3,7 +3,6 @@ import XCTest
 @testable import Port
 
 final class ConfigParserTests: MangoTestCase {
-
     private func parse(_ text: String, base: URL? = nil) -> ParsedConfig {
         ConfigParser.parse(text: text, baseDirectory: base ?? FileManager.default.temporaryDirectory,
                            fileName: "test.conf")
@@ -11,9 +10,9 @@ final class ConfigParserTests: MangoTestCase {
 
     private var defaultConfigURL: URL {
         URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()   // MangoCoreTests
-            .deletingLastPathComponent()   // Tests
-            .deletingLastPathComponent()   // package root
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
             .appendingPathComponent("Resources/config.conf")
     }
 
@@ -25,16 +24,11 @@ final class ConfigParserTests: MangoTestCase {
         return dir
     }
 
-    // MARK: - Shipped config
-
-    /// mango's config without its key, mouse and scroll bindings, and without the port's
-    /// marked lines: where config.conf and mango's assets/config.conf are the same.
     private func outsideKeyBindings(_ text: String) -> [String] {
         var lines = text.components(separatedBy: "\r\n")
         if let keys = lines.firstIndex(of: "# Key Bindings"), let gestures = lines.firstIndex(of: "# Gesture Bindings") {
             lines.removeSubrange(keys..<gestures)
         }
-        // A region marked "# not mango default" ... "# end not mango default" is the port's.
         while let start = lines.firstIndex(where: { $0.hasPrefix("# not mango default:") }),
               let end = lines[start...].firstIndex(of: "# end not mango default") {
             lines.removeSubrange(start...end)
@@ -49,8 +43,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.errors, [], parsed.errors.map(\.description).joined(separator: "\n"))
         XCTAssertEqual(parsed.sourcedFiles.first?.path, url.standardizedFileURL.path)
 
-        // config.conf is mango's assets/config.conf with mango's keys on Hyper (not in mango),
-        // and then the port's keys, from their marker line to the end.
         let text = try String(contentsOf: url, encoding: .utf8)
         let marker = try XCTUnwrap(text.range(of: "\r\n" + ConfigFiles.portMarker), "the port's keys come last")
         let mangoText = String(text[..<marker.lowerBound])
@@ -82,16 +74,12 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(c.keyBindings.first { $0.dispatch.name == "view" }?.dispatch.args, ["1", "0"], "mango's own arguments")
     }
 
-    /// The port's keys and dispatchers carry the chutney_ prefix; the old macos_ names are
-    /// unknown keys.
     func testThePortsNamesCarryItsPrefix() {
         for k in MangoCompat.portExtensionOptions.keys { XCTAssertTrue(k.hasPrefix("chutney_"), k) }
         for d in MangoCompat.portDispatchers { XCTAssertTrue(d.hasPrefix("chutney_"), d) }
         XCTAssertFalse(parse("macos_style=1").errors.isEmpty)
     }
 
-    /// The port's keys, at the end of config.conf. They set no mango key: only chutney_ keys,
-    /// the port's bindings and the app's own files, read last.
     func testShippedConfigReadsTheMacOSDefaultsLast() throws {
         let parsed = ConfigParser.parseConfig(fileAt: defaultConfigURL)
         XCTAssertEqual(parsed.sourcedFiles.map(\.lastPathComponent), ["config.conf", "chutney_theme.conf", "chutney_menu.conf"])
@@ -119,8 +107,6 @@ final class ConfigParserTests: MangoTestCase {
         }
     }
 
-    // MARK: - Lines, comments, quotes
-
     func testCommentsQuotesAndLineFormat() {
         let parsed = parse("""
         # full comment
@@ -133,12 +119,10 @@ final class ConfigParserTests: MangoTestCase {
         """)
         XCTAssertEqual(parsed.config.gappih, 7)
         XCTAssertEqual(parsed.config.jumpLabels, "AB #CD")
-        // mango: an indented comment leaves blanks, which sscanf("%[^=]=…") rejects
         XCTAssertEqual(parsed.errors.map(\.line), [2, 6], parsed.errors.map(\.description).joined(separator: "\n"))
         XCTAssertEqual(parsed.errors.last?.line, 6)
         XCTAssertEqual(parsed.errors.first?.file, "test.conf")
         XCTAssertTrue(parsed.errors.first?.message.hasPrefix("Invalid line format") ?? false)
-        // `3#not...` is lenient-parsed like atoi.
         XCTAssertEqual(parsed.config.borderpx, 3)
     }
 
@@ -164,8 +148,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.config.tagNum, 1)
     }
 
-    // MARK: - Variables
-
     func testVariables() {
         let parsed = parse("""
         var=gap,7
@@ -183,8 +165,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.errors.count, 1)
         XCTAssertEqual(parsed.errors.first?.line, 7)
     }
-
-    // MARK: - source
 
     func testSourceAndSourceOptional() throws {
         let dir = try makeTempDir()
@@ -237,8 +217,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(url.path.hasSuffix("mango/config.conf"))
     }
 
-    // MARK: - env / exec
-
     func testEnvAndExec() {
         let parsed = parse("""
         env=QT_SCALE,2
@@ -256,8 +234,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.config.execOnce, ["echo once"])
         XCTAssertEqual(parsed.errors.count, 1)
     }
-
-    // MARK: - Bindings
 
     func testBindFlags() {
         let parsed = parse("""
@@ -294,7 +270,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(b[1].mods, [.ctrl, .alt])
         XCTAssertEqual(b[2].mods, [])
         XCTAssertEqual(b[2].keyCodes, [96])
-        // `chutney_hyper_modifier=` is resolved after the whole file is read, wherever it appears.
         XCTAssertEqual(b[3].mods, [.ctrl, .alt])
         XCTAssertEqual(b[4].mods, [.ctrl, .alt])
         XCTAssertEqual(parsed.errors.count, 1)
@@ -313,7 +288,6 @@ final class ConfigParserTests: MangoTestCase {
         """)
         XCTAssertEqual(parsed.errors, [])
         let d = parsed.config.keyBindings.map(\.dispatch)
-        // Fields are trimmed before rejoining, exactly like mango (the space after the comma is lost).
         XCTAssertEqual(d[0], Dispatch(name: "spawn", args: ["notify-send \"a,b\",c"]))
         XCTAssertEqual(d[1], Dispatch(name: "spawn_shell", args: ["echo 1,2,3,4,5,6,7 | cat"]))
         XCTAssertEqual(d[2], Dispatch(name: "spawn_on_empty", args: ["firefox --new-window a,b", "4"]))
@@ -345,8 +319,6 @@ final class ConfigParserTests: MangoTestCase {
         gesturebind=none,left,x,quit
         """)
         XCTAssertEqual(parsed.config.keyBindings.count, 0)
-        // mango: an axis direction it does not know is UNDIR and the finger count is atoi
-        // ("x" is 0): kept, not errors
         XCTAssertEqual(parsed.errors.map(\.line), [1, 2, 3, 4])
         XCTAssertEqual(parsed.config.axisBindings.first?.isUndir, true)
         XCTAssertTrue(parsed.errors[0].message.contains("Unknown dispatch"))
@@ -396,7 +368,6 @@ final class ConfigParserTests: MangoTestCase {
         mousebind=SUPER,btn_left,moveresize,curresize
         """)
         XCTAssertEqual(parsed.errors.map(\.line), [2, 6, 13, 15], parsed.errors.map(\.description).joined(separator: "\n"))
-        // mango's check_key_binding_conflicts: WLR_INFO, both lines, no [Index] line after it.
         XCTAssertTrue(parsed.errors[0].message.hasPrefix("Key binding conflict in keymode default:\n  File \""),
                       parsed.errors[0].message)
         XCTAssertTrue(parsed.errors[0].message.contains("test.conf\", line 1\n"))
@@ -424,8 +395,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(c.gestureBindings[0].fingers, 3)
         XCTAssertEqual(c.gestureBindings[0].direction, .up)
     }
-
-    // MARK: - Rules
 
     func testWindowRule() {
         let parsed = parse("""
@@ -474,11 +443,8 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertNil(all.id)
         XCTAssertEqual(try RuleParser.parseTagRule("layout_name:grid").get().id, 0)
 
-        // mango keeps a layout name it does not know; it does nothing
         XCTAssertEqual(try RuleParser.parseTagRule("id:1,layout_name:spiral").get().layoutName, "spiral")
     }
-
-    // MARK: - Options
 
     func testUnknownKeyword() {
         let parsed = parse("does_not_exist=1")
@@ -542,7 +508,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(ConfigOptions.parseOption(key: "animation_type_open", value: "zoom", to: &c), .applied)
         XCTAssertEqual(c.animationTypeOpen, .zoom)
         XCTAssertEqual(ConfigOptions.parseOption(key: "circle_layout", value: "tile, scroller,monocle", to: &c), .applied)
-        // mango's sanitize_string keeps the blank: " scroller" never matches a layout
         XCTAssertEqual(c.circleLayout, ["tile", " scroller", "monocle"])
         XCTAssertEqual(ConfigOptions.parseOption(key: "scroller_proportion_preset", value: "0.3,0.6,1", to: &c), .applied)
         XCTAssertEqual(c.scrollerProportionPreset, [0.3, 0.6, 1])
@@ -558,7 +523,6 @@ final class ConfigParserTests: MangoTestCase {
 
         XCTAssertEqual(ConfigOptions.parseOption(key: "blur", value: "1", to: &c), .ignored)
         XCTAssertEqual(ConfigOptions.parseOption(key: "nope", value: "1", to: &c), .unknown)
-        // mango: atoi("wide") is 0; an unknown layout name is kept
         XCTAssertEqual(ConfigOptions.parseOption(key: "border_px", value: "wide", to: &c), .applied)
         XCTAssertEqual(c.borderpx, 0)
         XCTAssertEqual(ConfigOptions.parseOption(key: "circle_layout", value: "tile,spiral", to: &c), .applied)
@@ -571,8 +535,6 @@ final class ConfigParserTests: MangoTestCase {
         }
         XCTAssertEqual(c.focuscolor, parseColor("0x112233ff"), "an invalid colour leaves the option unchanged")
     }
-
-    // MARK: - KeyNames
 
     func testKeyNames() {
         XCTAssertEqual(KeyNames.keyCodes(forName: "Return"), [36])
@@ -590,8 +552,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(KeyNames.keyCodes(forName: "no_such_key"), [])
         XCTAssertEqual(KeyNames.keyCodes(forName: "XF86AudioMicMute"), [])
 
-        // Letters go through the current layout; `a` sits at code 0 on every Latin layout
-        // except AZERTY, so only require a resolvable, case-insensitive, round-tripping code.
         let a = KeyNames.keyCodes(forName: "a")
         XCTAssertEqual(a.count, 1)
         XCTAssertEqual(KeyNames.keyCodes(forName: "A"), a)
@@ -606,8 +566,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertFalse(KeyNames.currentLayoutName().isEmpty)
     }
 
-    /// A bug in mango (docs/afvigelser.md §6): a file that sources itself, directly or
-    /// through another, is read once and reported; mango reads it until it runs out of stack.
     func testASourceCycleIsReadOnce() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

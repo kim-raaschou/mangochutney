@@ -11,14 +11,11 @@ public struct DiscoveredWindow {
     public var appName: String
     public var title: String
     public var subrole: String
-    /// AeroSpace's dialog (`AxUiElementWindowType`): mango opens it floating.
     public var isDialog: Bool
     public var frame: CGRect
     public var isMinimized: Bool
     public var isFullscreen: Bool
     public var isAppHidden: Bool
-    /// Found by the first scan of an app that was already running when mango
-    /// started (placed by position, no open animation, no focus change).
     public var isInitial: Bool = false
 }
 
@@ -26,26 +23,18 @@ public struct DiscoveredWindow {
 public protocol AppWatcherDelegate: AnyObject {
     func windowDiscovered(_ w: DiscoveredWindow)
     func windowDestroyed(id: CGWindowID)
-    /// A move/resize notification, with the frame read on the app's own thread.
-    /// `isFullscreen` is only read for resizes.
     func windowGeometryChanged(id: CGWindowID, frame: CGRect, resized: Bool, isFullscreen: Bool?)
     func windowMinimized(id: CGWindowID, minimized: Bool)
     func windowTitleChanged(id: CGWindowID, title: String)
     func windowFocused(id: CGWindowID)
     func appActivated(pid: pid_t)
     func appHidden(pid: pid_t, hidden: Bool)
-    /// A window whose AX element went invalid (around sleep) has a new element; the
-    /// window itself never went away. `state` is what it has now: writes to the dead
-    /// element went nowhere, and nothing was reported while it was dead.
     func windowReacquired(id: CGWindowID, element: AXUIElement, state: ReacquiredState)
-    /// The app stopped answering Accessibility (`responding` false: a debugger paused it,
-    /// or it is busy) or answers again.
     func appResponding(pid: pid_t, responding: Bool)
     func appTerminated(pid: pid_t)
     func screensChanged()
 }
 
-/// Events an `AppWorker` sends from its thread to the main thread.
 enum AppEvent {
     case discovered([DiscoveredWindow])
     case destroyed(CGWindowID)
@@ -57,27 +46,19 @@ enum AppEvent {
     case reacquired(CGWindowID, AXUIElement, ReacquiredState)
 }
 
-/// A reacquired window's frame and native state, read with its new element.
 public struct ReacquiredState {
     public var frame: CGRect?
-    /// nil: the window did not answer.
     public var minimized: Bool?
     public var fullscreen: Bool?
     public var appHidden: Bool
 }
 
-/// State the main thread publishes for the app threads (lock-protected).
 final class WatcherShared: @unchecked Sendable {
     private let lock = NSLock()
     private var suppressUntil: [CGWindowID: TimeInterval] = [:]
 
-    /// While mango itself moves a window (placement, animation, mouse grab) its
-    /// move/resize notifications are not read back: mango already knows the
-    /// target and `verifyFrame` reads the real frame once it settles.
     func suppress(_ id: CGWindowID, until t: TimeInterval) {
         lock.lock()
-        // Entries of windows destroyed while suppressed are never read again: drop the
-        // expired ones here so the map does not grow over a long session.
         if suppressUntil.count > 64 {
             let now = CACurrentMediaTime()
             suppressUntil = suppressUntil.filter { $0.value > now }
@@ -95,10 +76,6 @@ final class WatcherShared: @unchecked Sendable {
     }
 }
 
-/// One running app. Owns a dedicated thread (AeroSpace / rift design): the
-/// AXObserver runs on it and every synchronous AX read happens there, so an app
-/// that is slow or hung only blocks its own thread, never mango's main thread
-/// or the keyboard. Writes go through `writeQueue` (also off the main thread).
 public final class AppWorker: @unchecked Sendable {
     public let pid: pid_t
     public let nsApp: NSRunningApplication
@@ -111,30 +88,19 @@ public final class AppWorker: @unchecked Sendable {
     private let deliver: (AppEvent) -> Void
     private let initial: Bool
 
-    // Confined to `thread`.
     private var observer: AXObserverBox?
-    /// The app's windows and what a refresh decides about them (`WindowBook`).
     private var book = WindowBook<AXUIElement, DiscoveredWindow>()
-    /// App-level notifications registered (they can fail while an app is still starting).
     private var appSubscribed = false
     private var scannedOnce = false
     private var unresponsive = false
-    /// Until the app has answered once, its element waits as long as macOS does by
-    /// default (as AeroSpace does): an app that is starting (VS Code, Brave) is busy for
-    /// seconds, and nothing else asks again until the user does something. Only this
-    /// app's thread waits, nothing else waits for it; once the app has answered,
-    /// `AX.messagingTimeout` applies again so a hang later costs half a second.
     private static let firstContactTimeout: Float = 6
     private var answered = false
     private var startedAt: CFTimeInterval = 0
 
-    // Refresh coalescing: at most one refresh waiting behind the one running,
-    // so a hung app never accumulates a backlog.
     private let lock = NSLock()
     private var refreshQueued = false
     private var queuedRecheck = false
 
-    // Move/resize coalescing: one main-thread hop for a burst of notifications.
     private var pendingGeometry: [CGWindowID: (CGRect, Bool, Bool?)] = [:]
     private var geometryScheduled = false
 
@@ -159,17 +125,13 @@ public final class AppWorker: @unchecked Sendable {
         thread.perform { [self] in
             let refcon = Unmanaged.passUnretained(self).toOpaque()
             observer = AXObserverBox(pid: pid, callback: workerAXCallback, refcon: refcon, runLoop: thread.runLoop)
-            runRefresh(recheck: false)   // subscribes the app first
+            runRefresh(recheck: false)
         }
     }
 
-    /// On `thread`. Retried on every refresh until it succeeds (Electron and Java apps
-    /// bring up accessibility late; without these the app's windows are only seen by rescans).
     private func subscribeApp() {
         guard !appSubscribed, let obs = observer else { return }
         let refcon = Unmanaged.passUnretained(self).toOpaque()
-        // Stop at the first failure: an app that does not answer would make each
-        // registration wait out the timeout in turn.
         for n in [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification,
                   kAXMainWindowChangedNotification, kAXApplicationActivatedNotification] {
             guard obs.add(ax, n, refcon: refcon) else { return }
@@ -186,9 +148,6 @@ public final class AppWorker: @unchecked Sendable {
         DispatchQueue.main.async { [deliver] in deliver(e) }
     }
 
-    // MARK: Refresh (window discovery)
-
-    /// Callable from any thread.
     func requestRefresh(recheck: Bool) {
         lock.lock()
         if refreshQueued {
@@ -208,19 +167,13 @@ public final class AppWorker: @unchecked Sendable {
         }
     }
 
-    /// On `thread`. `recheck`: re-classify windows rejected earlier (Electron,
-    /// Java and Qt create the AX window before its buttons/subrole are populated).
-    /// `recheck` comes from a rescan on user interaction (bounded per window) or, as
-    /// `notified`, from the app's own notifications (always re-checks).
     private func runRefresh(recheck: Bool, notified: Bool = false) {
         let isInitialScan = initial && !scannedOnce
         scannedOnce = true
         subscribeApp()
         let (err, value) = ax.attributeResult(kAXWindowsAttribute)
         if err == .cannotComplete {
-            // Timed out: the app is busy or hung. Its windows are not gone; try again later.
             if !answered {
-                // Still starting: it has no windows to keep, and it is not hung.
                 return
             }
             if !unresponsive {
@@ -264,16 +217,12 @@ public final class AppWorker: @unchecked Sendable {
         }
     }
 
-    /// A boolean attribute, nil when the window did not answer (a timeout right after
-    /// wake must not read as "not minimized"); an unsupported attribute is false.
     private static func answeredBool(_ el: AXUIElement, _ name: String) -> Bool? {
         let (err, value) = el.attributeResult(name)
         if err == .cannotComplete || err == .invalidUIElement { return nil }
         return (value as? Bool) ?? false
     }
 
-    /// Returns false when a notification could not be registered (retried on refresh).
-    /// Stops at the first failure, as `subscribeApp` does.
     @discardableResult
     private func subscribeWindow(_ el: AXUIElement) -> Bool {
         guard let obs = observer else { return false }
@@ -289,16 +238,11 @@ public final class AppWorker: @unchecked Sendable {
         kAXWindowDeminiaturizedNotification, kAXMovedNotification, kAXResizedNotification,
         kAXTitleChangedNotification]
 
-    /// Drop a dead element's registrations (the observer keeps a list of them).
     private func unsubscribeWindow(_ el: AXUIElement) {
         guard let obs = observer else { return }
         for n in Self.windowNotifications { obs.remove(el, n) }
     }
 
-    // MARK: Classification (on `thread`)
-
-    /// AeroSpace getAxUiElementWindowType (tree/MacApp.swift): a popup is not managed, a
-    /// dialog opens floating (`WindowClassifier`).
     private func classify(_ el: AXUIElement, id: CGWindowID) -> DiscoveredWindow? {
         let level = MacOsWindowLevel.of(id)
         let type = Self.windowType(el.getWindowType(axApp: ax, KnownBundleId(rawValue: bundleId),
@@ -312,24 +256,17 @@ public final class AppWorker: @unchecked Sendable {
                                 isAppHidden: nsApp.isHidden)
     }
 
-    /// Not in AeroSpace: its window-level rule for every app. AeroSpace treats a window above
-    /// the normal level as a popup only for the apps it has dumps of, rolling it out app by
-    /// app; here it holds for all (a notification or a floating panel is the app's own, as a
-    /// layer surface is in mango). A window not on screen (no level) is decided as before.
     static func windowType(_ type: AxUiElementWindowType, level: MacOsWindowLevel?) -> AxUiElementWindowType {
         guard let level, level != .normalWindow else { return type }
         return .popup
     }
 
-    /// The window's frame as the window server has it (top-left origin, like AX). Needs
-    /// no answer from the app, so it is right even while the app is frozen.
     public static func windowServerFrame(_ id: CGWindowID) -> CGRect? {
         guard let info = CGWindowListCopyWindowInfo([.optionIncludingWindow], id) as? [[String: Any]],
               let bounds = info.first?[kCGWindowBounds as String] as? NSDictionary else { return nil }
         return CGRect(dictionaryRepresentation: bounds as CFDictionary)
     }
 
-    /// The windows the window server shows, front to back, where it has them.
     public static func stackingOrder() -> [StackedWindow] {
         guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return [] }
         return info.compactMap { w in
@@ -340,9 +277,6 @@ public final class AppWorker: @unchecked Sendable {
         }
     }
 
-    /// Every window the window server has, on screen or not (minimized, hidden, other Space).
-    /// The ids alone (CGWindowListCreate): a dispatch asks, and every window's description
-    /// (CGWindowListCopyWindowInfo) took 5 ms to the ids' 2.
     public static func allWindowIDs() -> Set<CGWindowID> {
         guard let list = mango_WindowListCreate() else { return [] }
         return Set((0..<CFArrayGetCount(list)).map {
@@ -350,7 +284,6 @@ public final class AppWorker: @unchecked Sendable {
         })
     }
 
-    /// The windows on screen, front to back, ids alone (about 2 ms; an order is about 2 ms each).
     public static func onScreenOrder() -> [CGWindowID] {
         guard let list = mango_WindowListCreateOnScreen() else { return [] }
         return (0..<CFArrayGetCount(list)).map {
@@ -358,16 +291,11 @@ public final class AppWorker: @unchecked Sendable {
         }
     }
 
-    /// Normal-layer windows the window server shows for `pid` (diagnostics).
     static func onScreenWindowCount(pid: pid_t) -> Int {
         guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return 0 }
         return info.filter { ($0[kCGWindowOwnerPID as String] as? pid_t) == pid && ($0[kCGWindowLayer as String] as? Int) == 0 }.count
     }
 
-    // MARK: Focus
-
-    /// Reads the app's focused window on `thread` and reports it if tracked.
-    /// The main thread only acts on it while this app is frontmost.
     func requestFocusReport() {
         thread.perform { [self] in reportFocus() }
     }
@@ -376,8 +304,6 @@ public final class AppWorker: @unchecked Sendable {
         guard let id = ax.focusedWindow?.windowID, book.windows[id] != nil else { return }
         post(.focused(id))
     }
-
-    // MARK: AX notifications (on `thread`)
 
     fileprivate func handle(notification: String, element: AXUIElement) {
         switch notification {
@@ -429,7 +355,6 @@ public final class AppWorker: @unchecked Sendable {
         }
     }
 
-    /// `orphans`: an orphan's element too (its destroyed notice; see WindowBook.orphans).
     private func windowID(of element: AXUIElement, orphans: Bool = false) -> CGWindowID? {
         let books = orphans ? [book.windows, book.orphans] : [book.windows]
         for windows in books {
@@ -447,22 +372,15 @@ private func workerAXCallback(_ observer: AXObserver, _ element: AXUIElement, _ 
     worker.handle(notification: notification as String, element: element)
 }
 
-/// Tracks running apps. Runs on the main thread but never makes a synchronous
-/// AX call itself: each app's `AppWorker` does that on its own thread and sends
-/// the results here.
 @MainActor
 public final class AppWatcher {
     public weak var delegate: AppWatcherDelegate?
 
     public private(set) var apps: [pid_t: AppWorker] = [:]
-    /// Main-thread mirror of tracked windows (for `element(for:)`).
     private var owners: [CGWindowID: (pid: pid_t, element: AXUIElement)] = [:]
     public var ignoredBundleIds: Set<String> = [] {
-        didSet { if ignoredBundleIds != oldValue { caughtUp = false } }   // an app ignored before is looked at again
+        didSet { if ignoredBundleIds != oldValue { caughtUp = false } }
     }
-    /// The running apps have been looked at once. After that an app is taken when it launches
-    /// or is activated: asking every running app its pid or policy is a call to LaunchServices
-    /// once an activation has made the answers stale, 9 ms on every key.
     private var caughtUp = false
     let shared = WatcherShared()
     private var mouseUpMonitor: Any?
@@ -471,17 +389,12 @@ public final class AppWatcher {
 
     public init() {}
 
-    // MARK: Lifecycle
-
     public func start() {
         let nc = NSWorkspace.shared.notificationCenter
         nc.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] n in
             guard let app = n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
             MainActor.assumeIsolated {
                 guard let self else { return }
-                // An app activated while starting is tracked already, and its first scans
-                // were refused: its accessibility comes up when it has finished launching,
-                // which is this notification. Ask now, or nothing asks until the user acts.
                 if self.apps[app.processIdentifier] != nil {
                     self.refresh(pid: app.processIdentifier, recheckRejected: true)
                 } else {
@@ -500,7 +413,6 @@ public final class AppWatcher {
                 if self.apps[app.processIdentifier] == nil {
                     self.register(app, initial: false)
                 }
-                // All apps: the one left behind may have closed a window on the way out.
                 self.refreshAll(recheckRejected: true)
                 self.delegate?.appActivated(pid: app.processIdentifier)
             }
@@ -519,15 +431,11 @@ public final class AppWatcher {
         nc.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshAll() }
         }
-        // After sleep every window's AX element has gone invalid: look for the new ones
-        // on each wake step. Apps that list their windows later still announce them
-        // (window created, focus), and the next click or key catches the rest.
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
             nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.refreshAll(recheckRejected: true) }
             }
         }
-        // Fires several times in a burst when displays change or the Dock resizes; coalesce.
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 guard let self else { return }
@@ -544,13 +452,6 @@ public final class AppWatcher {
 
         for app in NSWorkspace.shared.runningApplications { register(app, initial: true) }
 
-        // AXWindowCreated / AXUIElementDestroyed are not fully reliable. Instead of polling
-        // on a clock, rescan when the user does something (as AeroSpace does): a click
-        // (a close button in a background window, a new window that missed its
-        // notification), a Command shortcut (Cmd-N, Cmd-W) in the frontmost app, an app
-        // switch and every dispatcher (MangoServer.dispatch). Each rescan runs on the
-        // app's own thread; a hung app keeps at most one waiting. What changes while the
-        // user does nothing is seen at the next interaction.
         mouseUpMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseUp) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshAll(recheckRejected: true) }
         }
@@ -592,7 +493,7 @@ public final class AppWatcher {
     }
 
     private func receive(_ e: AppEvent, pid: pid_t) {
-        guard apps[pid] != nil else { return }   // app quit meanwhile
+        guard apps[pid] != nil else { return }
         switch e {
         case .discovered(let ws):
             for w in ws {
@@ -615,24 +516,16 @@ public final class AppWatcher {
             owners[id] = (pid, element)
             delegate?.windowReacquired(id: id, element: element, state: state)
         case .focused(let id):
-            // Only the frontmost app's current focused window counts as focused. Our own
-            // AXRaise calls make background apps report main/focused-window changes, and
-            // stale notifications arrive after focus moved on; acting on them steals focus.
             guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid, owners[id] != nil else { return }
             delegate?.windowFocused(id: id)
         }
     }
 
-    // MARK: Requests (all asynchronous, executed on the app's thread)
-
     public func refreshAll(recheckRejected: Bool = false) {
         for w in apps.values {
-            // The process is gone: it ended. (isTerminated would ask LaunchServices; the
-            // app's instance is not always the one runningApplications lists.)
             if kill(w.pid, 0) != 0 && errno == ESRCH { unregister(pid: w.pid); continue }
             w.requestRefresh(recheck: recheckRejected)
         }
-        // Apps launched before we registered observers
         guard !caughtUp else { return }
         caughtUp = true
         for a in NSWorkspace.shared.runningApplications where apps[a.processIdentifier] == nil {
@@ -646,20 +539,15 @@ public final class AppWatcher {
         w.requestRefresh(recheck: recheckRejected)
     }
 
-    /// Ask the app which window it has focused; arrives as `windowFocused`.
     public func requestFocusReport(pid: pid_t) {
         apps[pid]?.requestFocusReport()
     }
 
-    /// Skip reading back move/resize notifications we cause ourselves.
     public func suppressGeometry(_ id: CGWindowID, until t: TimeInterval) {
         shared.suppress(id, until: t)
     }
 }
 
-/// A window as the window server stacks it: where it is, and whether its window alpha is
-/// whole. A window drawn with a transparent background (a terminal's background opacity,
-/// vibrancy) still counts as opaque: the window server does not report that.
 public struct StackedWindow: Equatable, Sendable {
     public var id: CGWindowID
     public var frame: CGRect

@@ -1,20 +1,11 @@
 import AppKit
 import Mango
 
-/// mango's switcher panel (switcher.c), its tiles where mango puts them, drawn in the
-/// macOS style of the overview's cards: a HUD panel, each tile a dark rounded card, the
-/// highlighted one ringed in the focus colour. Each window's picture is in its own
-/// proportions, never stretched to the tile as mango's surface is, and as large as its
-/// tile allows inside mango's pad, a smaller window somewhat less (smallScale): mango's
-/// tiles are all one height, so a small window filling one looked much larger than it
-/// is. (One scale for every window made small windows stamps beside a tall one.) The picture needs Screen Recording; until it arrives (or
-/// without it) the app's icon stands in. Clicks and keys are handled by the event tap.
 @MainActor
 final class SwitcherPanel {
     struct Tile {
         var id: ClientID
-        var frame: CGRect   // AX coordinates
-        /// The window's own size.
+        var frame: CGRect
         var size: CGSize
         var pid: pid_t
         var highlighted: Bool
@@ -23,9 +14,6 @@ final class SwitcherPanel {
     struct Style {
         var focus: CGColor
         var border: CGColor
-        /// chutney_style (the port's look); off, mango's: a flat panel in
-        /// switcher_panel_color, each tile filled with the border colour (the highlighted one
-        /// the focus colour), the window stretched into it inside the pad.
         var macOS: Bool
         init(focus: RGBA, border: RGBA, macOS: Bool = true) {
             self.macOS = macOS
@@ -34,7 +22,6 @@ final class SwitcherPanel {
         }
     }
 
-    /// mango's switcher_panel_color.
     static let mangoPanelColor = CGColor(red: 0.09, green: 0.09, blue: 0.11, alpha: 0.92)
 
     private let window: NSWindow
@@ -57,7 +44,6 @@ final class SwitcherPanel {
         let root = FlippedView(frame: CGRect(origin: .zero, size: panel.size))
         root.wantsLayer = true
         if style.macOS {
-            // The HUD (GlassBacking: Liquid Glass on macOS 26).
             let glass = GlassBacking(material: .hudWindow, cornerRadius: 18)
             glass.frame = CGRect(origin: .zero, size: panel.size)
             glass.addContent(root)
@@ -67,7 +53,6 @@ final class SwitcherPanel {
             window.contentView = root
         }
 
-        // mango stretches each window into its tile inside the pad.
         let pad = CGFloat(SwitcherLayout.pad)
         let pictures = style.macOS ? Self.pictureFrames(tiles)
                                    : Dictionary(uniqueKeysWithValues: tiles.map { ($0.id, $0.frame.insetBy(dx: pad, dy: pad)) })
@@ -82,8 +67,6 @@ final class SwitcherPanel {
         }
     }
 
-    /// Where each window's picture goes (AX coordinates): the largest size of the
-    /// window's proportions inside its tile's pad, times smallScale, centred.
     static func pictureFrames(_ tiles: [Tile]) -> [ClientID: CGRect] {
         let pad = CGFloat(SwitcherLayout.pad)
         let largest = tiles.map { $0.size.width * $0.size.height }.max() ?? 0
@@ -99,9 +82,6 @@ final class SwitcherPanel {
         return out
     }
 
-    /// How much of its tile a window's picture fills: the fourth root of its area over the
-    /// largest window's, at least 0.6. Half the area fills 84 %; a window a seventeenth the
-    /// size of the largest, 60 %.
     static func smallScale(area: CGFloat, largest: CGFloat) -> CGFloat {
         guard area > 0, largest > 0 else { return 1 }
         return max(0.6, min(1, pow(area / largest, 0.25)))
@@ -134,7 +114,6 @@ final class SwitcherPanel {
         return l
     }
 
-    /// The highlight moved (switcher_apply_highlight).
     func highlight(_ tiles: [Tile]) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -144,7 +123,7 @@ final class SwitcherPanel {
                 l.borderColor = t.highlighted ? style.focus : style.border
                 l.borderWidth = t.highlighted ? 3 : 1
             } else {
-                l.backgroundColor = t.highlighted ? style.focus : style.border   // switcher_apply_highlight
+                l.backgroundColor = t.highlighted ? style.focus : style.border
             }
         }
         CATransaction.commit()
@@ -167,16 +146,9 @@ final class SwitcherPanel {
     }
 }
 
-/// mango's title message bar (title_message_bar.c): the title on the first line and the
-/// app id centred under it, the two lines a block centred in the bar; a line too long
-/// for the bar ends in "…". Drawn in the macOS style (a HUD panel, the system font); each
-/// title_message_bar_decorate_* key set in the config replaces that part with mango's:
-/// focus_bg_color the panel, focus_fg_color and font_desc the text, border, corner
-/// radius and padding (the bar is always focused, as in mango).
 @MainActor
 final class TitleMessageBar {
     private let window: NSWindow
-    /// The HUD (GlassBacking: Liquid Glass on macOS 26).
     private let container = GlassBacking(material: .hudWindow)
     private let view = TitleMessageBarView()
 
@@ -195,14 +167,12 @@ final class TitleMessageBar {
         window.contentView = container
     }
 
-    /// `frame` in AX coordinates.
     func show(frame: CGRect, title: String, appid: String, style: DecorateStyle) {
         view.title = title
         view.appid = appid
         view.style = style
         window.setFrame(cocoaRect(frame), display: false)
         view.frame = container.bounds
-        // mango's bg colour replaces the HUD; its radius (else the macOS one) rounds it.
         container.materialHidden = style.focusBgColor != nil
         let r = min(CGFloat(style.cornerRadius ?? TitleMessageBarView.macRadius), min(frame.width, frame.height) / 2)
         container.cornerRadius = r
@@ -226,7 +196,6 @@ private final class TitleMessageBarView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let b = bounds
         let border = CGFloat(max(0, style.borderWidth ?? 0))
-        // rect_apply: a radius no larger than half the shorter side.
         func radius(_ r: CGRect) -> CGFloat {
             min(CGFloat(style.cornerRadius ?? Self.macRadius), min(r.width, r.height) / 2)
         }
@@ -240,7 +209,6 @@ private final class TitleMessageBarView: NSView {
             nsColor(bg).setFill()
             NSBezierPath(roundedRect: inner, xRadius: radius(inner), yRadius: radius(inner)).fill()
         } else if border > 0 {
-            // The HUD shows through the border's inside.
             NSGraphicsContext.current?.compositingOperation = .clear
             NSBezierPath(roundedRect: inner, xRadius: radius(inner), yRadius: radius(inner)).fill()
             NSGraphicsContext.current?.compositingOperation = .sourceOver
@@ -249,9 +217,6 @@ private final class TitleMessageBarView: NSView {
         let padX = CGFloat(style.paddingX ?? 12), padY = CGFloat(style.paddingY ?? 0)
         let avail = inner.insetBy(dx: padX, dy: padY)
         guard avail.width > 0, avail.height > 0 else { return }
-        // macOS: the title in semibold, the app id smaller (both in the label colour: on
-        // glass the size carries the hierarchy); mango's font and colour for both lines
-        // when they are set.
         let mangoFont = style.fontDesc.map { decorateFont(FontDescription($0)) }
         let titleAttrs: [NSAttributedString.Key: Any] = [
             .font: mangoFont ?? .systemFont(ofSize: 15, weight: .semibold),
@@ -269,14 +234,12 @@ private final class TitleMessageBarView: NSView {
         let x0 = avail.minX + max(0, (avail.width - blockW) / 2)
         var y = avail.minY + max(0, (avail.height - blockH) / 2)
         for (i, line) in lines.enumerated() {
-            // mango: the first line at the block's left edge, the second centred under it.
             let x = i == 0 ? x0 : x0 + (blockW - sizes[i].width) / 2
             (line.0 as NSString).draw(at: CGPoint(x: x, y: y), withAttributes: line.1)
             y += sizes[i].height
         }
     }
 
-    /// text_ellipsize_line: the longest start of `s` that fits with "…" after it.
     private func ellipsized(_ s: String, _ attrs: [NSAttributedString.Key: Any], width: CGFloat) -> String {
         func w(_ t: String) -> CGFloat { (t as NSString).size(withAttributes: attrs).width }
         guard w(s) > width else { return s }
@@ -291,8 +254,6 @@ private final class TitleMessageBarView: NSView {
     }
 }
 
-/// The NSFont for a Pango font description: `monospace`, `sans` and `serif` are the
-/// system's, other families by name; the first family macOS has.
 func decorateFont(_ d: FontDescription) -> NSFont {
     let size = CGFloat(d.pixelSize)
     let weight: NSFont.Weight = switch d.weight {
@@ -332,12 +293,11 @@ func decorateFont(_ d: FontDescription) -> NSFont {
                                                  weight: managerWeight, size: size) { return f }
         }
     }
-    return italicized(.systemFont(ofSize: size, weight: weight))   // Pango falls back to Sans
+    return italicized(.systemFont(ofSize: size, weight: weight))
 }
 
 private func nsColor(_ c: RGBA) -> NSColor { NSColor(red: c.r, green: c.g, blue: c.b, alpha: c.a) }
 
-/// AX (y down from the primary screen's top) to Cocoa (y up).
 private func cocoaRect(_ r: CGRect) -> CGRect {
     CGRect(x: r.minX, y: Screens.primaryHeight - r.maxY, width: r.width, height: r.height)
 }

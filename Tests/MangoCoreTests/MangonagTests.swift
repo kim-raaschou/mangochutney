@@ -2,7 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mangonag's Wayland side in a test: what mangonag asks of it, never a bar on the screen.
 @MainActor
 private final class FakeNagDisplay: NagDisplay {
     var setups = 0
@@ -13,7 +12,6 @@ private final class FakeNagDisplay: NagDisplay {
     func nagDestroySurface() { destroyed += 1 }
 }
 
-/// mangonag (mangonag/mangonag.c): its options, its message, its buttons and its text, as mango's.
 @MainActor
 final class MangonagTests: MangoTestCase {
     private var display = FakeNagDisplay()
@@ -218,7 +216,6 @@ final class MangonagTests: MangoTestCase {
         XCTAssertEqual(nagAnsiSkip(Array("\u{1B}[31".utf8), 0), 0, "an escape without its end")
     }
 
-    /// The port turns mangonag's attributes into AppKit's, as pango does.
     func testPortsAttributedText() {
         let s = Nag.attributed("[ERROR]: bad \u{1B}[1m\u{1B}[31mkey\u{1B}[0m", font: .systemFont(ofSize: 13), color: .white)
         XCTAssertEqual(s.string, "[ERROR]: bad key")

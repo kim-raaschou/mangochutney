@@ -2,15 +2,10 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's TOML format (`src/config/toml_parse.c`, docs/configuration/toml.md): every
-/// TOML construct becomes the same option call as its conf line.
 final class TOMLConfigTests: MangoTestCase {
-
     func parse(_ text: String, name: String = "t.toml") -> ParsedConfig {
         ConfigParser.parse(text: text, baseDirectory: nil, fileName: name)
     }
-
-    // MARK: Same config in both formats
 
     func testConfAndTomlGiveTheSameConfig() {
         let conf = """
@@ -110,18 +105,13 @@ final class TOMLConfigTests: MangoTestCase {
         XCTAssertEqual(y.keyBindings.first { $0.keyName == "Return" }?.dispatch.args, ["foot"], "$term expanded")
     }
 
-    // MARK: mango's own TOML
-
     static var mangoRoot: String {
         ProcessInfo.processInfo.environment["MANGO_SOURCES"] ?? NSHomeDirectory() + "/sources/mango"
     }
 
-    /// The ```toml blocks of mango's docs/configuration/toml.md, except the last one,
-    /// which sources files that do not exist here.
     func testMangoDocsExamplesLoadWithoutErrors() throws {
         let path = Self.mangoRoot + "/docs/configuration/toml.md"
         try XCTSkipUnless(FileManager.default.fileExists(atPath: path), "no mango checkout")
-        // mango's docs use CRLF, and "\r\n" is one Character in Swift.
         let md = try String(contentsOfFile: path, encoding: .utf8).replacingOccurrences(of: "\r\n", with: "\n")
         var blocks: [String] = []
         var current: [Substring]?
@@ -136,9 +126,6 @@ final class TOMLConfigTests: MangoTestCase {
         }
     }
 
-    /// The mango author's config in TOML (github.com/DreamMaoMao/mango-config, branch
-    /// `toml`, at MANGO_CONFIG_SOURCES or ~/sources/mango-config): eight files sourced from
-    /// config.toml, every one loads with zero errors.
     func testMangoAuthorsTomlConfigLoads() throws {
         let root = ProcessInfo.processInfo.environment["MANGO_CONFIG_SOURCES"] ?? NSHomeDirectory() + "/sources/mango-config"
         let url = URL(fileURLWithPath: root + "/config.toml")
@@ -151,8 +138,6 @@ final class TOMLConfigTests: MangoTestCase {
         XCTAssertFalse(parsed.config.envVars.isEmpty)
     }
 
-    // MARK: Format
-
     func testFormatFollowsExtensionThenFirstCharacter() {
         XCTAssertEqual(ConfigParser.detectConfigFormat(fileName: "a.toml", text: "x=1"), .toml)
         XCTAssertEqual(ConfigParser.detectConfigFormat(fileName: "a.TOML", text: "x=1"), .toml)
@@ -162,7 +147,6 @@ final class TOMLConfigTests: MangoTestCase {
         XCTAssertEqual(ConfigParser.detectConfigFormat(fileName: "config", text: ""), .conf)
     }
 
-    /// mango's order: config.conf, else config.toml (else config.conf, to be created).
     func testDefaultConfigIsConfThenToml() throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent("mango-home-\(UUID().uuidString)")
         let dir = home.appendingPathComponent(".config/mango")
@@ -193,8 +177,6 @@ final class TOMLConfigTests: MangoTestCase {
         XCTAssertEqual(p.config.gappiv, 9)
         XCTAssertEqual(p.config.gappov, 11)
     }
-
-    // MARK: Values and statements
 
     func testScalars() {
         typealias S = ParserState

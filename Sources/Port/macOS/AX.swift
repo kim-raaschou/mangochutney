@@ -4,24 +4,16 @@ import QuartzCore
 import MangoPrivate
 import Mango
 
-/// Thin wrappers around the Accessibility API. All calls are synchronous IPC
-/// to the target app; a per-element messaging timeout keeps hung apps from
-/// blocking us for long.
 public enum AX {
     public static let messagingTimeout: Float = 0.5
 
     public static var isTrusted: Bool { AXIsProcessTrusted() }
 
-    /// Shows the system prompt if not trusted.
     public static func requestTrust() -> Bool {
         let key = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
         return AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
     }
 
-    /// The per-element timeout only applies to the element it is set on; window
-    /// elements obtained from `kAXWindowsAttribute` would otherwise use the 6s
-    /// default. Setting it on the system-wide element makes it global (rift does
-    /// the same), so a hung app blocks us for at most `messagingTimeout`.
     public static func setGlobalTimeout() {
         AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), messagingTimeout)
     }
@@ -47,8 +39,6 @@ public extension AXUIElement {
         return v as? T
     }
 
-    /// Attribute read that keeps the AX error, so a timeout (`.cannotComplete`: the
-    /// app is busy or hung) can be told apart from a dead element (`.invalidUIElement`).
     func attributeResult(_ name: String) -> (AXError, CFTypeRef?) {
         var value: CFTypeRef?
         let err = AXUIElementCopyAttributeValue(self, name as CFString, &value)
@@ -76,7 +66,6 @@ public extension AXUIElement {
         return AXUIElementGetPid(self, &p) == .success ? p : nil
     }
 
-    /// CGWindowID via the private `_AXUIElementGetWindow`.
     var windowID: CGWindowID? {
         var id: CGWindowID = 0
         let err = _AXUIElementGetWindow(self, &id)
@@ -134,7 +123,6 @@ public extension AXUIElement {
         return setAttribute(kAXSizeAttribute, v)
     }
 
-    /// Size, position, size (AeroSpace order: avoids clamping at screen edges).
     func setFrame(_ r: CGRect) {
         setSize(r.size)
         setPosition(r.origin)
@@ -148,17 +136,13 @@ public extension AXUIElement {
     func setFullscreen(_ v: Bool) { setAttribute("AXFullScreen", v as CFBoolean) }
     func setMain() { setAttribute(kAXMainAttribute, kCFBooleanTrue) }
 
-    /// Close via the close button (polite close, like mango's killclient).
     func close() { closeButton?.press() }
 
-    /// `AXEnhancedUserInterface` on the app element makes some apps animate
-    /// and clamp frame changes; temporarily disable it while we move windows.
     var enhancedUserInterface: Bool {
         get { (attribute("AXEnhancedUserInterface") as Bool?) ?? false }
         set { setAttribute("AXEnhancedUserInterface", newValue as CFBoolean) }
     }
 
-    /// Topmost AX element at a screen point (AX coordinates), and its window.
     static func elementAt(_ point: CGPoint) -> AXUIElement? {
         var el: AXUIElement?
         let err = AXUIElementCopyElementAtPosition(AX.systemWide(), Float(point.x), Float(point.y), &el)
@@ -171,7 +155,6 @@ public extension AXUIElement {
     }
 }
 
-/// Observer wrapper; the run loop source is attached to `runLoop`.
 public final class AXObserverBox {
     public let observer: AXObserver
     public let pid: pid_t
@@ -179,8 +162,6 @@ public final class AXObserverBox {
 
     private let runLoop: CFRunLoop
 
-    /// The observer's callbacks run on `runLoop` (an app's own `AXThread`, so
-    /// notifications from a hung app never reach the main thread).
     public init?(pid: pid_t, callback: @escaping AXObserverCallbackWithInfo, refcon: UnsafeMutableRawPointer?,
                  runLoop: CFRunLoop = CFRunLoopGetMain()) {
         var obs: AXObserver?
@@ -213,21 +194,12 @@ public final class AXObserverBox {
     }
 }
 
-/// Serial per-process queue for AX writes, so a hung app does not block the
-/// main thread or other apps' animations. Only the newest pending frame per
-/// window is kept.
-/// The writes mango makes to another app's windows, in order, off the main thread.
-/// `AXWriteQueue` is the real one; the tests drive the engine through a fake app.
 public protocol WindowWriter: AnyObject {
-    /// `written` runs on the main thread once the frame has been written (not for a
-    /// write a newer one replaced before it was sent). Callers use `setFrame`.
     func write(_ element: AXUIElement, id: CGWindowID, frame: CGRect, setSize: Bool, animating: Bool,
                written: (@MainActor (CGRect) -> Void)?)
-    /// The window's real frame after every write queued before this call (nil: no answer).
     func readBack(_ element: AXUIElement, completion: @escaping @MainActor (CGRect?) -> Void)
     func raise(_ element: AXUIElement)
     func async(_ body: @escaping () -> Void)
-    /// After the last write (quit): leave the app as it was, e.g. AXEnhancedUserInterface on.
     func restoreAppSettings()
 }
 
@@ -246,23 +218,14 @@ public final class AXWriteQueue: WindowWriter {
         var frame: CGRect
         var setSize: Bool
         var animating: Bool
-        /// Called on the main thread once this frame has been written (not for a write a
-        /// newer one replaced before it was sent).
         var written: (@MainActor (CGRect) -> Void)?
     }
     private var pending: [CGWindowID: PendingWrite] = [:]
     private var scheduled: Set<CGWindowID> = []
     public let pid: pid_t
-    /// Apps with AXEnhancedUserInterface on (set by assistive tools; Ghostty, Electron
-    /// apps) apply frame writes late and animated, then finish a resize with a stale
-    /// position. Like rift and yabai it is switched off while we move the app's
-    /// windows and back on by the read-back after the last write. Queue-confined.
     private let app: AXUIElement
     private var enhancedUIOff = false
-    /// The app answered "off" this recently: no need to ask (an AX round trip) on every frame.
     private var enhancedUIKnownOffUntil: CFTimeInterval = 0
-    /// Read-backs waiting on the queue (lock). A hung app would otherwise collect a backlog
-    /// of stale reads that all run once it recovers.
     private var pendingReads = 0
     private static let maxPendingReads = 4
 
@@ -283,9 +246,6 @@ public final class AXWriteQueue: WindowWriter {
         enhancedUIOff = true
     }
 
-    /// Switched back on once the writes are done: by the read-back that follows every
-    /// placement (verifyFrame, parking, the end of a grab), when no other write is
-    /// waiting, and at quit (`restoreAppSettings`). No timer.
     public func restoreAppSettings() {
         queue.async { [self] in restoreEnhancedUIIfIdle() }
     }
@@ -300,20 +260,10 @@ public final class AXWriteQueue: WindowWriter {
         enhancedUIOff = false
     }
 
-    /// `animating`: an animation frame, written in two calls (below). A slow app gets fewer
-    /// of them, never a wrong one: only the newest frame waits while it is busy.
-    /// `written` runs on the main thread after the app has been given the frame: the
-    /// window is there now (its content may still be redrawing), so a border drawn from
-    /// it stays with the window instead of running ahead of a slow app.
     public func write(_ element: AXUIElement, id: CGWindowID, frame: CGRect, setSize: Bool, animating: Bool,
                       written: (@MainActor (CGRect) -> Void)?) {
         lock.lock()
-        // Coalescing keeps only the newest frame, but a size write that has not been
-        // sent yet must survive a newer position-only write (e.g. an animation tick).
         let keepSize = pending[id]?.setSize ?? false
-        // A replaced write's callback moves to the newer write, so a report someone waits
-        // for (an animation's last frame) is not lost when another write overtakes it; it
-        // then reports the frame that was really written.
         let report = written ?? pending[id]?.written
         pending[id] = PendingWrite(element: element, frame: frame, setSize: setSize || keepSize, animating: animating, written: report)
         let needSchedule = !scheduled.contains(id)
@@ -336,15 +286,6 @@ public final class AXWriteQueue: WindowWriter {
             if withSize && !animating {
                 el.setFrame(r)
             } else if withSize {
-                // Animation frame: position then size, two calls. The size-position-size
-                // order of a single write costs apps two to three times as much (Ghostty
-                // 15 vs 12 ms, Claude 5 vs 2 ms) and is only needed against clamping at a
-                // screen edge, which the final frame still gets. Always in this order:
-                // measured in the window server, Claude's window showed the move together
-                // with the resize that followed it, but a resize sent first was on screen
-                // before the move (a tile whose top went down while its bottom held still
-                // had its bottom up to 11 pt too high on each frame; position first, it never
-                // moved). Ghostty was off by a few points in either order.
                 el.setPosition(r.origin)
                 el.setSize(r.size)
             } else {
@@ -353,9 +294,6 @@ public final class AXWriteQueue: WindowWriter {
         }
     }
 
-    /// Reads the window's real frame after every write queued before this call
-    /// (the queue is serial). Apps clamp sizes (minimum size, aspect ratio) and
-    /// then send no resize notification, so this is the only way to know.
     public func readBack(_ element: AXUIElement, completion: @escaping @MainActor (CGRect?) -> Void) {
         lock.lock()
         guard pendingReads < Self.maxPendingReads else { lock.unlock(); return }
@@ -369,16 +307,12 @@ public final class AXWriteQueue: WindowWriter {
         }
     }
 
-    /// AXRaise is synchronous IPC too; keep it off the main thread.
     public func raise(_ element: AXUIElement) { queue.async { element.raise() } }
 
     public func async(_ body: @escaping () -> Void) { queue.async(execute: body) }
     public func sync(_ body: () -> Void) { queue.sync(execute: body) }
 }
 
-/// A thread with its own CFRunLoop (AeroSpace / rift: one per app). Blocks
-/// passed to `perform` run in order on that thread; AX observers can attach to
-/// `runLoop`. A slow or hung app only ever blocks its own thread.
 public final class AXThread: Thread, @unchecked Sendable {
     private var loop: CFRunLoop?
     private let ready = DispatchSemaphore(value: 0)
@@ -391,7 +325,6 @@ public final class AXThread: Thread, @unchecked Sendable {
 
     public override func main() {
         loop = CFRunLoopGetCurrent()
-        // A run loop with no sources exits immediately; keep it alive with a port.
         RunLoop.current.add(NSMachPort(), forMode: .default)
         ready.signal()
         while !isCancelled {
@@ -399,7 +332,6 @@ public final class AXThread: Thread, @unchecked Sendable {
         }
     }
 
-    /// Starts the thread and waits (microseconds) until its run loop exists.
     public func startAndWait() {
         start()
         ready.wait()

@@ -1,10 +1,6 @@
 import CoreGraphics
 import Mango
 
-/// Where to park windows of invisible tags. macOS refuses to move a window
-/// entirely off-screen, so a 1px sliver stays visible in a bottom corner
-/// (AeroSpace / rift technique). The corner is chosen per monitor so the
-/// sliver does not land on a neighbouring display.
 public enum HideCorner { case bottomLeft, bottomRight }
 
 public enum Hider {
@@ -19,7 +15,6 @@ public enum Hider {
         return blScore < brScore ? .bottomLeft : .bottomRight
     }
 
-    /// Top-left position for a window of `size` parked in `corner` of `workArea`.
     public static func parkedOrigin(size: CGSize, workArea: CGRect, corner: HideCorner) -> CGPoint {
         switch corner {
         case .bottomRight:
@@ -29,7 +24,6 @@ public enum Hider {
         }
     }
 
-    /// True if a frame looks parked (at most a few pixels inside the screen).
     public static func isParked(_ frame: CGRect, in screen: CGRect) -> Bool {
         let visible = frame.intersection(screen)
         if visible.isNull { return true }

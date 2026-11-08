@@ -3,10 +3,9 @@ import CoreGraphics
 @testable import Mango
 @testable import Port
 
-/// Parking windows of hidden tags with a 1px sliver in a bottom corner.
 final class EngineHiderTests: MangoTestCase {
     let screen = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-    let work = CGRect(x: 0, y: 25, width: 1920, height: 985)   // menu bar + dock
+    let work = CGRect(x: 0, y: 25, width: 1920, height: 985)
 
     func testParkedOriginLeavesOnePixelVisible() {
         let size = CGSize(width: 800, height: 600)
@@ -28,7 +27,6 @@ final class EngineHiderTests: MangoTestCase {
     }
 
     func testCornerAvoidsNeighbouringDisplay() {
-        // A display to the right and slightly below: its area covers our bottom-right corner.
         let right = CGRect(x: 1920, y: 200, width: 1920, height: 1080)
         XCTAssertEqual(Hider.corner(for: screen, others: [right]), .bottomLeft)
         let left = CGRect(x: -1920, y: 200, width: 1920, height: 1080)
@@ -36,8 +34,6 @@ final class EngineHiderTests: MangoTestCase {
         XCTAssertEqual(Hider.corner(for: screen, others: []), .bottomRight)
     }
 
-    /// A frozen app (a debugger paused it) cannot be moved: its window is left out of the
-    /// layout only when the window server has it parked or off screen, not when in view.
     @MainActor
     func testFrozenWindowCountsAsAwayOnlyWhenParked() {
         let parked = CGRect(origin: Hider.parkedOrigin(size: CGSize(width: 800, height: 80), workArea: work,
@@ -49,11 +45,7 @@ final class EngineHiderTests: MangoTestCase {
     }
 }
 
-/// Not in mango: the displays change under parked windows.
 final class EngineParkAgainTests: MangoTestCase {
-    /// The BenQ alone at (0,0), then the laptop beside it and the BenQ at a larger size: the
-    /// old corner (2559, 1706) lies inside the BenQ. A window parked there is parked again in
-    /// the BenQ's corner as it is now.
     @MainActor
     func testParkedWindowsMoveToTheirDisplaysCornerAsItIsNow() {
         let rig = EngineRig()

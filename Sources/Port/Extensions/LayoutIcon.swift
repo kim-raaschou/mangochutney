@@ -1,13 +1,9 @@
 import SwiftUI
 import Mango
 
-/// Port extension: not in mango. Used by the menu's layout panel and the layout palette.
-/// A layout's icon: the layout itself, run by mango's layout code on a small area with
-/// three windows (the first focused).
 public struct LayoutIcon: View {
     let kind: LayoutKind
     let selected: Bool
-    /// The windows' colour when not selected (PortAccent); selected, white.
     var tint: Color = .accentColor
     var size = CGSize(width: 30, height: 20)
 
@@ -25,11 +21,6 @@ public struct LayoutIcon: View {
         .frame(width: size.width, height: size.height)
     }
 
-    /// The layout run on a full-size screen (mango's fixed gaps and margins would eat a
-    /// 30-point one), scaled down to `area`; the part on screen of each window.
-    /// Windows on the same place (monocle, a deck's stack) are drawn as a pile of cards, the
-    /// focused one in front and the others behind it, up and to the right; in drawing order
-    /// (back first), each with how solid it is.
     public static func frames(_ kind: LayoutKind, in area: CGRect) -> [(rect: CGRect, alpha: CGFloat)] {
         let placed = placedFrames(kind, in: area)
         var piles: [[CGRect]] = []
@@ -46,7 +37,7 @@ public struct LayoutIcon: View {
         for pile in piles {
             let n = pile.count, base = pile[0]
             let shrink = CGFloat(n - 1) * d
-            for i in stride(from: n - 1, through: 0, by: -1) {   // the back card first
+            for i in stride(from: n - 1, through: 0, by: -1) {
                 let r = CGRect(x: base.minX + CGFloat(i) * d, y: base.minY + CGFloat(n - 1 - i) * d,
                                width: base.width - shrink, height: base.height - shrink)
                 out.append((r, i == 0 ? 1 : 0.55 - 0.15 * CGFloat(i - 1)))
@@ -55,7 +46,6 @@ public struct LayoutIcon: View {
         return out
     }
 
-    /// The layout's frames, scaled to `area` (focused window first).
     private static func placedFrames(_ kind: LayoutKind, in area: CGRect) -> [CGRect] {
         let screen = CGRect(x: 0, y: 0, width: 1500, height: 1000)
         let ids: [ClientID] = [1, 2, 3]

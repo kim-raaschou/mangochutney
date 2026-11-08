@@ -2,7 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's xkb_rules_options on macOS: the options that move keys, and caps:hyper.
 @MainActor
 final class KeyboardOptionsTests: MangoTestCase {
     typealias K = KeyboardOptions
@@ -17,8 +16,6 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertEqual(MangoServer.xkbOptions(" Caps:Hyper , ctrl:swapcaps,,"), ["caps:hyper", "ctrl:swapcaps"])
     }
 
-    /// An option that takes Caps Lock's key leaves no key to turn its lock off: mango turns
-    /// it off (a lock left on kept every letter a capital). Swapping keeps a Caps Lock key.
     func testCapsLocksLockIsTurnedOffWhenItsKeyIsTaken() {
         typealias K = KeyboardOptions
         for o in ["caps:hyper", "caps:escape", "ctrl:nocaps", "caps:super", "caps:ctrl_modifier"] {
@@ -40,8 +37,6 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertEqual((r.server.system as! FakeWindowSystem).keyboardOptions, "caps:hyper")
     }
 
-    /// caps:hyper: Caps Lock (F18) held is mango's hyper for the bindings; the key itself is
-    /// mango's; let go, the bindings are plain again.
     func testCapsLockHeldIsHyper() {
         let r = EngineRig()
         r.server.config.xkbRulesOptions = "caps:hyper"
@@ -51,7 +46,7 @@ final class KeyboardOptionsTests: MangoTestCase {
         let router = r.server.mac.router
         router.publish { $0.bindings = [KeyBinding(mods: hyper, keyName: "h", keyCodes: [4],
                                                    dispatch: Dispatch(name: "view", args: ["2"]))] }
-        router.server = nil   // the bind's dispatch is not under test
+        router.server = nil
         func key(_ code: UInt16, down: Bool) -> KeyEvent {
             KeyEvent(keyCode: code, mods: [], isDown: down, isRepeat: false, isModifierKey: false)
         }
@@ -63,7 +58,6 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertFalse(router.key(key(4, down: true), modifierOnlySinceDown: false), "let go: h is the app's again")
     }
 
-    /// chutney_hyper_key (port extension): the chosen key becomes F18, held as Hyper.
     func testTheHyperKeysMapping() {
         XCTAssertEqual(K.hyperKeyMapping("caps_lock"), .init(src: K.capsLock, dst: K.f18))
         XCTAssertEqual(K.hyperKeyMapping("left_control"), .init(src: K.leftControl, dst: K.f18))
@@ -86,8 +80,6 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertEqual(Config().chutneyHyperKey, "", "none unless set")
     }
 
-    /// Quick Press as Raycast's: only Caps Lock and a function key have one; the key itself is
-    /// Caps Lock's lock, or the function key sent.
     func testQuickPress() {
         XCTAssertEqual(MacWindowSystem.hyperTap(key: "caps_lock", tap: "escape"), .key(53))
         XCTAssertEqual(MacWindowSystem.hyperTap(key: "caps_lock", tap: "original"), .capsLock)
@@ -96,8 +88,6 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertEqual(MacWindowSystem.hyperTap(key: "caps_lock", tap: "none"), .none)
     }
 
-    /// chutney_hyper_key's key held is Hyper as caps:hyper's is; with chutney_hyper_tap escape,
-    /// pressed and let go alone it is Escape, and not when a key came between.
     func testTheHyperKeyHeldIsHyperAndAloneIsEscape() {
         let r = EngineRig()
         r.server.config.chutneyHyperKey = "caps_lock"
@@ -123,7 +113,6 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertEqual(escapes, 1, "a key came between: no Escape")
     }
 
-    /// hidutil's listing: one block per keyboard; a keyboard with none says (null).
     func testTheUserKeyMappingIsRead() {
         let text = """
         RegistryID  Key                   Value
@@ -152,7 +141,6 @@ final class KeyboardOptionsTests: MangoTestCase {
         XCTAssertEqual(KeyboardOptions.parseUserKeyMapping("100000cf8   UserKeyMapping   (null)"), [])
     }
 
-    /// The user's own moves stay, but for a key mango moves.
     func testTheUsersMovesStay() {
         let mine = KeyboardOptions.Mapping(src: 1, dst: 2), caps = KeyboardOptions.Mapping(src: 3, dst: 4)
         let hyper = KeyboardOptions.Mapping(src: 3, dst: KeyboardOptions.f18)

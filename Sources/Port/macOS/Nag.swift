@@ -1,14 +1,8 @@
 import AppKit
 import Mango
 
-/// not in mango: mangonag's Wayland side (NagDisplay). mangonag's code
-/// (Sources/Mango/mangonag) runs in mango's process; here AppKit places the bar and draws it
-/// where mango's mangonag draws a layer surface with cairo and pango, gives mangonag's handlers
-/// the pointer, and runs its loop. With chutney_style the port's look instead
-/// (docs/afvigelser.md §3).
 @MainActor
 public final class Nag: NagDisplay {
-    /// Port extension: not in mango. chutney_style's look (set before each bar).
     var macOS = false
 
     private var panel: NSPanel?
@@ -16,27 +10,21 @@ public final class Nag: NagDisplay {
 
     public init() {}
 
-    /// mango's nag_spawn (error_nag.c): the fork and exec of mangonag, here its main in mango's
-    /// process.
     public func spawn(_ argv: [String], input: String, macOS: Bool = false) {
         kill()
         self.macOS = macOS
         mangonagMain(argv, stdin: input, display: self)
     }
 
-    /// mango's nag_kill (error_nag.c): SIGTERM, and mangonag's loop ends in nag_destroy.
     public func kill() {
         guard Mango.nag.display === self else { return }
         nagSignal(SIGTERM)
         loop()
     }
 
-    /// mangonag's loop in main, one turn: `while (nag.running)`, then nag_destroy.
     private func loop() {
         if !Mango.nag.running { nagDestroy() }
     }
-
-    // MARK: - NagDisplay
 
     public func nagSetupSurface() {
         let n = Mango.nag
@@ -44,12 +32,10 @@ public final class Nag: NagDisplay {
             ?? NSScreen.screens.first { $0.frame.origin == .zero } ?? NSScreen.main
         guard let screen else { return }
         let view = NagView(macOS: macOS) { [weak self] p in
-            // wl_pointer's motion and button, then the loop's check
             nagPointerMotion(Double(p.x), Double(p.y))
             nagPointerButton(btnLeft, pressed: true)
             self?.loop()
         }
-        // not in mango: under the menu bar (or above the Dock), where a layer surface's exclusive zone ends
         let vf = screen.visibleFrame
         let width = screen.frame.width
         let height = view.computeHeight()
@@ -65,7 +51,6 @@ public final class Nag: NagDisplay {
         p.orderFrontRegardless()
         panel = p
         if n.timeoutMs > 0 {
-            // A timer: mangonag's -T (its poll timeout), only when asked for (the config errors' bar has none).
             let w = DispatchWorkItem { nagDestroy() }
             timeout = w
             DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(Int(n.timeoutMs)), execute: w)
@@ -87,8 +72,6 @@ public final class Nag: NagDisplay {
         if !button.terminal {
             p.arguments = ["-c", action]
         } else {
-            // not in mango: a script Terminal can open (.command), and Terminal when no terminal of
-            // mango's list is there (mango runs it in sh; vi without a terminal cannot work)
             var template = Array("/tmp/mangonag-XXXXXX.command".utf8CString)
             let fd = template.withUnsafeMutableBufferPointer { mkstemps($0.baseAddress!, 8) }
             guard fd >= 0 else {
@@ -109,15 +92,11 @@ public final class Nag: NagDisplay {
         try? p.run()
     }
 
-    // MARK: - Cairo and pango
-
-    /// mangonag's rgba_to_cairo.
     static func ns(_ c: UInt32) -> NSColor {
         NSColor(srgbRed: CGFloat((c >> 24) & 0xFF) / 255, green: CGFloat((c >> 16) & 0xFF) / 255,
                 blue: CGFloat((c >> 8) & 0xFF) / 255, alpha: CGFloat(c & 0xFF) / 255)
     }
 
-    /// mangonag's nag_layout_markup: nag_ansi_attrs' clean text with its attributes as pango's.
     static func attributed(_ text: String?, font: NSFont, color: NSColor) -> NSAttributedString {
         var clean = ""
         let attrs = nagAnsiAttrs(text, &clean)
@@ -142,7 +121,6 @@ public final class Nag: NagDisplay {
     }
 }
 
-/// mangonag's nag_compute_layout and nag_render, from `nag`.
 private final class NagView: NSView {
     let macOS: Bool
     let onClick: (CGPoint) -> Void
@@ -153,7 +131,6 @@ private final class NagView: NSView {
     init(macOS: Bool, onClick: @escaping (CGPoint) -> Void) {
         self.macOS = macOS
         self.onClick = onClick
-        // Port extension: not in mango. chutney_style's font.
         font = macOS ? .monospacedSystemFont(ofSize: 12, weight: .regular)
             : decorateFont(FontDescription(Mango.nag.font ?? "monospace 13"))
         super.init(frame: .zero)
@@ -164,7 +141,6 @@ private final class NagView: NSView {
     override var isFlipped: Bool { true }
 
     var type: NagType {
-        // Port extension: not in mango. chutney_style's colours.
         guard macOS else { return Mango.nag.type }
         return NagType(background: 0xAD401FF5, text: 0xFFFFFFFF, buttonBackground: 0xFFFFFF33,
                        buttonText: 0xFFFFFFFF, border: 0xAD401F00, borderBottom: 0xAD401F00)
@@ -219,7 +195,6 @@ private final class NagView: NSView {
                 Mango.nag.buttons[i].outerHeight = Int(outer.height)
             }
             if macOS {
-                // Port extension: not in mango. chutney_style's rounded buttons.
                 Nag.ns(t.buttonBackground).setFill()
                 NSBezierPath(roundedRect: outer, xRadius: 5, yRadius: 5).fill()
             } else {

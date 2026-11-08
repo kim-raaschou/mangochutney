@@ -3,20 +3,9 @@ import ApplicationServices
 import CoreGraphics
 import MangoPrivate
 
-// Not in mango: on Wayland the protocol says what a surface is. On macOS the port decides
-// which windows mango manages, and which of them open floating, with AeroSpace's
-// heuristic, 1:1 (https://github.com/nikitabobko/AeroSpace, commit 45147f58; MIT License,
-// Copyright (c) 2023 Nikita Bobko, docs/licenses/AeroSpace-LICENSE.txt): model/AxUiElementWindowType.swift,
-// model/KnownBundleId.swift, windowLevelCache.swift, util/AxUiElementMock.swift and the
-// attributes of util/accessibility.swift it reads. AeroSpace tests it against its dumps of
-// real apps (its axDumps). A popup is never managed; a dialog opens floating (mango's
-// client_is_float_type), unless a window rule says otherwise.
-
-/// AeroSpace AxUiElementWindowType (model/AxUiElementWindowType.swift).
 public enum AxUiElementWindowType: String {
     case window
     case dialog
-    /// Not even a real window
     case popup
 
     static func new(isWindow: Bool, isDialog: () -> Bool) -> AxUiElementWindowType {
@@ -28,7 +17,6 @@ public enum AxUiElementWindowType: String {
     }
 }
 
-/// AeroSpace KnownBundleId (model/KnownBundleId.swift).
 public enum KnownBundleId: String, Equatable {
     case _1password = "com.1password.1password"
     case activityMonitor = "com.apple.ActivityMonitor"
@@ -75,7 +63,6 @@ public enum KnownBundleId: String, Equatable {
     }
 }
 
-/// AeroSpace MacOsWindowLevel (windowLevelCache.swift): the window server's layer.
 public enum MacOsWindowLevel: Sendable, Equatable {
     case normalWindow
     case alwaysOnTopWindow
@@ -89,8 +76,6 @@ public enum MacOsWindowLevel: Sendable, Equatable {
         }
     }
 
-    /// AeroSpace getWindowLevel (windowLevelCache.swift): the level of a window on screen;
-    /// nil for one that is not (minimized, another Space). One window asked, not all cached.
     static func of(_ windowId: CGWindowID) -> MacOsWindowLevel? {
         guard let info = CGWindowListCopyWindowInfo([.optionIncludingWindow], windowId) as? [[String: Any]],
               let dict = info.first, dict[kCGWindowIsOnscreen as String] as? Bool == true,
@@ -99,15 +84,12 @@ public enum MacOsWindowLevel: Sendable, Equatable {
     }
 }
 
-/// AeroSpace ReadableAttr (util/accessibility.swift).
 public protocol ReadableAttr: Sendable {
     associatedtype T
     var getter: @Sendable (AnyObject) -> T? { get }
     var key: String { get }
 }
 
-/// AeroSpace AxUiElementMock (util/AxUiElementMock.swift): an AX element (in AeroSpace's
-/// tests also a dump).
 public protocol AxUiElementMock {
     func get<Attr: ReadableAttr>(_ attr: Attr) -> Attr.T?
     func containingWindowId() -> CGWindowID?
@@ -115,7 +97,6 @@ public protocol AxUiElementMock {
 
 public typealias WindowIdAndAxUiElementMock = (windowId: CGWindowID, ax: any AxUiElementMock)
 
-/// AeroSpace Ax (util/accessibility.swift): the attributes the heuristic reads.
 public enum Ax {
     public struct ReadableAttrImpl<T>: ReadableAttr {
         public var key: String
@@ -130,23 +111,18 @@ public enum Ax {
     static let isMainAttr = ReadableAttrImpl<Bool>(key: kAXMainAttribute, getter: { $0 as? Bool })
     static let focusedWindowAttr = ReadableAttrImpl<WindowIdAndAxUiElementMock>(key: kAXFocusedWindowAttribute, getter: windowOrNil)
     static let closeButtonAttr = ReadableAttrImpl<any AxUiElementMock>(key: kAXCloseButtonAttribute, getter: castToAxUiElementMock)
-    // Note! fullscreen is not the same as "zoom" (green plus)
     static let fullscreenButtonAttr = ReadableAttrImpl<any AxUiElementMock>(key: kAXFullScreenButtonAttribute, getter: castToAxUiElementMock)
-    // green plus
     static let zoomButtonAttr = ReadableAttrImpl<any AxUiElementMock>(key: kAXZoomButtonAttribute, getter: castToAxUiElementMock)
     static let minimizeButtonAttr = ReadableAttrImpl<any AxUiElementMock>(key: kAXMinimizeButtonAttribute, getter: castToAxUiElementMock)
 }
 
-/// AeroSpace castToAxUiElementMock (util/accessibility.swift): an AX element, or a dump's.
 @Sendable private func castToAxUiElementMock(_ a: AnyObject) -> (any AxUiElementMock)? {
     if let mock = a as? any AxUiElementMock { return mock }
     return CFGetTypeID(a as CFTypeRef) == AXUIElementGetTypeID() ? (a as! AXUIElement) : nil
 }
 
-/// AeroSpace windowOrNil (util/accessibility.swift).
 @Sendable private func windowOrNil(_ any: AnyObject) -> WindowIdAndAxUiElementMock? {
     guard let potentialWindow = castToAxUiElementMock(any) else { return nil }
-    // Filter out non-window objects (e.g. Finder's desktop)
     return switch potentialWindow.containingWindowId() {
         case let windowId?: (windowId, potentialWindow)
         case nil: nil
@@ -169,15 +145,11 @@ extension AXUIElement: AxUiElementMock {
     }
 }
 
-// Covered by tests in ./axDumps in the repo root (AeroSpace's)
 public extension AxUiElementMock {
-    // 'isDialogHeuristic' function name is referenced in the guide
     func isDialogHeuristic(
         _ id: KnownBundleId?,
         _ windowLevel: MacOsWindowLevel?,
     ) -> Bool {
-        // Note: a lot of windows don't have title on startup. So please don't rely on the title
-
         if id == ._1password && windowLevel != .normalWindow {
             return true
         }
@@ -186,21 +158,11 @@ public extension AxUiElementMock {
             return true
         }
 
-        // Don't tile:
-        // - Chrome cmd+f window ("AXUnknown" value)
-        // - login screen (Yes fuck, it's also a window from Apple's API perspective) ("AXUnknown" value)
-        // - XCode "Build succeeded" popup
-        // - IntelliJ tooltips, context menus, drop downs
-        // - macOS native file picker (IntelliJ -> "Open...") (kAXDialogSubrole value)
-        //
-        // Minimized windows or windows of a hidden app have subrole "AXDialog"
         if get(Ax.subroleAttr) != kAXStandardWindowSubrole &&
-            id != .qutebrowser // qutebrowser regular window has AXDialog subrole when decorations are disabled
+            id != .qutebrowser
         {
             return true
         }
-        // Firefox: Picture in Picture window doesn't have minimize button.
-        // todo. bug: when firefox shows non-native fullscreen, minimize button is disabled for all other non-fullscreen windows
         if id?.isFirefox == true && get(Ax.minimizeButtonAttr)?.get(Ax.enabledAttr) != true {
             return true
         }
@@ -209,37 +171,20 @@ public extension AxUiElementMock {
             return get(Ax.fullscreenButtonAttr)?.get(Ax.enabledAttr) != true &&
                 get(Ax.closeButtonAttr)?.get(Ax.enabledAttr) == true
         }
-        // Heuristic: float windows without fullscreen button (such windows are not designed to be big)
-        // - IntelliJ various dialogs (Rebase..., Edit commit message, Settings, Project structure)
-        // - Finder copy file dialog
-        // - System Settings
-        // - Apple logo -> About this Mac
-        // - Calculator
-        // - Battle.net login dialog
-        // Fullscreen button is presented but disabled:
-        // - Safari -> Pinterest -> Log in with Google
-        // - Kap screen recorder https://github.com/wulkano/Kap
-        // - flameshot? https://github.com/nikitabobko/AeroSpace/issues/112
-        // - Drata Agent https://github.com/nikitabobko/AeroSpace/issues/134
         if get(Ax.fullscreenButtonAttr)?.get(Ax.enabledAttr) != true &&
-            id != .gimp && // Gimp doesn't show fullscreen button
+            id != .gimp &&
 
-            // "Drag out" a tab out of Chrome window. Technically, it shouldn't be necessary, but
-            // apparently there is some sort of race condition between users releasing mouse up and
-            // Chrome reactivating the fullscreen button
-            // todo: consider checking for fullscreen cirteria periodically (downside: will affect performance)
             id != .chrome &&
 
-            id != .activityMonitor && // Activity Monitor doesn't show fullscreen button
+            id != .activityMonitor &&
 
-            // Terminal apps and Emacs have an option to hide their title bars
-            id != .alacritty && // ~/.alacritty.toml: window.decorations = "Buttonless"
-            id != .kitty && // ~/.config/kitty/kitty.conf: hide_window_decorations titlebar-and-corners
+            id != .alacritty &&
+            id != .kitty &&
             id != .wezterm &&
-            id != .qutebrowser && // :set window.hide_decoration
+            id != .qutebrowser &&
             id != .iterm2 &&
             id != .emacs &&
-            id?.isVscode != true && // "window.nativeFullScreen": false
+            id?.isVscode != true &&
             id != .steam
         {
             return true
@@ -247,11 +192,6 @@ public extension AxUiElementMock {
         return false
     }
 
-    /// Alternative name: !isPopup
-    ///
-    /// Why do we need to filter out non-windows?
-    /// - "floating by default" workflow
-    /// - It's annoying that the focus command treats these popups as floating windows
     func isWindowHeuristic(
         axApp: any AxUiElementMock,
         _ id: KnownBundleId?,
@@ -259,16 +199,11 @@ public extension AxUiElementMock {
         _ windowLevel: MacOsWindowLevel?,
     ) -> Bool {
         if windowLevel != .normalWindow &&
-            // Slowly roll out windowLevel for applications for which we have the appropriate dumps
             (id == .slack || id == .chrome || id?.isFirefox == true || id == .braveBrowser || id == .screenstudio || id == .cleanshotx || id == .iterm2 || id == .outlook || id == .codex || id == .wisprFlow)
         {
             return false
         }
 
-        // Just don't do anything with "Ghostty Quick Terminal" windows.
-        // Its position and size are managed by the Ghostty itself
-        // https://github.com/nikitabobko/AeroSpace/issues/103
-        // https://github.com/ghostty-org/ghostty/discussions/3512
         if id == .ghostty && get(Ax.identifierAttr) == "com.mitchellh.ghostty.quickTerminal" {
             return false
         }
@@ -287,9 +222,6 @@ public extension AxUiElementMock {
             return false
         }
 
-        // Emacs child frames (posframes, corfu completion popups, etc.)
-        // These are transient UI elements that should not be managed as windows.
-        // https://github.com/nikitabobko/AeroSpace/issues/776
         if id == .emacs && get(Ax.subroleAttr) == kAXFloatingWindowSubrole {
             return false
         }
@@ -298,59 +230,40 @@ public extension AxUiElementMock {
             return isWindowHeuristicOld(axApp: axApp, id)
         }
 
-        // Try to filter out incredibly weird popup like AXWindows without any buttons.
-        // E.g.
-        // - Sonoma (macOS 14) keyboard layout switch (AXSubrole == AXDialog)
-        // - IntelliJ context menu (right mouse click)
-        // - Telegram context menu (right mouse click)
-        // - Share window purple "pill" indicator https://github.com/nikitabobko/AeroSpace/issues/1101. Title is not empty
-        // - Tooltips on links mouse hover in browsers (Chrome, Firefox)
-        // - Tooltips on buttons (e.g. new tab, Extensions) mouse hover in browsers (Chrome, Firefox). Title is not empty
-        // Make sure that the following AXWindow remain windows:
-        // - macOS native file picker ("Open..." menu) (subrole == kAXDialogSubrole)
-        // - telegram image viewer (subrole == kAXFloatingWindowSubrole)
-        // - Finder preview (hit space) (subrole == "Quick Look")
-        // - Firefox non-native video fullscreen (about:config -> full-screen-api.macos-native-full-screen -> false, subrole == AXUnknown)
         return get(Ax.closeButtonAttr) != nil ||
             fullscreenButton != nil ||
             get(Ax.zoomButtonAttr) != nil ||
             get(Ax.minimizeButtonAttr) != nil ||
 
-            get(Ax.isFocused) == true ||  // 3 different ways to detect if the window is focused
+            get(Ax.isFocused) == true ||
             get(Ax.isMainAttr) == true ||
             axApp.get(Ax.focusedWindowAttr)?.windowId == self.containingWindowId() ||
 
             get(Ax.subroleAttr) == kAXStandardWindowSubrole
     }
 
-    private func isWindowHeuristicOld(axApp: any AxUiElementMock, _ id: KnownBundleId?) -> Bool { // 0.18.3 hotfix
+    private func isWindowHeuristicOld(axApp: any AxUiElementMock, _ id: KnownBundleId?) -> Bool {
         lazy var subrole = get(Ax.subroleAttr)
         lazy var title = get(Ax.titleAttr) ?? ""
 
-        // Try to filter out incredibly weird popup like AXWindows without any buttons.
-        // E.g.
-        // - Sonoma (macOS 14) keyboard layout switch
-        // - IntelliJ context menu (right mouse click)
-        // - Telegram context menu (right mouse click)
         if get(Ax.closeButtonAttr) == nil &&
             get(Ax.fullscreenButtonAttr) == nil &&
             get(Ax.zoomButtonAttr) == nil &&
             get(Ax.minimizeButtonAttr) == nil &&
 
-            get(Ax.isFocused) == false &&  // Three different ways to detect if the window is not focused
+            get(Ax.isFocused) == false &&
             get(Ax.isMainAttr) == false &&
             axApp.get(Ax.focusedWindowAttr)?.windowId != containingWindowId() &&
 
             subrole != kAXStandardWindowSubrole &&
-            // Share window purple "pill" indicator has "Window" title https://github.com/nikitabobko/AeroSpace/issues/1101
-            (title.isEmpty || title == "Window") // Maybe it doesn't work in non-English locale
+            (title.isEmpty || title == "Window")
         {
             return false
         }
         return subrole == kAXStandardWindowSubrole ||
-            subrole == kAXDialogSubrole || // macOS native file picker ("Open..." menu) (kAXDialogSubrole value)
-            subrole == kAXFloatingWindowSubrole || // telegram image viewer
-            id == .finder && subrole == "Quick Look" // Finder preview (hit space) is a floating window
+            subrole == kAXDialogSubrole ||
+            subrole == kAXFloatingWindowSubrole ||
+            id == .finder && subrole == "Quick Look"
     }
 
     func getWindowType(

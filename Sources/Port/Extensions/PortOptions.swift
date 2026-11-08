@@ -1,14 +1,9 @@
 import Mango
-/// Port extension: not in mango. The port's own config keys (listed in MangoCompat.portExtensionOptions),
-/// beside the Config fields they set:
-/// mango itself reports each as an unknown keyword and skips it. Unset, each leaves mango's
-/// behaviour.
 enum PortOptions {
     static let setters: [String: ConfigOptions.Setter] = {
         typealias O = ConfigOptions
         var t: [String: ConfigOptions.Setter] = [:]
         t["chutney_floating_color"] = { config, value in
-            // Empty or "none": floating windows use mango's colours again.
             if value.isEmpty || value.lowercased() == "none" { config.chutneyFloatingColor = nil; return .applied }
             guard let c = parseColor(value) else { return .invalid("Invalid color format: \(value)") }
             config.chutneyFloatingColor = c
@@ -51,7 +46,6 @@ enum PortOptions {
             return .applied
         }
         t["chutney_menu_bar_logo"] = { config, value in
-            // 1 and 0 as before, the colour logo or none; mono: a template silhouette.
             switch value.lowercased() {
             case "1", "color", "colour": config.chutneyMenuBarLogo = "color"
             case "mono": config.chutneyMenuBarLogo = "mono"
@@ -83,7 +77,6 @@ enum PortOptions {
             return .applied
         }
         t["chutney_ignore_apps"] = { config, value in
-            // An empty value clears the list; otherwise ids are appended (several lines accumulate).
             let ids = value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
                 .filter { !$0.isEmpty }
             if ids.isEmpty { config.chutneyIgnoreApps = []; return .applied }

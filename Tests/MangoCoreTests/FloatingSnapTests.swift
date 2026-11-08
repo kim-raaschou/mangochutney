@@ -2,7 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's apply_window_snap and drag_tile_small.
 final class FloatingSnapTests: MangoTestCase {
     let monitor = CGRect(x: 0, y: 0, width: 1728, height: 1117)
     let work = CGRect(x: 0, y: 37, width: 1728, height: 1080)
@@ -26,16 +25,14 @@ final class FloatingSnapTests: MangoTestCase {
 
     func testItSnapsToAnotherFloatingWindowsOppositeEdge() {
         let other = CGRect(x: 100, y: 400, width: 300, height: 200)
-        let f = CGRect(x: 412, y: 450, width: 300, height: 200)   // 12 right of it
+        let f = CGRect(x: 412, y: 450, width: 300, height: 200)
         XCTAssertEqual(snap(f, others: [other]).minX, 400, "its left edge on the other's right edge")
         XCTAssertEqual(snap(f, others: [other]).minY, 450, "nothing near vertically")
     }
 
     func testTheNearerSideWinsAndATieGoesRightOrDown() {
-        // 10 from the left edge, 8 from the right edge of the monitor: right is nearer.
         let wide = CGRect(x: 10, y: 400, width: 1710, height: 200)
         XCTAssertEqual(snap(wide).maxX, 1728)
-        // Equal gaps: mango moves right (`snap_right <= snap_left`).
         let tie = CGRect(x: 10, y: 400, width: 1708, height: 200)
         XCTAssertEqual(snap(tie).minX, 20)
     }
@@ -70,7 +67,7 @@ final class EngineSnapAndSmallDragTests: MangoTestCase {
         r.server.arrange(r.monitor, .none)
         r.settle()
         let tile = a.geom!
-        r.monitor.sel = a.id   // no focus change (it would touch the real desktop)
+        r.monitor.sel = a.id
         let p = CGPoint(x: tile.midX, y: tile.midY)
         let move = MouseBinding(mods: .superKey, button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
         r.server.mousebind(move, at: p)

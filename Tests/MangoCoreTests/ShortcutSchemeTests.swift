@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// The shipped config's bindings are mango's (assets/config.conf) on the Hyper layer (not in
-/// mango); the port adds its palettes there too (the port's keys at the end).
 final class ShortcutSchemeTests: MangoTestCase {
     var shipped: ParsedConfig {
         let url = URL(fileURLWithPath: #filePath)

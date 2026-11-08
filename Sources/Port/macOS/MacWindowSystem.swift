@@ -1,13 +1,9 @@
 import AppKit
 import Mango
 
-/// WindowSystem on macOS: Accessibility for other apps' windows, the window server for
-/// the pointer, ScreenCaptureKit for pictures.
 @MainActor
 class MacWindowSystem: WindowSystem {
     unowned let server: MangoServer
-    /// While mango's own menu is open, making another app frontmost would close it:
-    /// native focus changes wait until the menu closes.
     var holdFocus = false {
         didSet {
             guard !holdFocus, oldValue, let c = heldFocus else { return }
@@ -18,35 +14,21 @@ class MacWindowSystem: WindowSystem {
     var heldFocus: Client?
     private var pendingFocus: (client: Client, raise: Bool)?
     var initialSettlePending = false
-    /// Windows macOS has away (AwayWindows.swift), unmapped from mango until they are back.
     var away: [ClientID: (client: Client, reasons: Set<AwayReason>)] = [:]
     var loggedWindowCount = -1
     var restackGeneration = 0
-    /// The borders, one panel per window (Borders.swift).
     let borders = BorderManager()
-    /// Not in mango: windows that leave and come back, and the layout kept across a restart.
     let memory = WindowMemory()
-    /// A drag the app itself does (UserDrag.swift), and the window under a plain left press
-    /// with its window-server frame then: a drag follows it from the window server, for
-    /// apps that send no move notifications.
     var userDrag: UserDrag?
-    /// chutney_restart: a new mango takes over at once, so hidden windows stay hidden.
     var restarting = false
     var opacityWarned = false
     var dispatchersWarned = Set<String>()
-    /// chutney_focus_app's "used last": the windows that have had the focus, most recent
-    /// first (mango's focus_stack takes a window as it maps, focused or not).
     var focusHistory: [ClientID] = []
     var pressed: (client: Client, frame: CGRect)?
-    /// Port extension (chutney_tab_bar_shortcuts): ⌘ alone is held, so the tabs show their
-    /// numbers; and how many tabs the event tap last learned ⌘1-9 picks (TabShortcuts.swift).
     var tabNumbersShown = false
     var publishedTabShortcuts = 0
-    /// The tab bars and mango's group bars, drawn alike (TabBars.swift).
     let tabBars = TabBarManager()
     let groupBars = TabBarManager()
-    /// The overview as pictures, its jump labels, mango's switcher panel, title message
-    /// bar, special dims (one per display), drop area and error nag.
     var overviewOverlay: OverviewOverlay?
     var jumpLabels: JumpLabelSet?
     var switcherPanel: SwitcherPanel?
@@ -54,24 +36,18 @@ class MacWindowSystem: WindowSystem {
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
     var dropArea: DropAreaView?
     let nagDisplay = Nag()
-    /// Keys and mouse on the tap's own thread, decided by the router there; the trackpad.
     let tap = EventTap()
     let router = InputRouter()
     let gestures = GestureRecognizer()
-    /// Tests answer for the window server.
     var windowServerOverride: ((CGWindowID) -> CGRect?)?
-    /// Other apps' windows (one thread per app), the animations, Mission Control, the
-    /// main-thread watchdog (-d) and the config file watcher.
     let watcher = AppWatcher()
     let animator = Animator()
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
     var configWatcher: ConfigWatcher?
-    /// Tests write to a fake app, and answer for the window server's stacking.
     var writerOverride: ((pid_t) -> (any WindowWriter)?)?
     var stackingOverride: (() -> [StackedWindow])?
 
-    /// The queue that writes to `pid`'s windows.
     func writer(for pid: pid_t) -> (any WindowWriter)? {
         if let writerOverride { return writerOverride(pid) }
         return watcher.writeQueue(for: pid)
@@ -84,7 +60,6 @@ class MacWindowSystem: WindowSystem {
 
     init(_ server: MangoServer) {
         self.server = server
-        // A press on a bar's segment goes to mango's pointer_process_button_press, as the bar node.
         tabBars.onSelect = { [weak self] id in self?.barPress(id, isTab: true, right: false, onClose: false) }
         tabBars.onRightClick = { [weak self] id in self?.barPress(id, isTab: true, right: true, onClose: false) }
         groupBars.onSelect = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: false) }
@@ -98,10 +73,6 @@ class MacWindowSystem: WindowSystem {
 
     func quit() { NSApp.terminate(nil) }
 
-    /// mango's client_focus sets the seat's focus; on macOS focus is a request to the window
-    /// server and the app, waited for on the main thread. One dispatcher often focuses twice
-    /// (the view's top window, then the window), so the request goes once, at the end of the
-    /// turn, for the last window focused.
     func focus(_ c: Client, raise: Bool) {
         if holdFocus { heldFocus = c; return }
         let first = pendingFocus == nil
@@ -117,24 +88,13 @@ class MacWindowSystem: WindowSystem {
         NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: raise) { [weak self] in self?.restack() }
     }
 
-    /// Never before start() (drawsOverlays).
     func warp(to p: CGPoint) {
         guard server.drawsOverlays else { return }
         NativeFocus.warpCursor(to: p)
     }
 
-    /// Borders back above their windows: on mango's focus and the app's own focus and
-    /// activation notifications (windowFocused, appActivated call this), and once more a
-    /// moment later for an app that reorders its windows after those (no event says the
-    /// z-order changed; with -d, 54 of 711 found a border below its window by then). Only the
-    /// front app's: an activation raises that app's windows, the others keep their order with
-    /// their borders. Once the windows have stopped moving: an order waits for the window
-    /// server to show what we sent it, and while borders move every frame that took 30 ms,
-    /// just when an animation's first frames were due. A border is drawn around its window,
-    /// so one left under its window for those 200 ms is still seen.
     func restack() { restack(pid: server.focused?.pid) }
 
-    /// A press on a bar's segment: mango's pointer_process_button_press, with the bar as its node.
     func barPress(_ id: ClientID, isTab: Bool, right: Bool, onClose: Bool) {
         server.pointerProcessButtonPress(button: right ? 1 : 0, pressed: true, at: pointer, mods: modifiers,
                                          bar: BarButton(client: id, isTab: isTab, onClose: onClose))
@@ -142,7 +102,6 @@ class MacWindowSystem: WindowSystem {
 
     func restack(pid: pid_t?) {
         guard let pid else { return }
-        // On the next turn: mango's focus restacks before the arrange that starts its animation.
         DispatchQueue.main.async { [weak self] in
             MainActor.assumeIsolated { self?.animator.whenIdle { [weak self] in self?.restackNow(pid) } }
         }
@@ -150,8 +109,6 @@ class MacWindowSystem: WindowSystem {
 
     private func restackNow(_ pid: pid_t, reserve: Bool = true) {
         let ids = Set(server.clientsAll.filter { $0.pid == pid }.map(\.id))
-        // One look at the window server's order (2 ms) instead of an order per overlay (2 ms each):
-        // an overlay is in place on its side of its window, with only mango's own between.
         let order = AppWorker.onScreenOrder()
         let at = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: min)
         let ours = Set(((NSApp as NSApplication?)?.windows ?? []).map { CGWindowID(truncatingIfNeeded: $0.windowNumber) })
@@ -244,7 +201,6 @@ class MacWindowSystem: WindowSystem {
 
     func hideTitleMessageBar() { titleBar?.hide() }
 
-    /// Under the backmost of `over` in the window server's stacking.
     func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) {
         let id = m.screen.displayID
         guard let alpha else { specialDims[id]?.hide(); return }
@@ -260,7 +216,6 @@ class MacWindowSystem: WindowSystem {
         dropArea?.show(area, color: color)
     }
 
-    /// mangonag's bar, or the port's look over it (chutney_style).
     func nagSpawn(_ argv: [String], input: String) {
         nagDisplay.spawn(argv, input: input, macOS: server.config.chutneyStyle)
     }
@@ -269,12 +224,7 @@ class MacWindowSystem: WindowSystem {
         nagDisplay.kill()
     }
 
-    /// The config was read (also on each setoption): what macOS cannot do is said once,
-    /// each dispatcher the bindings use that does nothing here and the opacity
-    /// (focused_opacity, unfocused_opacity: changing another process's window alpha needs
-    /// SLSSetWindowAlpha from the Dock connection, which SIP blocks).
     func configLoaded(_ config: Config) {
-        // One line per mango dispatcher the bindings use that does nothing on macOS.
         let used = config.keyBindings.map(\.dispatch.name) + config.mouseBindings.map(\.dispatch.name)
             + config.axisBindings.map(\.dispatch.name) + config.gestureBindings.map(\.dispatch.name)
         for name in used where dispatchersWarned.insert(name).inserted {
@@ -295,17 +245,12 @@ class MacWindowSystem: WindowSystem {
 
     var keyboardLayout: String { KeyNames.currentLayoutName() }
 
-    /// The key moves mango set (none: mango never touched the keyboard's mapping).
     var keyMappings: [KeyboardOptions.Mapping] = []
-    /// The user's own key moves, read when mango first sets its own (hidutil's are global),
-    /// without a key a mango before this one left on F18 (a crash); given back at the end.
     var userKeyMappings: [KeyboardOptions.Mapping]?
-    /// The keyboard's whole mapping as it is now.
     var appliedKeyMappings: [KeyboardOptions.Mapping]?
 
     func setKeyboardOptions(_ options: String) {
         var m = KeyboardOptions.mappings(MangoServer.xkbOptions(options))
-        // Port extension: not in mango (chutney_hyper_key), unless an xkb option moved that key.
         if let h = KeyboardOptions.hyperKeyMapping(server.config.chutneyHyperKey), !m.contains(where: { $0.src == h.src }) {
             m.append(h)
         }
@@ -327,26 +272,23 @@ class MacWindowSystem: WindowSystem {
     func allWindowIDs() -> Set<ClientID> { AppWorker.allWindowIDs() }
 
     func prepare() {
-        ChutneyTheme.sync(configURL: server.configURL)   // not in mango: chutney_style's colours, before the config is read
-        server.registerPortExtensions()   // before the config is read: chutney_ignore_apps takes it
+        ChutneyTheme.sync(configURL: server.configURL)
+        server.registerPortExtensions()
         AX.setGlobalTimeout()
-        KeyNames.install()                     // mango's key names in the current keyboard layout
-        _ = KeyNames.keyCodes(forName: "a")   // build the keyboard layout table on the main thread
+        KeyNames.install()
+        _ = KeyNames.keyCodes(forName: "a")
     }
 
     func startWatching() {
         watcher.delegate = self
         watcher.start()
-        // The Dock moved every window while it was up; put back whatever is off.
         missionControl.onExit = { [weak server] in server?.arrangeAll(.none) }
         missionControl.start()
         animator.onFrame = { [weak server] frames in server?.clientDrawFrame(frames) }
-        if wlrLogGetVerbosity() == .debug { watchdog.start() }   // diagnostics: a periodic ping, so only with -d
+        if wlrLogGetVerbosity() == .debug { watchdog.start() }
         wlrLog(.info, "scanning \(watcher.apps.count) app(s)")
     }
 
-    /// Every app mango wrote to gets its own settings back (AXEnhancedUserInterface).
-    /// `done` is left once each app's queue has got that far (queues are serial).
     func restoreAppSettings(_ done: DispatchGroup) {
         for pid in Set(server.clientsAll.map(\.pid)) {
             guard let q = writer(for: pid) else { continue }
@@ -356,11 +298,8 @@ class MacWindowSystem: WindowSystem {
         }
     }
 
-    /// With separate Spaces (macOS's default) a window stands on one display: one placed across
-    /// two is moved by macOS, away from where mango draws its border. Kept inside the work area.
     func keepOnDisplay(_ frame: CGRect, _ m: Monitor) -> CGRect { Self.clampToScreen(frame, m.screen.workArea) }
 
-    /// A frame kept inside the work area: where a window mango hid goes back when mango quits.
     static func clampToScreen(_ f: CGRect, _ work: CGRect) -> CGRect {
         var r = f
         r.size.width = min(r.width, work.width)
@@ -374,7 +313,6 @@ class MacWindowSystem: WindowSystem {
 
     func shutdown() {
         animator.cancelAll()
-        // The keyboard as it was: the user's own moves, without mango's.
         if let user = userKeyMappings, appliedKeyMappings != user { KeyboardOptions.apply(user) }
         let restore = DispatchGroup()
         if restarting {
@@ -386,12 +324,8 @@ class MacWindowSystem: WindowSystem {
         for c in server.clientsAll {
             guard let m = c.mon, c.parked || Hider.isParked(c.frame, in: m.screen.frame) else { continue }
             let f = c.isFloating ? c.floatGeom : (c.geom ?? c.floatGeom)
-            // Written as every frame is, on the app's queue: it replaces a frame an animation
-            // left waiting, and restoreAppSettings' mark on the queue comes after it.
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
-        // A window macOS has away (its app hidden, minimized, an app that hung) left where
-        // mango had it: back too, if that was a corner, or it stays there once mango is gone.
         for (c, _) in away.values {
             guard let m = c.mon ?? server.monitors.first else { continue }
             let real = windowServerFrame(c.id) ?? c.frame
@@ -399,13 +333,10 @@ class MacWindowSystem: WindowSystem {
             let f = c.isFloating ? c.floatGeom : (c.geom ?? c.floatGeom)
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
-        restoreAppSettings(restore)   // after the restores on each app's queue
-        // Restores run on the per-app queues in parallel; a hung app cannot hold up quit.
+        restoreAppSettings(restore)
         _ = restore.wait(timeout: .now() + 2)
     }
 
-    /// After the windows have moved: a scan asks every app for its windows, and an app answers
-    /// accessibility requests one at a time, behind which an animation's moves would wait.
     func rescan() {
         animator.whenIdle { [weak self] in self?.watcher.refreshAll(recheckRejected: true) }
     }
@@ -418,8 +349,6 @@ class MacWindowSystem: WindowSystem {
         configWatcher = nil
         guard !files.isEmpty else { return }
         configWatcher = ConfigWatcher(files: files) { [weak server] changed in
-            // Port extension: not in mango. The menu panel's own save (chutney_menu_config):
-            // its value is already set, a reload would only arrange everything again.
             if changed.allSatisfy(MenuSave.isOwnWrite) { return }
             MainActor.assumeIsolated { server?.reloadConfig() }
         }
@@ -434,10 +363,8 @@ class MacWindowSystem: WindowSystem {
     func resumeAnimations(from p: Double) { animator.resume(from: p) }
     func letGoAnimations() { animator.letGo() }
 
-
     var screens: [Screen] { Screens.all() }
 
-    /// See `AppWorker.windowServerFrame`.
     func windowServerFrame(_ id: ClientID) -> CGRect? {
         if let windowServerOverride { return windowServerOverride(id) }
         return AppWorker.windowServerFrame(id)
@@ -461,8 +388,6 @@ class MacWindowSystem: WindowSystem {
                 }
             }
         }
-        // mango closes the switcher when the session locks (keyboard.c): the screen locks,
-        // or another user takes the screen.
         let close: @Sendable (Notification) -> Void = { [weak server] _ in
             MainActor.assumeIsolated { server?.switcherClose() }
         }
@@ -476,17 +401,13 @@ class MacWindowSystem: WindowSystem {
     func keyboardCancelPendingReleaseBind() { router.cancelPendingReleaseBind() }
 
     func watchGestures(_ on: Bool) {
-        // Started and stopped only as gesture bindings come or go (start does nothing while it
-        // runs): a stop clears what the trackpad's own thread is reading.
         if on { gestures.start() } else { gestures.stop() }
     }
 
-    /// chutney_hyper_tap for chutney_hyper_key's key: as Raycast's Quick Press, only for
-    /// Caps Lock and a function key (a modifier pressed alone is already something).
     static func hyperTap(key: String, tap: String) -> InputRouter.HyperTap {
         guard let k = KeyboardOptions.hyperKey(key), let original = k.original else { return .none }
         switch tap {
-        case "escape": return .key(53)   // kVK_Escape
+        case "escape": return .key(53)
         case "original": return original == KeyboardOptions.capsLockKeyCode ? .capsLock : .key(original)
         default: return .none
         }
@@ -507,14 +428,13 @@ class MacWindowSystem: WindowSystem {
             s.overcircleActive = state.overcircleActive
             s.switcherActive = state.switcherActive
             s.tagCombo = state.tagCombo
-            // Port extension: not in mango. chutney_hyper_key's key is held as Hyper too.
             s.capsHyper = state.capsHyper ?? (hyperKey.isEmpty ? nil : Modifiers.parse("hyper", hyperModifier: hyperModifier))
             s.hyperTap = Self.hyperTap(key: hyperKey, tap: hyperTap)
             s.wantsMouseMoved = state.wantsMouseMoved
             s.cursorHideOnKeypress = state.cursorHideOnKeypress
             s.hoverResizeCursor = state.hoverResizeCursor
         }
-        tabBarsChanged()   // the port's tab keys (chutney_tab_bar_shortcuts), with the rest
+        tabBarsChanged()
     }
 
     func publishGlobalKeys(_ keys: [GlobalKey]) {
@@ -530,7 +450,6 @@ class MacWindowSystem: WindowSystem {
 
     func surfaceAt(_ p: CGPoint) -> ClientID? { CursorHider.windowAt(p) }
 
-
     func raise(_ c: Client) { writer(for: c.pid)?.raise(c.element) }
 
     func unminimize(_ c: Client) {
@@ -539,7 +458,6 @@ class MacWindowSystem: WindowSystem {
 
     var canCapture: Bool { WindowSnapshot.hasPermission }
 
-    /// Not in mango: the port's permissions window, once per run.
     func askToCapture() { Permissions.shared.askForCapture() }
 
     var modifiers: Modifiers { Modifiers(cgFlags: CGEventSource.flagsState(.combinedSessionState)) }
@@ -553,11 +471,9 @@ class MacWindowSystem: WindowSystem {
         q.readBack(c.element, completion: done)
     }
 
-    /// Via the close button, on the app's own queue (never blocks main).
     func clientSendClose(_ c: Client) {
         let el = c.element, name = c.appName, id = c.id
         writer(for: c.pid)?.async {
-            // Around sleep the element can be dead until the app lists the window again.
             if el.closeButton == nil { wlrLog(.debug, "\(name): window \(id) has no close button to press (element invalid?)") }
             el.close()
         }
@@ -568,20 +484,15 @@ class MacWindowSystem: WindowSystem {
         readBack(c, q)
     }
 
-    /// The app's own move reports are not taken while mango moves the window, nor in the
-    /// moment after (its last ones arrive late).
     func grabBegan(_ c: Client) { watcher.suppressGeometry(c.id, until: CACurrentMediaTime() + 3600) }
     func grabEnded(_ c: Client) { watcher.suppressGeometry(c.id, until: CACurrentMediaTime() + 0.4) }
 }
 
 extension MangoServer {
-    /// mango on macOS: the port's system stands where wlroots does.
     public func useMacSystem() { system = MacWindowSystem(self) }
 
-    /// The port's system (the port sets it, so it is always this one).
     var mac: MacWindowSystem { system as! MacWindowSystem }
 
-    /// mango's own menu is open (MangoApp): native focus waits.
     public var holdNativeFocus: Bool {
         get { (system as? MacWindowSystem)?.holdFocus ?? false }
         set { (system as? MacWindowSystem)?.holdFocus = newValue }

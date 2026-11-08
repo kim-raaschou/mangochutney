@@ -2,14 +2,7 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// Every name in mango's configuration (Tests/mango-keys, extracted from mango's source by
-/// script/mango-keys.sh) must be implemented, accepted without effect, or ignored with a
-/// reason in `MangoCompat`. So "a stock mango config loads with zero unknown keys" is a
-/// test, and a newer mango (`make mango-diff`) shows up here as a failing name.
 final class MangoCoverageTests: MangoTestCase {
-
-    // MARK: - Data
-
     static let repo = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
@@ -26,8 +19,6 @@ final class MangoCoverageTests: MangoTestCase {
         (try? String(contentsOf: repo.appendingPathComponent(path), encoding: .utf8)) ?? ""
     }
 
-    /// All Swift sources of the engine that read the config (everything except the config
-    /// model and the parsers that fill it).
     static var engineSources: String {
         let base = repo.appendingPathComponent("Sources")
         let skip = ["Mango/Model/Config.swift", "Mango/Model/Rules.swift", "Mango/Config/"]
@@ -51,8 +42,6 @@ final class MangoCoverageTests: MangoTestCase {
         let v = Self.source("Tests/mango-keys/VERSION")
         XCTAssertTrue(v.hasPrefix("mango "), "Tests/mango-keys/VERSION: \(v)")
     }
-
-    // MARK: - Global options and keywords
 
     func testEveryMangoOptionIsClassified() {
         let options = Self.list("options")
@@ -98,8 +87,6 @@ final class MangoCoverageTests: MangoTestCase {
         }
     }
 
-    // MARK: - Rule fields
-
     func testEveryWindowRuleFieldIsKnown() {
         let fields = Self.list("window_rule")
         XCTAssertGreaterThan(fields.count, 40)
@@ -120,8 +107,6 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertEqual(unknown, [])
     }
 
-    // MARK: - Dispatchers
-
     func testDispatcherNamesMatchMango() {
         let mango = Set(Self.list("dispatchers"))
         XCTAssertGreaterThan(mango.count, 80)
@@ -129,8 +114,6 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertEqual(Dispatch.knownNames.subtracting(mango).sorted(), [], "names the port claims mango has")
     }
 
-    /// The dispatchers listed as doing nothing are exactly the mango names without a
-    /// `case` in the dispatcher switch.
     func testUnsupportedDispatchersAreTheOnesWithoutACase() throws {
         let text = Self.source("Sources/Mango/Engine/Dispatch.swift")
         XCTAssertFalse(text.isEmpty)
@@ -146,8 +129,6 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertEqual(withoutCase.sorted(), MangoCompat.unsupportedDispatchers.keys.sorted())
     }
 
-    // MARK: - Port extensions and the classification itself
-
     func testPortExtensionsAreNotMangoNames() {
         let options = Set(Self.list("options"))
         let dispatchers = Set(Self.list("dispatchers"))
@@ -156,7 +137,6 @@ final class MangoCoverageTests: MangoTestCase {
             XCTAssertTrue(ConfigOptions.hasSetter(k), "\(k) has no setter")
         }
         for d in MangoCompat.portDispatchers { XCTAssertFalse(dispatchers.contains(d)) }
-        // Every option the port stores is mango's or listed as an extension.
         let extra = Set(ConfigOptions.knownKeys).subtracting(options).subtracting(MangoCompat.portExtensionOptions.keys)
         XCTAssertEqual(extra.sorted(), [], "options of the port that mango lacks and that are not marked as extensions")
     }
@@ -183,13 +163,8 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertEqual(Set(MangoCompat.unsupportedDispatchers.keys).subtracting(Self.list("dispatchers")).sorted(), [])
     }
 
-    // MARK: - "Without effect" stays true
-
-    /// Read only to log that they are not supported.
     static let readOnlyToWarn: Set<String> = ["focused_opacity", "unfocused_opacity"]
 
-    /// An option listed without effect must not be read by the engine, and an option the
-    /// engine never reads must be listed. Implementing one means taking it off the list.
     func testOptionsWithoutEffectAreExactlyTheUnreadOnes() throws {
         let setters = Self.source("Sources/Mango/Config/ConfigOptions.swift")
         let engine = Self.engineSources
@@ -227,10 +202,6 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertEqual(listedButRead, [], "window-rule fields the engine reads: remove them from windowRuleFieldsWithoutEffect")
     }
 
-    // MARK: - README's "At a glance"
-
-    /// The counts README shows add up to mango's own lists, and "works" is what the port
-    /// really implements.
     func testTheTalliesAddUpToMangosNames() {
         let options = Self.list("options")
         let o = MangoCompat.optionTally
@@ -250,8 +221,6 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertEqual(d.total, Self.list("dispatchers").count)
         XCTAssertTrue(MangoCompat.dispatchersNotYet.isSubset(of: Set(MangoCompat.unsupportedDispatchers.keys)))
     }
-
-    // MARK: - mango -p notes
 
     func testNotesNameWhatHasNoEffect() {
         let text = """
@@ -279,7 +248,6 @@ final class MangoCoverageTests: MangoTestCase {
     }
 
     func testMisspeltIgnoredKeyIsUnknownLikeInMango() {
-        // The ignored lists are exact: a typo is reported, not silently swallowed.
         let parsed = ConfigParser.parse(text: "cursor_sise=24\nblurr=1\n", baseDirectory: nil, fileName: "t")
         XCTAssertEqual(parsed.errors.map(\.message.plain), ["Unknown keyword: cursor_sise", "Unknown keyword: blurr"])
     }

@@ -3,23 +3,7 @@ import CoreGraphics
 @testable import Mango
 @testable import Port
 
-/// Pixel-exact layout regression tests.
-///
-/// Every expected value below was produced by compiling mango's own C layout functions
-/// (horizontal.c, vertical.c, scroll.c, dwindle.c, overview.c: the function bodies, extracted
-/// verbatim, behind stubs for the client list and `client_tile_resize`) and running them on the
-/// scenarios described in the helpers, with `-ffp-contract=off` (no fused multiply-add, like an
-/// x86-64 build). They pin the integer/float semantics of the C code: `mfact`, the surplus ratios,
-/// scroller proportions and dwindle ratios are `float`, the per-client shares `double`
-/// (client.h; the tile+shares vectors with 5 clients were computed again with them). One
-/// deviation, a mango bug (docs/afvigelser.md §6): in tile, right_tile and vertical_tile the
-/// last window of a group takes the rest, as mango's center_tile does, so the last frame of
-/// six +shares vectors is a pixel longer than C's, so for example 2560 wide with
-/// `default_master_factor=0.9` gives a 2303 px master (not 2304) because 0.9f is 0.89999998.
 final class LayoutGoldenTests: MangoTestCase {
-
-    // MARK: Parameter sets (index = the number in the vectors)
-
     struct Params { var x, y, w, h, ih, iv, oh, ov, nmaster: Int; var mfact: Double; var overspread, single: Bool }
 
     static let params: [Params] = [
@@ -38,10 +22,6 @@ final class LayoutGoldenTests: MangoTestCase {
         }
     }
 
-    // MARK: tile, right_tile, center_tile, deck, monocle, grid, fair and the vertical variants
-
-    /// `layout[+shares] paramset n frame...` (frames in client order). `+shares`: the clients carry
-    /// per-client shares 0.3 0.7 0.2 0.5 0.3 0.4 0.6 0.1 0.9, normalised per master / stack group.
     static let stateless = """
     tile+shares 0 3 10,35,1053,1060 1068,35,842,820 1068,860,842,235
     tile+shares 0 5 10,35,1053,1060 1068,35,842,430 1068,470,842,122 1068,597,842,308 1068,910,842,185
@@ -270,13 +250,6 @@ final class LayoutGoldenTests: MangoTestCase {
         XCTAssertEqual(checked, 189)
     }
 
-    // MARK: scroller / vertical_scroller
-
-    /// `s|vs m<monitor> c<config> s<stack mode> i<ignore single> n<count> | frames after step 1 | ... step 6`.
-    /// Steps focus client index 0, n-1, 1, n/2, 0, n-1 (the previous focus is passed on, the frames of
-    /// the previous step are the clients' current frames). Stack mode 1 stacks clients 1+2, mode 2
-    /// stacks clients 1+2+3 with stack weights 0.2 0.5 0.3. Proportions 0.5 0.8 1.0 0.5 0.8 0.3 0.9,
-    /// scroller_default_proportion_single 0.8.
     static let scroller = """
     s m0 c0 s0 i0 n4 | 20,35,937,1060 962,35,1500,1060 2467,35,1875,1060 4347,35,937,1060 | -3365,35,937,1060 -2423,35,1500,1060 -918,35,1875,1060 962,35,937,1060 | -922,35,937,1060 20,35,1500,1060 1525,35,1875,1060 3405,35,937,1060 | -2422,35,937,1060 -1480,35,1500,1060 25,35,1875,1060 1905,35,937,1060 | 20,35,937,1060 962,35,1500,1060 2467,35,1875,1060 4347,35,937,1060 | -3365,35,937,1060 -2423,35,1500,1060 -918,35,1875,1060 962,35,937,1060
     s m0 c0 s0 i0 n6 | 20,35,937,1060 962,35,1500,1060 2467,35,1875,1060 4347,35,937,1060 5289,35,1500,1060 6794,35,562,1060 | -5437,35,937,1060 -4495,35,1500,1060 -2990,35,1875,1060 -1110,35,937,1060 -168,35,1500,1060 1337,35,562,1060 | -922,35,937,1060 20,35,1500,1060 1525,35,1875,1060 3405,35,937,1060 4347,35,1500,1060 5852,35,562,1060 | -3365,35,937,1060 -2423,35,1500,1060 -918,35,1875,1060 962,35,937,1060 1904,35,1500,1060 3409,35,562,1060 | 20,35,937,1060 962,35,1500,1060 2467,35,1875,1060 4347,35,937,1060 5289,35,1500,1060 6794,35,562,1060 | -5437,35,937,1060 -4495,35,1500,1060 -2990,35,1875,1060 -1110,35,937,1060 -168,35,1500,1060 1337,35,562,1060
@@ -366,11 +339,6 @@ final class LayoutGoldenTests: MangoTestCase {
         XCTAssertEqual(checked, 36)
     }
 
-    // MARK: dwindle
-
-    /// `CFG m<monitor> h<hsplit/vsplit mode> s<smart_split> man<manual_split> pre<preserve_split> r<ratio>` starts a
-    /// scenario; each `STEP cur=x,y focus=F vis=ids | id:frame ...` is one arrange (F is the focused client at
-    /// arrange time, 0 = none; a client that appears in `vis` for the first time is a new window).
     static let dwindle = """
     CFG m0 h0 s0 man1 pre0 r0
     STEP cur=661,771 focus=0 vis=1 | 1:10,35,1900,1060
@@ -528,10 +496,6 @@ final class LayoutGoldenTests: MangoTestCase {
         XCTAssertEqual(steps, 96)
     }
 
-    // MARK: overview (`overview_scale`) and overcircle (`overview_scale_tab`)
-
-    /// `OV|OT m<monitor> n<count> r<rep> f<focus index> | w,h per client | frames`.
-    /// OT uses overcircle_center_ratio 0.5 / 0.3 / 0.7 for rep 0 / 1 / 2.
     static let overview = """
     OV m0 n1 r0 f0 | 1300,980 | 310,75,1300,980
     OV m0 n1 r2 f0 | 1094,536 | 413,297,1094,536

@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// The layout palette (chutney_toggle_layout_palette, port extension): its grid, its keys and
-/// chutney_layout_palette_keys.
 final class LayoutPaletteTests: MangoTestCase {
     func testGridHoldsEveryLayoutOnce() {
         let all = LayoutPaletteGrid(selecting: .tile).cells.flatMap { $0 }.compactMap { $0 }
@@ -18,7 +16,7 @@ final class LayoutPaletteTests: MangoTestCase {
         g.move(0, -1); XCTAssertEqual(g.selected, .deck)
         g.move(1, 0); XCTAssertEqual(g.selected, .fair)
         g.move(1, 0); XCTAssertEqual(g.selected, .fair)
-        g.move(0, 1); g.move(0, 1)   // the empty cell stops it
+        g.move(0, 1); g.move(0, 1)
         XCTAssertEqual(g.selected, .verticalFair)
     }
 

@@ -3,33 +3,23 @@ import SwiftUI
 import Mango
 import Port
 
-/// Not in mango: the layout panel at the top of the menu bar menu (after mangobutter's
-/// quickshell LayoutTweaks). It only sends mango's own dispatchers (setlayout, setmfact,
-/// incnmaster, setoption for the gaps and border_px), as a bar does over IPC.
 @MainActor
 final class LayoutPanelModel: ObservableObject {
     weak var server: MangoServer?
-    /// The menu item's view: its height follows the layout's options.
     weak var host: NSView?
     @Published var layout: LayoutKind = .tile
     @Published var animations = true
-    /// The gap editor: the special tag's gaps rather than the tags', and horizontal and
-    /// vertical tied together.
-    /// The selected monitor's width in points: the gap preview is drawn to its scale.
     @Published var screenWidth: CGFloat = 1728
     @Published var gapSpecial = false
     @Published var gapLinkInner = true
     @Published var gapLinkOuter = true
-    /// The config the layout options are read from (refreshed when the menu opens or one is set).
     @Published var config = Config()
     @Published var border: Double = 0
     @Published var mfact: Double = 0.55
     @Published var nmaster: Double = 1
-    /// chutney_physical_pixels: the border and gap sliders are in points, in steps of one pixel (`pixel` points).
     @Published var physical = false
     @Published var pixel: Double = 1
 
-    /// The focused monitor's current tag, read when the menu opens.
     private func resizeHost() {
         guard let h = host else { return }
         h.layoutSubtreeIfNeeded()
@@ -39,8 +29,6 @@ final class LayoutPanelModel: ObservableObject {
 
     func refresh() {
         defer {
-            // The menu takes the panel's new height at once (a section came or went), and
-            // again once SwiftUI has drawn it: no frame at the old size.
             resizeHost()
             DispatchQueue.main.async { [weak self] in self?.resizeHost() }
         }
@@ -66,65 +54,51 @@ final class LayoutPanelModel: ObservableObject {
         send("setlayout", k.name)
         saveTag("layout_name", k.name)
     }
-    /// In mango's circle_layout: the layouts switch_layout goes round and the layout palette shows.
-    /// Without circle_layout every layout is (mango: all of them).
     func inCircle(_ k: LayoutKind) -> Bool { CircleLayout.contains(config.circleLayout, k) }
 
-    /// A layout ticked in or out of circle_layout (CircleLayout, as the layout palette's ticks).
     func toggleCircle(_ k: LayoutKind) {
         guard let server, let names = CircleLayout.toggled(config.circleLayout, k) else { return }
         CircleLayout.set(names, server: server)
         refresh()
     }
 
-    /// One of the layout options, through mango's setoption.
     func setOption(_ key: String, _ value: String) { option(key, value) }
 
-    /// A gap key (gap_inner_horizontal, special_gap_outer_vertical, …) in pixels, whole as
-    /// mango's.
     func setGap(_ key: String, _ px: Int) {
         option(key, String(max(0, px)))
     }
 
-    /// Port extension: not in mango. Where the panel saves its changes (chutney_menu_config),
-    /// and where they overrule the config.
     @Published var conflicts: [MenuSave.Conflict] = []
 
-    /// A field of the current tag's tag_rule, as `conflicts` names it.
     func tagField(_ field: String) -> String { "tag_rule id:\(server?.selectedMonitor?.curtag ?? 0) \(field)" }
 
-    /// The panel's marking colour: mango's focuscolor, or macOS's accent (PortAccent).
     var accent: Color { PortAccent.color(config) }
     private var menuURL: URL? { server.flatMap { MenuSave.url($0.config, configURL: $0.configURL) } }
 
-    /// mango setoption, then saved (chutney_menu_config).
     private func option(_ key: String, _ value: String) {
         server?.dispatch(Dispatch(name: "setoption", args: [key, value]))
         if let url = menuURL { MenuSave.set(key, value, in: url) }
         refresh()
     }
 
-    /// A field of the current tag's tag_rule, saved (chutney_menu_config); the special tag
-    /// has no tag_rule.
     private func saveTag(_ field: String, _ value: String) {
         guard let url = menuURL, let m = server?.selectedMonitor, m.curtag > 0 else { return }
         MenuSave.setTagRule(tag: m.curtag, field, value, in: url)
         refresh()
     }
 
-
     func setAnimations(_ on: Bool) {
         guard on != server?.config.animations else { return }
         option("animations", on ? "1" : "0")
     }
     func setBorder(_ v: Double) {
-        let px = Int((v / pixel).rounded())   // border_px stays whole, as mango's
+        let px = Int((v / pixel).rounded())
         guard px != server?.config.borderpx else { return }
         option("border_px", String(px))
     }
     func setMfact(_ v: Double) {
         guard abs(v - Double(server?.selectedMonitor?.current.settings.mfact ?? 0)) > 0.001 else { return }
-        send("setmfact", String(format: "%.2f", 1 + v))   // > 1: absolute
+        send("setmfact", String(format: "%.2f", 1 + v))
         saveTag("master_factor", String(format: "%.2f", v))
     }
     func setNmaster(_ v: Double) {
@@ -148,7 +122,6 @@ struct LayoutPanelView: View {
             if model.layout.usesMaster || !options.isEmpty {
                 header("Layout options")
             }
-            // mfact and nmaster are the tag's (mango pertag), and only the layouts that read them show them.
             if model.layout.usesMaster {
                 slider("mfact", value: $model.mfact, in: 0.1...0.9, step: 0.05, percent: true, commit: model.setMfact)
                     .help("master width (the tag's)")
@@ -218,7 +191,6 @@ func panelHeader(_ s: String) -> some View {
     Text(s).font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
 }
 
-/// A slider with its key name and value; sent as it moves.
 @MainActor
 func panelSlider(_ model: LayoutPanelModel, _ title: String, value: Binding<Double>, in range: ClosedRange<Double>, step: Double,
                  unit: String = "", percent: Bool = false, label: String? = nil, commit: @escaping (Double) -> Void) -> some View {
@@ -229,16 +201,12 @@ func panelSlider(_ model: LayoutPanelModel, _ title: String, value: Binding<Doub
                 Text(label ?? (percent ? "\(Int((value.wrappedValue * 100).rounded()))%" : "\(Int(value.wrappedValue))\(unit)"))
                     .font(.system(size: 10, design: .monospaced)).foregroundStyle(model.accent)
             }
-            // Sent as it moves: inside an open menu the end of a drag is not reported reliably.
             Slider(value: value, in: range, step: step)
                 .controlSize(.small)
                 .onChange(of: value.wrappedValue) { _, v in commit(v) }
         }
 }
 
-/// Settings' Look tab: what is set once, moved from the menu's panel (the desktop's gaps and
-/// border, the effects, the menu bar), with mango's names; kept as the panel keeps them
-/// (chutney_menu_config).
 struct LookView: View {
     @ObservedObject var model: LayoutPanelModel
 
@@ -254,14 +222,11 @@ struct LookView: View {
                 .help("border width")
                 .overrideMark(model, "border_px")
             header("Effects")
-            // mangobutter's Blur and Shadows are left out: macOS cannot draw them on another app's window.
             Toggle("animations", isOn: Binding(get: { model.animations }, set: { model.setAnimations($0) }))
                 .font(.system(size: 10, design: .monospaced))
                 .toggleStyle(.switch)
                 .controlSize(.mini)
                 .overrideMark(model, "animations")
-            // The two choices one sees; fade cannot be done to another app's window, and a
-            // closing window is gone before macOS says so.
             HStack {
                 Text("animation_type_open").font(.system(size: 10, design: .monospaced))
                 Spacer()
@@ -338,7 +303,6 @@ struct LookView: View {
     }
 }
 
-/// The panel as a menu item.
 @MainActor
 func makeLayoutPanelItem(model: LayoutPanelModel) -> NSMenuItem {
     let host = NSHostingView(rootView: LayoutPanelView(model: model))
@@ -350,8 +314,6 @@ func makeLayoutPanelItem(model: LayoutPanelModel) -> NSMenuItem {
 }
 
 extension LayoutKind {
-    /// The layouts that read mfact and nmaster: mango's tile_core, right_tile_core,
-    /// center_tile_core, deck_core, vertical_tile_core and vertical_deck_core (layout/).
     var usesMaster: Bool {
         switch self {
         case .tile, .rightTile, .centerTile, .verticalTile, .deck, .verticalDeck: return true
@@ -360,8 +322,6 @@ extension LayoutKind {
     }
 }
 
-/// A layout's own config options as the panel shows them (mango's layout docs): set with
-/// mango's setoption, read back from the config.
 struct LayoutOption: Identifiable {
     enum Kind {
         case toggle(WritableKeyPath<Config, Bool>)
@@ -370,12 +330,9 @@ struct LayoutOption: Identifiable {
         case choice(WritableKeyPath<Config, Int>, [String])
     }
     var id: String { key }
-    /// mango's key, shown; `title` says it in words (the help).
     let key: String
     let title: String
     let kind: Kind
-    /// Overruled by a higher one (the scroller's centring: overspread > focus centre >
-    /// prefer centre).
     var overruledBy: [WritableKeyPath<Config, Bool>] = []
 
     func disabled(_ c: Config) -> Bool { overruledBy.contains { c[keyPath: $0] } }
@@ -419,9 +376,6 @@ struct LayoutOption: Identifiable {
     }
 }
 
-/// The gaps: mango's four (inner/outer, horizontal/vertical), for the normal tags or the
-/// special tag, and smart_gaps. A small screen drawn with them, and a stepper for each;
-/// the chain ties horizontal and vertical together.
 struct GapEditor: View {
     @ObservedObject var model: LayoutPanelModel
     private var special: Bool { model.gapSpecial }
@@ -440,8 +394,6 @@ struct GapEditor: View {
         default: return c.specialGappov
         }
     }
-    /// mango's grid takes its horizontal gaps all round, vertical_grid its vertical ones
-    /// (grid_core, vertical_grid_core): the one direction the layout reads.
     private var allRound: String? {
         switch model.layout {
         case .grid: return "horizontal"
@@ -462,7 +414,6 @@ struct GapEditor: View {
     }
 
     var body: some View {
-        // The tags' gaps; smart_gaps and the special tag's gaps are the config's.
         VStack(alignment: .leading, spacing: 6) {
             preview
             if let d = allRound {
@@ -474,12 +425,9 @@ struct GapEditor: View {
         }
     }
 
-    /// A screen with a master and two stacked windows, drawn with the gaps at the screen's
-    /// own scale (the preview's width for the monitor's), so they look as they will.
     private var preview: some View {
         Canvas { ctx, size in
             let k = size.width / max(1, model.screenWidth) * CGFloat(model.pixel)
-            // As the layout reads them: grid and vertical_grid one direction all round.
             func v(_ which: String, _ dir: String) -> CGFloat { CGFloat(value("\(which)_\(allRound ?? dir)")) * k }
             let ih = v("inner", "horizontal"), iv = v("inner", "vertical")
             let oh = v("outer", "horizontal"), ov = v("outer", "vertical")
@@ -499,7 +447,6 @@ struct GapEditor: View {
         .frame(height: 70)
     }
 
-    /// A row: one slider for horizontal and vertical together (linked), or one each.
     private func row(_ which: String, linked: Binding<Bool>) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             if let d = allRound {
@@ -528,7 +475,6 @@ struct GapEditor: View {
         .overrideMark(model, "\(prefix)_\(which)_horizontal", "\(prefix)_\(which)_vertical")
     }
 
-    /// A gap's slider, 0–40 points in steps of a pixel; sent as it moves.
     private func gapSlider(_ kind: String, symbol: String?) -> some View {
         let v = value(kind)
         let label = model.physical ? "\(LayoutPanelView.points(Double(v) * model.pixel)) pt" : "\(v) px"
@@ -543,9 +489,6 @@ struct GapEditor: View {
     }
 }
 
-
-/// The layouts as a grid of their icons; a click sets the layout (mango setlayout), the
-/// tick in the corner puts it in circle_layout (switch_layout and the layout palette).
 struct LayoutGrid: View {
     @ObservedObject var model: LayoutPanelModel
     private let columns = Array(repeating: GridItem(.fixed(74), spacing: 6), count: 4)
@@ -557,7 +500,6 @@ struct LayoutGrid: View {
                 Button { model.setLayout(kind) } label: {
                     VStack(spacing: 3) {
                         LayoutIcon(kind: kind, selected: on, tint: model.accent)
-                        // mango's name, smaller where it is long (vertical_scroller).
                         Text(kind.name)
                             .font(.system(size: 9, design: .monospaced))
                             .lineLimit(1)
@@ -586,8 +528,6 @@ struct LayoutGrid: View {
 }
 
 extension View {
-    /// Not in mango: a dot where the menu's choice wins over the config (MenuSave.conflicts);
-    /// the dot's tooltip says where and what the config has.
     @MainActor
     func overrideMark(_ model: LayoutPanelModel, _ keys: String...) -> some View {
         modifier(OverrideMark(conflict: model.conflicts.first { keys.contains($0.key) }, accent: model.accent))

@@ -2,7 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// The focus ring must sit outside the window and follow its rounded corners.
 final class EngineBorderTests: MangoTestCase {
     func testRingIsOutsideTheWindow() {
         let win = CGRect(x: 100, y: 50, width: 800, height: 600)
@@ -12,7 +11,6 @@ final class EngineBorderTests: MangoTestCase {
     }
 
     func testInnerEdgeOfStrokeMatchesWindowCorner() {
-        // Outer radius = corner + width: the layer border is drawn inward, so its inner edge has radius = corner.
         XCTAssertEqual(BorderGeometry.outerRadius(corner: 16, width: 4), 20)
         XCTAssertEqual(BorderGeometry.outerRadius(corner: 16, width: 1), 17)
         XCTAssertEqual(BorderGeometry.outerRadius(corner: 0, width: 4), 0)
@@ -39,8 +37,6 @@ final class EngineBorderTests: MangoTestCase {
     }
 }
 
-/// mango's `bw`: a tiled window lies its border width inside its tile, and the border fills
-/// the margin; where mango gives a window no border, it fills the whole tile.
 @MainActor
 final class BorderInsideTheTileTests: MangoTestCase {
     func frames(_ r: EngineRig, borders: Bool) -> [CGWindowID: CGRect] {
@@ -77,14 +73,11 @@ final class BorderInsideTheTileTests: MangoTestCase {
         let r = rig(1)
         r.server.config.noBorderWhenSingle = true
         XCTAssertEqual(frames(r, borders: true), frames(r, borders: false))
-        // A floating window beside it: mango's test is the tiled count in every layout
-        // (client.c, ISSCROLLTILED and visible_fake_tiling_clients), so the tiled window
-        // keeps no border.
         r.window(900_510, floating: true)
         let windows = frames(r, borders: true)
         let boxes = frames(r, borders: false)
         XCTAssertEqual(windows[900_500], boxes[900_500])
-        r.window(900_511)   // a second tiled window: both have a border
+        r.window(900_511)
         let two = frames(r, borders: true)
         let twoBoxes = frames(r, borders: false)
         XCTAssertEqual(two[900_500], twoBoxes[900_500]!.insetBy(dx: 4, dy: 4))
@@ -96,7 +89,6 @@ final class BorderInsideTheTileTests: MangoTestCase {
         XCTAssertEqual(frames(r, borders: true), frames(r, borders: false))
     }
 
-    /// mango 023a05b, monocle_no_radius: square corners for monocle's tiled windows only.
     func testMonocleNoRadius() {
         let r = rig(2, layout: .monocle)
         r.server.config.borderRadius = 6
@@ -111,7 +103,6 @@ final class BorderInsideTheTileTests: MangoTestCase {
         XCTAssertFalse(r.server.clientNoRadiusActive(c), "only in monocle")
     }
 
-    /// The layouts see tiles, not the windows inside them: arranging again moves nothing.
     func testArrangingAgainMovesNothing() {
         for layout in [LayoutKind.scroller, .tile, .dwindle, .deck] {
             let r = rig(3, layout: layout)

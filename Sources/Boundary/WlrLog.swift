@@ -1,11 +1,8 @@
 import Foundation
 
-/// wlroots' enum wlr_log_importance.
 public enum WlrLogImportance: Int, Sendable {
     case silent = 0, error = 1, info = 2, debug = 3
 }
-
-// wlroots' util/log.c: what mango's log.c calls, and what the port logs with, as wlroots does.
 
 private var logImportance: WlrLogImportance = .error
 private var startTime: TimeInterval = -1
@@ -44,12 +41,10 @@ public func wlrLogInit(_ verbosity: WlrLogImportance) {
 
 public func wlrLogGetVerbosity() -> WlrLogImportance { logImportance }
 
-/// wlroots' _wlr_vlog: the message as it is.
 public func wlrVlog(_ verbosity: WlrLogImportance, _ message: @autoclosure () -> String) {
     logStderr(verbosity, message)
 }
 
-/// wlroots' wlr_log: the message after its file and line.
 public func wlrLog(_ verbosity: WlrLogImportance, _ message: @autoclosure () -> String,
                    file: String = #fileID, line: Int = #line) {
     logStderr(verbosity) { "[\(file):\(line)] " + message() }

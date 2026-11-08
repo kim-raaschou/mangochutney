@@ -2,19 +2,13 @@ import AppKit
 import ApplicationServices
 import Mango
 
-/// Whether Mission Control (or App Exposé, Show Desktop) is up, from the Dock's own
-/// Accessibility notifications, as yabai does (`mission_control.c`). While it is up the
-/// Dock moves every window, hidden ones included, and apps report those moves: they are
-/// not the user's, so the engine ignores them.
 @MainActor
 public final class MissionControl {
     public private(set) var isActive = false
-    /// Called when Mission Control closes.
     public var onExit: (() -> Void)?
     private var observer: AXObserver?
     private var dock: AXUIElement?
     private var launchObserver: NSObjectProtocol?
-    /// While it is up: the next click or key ends it for us if its exit notice is lost.
     private var inputMonitor: Any?
 
     private static let dockBundleId = "com.apple.dock"
@@ -25,7 +19,6 @@ public final class MissionControl {
 
     public func start() {
         observeDock()
-        // `killall Dock` (or a Dock crash) starts a new Dock: observe that one.
         launchObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] n in
             guard let app = n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
@@ -66,10 +59,6 @@ public final class MissionControl {
         isActive = active
         wlrLog(.debug, active ? "Mission Control is up (\(why)); window moves are ignored" : "Mission Control closed (\(why))")
         if active {
-            // A click or key closes Mission Control in any case; if the Dock's exit notice
-            // never comes, this keeps window moves from being ignored for good. Presses, not
-            // releases: the release of the key or click that opened it comes after this.
-            // Not a Space change: opening Mission Control is reported as one.
             inputMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .keyDown]) { [weak self] _ in
                 MainActor.assumeIsolated { self?.set(active: false, because: "click or key") }
             }

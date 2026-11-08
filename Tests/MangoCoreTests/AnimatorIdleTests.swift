@@ -2,7 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// Animator.whenIdle: runs once no window is animating (jump labels wait for it).
 @MainActor
 final class AnimatorIdleTests: MangoTestCase {
     func testItRunsAtOnceWhenNothingAnimates() {

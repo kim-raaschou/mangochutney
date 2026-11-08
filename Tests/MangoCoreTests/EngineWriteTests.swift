@@ -2,13 +2,8 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// arrange → write → read back → retry, against a fake app: the engine's path to the
-/// real windows, which no other test reaches (without a write queue `place` returns early).
 @MainActor
 final class EngineWriteTests: MangoTestCase {
-
-    /// Quitting brings the windows mango hid back into view, through each app's write
-    /// queue; restarting leaves them hidden for the next mango.
     func testQuittingBringsHiddenWindowsBack() {
         let r = EngineRig()
         r.window(1)
@@ -22,8 +17,6 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertTrue(r.screen.workArea.contains(r.app.frames[2]!), "back on the screen")
     }
 
-    /// A hidden window whose app is then hidden (⌘H) is away, out of the layout, but still in
-    /// mango's corner: quitting brings it back as well.
     func testQuittingBringsBackAWindowAwayInACorner() {
         let r = EngineRig()
         r.window(1)
@@ -80,8 +73,6 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertGreaterThanOrEqual(b.frame.height, 1000)
     }
 
-    /// A window that refuses its tile (its minimum size): mango's tile stays, the window
-    /// overlaps its neighbour, and it is asked once more, not fought.
     func testARefusalKeepsMangosTileAndIsAskedOnceMore() {
         let r = EngineRig()
         r.window(1)
@@ -97,13 +88,11 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertLessThan(tile.height, 700)
     }
 
-    /// Not in mango: a window larger than its tile never goes past the monitor's work area;
-    /// from an edge it would cross it grows inward, mango's tile unchanged.
     func testARefusedWindowGrowsInwardFromTheScreenEdge() {
         let r = EngineRig()
         r.window(1)
         let b = r.window(2)
-        r.app.minSize[2] = CGSize(width: 1100, height: 0)   // wider than the right-hand tile
+        r.app.minSize[2] = CGSize(width: 1100, height: 0)
         r.server.arrange(r.monitor, .none)
         let tile = b.geom!
         r.settle(1)
@@ -139,8 +128,6 @@ final class EngineWriteTests: MangoTestCase {
         r.settle()
         XCTAssertEqual(r.app.frames[1], CGRect(x: 300, y: 300, width: 400, height: 300), "busy: not applied")
         r.app.busy = false
-        // The read-back gets no answer, the window server has the old frame: a retry at
-        // once (still busy) and the next one a second later (keepPlaced's rate limit).
         r.settle(1.5)
         XCTAssertEqual(r.app.frames[1], a.geom, "put back where the layout has it")
     }
@@ -160,13 +147,13 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.window(1)
         let inView = CGRect(x: 12, y: 45, width: 1704, height: 1060)
-        r.app.movesBackTo[2] = inView   // Arc playing a video
+        r.app.movesBackTo[2] = inView
         r.window(2, tags: 1 << 1, frame: inView)
         r.server.arrange(r.monitor, .none)
         r.settle(0.2)
         XCTAssertEqual(r.app.writes.filter { $0.id == 2 }.count, 4, "parked, then three more tries")
         r.app.movesBackTo[2] = nil
-        r.server.clientByIdAll(2)!.parked = false   // the next arrange parks it again with a fresh budget
+        r.server.clientByIdAll(2)!.parked = false
         r.server.clientByIdAll(2)!.parkRetries = 0
         r.server.arrange(r.monitor, .none)
         r.settle()
@@ -207,18 +194,15 @@ final class EngineWriteTests: MangoTestCase {
         r.settle()
         let target = a.geom!
         let writes = r.app.writes.count
-        let moved = target.offsetBy(dx: 40, dy: 30)   // Teams repositioning itself
+        let moved = target.offsetBy(dx: 40, dy: 30)
         r.app.frames[1] = moved
         r.server.mac.windowGeometryChanged(id: 1, frame: moved, resized: false, isFullscreen: nil)
         XCTAssertEqual(a.frame, moved, "recorded at once, so the border follows")
         XCTAssertEqual(r.app.writes.count, writes, "not reacted to inside the write's own window")
-        r.settle(1.0)   // the read-back just after ignoreMovesUntil
+        r.settle(1.0)
         XCTAssertEqual(r.app.frames[1], target, "put back where the layout has it")
     }
 
-    /// An app that applies a size late (Electron: Claude, VS Code) answers right after
-    /// each write with its old frame, the size the layout before gave it. That is not a
-    /// minimum size: by the late read-back it has taken the new one.
     func testAnAppThatAppliesSizesLateTeachesNoMinimumSize() {
         let r = EngineRig()
         let a = r.window(1)
@@ -226,7 +210,7 @@ final class EngineWriteTests: MangoTestCase {
         r.settle()
         let whole = a.geom!
         r.app.appliesAfter = 0.3
-        r.window(2)   // a stack beside it: a narrower tile
+        r.window(2)
         r.server.arrange(r.monitor, .none)
         let tile = a.geom!
         XCTAssertLessThan(tile.width, whole.width)
@@ -235,9 +219,6 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertEqual(r.app.frames[1], tile, "and the window has it")
     }
 
-    /// The old frame a late app answers with is learned as its minimum size, and must not
-    /// stay one: a window that had the whole screen and goes to the stack's foot, where it
-    /// is too wide, grows inward from the corner, and does not land on the master's corner.
     func testAnOldFrameLearnedAsAMinimumIsForgotten() {
         let r = EngineRig()
         let a = r.window(1)
@@ -249,7 +230,7 @@ final class EngineWriteTests: MangoTestCase {
         r.server.arrange(r.monitor, .none)
         r.settle(2)
         XCTAssertNil(a.mac.refusedSize, "it took its tile: no minimum")
-        r.server.clients.append(r.server.clients.removeFirst())   // 1 last: the stack's foot
+        r.server.clients.append(r.server.clients.removeFirst())
         r.server.arrange(r.monitor, .none)
         r.settle(4)
         let bounds = r.server.mac.layoutBounds(r.monitor)
@@ -260,8 +241,6 @@ final class EngineWriteTests: MangoTestCase {
 
 }
 
-/// mango's show_scratchpad: a scratchpad is sized by the ratios and centred the first time
-/// it is shown, then keeps the place it is put in.
 @MainActor
 final class ScratchpadPlaceTests: MangoTestCase {
     func rig() -> EngineRig {
@@ -287,13 +266,11 @@ final class ScratchpadPlaceTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "movewin", args: ["-100", "-50"]), target: c)
         let moved = c.geom!
         XCTAssertNotEqual(moved, first, "the move holds (it was centred again before)")
-        toggle(r)   // hidden
-        toggle(r)   // shown again
+        toggle(r)
+        toggle(r)
         XCTAssertEqual(c.geom, moved, "where it was put, as in mango")
     }
 
-    /// mango switch_scratchpad_client_state: shown on another display, its place is scaled
-    /// to that display's work area and centred there.
     func testOnAnotherDisplayItIsScaledAndCentred() {
         let r = rig()
         let big = Screen(displayID: 2, name: "Big", frame: CGRect(x: 1728, y: 0, width: 2560, height: 1440),
@@ -313,7 +290,6 @@ final class ScratchpadPlaceTests: MangoTestCase {
         XCTAssertEqual(c.floatGeom.midY, big.workArea.midY, accuracy: 1)
     }
 
-    /// mango 565aca8: an app asking for focus from the scratchpad is shown there, not taken out.
     func testAnActivationShowsTheScratchpad() {
         let r = rig()
         r.server.config.focusOnActivate = true

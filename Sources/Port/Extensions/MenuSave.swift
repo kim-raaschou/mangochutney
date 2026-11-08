@@ -1,27 +1,18 @@
 import Foundation
 import Mango
 
-/// chutney_menu_config (port extension): the menu panel's changes saved as plain mango
-/// config in a file of their own, read after the config so they win. Each key, and each
-/// field of a tag's tag_rule, is in the file once; a new change replaces its line. The
-/// user's config is never written. Where the file overrules the config, `conflicts` says
-/// so (a note in the panel, `mango -p`).
 public enum MenuSave {
-    /// One place where the menu file overrules the config.
     public struct Conflict: Equatable, Identifiable {
         public var id: String { key }
-        /// `gap_inner_horizontal`, or `tag_rule id:1 layout_name`.
         public var key: String
         public var configFile: String
         public var configLine: Int
         public var configValue: String
         public var menuValue: String
-        /// The tag of a tag_rule field, nil for a plain key.
         public var tag: Int?
         public var field: String
     }
 
-    /// The menu file, nil when chutney_menu_config is not set.
     public static func url(_ config: Config, configURL: URL) -> URL? {
         let path = config.chutneyMenuConfig
         guard !path.isEmpty else { return nil }
@@ -36,9 +27,6 @@ public enum MenuSave {
     # key back to config.conf, delete its line here.
     """
 
-    // MARK: writing
-
-    /// `key=value`, replacing the key's line.
     public static func set(_ key: String, _ value: String, in url: URL) {
         var lines = read(url)
         if let i = lines.lastIndex(where: { keyOf($0) == key }) {
@@ -49,7 +37,6 @@ public enum MenuSave {
         write(lines, to: url)
     }
 
-    /// One field of tag `tag`'s tag_rule (`layout_name`, `master_factor`, `master_count`).
     public static func setTagRule(tag: Int, _ field: String, _ value: String, in url: URL) {
         var lines = read(url)
         if let i = lines.lastIndex(where: { keyOf($0) == "tag_rule" && fields(of: $0)["id"] == "\(tag)" }) {
@@ -62,11 +49,6 @@ public enum MenuSave {
         write(lines, to: url)
     }
 
-    // MARK: conflicts
-
-    /// Every key and tag_rule field the menu file sets to another value than the config
-    /// does: its last value in the files read before the menu file (config.conf and those it
-    /// sources, chutney_theme.conf among them), in mango's read order.
     public static func conflicts(configURL: URL, menuURL: URL) -> [Conflict] {
         let menu = read(menuURL)
         let config = linesRead(from: configURL, before: menuURL)
@@ -77,7 +59,6 @@ public enum MenuSave {
                 let mf = fields(of: line)
                 guard let id = mf["id"], let tag = Int(id) else { continue }
                 for (field, value) in fieldList(of: line) where field != "id" {
-                    // The config's last tag_rule for that tag that sets the field.
                     for cl in config.reversed() where keyOf(cl.text) == "tag_rule" {
                         let cf = fields(of: cl.text)
                         guard cf["id"] == id, let cv = cf[field] else { continue }
@@ -99,17 +80,13 @@ public enum MenuSave {
         return out
     }
 
-    /// One line of the config, where it stands.
     struct ReadLine { var file: String; var line: Int; var text: String }
 
-    /// The config's lines in mango's read order (parse_config_file, load.c): a sourced file's
-    /// lines in place of its source line, up to where `stop` is read.
     static func linesRead(from url: URL, before stop: URL) -> [ReadLine] {
         let base = url.deletingLastPathComponent()
         let stop = stop.standardizedFileURL
         var out: [ReadLine] = []
         var stack: [URL] = []
-        /// false once `stop` is reached.
         func walk(_ url: URL) -> Bool {
             if url.standardizedFileURL == stop { return false }
             guard !stack.contains(url), stack.count < 16,
@@ -129,7 +106,6 @@ public enum MenuSave {
         return out
     }
 
-    /// A source line's path, as mango resolve_config_path (load.c): from the config's folder.
     static func resolve(_ path: String, base: URL) -> URL {
         let path = path.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
         if path.hasPrefix("./") { return base.appendingPathComponent(String(path.dropFirst(2))).standardizedFileURL }
@@ -139,36 +115,28 @@ public enum MenuSave {
         return base.appendingPathComponent(path).standardizedFileURL
     }
 
-    // MARK: lines
-
     static func read(_ url: URL) -> [String] {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }
         return lines(text).filter { keyOf($0) != nil }
     }
 
-    /// A file's lines; mango's own config.conf ends its lines with CRLF.
     static func lines(_ text: String) -> [String] {
         text.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
     }
 
-    /// What the panel last wrote to each file. A change the config watcher sees that is only
-    /// this is the panel's own: its value is already set, and it needs no reload.
     nonisolated(unsafe) static var lastWritten: [String: String] = [:]
 
-    /// The file holds what the panel last wrote to it.
     public static func isOwnWrite(_ url: URL) -> Bool {
         guard let written = lastWritten[url.standardizedFileURL.path] else { return false }
         return (try? String(contentsOf: url, encoding: .utf8)) == written
     }
 
-    /// Written in place (not replaced), so the config watcher keeps watching the same file.
     static func write(_ lines: [String], to url: URL) {
         let text = header + "\n" + lines.joined(separator: "\n") + "\n"
         lastWritten[url.standardizedFileURL.path] = text
         try? text.write(to: url, atomically: false, encoding: .utf8)
     }
 
-    /// The key of a `key=value` line; nil for comments and blank lines.
     static func keyOf(_ line: String) -> String? {
         let t = line.trimmingCharacters(in: .whitespaces)
         guard !t.isEmpty, !t.hasPrefix("#"), let eq = t.firstIndex(of: "=") else { return nil }
@@ -183,7 +151,6 @@ public enum MenuSave {
         return v.trimmingCharacters(in: .whitespaces)
     }
 
-    /// A tag_rule's `field:value` pairs in order.
     static func fieldList(of line: String) -> [(String, String)] {
         valueOf(line).split(separator: ",").compactMap { part in
             let kv = part.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }

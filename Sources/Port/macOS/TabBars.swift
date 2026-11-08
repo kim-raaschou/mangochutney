@@ -1,16 +1,6 @@
 import AppKit
 import Mango
 
-/// mango's tab strip (tab.c): over the focused window of a tabbed monocle or deck stack,
-/// one segment per member, each with its window's title; the focused member's segment
-/// in the focus colours. A click on a segment focuses that window.
-/// The strip is drawn in the macOS style (like the jump labels): a translucent bar, the
-/// focused tab a light pill with the focus colour underneath, system colours for light and
-/// dark mode. Each of mango's tab_bar_ / group_bar_decorate_* keys set in the config
-/// replaces that part with mango's (`decorate`).
-
-/// mango divides the strip's width evenly; the first `width % count` segments get one
-/// point more (tab.c, client_draw_tabbar).
 public enum TabStripLayout {
     public static func segmentFrames(width: CGFloat, count: Int) -> [CGRect] {
         guard count > 0 else { return [] }
@@ -28,11 +18,8 @@ public enum TabStripLayout {
 
 @MainActor
 public final class TabBarManager {
-    /// A segment was clicked.
     public var onSelect: ((CGWindowID) -> Void)?
-    /// A click on a segment's close button.
     public var onClose: ((CGWindowID) -> Void)?
-    /// A right click on a segment.
     public var onRightClick: ((CGWindowID) -> Void)?
     private var panels: [CGWindowID: (NSPanel, TabStripView, TabStrip)] = [:]
     private var style: TabStripStyle?
@@ -40,15 +27,11 @@ public final class TabBarManager {
 
     public init() {}
 
-    /// Strips keyed by the focused member they sit above; others are removed. `keyFocus`: the
-    /// window with the focus (the macOS look rings a tab only while its window has it).
     public func update(_ strips: [TabStrip], style: TabStripStyle, keyFocus: CGWindowID? = nil) {
         let restyle = style != self.style || keyFocus != self.keyFocus
         self.style = style
         self.keyFocus = keyFocus
         var seen: Set<CGWindowID> = []
-        // A strip that moved to another member (the focus went along the tabs) takes a panel
-        // no strip keeps, instead of a new one: making a panel is the costly part.
         let wanted = Set(strips.map(\.above))
         var spare = panels.keys.filter { !wanted.contains($0) }
         for strip in strips where panels[strip.above] == nil {
@@ -60,7 +43,6 @@ public final class TabBarManager {
             seen.insert(strip.above)
             if let (panel, view, old) = panels[strip.above] {
                 if old != strip || restyle {
-                    // Moved only (every frame of a slide): the tabs stay as drawn.
                     var moved = old
                     moved.frame.origin = strip.frame.origin
                     apply(strip, to: panel, view: view, style: style, redraw: moved != strip || restyle)
@@ -74,7 +56,7 @@ public final class TabBarManager {
                 panel.hasShadow = false
                 panel.level = .normal
                 panel.becomesKeyOnlyIfNeeded = true
-                panel.hidesOnDeactivate = false   // NSPanel's default would hide it after mango's menu
+                panel.hidesOnDeactivate = false
                 panel.collectionBehavior = [.stationary, .ignoresCycle, .fullScreenNone, .transient]
                 panel.isReleasedWhenClosed = false
                 panel.animationBehavior = .none
@@ -82,10 +64,7 @@ public final class TabBarManager {
                 view.onClick = { [weak self] id in self?.onSelect?(id) }
                 view.onClose = { [weak self] id in self?.onClose?(id) }
                 view.onRightClick = { [weak self] id in self?.onRightClick?(id) }
-                // The panel's look (chutney_style) under the tabs (GlassBacking: Liquid Glass
-                // on macOS 26), which a plain strip hides.
                 let container = GlassBacking(material: .headerView)
-                // Rounded on top only: the bottom is under the window.
                 container.layer?.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
                 container.addContent(view)
                 panel.contentView = container
@@ -102,8 +81,6 @@ public final class TabBarManager {
         }
     }
 
-    /// Back right below their windows (after focus changes, like borders).
-    /// Those of `ids` (nil: all).
     public func restack(_ ids: Set<CGWindowID>? = nil, inPlace: (CGWindowID, CGWindowID) -> Bool = { _, _ in false }) {
         for (id, (panel, _, _)) in panels where ids?.contains(id) ?? true {
             if !inPlace(CGWindowID(truncatingIfNeeded: panel.windowNumber), id) { panel.order(.below, relativeTo: Int(id)) }
@@ -126,18 +103,15 @@ public final class TabBarManager {
     }
 }
 
-/// The tabs, drawn with layers over the panel's vibrancy; clicks go to `onClick`.
 final class TabStripView: NSView {
     var onClick: ((CGWindowID) -> Void)?
     var onClose: ((CGWindowID) -> Void)?
     var onRightClick: ((CGWindowID) -> Void)?
-    /// mango's close buttons (close_button_box), one per segment.
     private var closeLayers: [CALayer] = []
     private var closeFrames: [CGRect] = []
     private var ids: [CGWindowID] = []
     private var frames: [CGRect] = []
     private var shown: (TabStrip, TabStripStyle)?
-    /// The window with the focus, and the one the tabs were drawn for.
     var keyFocus: CGWindowID?
     private var shownKeyFocus: CGWindowID?
 
@@ -146,17 +120,15 @@ final class TabStripView: NSView {
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        if let (strip, style) = shown { show(strip, style: style, recolor: true) }   // light / dark mode
+        if let (strip, style) = shown { show(strip, style: style, recolor: true) }
     }
 
-    /// One tab's layers, kept while only the strip's geometry changes.
     private struct Tab {
         var layer: CALayer
         var separator: CALayer?
         var icon: CALayer?
         var text: CATextLayer
         var titleWidth: CGFloat
-        /// A "⌘1" badge in the focus colour at the trailing edge while ⌘ is held.
         var number: CALayer?
         var numberWidth: CGFloat = 0
     }
@@ -164,7 +136,6 @@ final class TabStripView: NSView {
     private var lineHeight: CGFloat = 0
 
     func show(_ strip: TabStrip, style: TabStripStyle, recolor: Bool = false) {
-        // The same tabs at another size (every frame of an animation): lay them out again.
         if !recolor, let (old, oldStyle) = shown, oldStyle == style, shownKeyFocus == keyFocus, old.segments == strip.segments,
            old.barHeight == strip.barHeight, old.cornerRadius == strip.cornerRadius, tabs.count == strip.segments.count {
             shown = (strip, style)
@@ -175,7 +146,6 @@ final class TabStripView: NSView {
         shownKeyFocus = keyFocus
         wantsLayer = true
         guard let root = layer else { return }
-        // Drawn anew in one go: no implicit fades between frames of an animation.
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
@@ -183,7 +153,6 @@ final class TabStripView: NSView {
         tabs = []
         let height = strip.barHeight
         let inset: CGFloat = 3
-        // Concentric with the bar's corners: the first and last tab follow its curve.
         let d = style.decorate
         let tabRadius = d.cornerRadius.map { CGFloat($0) } ?? max(4, strip.cornerRadius - inset)
         ids = strip.segments.map(\.id)
@@ -193,8 +162,6 @@ final class TabStripView: NSView {
         func cg(_ c: RGBA) -> CGColor { CGColor(red: c.r, green: c.g, blue: c.b, alpha: c.a) }
         lineHeight = ceil(font.ascender - font.descender)
         let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
-        // Every title in the label colour: on glass the focused tab's weight and pill carry
-        // the hierarchy, not a dimmer colour.
         var resolved: (pill: CGColor, label: CGColor, separator: CGColor)!
         effectiveAppearance.performAsCurrentDrawingAppearance {
             resolved = (NSColor.labelColor.withAlphaComponent(0.13).cgColor, NSColor.labelColor.cgColor,
@@ -205,11 +172,8 @@ final class TabStripView: NSView {
             let tab = CALayer()
             tab.cornerRadius = tabRadius
             var separator: CALayer?
-            let boxed = d.bgColor != nil || (d.borderWidth ?? 0) > 0   // mango's cells: no separators
+            let boxed = d.bgColor != nil || (d.borderWidth ?? 0) > 0
             if seg.focused {
-                // A ring in the focus colour, like the focused window's border, while its window
-                // has the focus: as macOS, the selected tab of a window without it is not
-                // accented (a floating window in front has it). mango's decorate keys as set.
                 tab.backgroundColor = d.focusBgColor.map(cg) ?? resolved.pill
                 tab.borderColor = d.borderColor.map(cg) ?? cg(style.accent)
                 let ring = seg.id == keyFocus || d.borderColor != nil || d.borderWidth != nil
@@ -219,7 +183,6 @@ final class TabStripView: NSView {
                 tab.borderColor = d.borderColor.map(cg) ?? resolved.separator
                 tab.borderWidth = CGFloat(d.borderWidth ?? 0)
             } else if i > 0, focusedIndex != i, focusedIndex != i - 1 {
-                // A thin separator between two unfocused tabs.
                 let sep = CALayer()
                 sep.backgroundColor = resolved.separator
                 tab.addSublayer(sep)
@@ -235,8 +198,6 @@ final class TabStripView: NSView {
             text.alignmentMode = .center
             text.truncationMode = .end
             text.contentsScale = scale
-            // Port extension: not in mango (chutney_tab_bar_app_icons). App icon before the
-            // title (OmniWM's app-icon tabs).
             var iconLayer: CALayer?
             if style.appIcons, let icon = Self.icon(for: seg.pid) {
                 let l = CALayer()
@@ -247,7 +208,6 @@ final class TabStripView: NSView {
                 text.alignmentMode = .left
             }
             tab.addSublayer(text)
-            // Port extension: not in mango (chutney_tab_bar_shortcuts). The ⌘n badge.
             var number: CALayer?, numberWidth: CGFloat = 0
             if let n = seg.shortcut {
                 let label = "⌘\(n)"
@@ -262,7 +222,6 @@ final class TabStripView: NSView {
                 l.string = label
                 l.font = nf
                 l.fontSize = nf.pointSize
-                // White on a dark focus colour, black on a light one.
                 let a = style.accent
                 l.foregroundColor = 0.299 * a.r + 0.587 * a.g + 0.114 * a.b > 0.6 ? .black : .white
                 l.alignmentMode = .center
@@ -281,7 +240,6 @@ final class TabStripView: NSView {
         layout(strip)
     }
 
-    /// Places the tabs for the strip's width: mango's even split, inset and gaps.
     private func layout(_ strip: TabStrip) {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -300,8 +258,6 @@ final class TabStripView: NSView {
         for (t, f) in zip(tabs, frames) {
             t.layer.frame = f
             t.separator?.frame = CGRect(x: -gap / 2 - 0.5, y: f.height * 0.25, width: 1, height: f.height * 0.5)
-            // The number keeps its place at the trailing edge (none in a tab too narrow for
-            // it); the title stays centred in what is left on both sides.
             let fits = t.number != nil && f.width - 2 * pad >= t.numberWidth + 12
             t.number?.isHidden = !fits
             let edge = fits ? 6 + t.numberWidth + 6 : pad
@@ -312,7 +268,6 @@ final class TabStripView: NSView {
             var textRect = CGRect(x: edge, y: max(padY, (f.height - lineHeight) / 2), width: max(0, f.width - 2 * edge),
                                   height: lineHeight)
             if let icon = t.icon {
-                // Icon and title centred together, the title giving way first when narrow.
                 let side = min(16, max(0, f.height - 8))
                 let iconGap: CGFloat = 6
                 let titleW = min(textRect.width - side - iconGap, t.titleWidth)
@@ -325,8 +280,6 @@ final class TabStripView: NSView {
         }
     }
 
-    /// close_button_box: `size` (no larger than the bar), `margin` in from the segment's
-    /// right edge, centred in the bar; a circle in the button colour with a white cross.
     private func layoutCloseButtons(_ strip: TabStrip) {
         for l in closeLayers { l.removeFromSuperlayer() }
         closeLayers = []
@@ -368,8 +321,6 @@ final class TabStripView: NSView {
 
     private static var icons: [String: CGImage] = [:]
 
-    /// The app's icon as an image for a layer, kept per app (bundle id): a pid can be
-    /// reused by another app, and the cache stays as small as the set of apps.
     static func icon(for pid: pid_t) -> CGImage? {
         guard pid > 0, let app = NSRunningApplication(processIdentifier: pid) else { return nil }
         let key = app.bundleIdentifier ?? "pid:\(pid)"

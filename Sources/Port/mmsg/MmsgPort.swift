@@ -1,5 +1,3 @@
-// Port extension: not in mango. mmsg's macOS extras (service, logs, reload, binds) and their
-// lines in its usage; mmsg (Sources/Mango/mmsg) is mango's mmsg.c and calls these two.
 import Darwin
 import Foundation
 
@@ -20,7 +18,6 @@ public func mmsgPortUsage() {
     """)
 }
 
-/// The port's command's exit status, or nil when the command is mango's.
 public func mmsgPortCommand(_ args: [String]) -> Int32? {
     switch args.first {
     case "service": return Service.run(Array(args.dropFirst()))
@@ -43,10 +40,6 @@ func socketPath() -> String {
     return "/tmp/mango-\(NSUserName()).sock"
 }
 
-/// Connects, sends `command` + "\n" and copies everything received to stdout
-/// until EOF. Returns the process exit status.
-/// `replyTimeout`: give up on a mango that does not answer (seconds); with it, failures
-/// return EXIT_FAILURE instead of exiting, so the caller can fall back.
 func runIPC(_ command: String, sink: ((ArraySlice<UInt8>) -> Void)? = nil, replyTimeout: Int? = nil) -> Int32 {
     let path = socketPath()
     var addr = sockaddr_un()
@@ -99,7 +92,6 @@ func runIPC(_ command: String, sink: ((ArraySlice<UInt8>) -> Void)? = nil, reply
         offset += n
     }
 
-    // Copy lines to stdout as they arrive (flushing per line, like mmsg.c).
     var pendingLine: [UInt8] = []
     var buf = [UInt8](repeating: 0, count: 65536)
     func writeOut(_ bytes: ArraySlice<UInt8>) {
@@ -131,7 +123,6 @@ func runIPC(_ command: String, sink: ((ArraySlice<UInt8>) -> Void)? = nil, reply
     return EXIT_SUCCESS
 }
 
-/// `mmsg binds [mode]`: readable table of the active bindings.
 func printBinds(mode: String?) -> Int32 {
     var data = Data()
     let rc = runIPC("get binds") { data.append(contentsOf: $0) }

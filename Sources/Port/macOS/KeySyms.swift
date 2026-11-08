@@ -1,7 +1,6 @@
 import Foundation
 import Mango
 
-/// xkb's work on macOS: mango's key names to macOS key codes in the system's keyboard layout.
 public enum KeySyms {
     public static let systemKeyBase: UInt16 = 0x1000
 
@@ -70,7 +69,6 @@ public enum KeySyms {
             "clear": 71, "num_lock": 71, "kp_divide": 75, "kp_subtract": 78, "kp_equal": 81,
             "yen": 93, "jis_yen": 93, "underscore": 94, "jis_underscore": 94, "kp_comma": 95,
             "eisu_toggle": 102, "kana_lock": 104, "hiragana_katakana": 104,
-// not in mango: a PC keyboard's Print Screen, Scroll Lock and Pause arrive as F13-F15, Menu as the contextual-menu key.
             "print": 105, "sys_req": 105, "scroll_lock": 107, "pause": 113, "break": 113,
             "menu": 110,
             "xf86audioraisevolume": systemKeyBase + 0,

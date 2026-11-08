@@ -2,11 +2,8 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// viewtoleft/right, viewtoleft/right_have_client, tagtoleft/right (mango view_shift_tag,
-/// view_shift_tag_have_client, tag_to_left/right), through the engine.
 @MainActor
 final class EngineTagNavigationTests: MangoTestCase {
-    /// A rig viewing `view`, with a window on each tag of `occupied`.
     func rig(view: UInt32 = 1, occupied: [Int] = [], gather: Bool = false, carousel: Bool = false) -> EngineRig {
         let r = EngineRig()
         r.server.config.tagGather = gather
@@ -43,7 +40,6 @@ final class EngineTagNavigationTests: MangoTestCase {
         XCTAssertEqual(view(r), 1 << 8)
     }
 
-    /// mango view_shift_tag: several tags in view shift as a block.
     func testSeveralTagsShiftTogether() {
         let r = rig(view: 0b11)
         go(r, "viewtoright")
@@ -68,8 +64,6 @@ final class EngineTagNavigationTests: MangoTestCase {
         XCTAssertEqual(view(r), 1 << 6)
     }
 
-    /// mango view_shift_tag: tag_gather sets where the carousel wraps; without carousel the
-    /// shift goes on past it.
     func testGatherSetsTheCarouselsWrap() {
         let r = rig(view: 1 << 3, occupied: [1, 2, 3], gather: true, carousel: true)
         go(r, "viewtoright")
@@ -78,7 +72,6 @@ final class EngineTagNavigationTests: MangoTestCase {
         XCTAssertEqual(view(r), 1 << 3)
     }
 
-    /// mango view_shift_tag: nothing from the special tag.
     func testNothingFromTheSpecialTag() {
         let r = rig(view: TagMask.special)
         go(r, "viewtoright")
@@ -86,7 +79,6 @@ final class EngineTagNavigationTests: MangoTestCase {
     }
 }
 
-/// mango's tag to the tag in view: the window comes to its place there.
 @MainActor
 final class TagToCurrentTagTests: MangoTestCase {
     func testTaggingOntoTheTagInViewPlacesTheWindow() {

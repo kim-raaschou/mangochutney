@@ -2,11 +2,8 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's border resize (pointer.c, enable_border_resize, border_resize_size): a strip
-/// along a window's edge, inside mango's geom (with the border), grabs the edge.
 @MainActor
 final class BorderResizeTests: MangoTestCase {
-    /// Two tiled windows side by side, 10 apart; border_px 4 (mango's).
     func sideBySide() -> (EngineRig, Client, Client) {
         let r = EngineRig()
         r.server.renderBorder = true
@@ -24,12 +21,9 @@ final class BorderResizeTests: MangoTestCase {
 
     func fake(_ r: EngineRig) -> FakeWindowSystem { r.server.system as! FakeWindowSystem }
 
-    // MARK: mango's client_resize_edge_at, 1:1
-
     func testATiledWindowHasAStripOnlyWhereItFacesATiledNeighbour() {
         let (r, a, _) = sideBySide()
         let s = r.server
-        // a's right edge is 500; its geom (border 4) ends at 504; the strip is 10 wide.
         XCTAssertEqual(s.clientResizeEdgeAt(a, nil, 502, 400), .right, "on the border")
         XCTAssertEqual(s.clientResizeEdgeAt(a, a.id, 496, 400), .right, "inside the window")
         XCTAssertEqual(s.clientResizeEdgeAt(a, a.id, 400, 400), [], "away from the edge")
@@ -48,7 +42,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(s.resizeCursorName([.bottom], floating: false), "row-resize")
     }
 
-    /// A popup or another window over the strip keeps its input.
     func testAnotherSurfaceOnTheStripKeepsItsInput() {
         let (r, a, _) = sideBySide()
         XCTAssertEqual(r.server.clientResizeEdgeAt(a, 99, 496, 400), [])
@@ -63,15 +56,12 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.id, 496, 400), [])
     }
 
-    /// border_resize_size 0: the strip is the border's width.
     func testSizeZeroIsTheBorder() {
         let (r, a, _) = sideBySide()
         r.server.config.borderResizeSize = 0
         XCTAssertEqual(r.server.clientResizeEdgeAt(a, nil, 502, 400), .right)
         XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.id, 496, 400), [], "inside the window: not the border")
     }
-
-    // MARK: hover, press and drag
 
     func testHoverSetsTheCursorAndLeavingGivesItBack() {
         let (r, _, _) = sideBySide()
@@ -83,7 +73,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(fake(r).cursorName, .some(nil), "given back to the window")
     }
 
-    /// The strip is the window's: the pointer on it is on the window (sloppy focus).
     func testTheStripIsTheWindows() {
         let (r, a, b) = sideBySide()
         r.server.config.sloppyfocus = true
@@ -94,8 +83,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertNil(r.server.clientAtPoint(CGPoint(x: 505, y: 400)), "the gap is no window's")
     }
 
-    /// Not in mango: the event tap sets the strip's cursor as the pointer moves, before the
-    /// app under it has the move.
     func testTheTapSetsTheStripsCursorAsThePointerMoves() {
         let router = InputRouter()
         var set: [String] = []
@@ -129,7 +116,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertNil(r.server.grab)
     }
 
-    /// A floating window's right edge changes its width only; the left edge keeps the right side.
     func testDraggingAFloatingEdgeChangesOnlyThatEdge() {
         let (r, c) = floating()
         r.server.arrange(r.monitor, .none)
@@ -150,8 +136,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(c.frame.width, f.width - 30, accuracy: 1)
     }
 
-    /// pointer_end_grab_client: a plain click on a strip does not snap the window; a border grab
-    /// that moved does.
     func testAPlainClickOnAStripDoesNotSnap() {
         let (r, c) = floating()
         r.server.config.enableFloatingSnap = true
@@ -169,7 +153,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertLessThan(c.floatGeom.minX, 20, "moved: the window snaps to the screen's edge")
     }
 
-    /// A tiled window's strip: the drag moves the split, with the strip's cursor, given back after.
     func testDraggingATiledStripMovesTheSplit() throws {
         let r = EngineRig()
         r.server.renderBorder = true
@@ -189,8 +172,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertNil(r.server.grab)
     }
 
-    /// Not in mango: mango grabs only a press the event tap took from the app; a press the tap
-    /// let through (its hover was a move behind) stays the app's.
     func testAPressTheTapLetThroughIsTheApps() {
         let (r, _, _) = sideBySide()
         XCTAssertFalse(r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 496, y: 400), mods: [],
@@ -198,8 +179,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertNil(r.server.grab)
     }
 
-    /// pointer_update_resize_cursor returns during a grab: the tap no longer sets the strip's
-    /// cursor over mango's own (a move's "grab").
     func testNoStripCursorDuringAGrab() {
         let (r, _, _) = sideBySide()
         let router = fake(r).router
@@ -213,8 +192,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(set, ["col-resize"], "not during the grab")
     }
 
-    /// Not in mango: the saved layout keeps a floating window floating while the overview has
-    /// cleared it (overview_backup).
     func testTheSavedLayoutKeepsFloatingInTheOverview() {
         let (r, c) = floating()
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
@@ -223,7 +200,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(saved?.isFloating, true)
     }
 
-    /// The event tap takes a left press where mango's hover says there is a strip.
     func testTheTapTakesTheLeftPressOnTheStrip() {
         func press(_ button: Int, hover: Bool) -> Pointer.ButtonPress {
             Pointer.pointerProcessButtonPress(button: button, at: .zero, mods: [], switcherActive: false, overviewFrame: nil,

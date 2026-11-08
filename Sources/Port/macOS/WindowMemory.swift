@@ -3,31 +3,20 @@ import Foundation
 import QuartzCore
 import Mango
 
-/// Not in mango: windows that leave and come back. macOS reports windows gone and back
-/// around sleep, and a restart of mango (an update, the LaunchAgent after a crash) finds
-/// every window anew; mango itself has neither. What a window had is remembered as it goes
-/// (DepartedWindows) and kept on disk (SavedLayout), and given back to mango's
-/// handle_client_map when the window is found again. Joined to mango's code through
-/// MacEvents.windowDiscovered (back, returned) and PortHooks (windowLeaving, saveLayout, restoreLayout).
 @MainActor
 final class WindowMemory {
     var departed = DepartedWindows()
-    /// Where the layout is kept; nil keeps none (tests).
     var layoutURL: URL? = SavedLayout.defaultURL
     let session = SavedLayout.currentSession
     var lastSaved: SavedLayout?
     let queue = DispatchQueue(label: "mango.layout", qos: .utility)
 
-    /// A window found: what it had when it left, if it is the same app's window (the same
-    /// id for another app's window cannot happen within a session; the saved layout checks
-    /// the session too). The next window to leave starts a new wave.
     func back(_ c: Client) -> DepartedWindow? {
         let back = departed.take(c.id).flatMap { d in d.bundleId.isEmpty || d.bundleId == c.bundleId ? d : nil }
         departed.endWave()
         return back
     }
 
-    /// A window leaves: what it had, its place in the client order and its group.
     func leaving(_ server: MangoServer, _ c: Client, group: [ClientID], groupFocus: ClientID?, order: [ClientID]) {
         let snapshot = departed.orderSnapshot(leaving: c.id, order: order)
         departed.remember(c.id, DepartedWindow(
@@ -40,10 +29,6 @@ final class WindowMemory {
         departed.rememberGroup(DepartedGroup(members: group, focus: groupFocus))
     }
 
-    /// A window back (after sleep, or found after a restart) whose group was kept: the
-    /// group is built again from its members that are here, in their order, with the one
-    /// that was in view in view (the others parked, as client_park). Built again as each
-    /// member comes back; forgotten once all are.
     func returned(_ server: MangoServer, _ c: Client) {
         guard let gi = departed.groups.firstIndex(where: { $0.members.contains(c.id) }) else { return }
         let g = departed.groups[gi]
@@ -69,16 +54,10 @@ final class WindowMemory {
         if let m = focus.mon { server.arrange(m) }
     }
 
-    /// Whether the window floats; in the overview mango has cleared it (overview_backup) and
-    /// keeps it in overview_isfloatingbak.
     static func isFloating(_ c: Client) -> Bool {
         c.overviewBackupGeom != nil ? c.overviewIsFloatingBak : c.isFloating
     }
 
-    // MARK: The saved layout (survives a restart of mango)
-
-    /// Every managed window, plus the ones that are away (sleep) or not seen yet since
-    /// the start (an app that has not answered), so a write never forgets a window.
     func currentLayout(_ server: MangoServer) -> SavedLayout {
         var windows: [SavedLayout.Window] = server.clientsAll.map { c in
             SavedLayout.Window(id: c.id, bundleId: c.bundleId, tags: c.tags, displayID: c.mon?.screen.displayID,
@@ -111,7 +90,6 @@ final class WindowMemory {
                 SavedLayout.TagLayout(layout: $0.layout.name, configuredLayout: $0.configLayout.name)
             }
         }
-        // The groups in use, and those with members away.
         var groups = departed.groups
         for c in server.clientsAll where c.isGroupMember && c.groupPrev == nil {
             let members = server.groupMembers(c)
@@ -123,9 +101,6 @@ final class WindowMemory {
                            groups: groups.isEmpty ? nil : groups)
     }
 
-    /// Written only when something in it changed (a comparison, no timer), off the main
-    /// thread; the last write wins because the queue is serial. `final` (quit): written
-    /// now, as it is, before anything moves.
     func save(_ server: MangoServer, final: Bool = false) {
         guard server.started, let url = layoutURL, !session.isEmpty else { return }
         if final {
@@ -133,7 +108,6 @@ final class WindowMemory {
             queue.sync { Self.write(now, to: url) }
             return
         }
-        // Saved windows not found yet are kept while the window server has them.
         if departed.hasSavedEntries { departed.dropSaved(keeping: server.system.allWindowIDs()) }
         let now = currentLayout(server)
         guard now != lastSaved else { return }
@@ -145,9 +119,6 @@ final class WindowMemory {
         do { try layout.write(to: url) } catch { wlrLog(.error, "cannot write \(url.path): \(error.localizedDescription)") }
     }
 
-    /// At start, before the first scan: the saved windows become departed ones (restored
-    /// as each is found), and each display shows the tags it showed, in the layouts they
-    /// had: a restart keeps what a reload of the config keeps.
     func restore(_ server: MangoServer) {
         if session.isEmpty { wlrLog(.info, "no window server session id: the layout is not kept across restarts") }
         guard let url = layoutURL, let saved = SavedLayout.load(from: url, session: session) else { return }
@@ -165,8 +136,6 @@ final class WindowMemory {
             }
             if let t = saved.prevTags?[display], (1...31).contains(t) { m.prevTag = t }
             for (p, t) in zip(m.pertag, saved.tagLayouts?[display] ?? []) {
-                // As a reload does (mango parse_tagrule): a tag_rule whose layout changed since
-                // gives its layout; otherwise the layout in use stays.
                 if p.configLayout.name == (t.configuredLayout ?? LayoutKind.tile.name), let layout = LayoutKind(name: t.layout) {
                     p.layout = layout
                 }

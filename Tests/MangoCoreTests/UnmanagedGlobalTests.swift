@@ -2,11 +2,8 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// mango's is_unmanaged_global and ignore_minimize window rules.
 @MainActor
 final class UnmanagedGlobalTests: MangoTestCase {
-    // Window ids no process has as a pid: FakeApp makes elements from them, and the
-    // minimize test writes to the element.
     let a: CGWindowID = 900_001, b: CGWindowID = 900_002, pet: CGWindowID = 900_003
 
     func testAnUnmanagedGlobalWindowIsNeverLaidOutMovedOrParked() {
@@ -22,7 +19,7 @@ final class UnmanagedGlobalTests: MangoTestCase {
         XCTAssertFalse(r.app.writes.contains { $0.id == pet }, "mango does not move it")
         XCTAssertEqual(r.app.frames[pet], petFrame)
 
-        r.server.clientViewOnMonitor(1 << 1, on: r.monitor)   // another tag
+        r.server.clientViewOnMonitor(1 << 1, on: r.monitor)
         r.settle()
         XCTAssertTrue(u.isVisible(on: r.monitor), "on every tag")
         XCTAssertEqual(u.tags, 1 << 1, "and reported on the tag in view, as in mango")
@@ -42,15 +39,13 @@ final class UnmanagedGlobalTests: MangoTestCase {
         let r = EngineRig()
         let c = r.window(a)
         c.ignoreMinimize = false
-        r.server.mac.windowMinimized(id: a, minimized: true)        // ⌘M / the yellow button
+        r.server.mac.windowMinimized(id: a, minimized: true)
         XCTAssertTrue(c.isInScratchpad, "in mango's minimized pool")
         XCTAssertNil(r.server.mac.away[a], "not away in the Dock")
-        r.server.mac.windowMinimized(id: a, minimized: false)       // our own de-minimize
+        r.server.mac.windowMinimized(id: a, minimized: false)
         XCTAssertTrue(c.isInScratchpad, "stays in the pool")
     }
 
-    /// mango's default ignore_minimize refuses the minimize, which macOS has done: the
-    /// window is away (unmapped), and maps back to its tag when the Dock gives it back.
     func testAMinimizeGoesToTheDockByDefault() {
         let r = EngineRig()
         let c = r.map(a)
@@ -65,8 +60,6 @@ final class UnmanagedGlobalTests: MangoTestCase {
         XCTAssertNil(r.server.mac.away[a])
     }
 
-    /// Not in mango: native fullscreen and a hidden app (⌘H) unmap the window too; it is
-    /// back when both are over.
     func testFullscreenAndHiddenAreAwayUntilBothAreOver() {
         let r = EngineRig()
         let c = r.map(a)
@@ -80,7 +73,6 @@ final class UnmanagedGlobalTests: MangoTestCase {
         XCTAssertTrue(r.server.clientByIdAll(a) === c)
     }
 
-    /// A window found minimized, in fullscreen or hidden is not mapped until it is back.
     func testAWindowFoundAwayIsMappedWhenItIsBack() {
         let r = EngineRig()
         r.server.mac.windowDiscovered(DiscoveredWindow(

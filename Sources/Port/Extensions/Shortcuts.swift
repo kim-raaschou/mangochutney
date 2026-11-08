@@ -1,11 +1,7 @@
 import Foundation
 import Mango
 
-/// Port extension: not in mango. Readable shortcut list built from the parsed config (the
-/// hotkeys palette, the menu bar window, `mmsg binds`).
 enum ShortcutFormatter {
-    /// Not in mango: the port's readable shortcut list.
-    /// Apple's modifier order: ⌃ ⌥ ⇧ ⌘ (fn last).
     static func mods(_ m: Modifiers) -> String {
         var s = ""
         if m.contains(.ctrl) { s += "⌃" }
@@ -16,7 +12,6 @@ enum ShortcutFormatter {
         return s
     }
 
-    /// Not in mango: the port's readable shortcut list.
     static func key(_ name: String) -> String {
         switch name.lowercased() {
         case "left": return "←"
@@ -45,14 +40,12 @@ enum ShortcutFormatter {
         }
     }
 
-    /// Not in mango: the port's readable shortcut list.
     static func combo(_ m: Modifiers, _ k: String) -> String {
         let p = mods(m)
         return p.isEmpty ? key(k) : "\(p) \(key(k))"
     }
 
-    /// Not in mango: the port's readable shortcut list.
-    static func action(_ d: Dispatch) -> String {   // package: the port's palette names its rows
+    static func action(_ d: Dispatch) -> String {
         let a0 = d.arg(0), a1 = d.arg(1)
         switch d.name {
         case "focusdir": return "focus \(a0)"
@@ -125,7 +118,6 @@ enum ShortcutFormatter {
         }
     }
 
-    /// Not in mango: the port's readable shortcut list.
     static func rows(_ c: Config) -> [ShortcutRow] {
         var rows: [ShortcutRow] = []
         for b in c.keyBindings {
@@ -160,12 +152,11 @@ enum ShortcutFormatter {
     }
 }
 
-/// One binding for the shortcut overview (`mmsg binds`, menu bar window).
 public struct ShortcutRow: Equatable, Sendable {
-    public var mode: String       // key_mode ("default", "window", ...)
-    public var keys: String       // e.g. "⌃⌥⌘ ←", "⌃⌥⌘ + left drag", "3-finger swipe left"
-    public var action: String     // human description
-    public var dispatch: String   // mango dispatcher name
+    public var mode: String
+    public var keys: String
+    public var action: String
+    public var dispatch: String
     public var args: [String]
     public init(mode: String, keys: String, action: String, dispatch: String, args: [String]) {
         self.mode = mode; self.keys = keys; self.action = action; self.dispatch = dispatch; self.args = args
@@ -173,7 +164,6 @@ public struct ShortcutRow: Equatable, Sendable {
 }
 
 extension ShortcutFormatter {
-    /// `get binds`: every active binding with a readable description.
     static func bindsReply(_ rows: [ShortcutRow]) -> JSONValue {
         .object([("binds", .array(rows.map { r in
             .object([("mode", .string(r.mode)), ("keys", .string(r.keys)), ("action", .string(r.action)),
@@ -183,6 +173,5 @@ extension ShortcutFormatter {
 }
 
 extension MangoServer {
-    /// All active bindings as readable rows (menu bar window, `mmsg binds`).
     public var shortcutRows: [ShortcutRow] { ShortcutFormatter.rows(config) }
 }

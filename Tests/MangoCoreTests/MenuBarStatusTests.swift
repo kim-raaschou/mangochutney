@@ -2,15 +2,12 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// The menu bar item (port extension, not in mango): one copy on every display, so it shows
-/// every monitor in the order the displays stand, the selected one in full.
 final class MenuBarStatusTests: MangoTestCase {
     @MainActor
     func testEveryMonitorLeftToRightWithItsOwnTagsAndLayout() throws {
         let rig = EngineRig()
         let benq = Screen(displayID: 2, name: "BenQ", frame: CGRect(x: 1728, y: 0, width: 3360, height: 2240),
                           workArea: CGRect(x: 1728, y: 30, width: 3360, height: 2210), scale: 2, isMain: false)
-        // The BenQ comes first in the system's list; the laptop stands to its left.
         rig.server.rebuildMonitors(screens: [benq, rig.screen])
         let laptop = try XCTUnwrap(rig.server.monitors.first { $0.screen.displayID == 1 })
         let ext = try XCTUnwrap(rig.server.monitors.first { $0.screen.displayID == 2 })
@@ -26,8 +23,6 @@ final class MenuBarStatusTests: MangoTestCase {
         XCTAssertEqual(shown.map(\.layout), [laptop.layout, ext.layout])
     }
 
-    /// A click on a tag goes to its monitor and views it, as a bar's tag button
-    /// (focusmon, view); mango focuses the tag's top window.
     @MainActor
     func testAClickOnATagViewsItOnItsMonitor() throws {
         let rig = EngineRig()
@@ -47,8 +42,6 @@ final class MenuBarStatusTests: MangoTestCase {
         XCTAssertEqual(ext.tagset[ext.seltags], 1 << 4, "the special tag: nothing")
     }
 
-    /// A plain press on a tag in the menu bar is taken by mango's event tap with its
-    /// release, and views the tag; elsewhere, or with a modifier, it goes on.
     @MainActor
     func testAPressOnAMenuBarTagIsTakenAndViewsIt() {
         let rig = EngineRig()

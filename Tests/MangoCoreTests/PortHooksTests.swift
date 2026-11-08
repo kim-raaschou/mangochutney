@@ -2,8 +2,6 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// Without the port's extensions registered, mango is mango: no extra dispatcher, no
-/// colour of the port's own, nothing floats instead of tiling.
 @MainActor
 final class PortHooksTests: MangoTestCase {
     func testWithoutTheExtensionsMangoIsMango() {
@@ -13,11 +11,9 @@ final class PortHooksTests: MangoTestCase {
         let c = r.window(900_800, floating: true)
         XCTAssertNotEqual(r.server.getBorderColor(c), r.server.config.chutneyFloatingColor, "chutney_floating_color needs the port")
         XCTAssertNil(r.server.portHooks.extraDispatchers["chutney_focus_app"])
-        _ = r.server.dispatch(Dispatch(name: "chutney_focus_app", args: ["com.example.none"]))   // does nothing
+        _ = r.server.dispatch(Dispatch(name: "chutney_focus_app", args: ["com.example.none"]))
     }
 
-    /// chutney_border_unfocused off and chutney_tab_bar_app_icons on do nothing without the port: mango draws
-    /// every window's border and no icons; registered, they work.
     func testBorderUnfocusedAndTabIconsNeedThePort() {
         let r = EngineRig()
         r.server.renderBorder = true
@@ -42,7 +38,6 @@ final class PortHooksTests: MangoTestCase {
         XCTAssertNotNil(r.server.portHooks.extraDispatchers["chutney_focus_app"])
     }
 
-    /// chutney_ignore_apps reaches the watcher when the config is read.
     func testIgnoreAppsIsTakenWhenTheConfigIsRead() {
         let r = EngineRig()
         r.server.config.chutneyIgnoreApps = ["com.example.ignored"]
@@ -50,15 +45,12 @@ final class PortHooksTests: MangoTestCase {
         XCTAssertEqual(r.server.mac.watcher.ignoredBundleIds, ["com.example.ignored"])
     }
 
-    /// The port's config keys are exactly its listed extensions, apart from mango's.
     func testThePortsKeysAreItsOwnTable() {
         XCTAssertEqual(Set(PortOptions.setters.keys), Set(MangoCompat.portExtensionOptions.keys))
         XCTAssertTrue(Set(PortOptions.setters.keys).isDisjoint(with: ConfigOptions.mangoSetters.keys))
     }
 }
 
-/// chutney_set_proportion_all (port extension): set_proportion for every window of the tag in
-/// view, with set_proportion's conditions; without a value, scroller_default_proportion.
 @MainActor
 final class SetProportionAllTests: MangoTestCase {
     func testEveryWindowOfTheTagInTheScroller() {

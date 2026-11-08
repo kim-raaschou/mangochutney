@@ -2,15 +2,6 @@ import AppKit
 import SwiftUI
 import Mango
 
-/// Port extension: not in mango. The hotkeys palette (chutney_toggle_hotkeys_palette, the menu's
-/// "Hotkeys…"; after Omarchy's Super+K menu): every binding as one row, searched as you type,
-/// moved through with the keyboard and run with Return, which does what the binding does.
-/// It knows what mango looks like now: a binding shows its state (floating on, the layout in
-/// view) and is dimmed when it would do nothing. The rows used most of late come first, the
-/// open windows are rows too (Return goes to one), and while searching so are the installed
-/// apps (Return opens one). Without a search the rows are grouped (Windows, Focus, Tags, …);
-/// → or Return opens a group, ← or ⌫ goes back.
-/// It replaced the keyboard shortcuts window.
 @MainActor
 public final class HotkeysPalette {
     public static let shared = HotkeysPalette()
@@ -19,7 +10,6 @@ public final class HotkeysPalette {
     private var keyMonitor: Any?
     private weak var server: MangoServer?
 
-    /// Shown, or closed when it is.
     func toggle(_ server: MangoServer) {
         if panel?.isVisible == true { close() } else { show(server) }
     }
@@ -30,7 +20,6 @@ public final class HotkeysPalette {
         model.maxRows = config.chutneyHotkeysMaxRows
         model.recentCount = config.chutneyHotkeysRecent
         model.width = CGFloat(config.chutneyHotkeysWidth)
-        // chutney_style: macOS's look; otherwise the port's own.
         model.look = HotkeysLook(config: config)
         model.legend = ModifierLegend.text(config)
         let hyper = Modifiers.parse(config.chutneyHyperModifier, hyperModifier: "") ?? []
@@ -39,7 +28,6 @@ public final class HotkeysPalette {
         model.load(server.shortcutRows, hyper: hyper,
                    context: Self.context(server), windows: Self.windows(server), apps: apps?.apps ?? [],
                    usage: HotkeysUsage.scores(HotkeysUsage.read()))
-        // Spotlight answers its first query a moment after the palette opens.
         apps?.onChange = { [weak self] found in
             guard let self, self.panel?.isVisible == true else { return }
             self.model.setApps(found)
@@ -55,8 +43,6 @@ public final class HotkeysPalette {
             p.isOpaque = false
             p.hasShadow = true
             p.onResign = { [weak self] in self?.close() }
-            // The system's material behind the rows (macOS's look; the port's own paints
-            // over it), rounded as macOS's sheets are (GlassBacking: Liquid Glass on macOS 26).
             let glass = GlassBacking(material: .popover)
             let host = NSHostingView(rootView: HotkeysView(model: model))
             host.translatesAutoresizingMaskIntoConstraints = false
@@ -70,23 +56,19 @@ public final class HotkeysPalette {
             p.contentView = glass
             panel = p
         }
-        // The look may have changed with a reload.
         panel?.appearance = model.look.macOS ? nil : NSAppearance(named: .darkAqua)
         (panel?.contentView as? GlassBacking)?.cornerRadius = model.look.cornerRadius
         panel?.invalidateShadow()
-        // In the middle of the selected monitor's screen.
         let id = server.selectedMonitor?.screen.displayID
         let screen = NSScreen.screens.first {
             ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == id
         } ?? NSScreen.main
-        // Its top where the tallest palette would be centred: it grows and shrinks downward.
         if let area = screen?.visibleFrame {
             let tallest = model.look.height(rows: model.maxRows)
             top = NSPoint(x: area.midX - model.width / 2, y: min(area.maxY, area.midY + tallest / 2))
         }
         fit(model.page.rows)
         model.onLayout = { [weak self] rows in self?.fit(rows) }
-        // The palette takes the keys; mango's focus waits until it closes.
         server.holdNativeFocus = true
         if keyMonitor == nil {
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
@@ -94,21 +76,16 @@ public final class HotkeysPalette {
                 return self.handle(e) ? nil : e
             }
         }
-        // Keys go to the active app's key window: mango becomes the active app, as mango puts
-        // other apps' windows in front (NSApp.activate alone is refused from the background).
         panel?.makeKeyAndOrderFront(nil)
         if let p = panel { NativeFocus.focusOwn(windowID: CGWindowID(p.windowNumber)) }
         NSApp.activate()
         panel?.makeKeyAndOrderFront(nil)
-        // The search field takes the keys at every showing, now and once the panel is key.
         focusSearch()
         DispatchQueue.main.async { [weak self] in self?.focusSearch() }
     }
 
-    /// The palette's top left corner: the height follows the rows shown below it.
     private var top = NSPoint.zero
 
-    /// As tall as the rows shown, no scrolling.
     private func fit(_ rows: Int) {
         let h = model.look.height(rows: rows)
         panel?.setFrame(NSRect(x: top.x, y: top.y - h, width: model.width, height: h), display: true)
@@ -119,22 +96,20 @@ public final class HotkeysPalette {
         panel.makeFirstResponder(field)
     }
 
-    /// The keys the palette takes from the search field.
     private func handle(_ e: NSEvent) -> Bool {
         let ctrl = e.modifierFlags.contains(.control)
         switch e.keyCode {
-        case 125: model.move(1)                                   // ↓
-        case 126: model.move(-1)                                  // ↑
-        case 48: model.move(e.modifierFlags.contains(.shift) ? -1 : 1)   // ⇥
-        case 45 where ctrl, 38 where ctrl: model.move(1)          // ⌃N, ⌃J
-        case 35 where ctrl, 40 where ctrl: model.move(-1)         // ⌃P, ⌃K
-        case 36, 76: model.enter()                                // ↩
-        case 124: return model.query.isEmpty && (model.moveColumn(1) || model.openSelected())   // →
-        case 123: return model.query.isEmpty && (model.moveColumn(-1) || model.back())        // ←
-        case 51: return model.query.isEmpty && model.back()                                   // ⌫
-        case 53: if !model.escape() { close() }                   // Esc
+        case 125: model.move(1)
+        case 126: model.move(-1)
+        case 48: model.move(e.modifierFlags.contains(.shift) ? -1 : 1)
+        case 45 where ctrl, 38 where ctrl: model.move(1)
+        case 35 where ctrl, 40 where ctrl: model.move(-1)
+        case 36, 76: model.enter()
+        case 124: return model.query.isEmpty && (model.moveColumn(1) || model.openSelected())
+        case 123: return model.query.isEmpty && (model.moveColumn(-1) || model.back())
+        case 51: return model.query.isEmpty && model.back()
+        case 53: if !model.escape() { close() }
         default:
-            // A digit on a folded run ("view tag 1–9") runs it for that digit.
             guard e.modifierFlags.intersection([.command, .control, .option]).isEmpty,
                   let c = e.charactersIgnoringModifiers, c.count == 1, let n = Int(c) else { return false }
             return model.digit(n)
@@ -142,7 +117,6 @@ public final class HotkeysPalette {
         return true
     }
 
-    /// Closed; mango's focus goes back to its window (or to the one a binding focused).
     func close() {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         keyMonitor = nil
@@ -151,8 +125,6 @@ public final class HotkeysPalette {
         releaseFocus()
     }
 
-    /// What the row does, once the palette is gone: the binding's dispatcher as its key
-    /// would run it, mango's client_active for a window (focusid), or the app opened.
     private func run(_ row: HotkeyRow) {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         keyMonitor = nil
@@ -166,9 +138,6 @@ public final class HotkeysPalette {
             if let c = server.clientByIdAll(id) { server.dispatch(Dispatch(name: "focusid"), target: c) }
         case .app(let path):
             HotkeysUsage.record(row.id)
-            // Its window used last, as a window's row goes to it; mango's focus and macOS's
-            // then agree. Without one the app is opened, and a running app's activation is
-            // not undone by the focus going back (releaseFocus).
             let id = row.appID ?? ""
             let windows = server.appWindowsInGridOrder(id.lowercased())
             if let last = server.focusHistory.lazy.compactMap({ h in windows.first { $0.id == h } }).first ?? windows.first {
@@ -184,7 +153,6 @@ public final class HotkeysPalette {
         releaseFocus()
     }
 
-    /// What the bindings would act on now.
     static func context(_ server: MangoServer) -> HotkeysContext {
         var c = HotkeysContext()
         if let f = server.focused {
@@ -215,7 +183,6 @@ public final class HotkeysPalette {
         return c
     }
 
-    /// mango's windows, the focused one first, then as mango lists them.
     static func windows(_ server: MangoServer) -> [HotkeysWindow] {
         let focused = server.focused?.id
         let all = server.clients.map { c -> HotkeysWindow in
@@ -230,30 +197,23 @@ public final class HotkeysPalette {
 
     private func releaseFocus() {
         guard let server else { return }
-        server.holdNativeFocus = false   // a focus a binding made meanwhile is applied
-        // Back to mango's window, unless a binding opened a window of mango's own.
+        server.holdNativeFocus = false
         if NSApp.keyWindow == nil, let c = server.focused { server.mac.focus(c, raise: true) }
     }
 }
 
-/// The palette's window: borderless, takes keys, closes when another window is clicked.
 final class HotkeysPanel: NSPanel {
     var onResign: (() -> Void)?
     override var canBecomeKey: Bool { true }
-    override func cancelOperation(_ sender: Any?) {}   // Esc is the palette's (HotkeysPalette.handle)
+    override func cancelOperation(_ sender: Any?) {}
     override func resignKey() {
         super.resignKey()
         onResign?()
     }
 }
 
-/// The palette's look. macOS's with chutney_style (Spotlight's: a rounded sheet of the
-/// system's material, the system font and colours, the accent on the selected row, keys as
-/// a menu shows them); otherwise the port's own, after Omarchy's menus (a dark panel, a
-/// thin light frame, monospaced text, keycaps).
 struct HotkeysLook {
     var macOS: Bool
-    /// The marking colour (PortAccent) and mango's own colours for the mango look.
     var marking: Color = .accentColor
     var root = Color(Config().rootcolor)
     var border = Color(Config().bordercolor)
@@ -279,25 +239,19 @@ struct HotkeysLook {
     }
 
     var text: Color { macOS ? Color.primary : Color(white: 0.9) }
-    /// The lesser text. On glass it is primary too: the hierarchy is in the sizes, not in a
-    /// dimmer colour (secondary measures under 3:1 on glass).
     var dim: Color { macOS ? Color.primary : Color(white: 0.6) }
     var accent: Color { marking }
-    /// The selected row: the marking colour filled, white on it.
     var selectionFill: Color { marking }
     var selectionText: Color { .white }
-    /// The mango look: mango's rootcolor behind, its bordercolor around.
     var background: Color { macOS ? .clear : root }
     var frame: Color { border }
 
-    /// The palette's height for this many rows: the search field, the rows and the footer.
     func height(rows: Int) -> CGFloat {
         2 * padding + searchHeight + (macOS ? 9 : 20) + 16
             + CGFloat(max(rows, 1)) * (rowHeight + rowSpacing)
     }
 }
 
-/// The palette: the search field over the rows and a footer saying what Return does.
 struct HotkeysView: View {
     @ObservedObject var model: HotkeysModel
     private var look: HotkeysLook { model.look }
@@ -327,7 +281,6 @@ struct HotkeysView: View {
                 Text("Nothing matches").foregroundStyle(look.dim).font(look.font(13))
                     .padding(.horizontal, 12).frame(height: look.rowHeight)
             } else {
-                // Down the first column, then the second; no scrolling.
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(0..<page.columns, id: \.self) { col in
                         VStack(spacing: look.rowSpacing) {
@@ -355,7 +308,6 @@ struct HotkeysView: View {
         .overlay { if !look.macOS { Rectangle().stroke(look.frame, lineWidth: 2) } }
     }
 
-    /// What Return does with the selected row; for a binding, its key for next time.
     private var footer: Text {
         let more = model.page.more
         let tail = more > 0 ? Text("   +\(more) more: type to narrow").foregroundStyle(look.accent) : Text("")
@@ -393,7 +345,6 @@ struct HotkeysView: View {
                 Text("\(n)").foregroundStyle(dim)
                 Image(systemName: "chevron.right").font(look.font(12)).foregroundStyle(dim)
             case .row(let r):
-                // A row used of late, before the groups: a clock, or its app's icon.
                 let recent = model.query.isEmpty && model.openSection == nil
                 if let path = r.iconPath {
                     Image(nsImage: AppIcons.icon(path)).resizable().frame(width: 22, height: 22).frame(width: 24)
@@ -407,7 +358,6 @@ struct HotkeysView: View {
                         .foregroundStyle(st == "off" ? dim : (selected ? fg : look.accent))
                 }
                 Spacer(minLength: 12)
-                // An app's row: where its windows are, as a window's row shows it.
                 if let place = r.place, !place.isEmpty {
                     Text(place).font(look.font(look.macOS ? 13 : 14)).foregroundStyle(dim).padding(.trailing, 6)
                 }
@@ -435,7 +385,6 @@ struct HotkeysView: View {
         return true
     }
 
-    /// The keys as a macOS menu shows them ("⌃⌥⌘K", Hyper as its modifiers), or keycaps.
     @ViewBuilder
     private func keys(_ keys: [String], dim: Color) -> some View {
         if look.macOS {
@@ -445,8 +394,6 @@ struct HotkeysView: View {
         }
     }
 
-    /// The keys as one text: modifiers as a menu writes them, but Hyper by its name
-    /// ("Hyper W", not "⌃⌥⌘W": the config's word, and less to read).
     private func keyText(_ keys: [String]) -> String {
         guard look.macOS else { return keys.joined(separator: " ") }
         var out = ""
@@ -460,7 +407,7 @@ struct HotkeysView: View {
     @ViewBuilder
     private func keycap(_ s: String) -> some View {
         if s == "›" {
-            Text(s).font(look.font(12)).foregroundStyle(look.dim)   // then, in the mode
+            Text(s).font(look.font(12)).foregroundStyle(look.dim)
         } else {
             Text(s)
                 .font(look.font(12))
@@ -470,7 +417,6 @@ struct HotkeysView: View {
     }
 }
 
-/// Apps' icons by path, read once.
 @MainActor
 enum AppIcons {
     private static var cache: [String: NSImage] = [:]
@@ -483,8 +429,6 @@ enum AppIcons {
     }
 }
 
-/// The search field: an AppKit text field, so the palette can give it the keys itself
-/// (SwiftUI's focus did not take in the borderless panel).
 struct HotkeysSearchField: NSViewRepresentable {
     @Binding var text: String
     var placeholder: String
@@ -502,7 +446,6 @@ struct HotkeysSearchField: NSViewRepresentable {
         return f
     }
 
-    /// macOS's font and colours, or the Omarchy look's.
     private func style(_ f: NSTextField) {
         let font = macOS ? NSFont.systemFont(ofSize: 20) : NSFont.monospacedSystemFont(ofSize: 15, weight: .regular)
         f.font = font
@@ -530,21 +473,11 @@ struct HotkeysSearchField: NSViewRepresentable {
     }
 }
 
-/// The installed apps, as Spotlight knows them (wherever they are), with when and how
-/// often each was used. One live query from the palette's first showing: Spotlight reports
-/// an app installed or removed since, so nothing is read again. Without Spotlight's index
-/// there are none (the palette's bindings and windows still work).
 @MainActor
 final class SpotlightApps {
     static let shared = SpotlightApps()
     private(set) var apps: [HotkeysApp] = []
-    /// The apps changed (the first answer, or Spotlight's update).
     var onChange: (([HotkeysApp]) -> Void)?
-    /// The query answers on a queue of its own: its answers come from Spotlight's server, and
-    /// every update (an app used, launched or installed) reads them all again; on the main
-    /// thread that stopped mango for half a second. The attributes come with the results
-    /// (the value list), not one request per app; the path, which a value list does not
-    /// carry, is the result's own and costs nothing.
     private nonisolated(unsafe) let query = NSMetadataQuery()
     private let queue = OperationQueue()
 
@@ -586,17 +519,14 @@ final class SpotlightApps {
                                  lastUsed: value("kMDItemLastUsedDate", i) as? Date,
                                  useCount: value("kMDItemUseCount", i) as? Int ?? 0)
             if app.bundleID.isEmpty { noID.append(app); continue }
-            // One row per app: the copy used last.
             if let old = byID[app.bundleID], (old.lastUsed ?? .distantPast) >= (app.lastUsed ?? .distantPast) { continue }
             byID[app.bundleID] = app
         }
         return (Array(byID.values) + noID).sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
 
-    /// An app a person opens: not one inside another app's bundle, nor a helper kept in a
-    /// Library folder (CoreServices' apps, such as Finder, excepted).
     nonisolated static func isApp(_ path: String) -> Bool {
-        let inner = path.dropLast(4)   // ".app"
+        let inner = path.dropLast(4)
         if inner.contains(".app/") { return false }
         if path.contains("/Library/") && !path.hasPrefix("/System/Library/CoreServices/") { return false }
         return true

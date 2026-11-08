@@ -1,7 +1,6 @@
 import AppKit
 import Mango
 
-/// Big letter badge for togglejump.
 @MainActor
 enum JumpLabel {
     static func make(_ text: String, centeredIn axRect: CGRect, look decorate: DecorateStyle = DecorateStyle()) -> NSWindow {
@@ -36,12 +35,10 @@ enum JumpLabel {
     }
 }
 
-/// The jump labels of the moving-windows overview, one window each.
 @MainActor
 final class JumpLabelSet {
     private let windows: [NSWindow]
 
-    /// `labels`: each letter and the card (AX coordinates) it goes on.
     init(_ labels: [(String, CGRect)], look: DecorateStyle) {
         windows = labels.map { JumpLabel.make($0.0, centeredIn: $0.1, look: look) }
     }

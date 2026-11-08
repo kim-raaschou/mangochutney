@@ -2,9 +2,7 @@ import XCTest
 @testable import Mango
 @testable import Port
 
-/// `HotkeyMatcher`: mango key-mode and flag semantics on top of CGEvent key codes.
 final class EngineHotkeyTests: MangoTestCase {
-    // US key codes: j = 38, Return = 36, Left arrow = 123, Super_L = 55.
     func bind(_ mods: Modifiers, _ code: UInt16, mode: String = "default", flags: KeyBindingFlags = [],
               _ name: String = "x") -> KeyBinding {
         KeyBinding(mode: mode, mods: mods, keyName: "k\(code)", keyCodes: [code], flags: flags,
@@ -27,7 +25,6 @@ final class EngineHotkeyTests: MangoTestCase {
     func testFnFlagOnArrowKeysIsIgnoredUnlessBound() {
         let m = HotkeyMatcher()
         m.bindings = [bind(.superKey, 123, "focusdir")]
-        // Apple keyboards set the fn flag for arrow keys.
         XCTAssertEqual(m.match(key(123, [.superKey, .fn]), lastHeldIsThisKey: true).count, 1)
         m.bindings = [bind([.superKey, .fn], 123, "focusdir")]
         XCTAssertEqual(m.match(key(123, [.superKey, .fn]), lastHeldIsThisKey: true).count, 1)
@@ -44,15 +41,10 @@ final class EngineHotkeyTests: MangoTestCase {
 
     func testModifierOnlyBinds() {
         let m = HotkeyMatcher()
-        // bind=none,Super_L (press) and bindr=SUPER,Super_L (release)
         m.bindings = [bind([], 55, "a"), bind(.superKey, 55, flags: .release, "b")]
-        // Press of Super_L: flags already contain command.
         XCTAssertEqual(m.match(key(55, .superKey, modifierKey: true), lastHeldIsThisKey: true).map(\.dispatch.name), ["a"])
-        // Press with another modifier held is a different chord.
         XCTAssertTrue(m.match(key(55, [.superKey, .shift], modifierKey: true), lastHeldIsThisKey: true).isEmpty)
-        // Release after a bare tap.
         XCTAssertEqual(m.match(key(55, [], down: false, modifierKey: true), lastHeldIsThisKey: true).map(\.dispatch.name), ["b"])
-        // Release after another key was used with it: no tap.
         XCTAssertTrue(m.match(key(55, [], down: false, modifierKey: true), lastHeldIsThisKey: false).isEmpty)
     }
 
