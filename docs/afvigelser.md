@@ -74,7 +74,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | En flydende resize med musen sker højst én gang pr. skærmens opdateringsinterval; mango én gang pr. tegnet billede (`frame_serial`, 09828ec) | Kernen får ingen billedbegivenheder fra macOS |
 | Overview og switcher viser billeder (Skærmoptagelse), stillbilleder taget ved åbning; de rigtige vinduer bliver under dem, så `warp_cursor` sætter markøren på kortet (mangos `geom` i overview) | Andre apps' vinduer kan ikke skaleres; en strøm pr. vindue koster meget |
 | Kantgrebet (`enable_border_resize`) tager kun et klik, som event tap'en har taget fra appen; den afgør det ud fra mangos `hover_resize_edge` ved forrige bevægelse. Er markøren lige kommet på eller af striben, kan det ene klik gå til appen, eller gå tabt | Tap'en skal afgøre klikket med det samme, før appen får det, og kan ikke vente på mango |
-| `mangonag` er ikke et eget program: porten tegner dens bjælke i mangos proces ud fra de argumenter, `error_nag` giver (`-o`, `-t`, `-e`, `-l`, `-s`, `-b` …), med mangonags farver, skrift, fire linjer, ANSI-farver og knapper; bjælken står under menulinjen (eller over Dock'en) | mangonag er en Wayland-klient på en layer surface, tegnet med cairo og pango; et program at kalde selv har en Mac ikke brug for (macOS' notifikationer) |
+| `mangonag` er ikke et eget program: dens kode (`Sources/Mango/mangonag`, 1:1) kører i mangos proces, og porten står for dens Wayland-side (`NagDisplay`): bjælken tegnes med AppKit (mangonags farver, skrift, fire linjer, ANSI-farver og knapper) og står under menulinjen (eller over Dock'en); `-y` (lag) gør intet, bjælken står over vinduerne; tilvalgene læses med macOS' `getopt`, som ikke flytter tilvalg efter et løst argument frem, som glibc's gør | mangonag er en Wayland-klient på en layer surface, tegnet med cairo og pango; et program at kalde selv har en Mac ikke brug for (macOS' notifikationer) |
 | En terminalknap i bjælken (Edit) åbner macOS' Terminal, når hverken `$TERMINAL` eller en af mangos terminaler (foot, alacritty, kitty, wezterm, st, xterm) findes; scriptet hedder `.command` | mango kører den så i `sh` uden terminal, og `vi` kan ikke køre uden en |
 | Et vindue i macOS' egen fuldskærm (den grønne knap), i Dock'en (med `ignore_minimize`, mangos standard), i en skjult app (⌘H) eller i en app, der ikke svarer, mens det er parkeret, unmappes med mangos `handle_client_unmap` og mappes tilbage på sin plads, når det kommer igen. Mango ser det ikke imens, heller ikke i `mmsg get all-clients` | macOS har allerede taget vinduet væk; mango ville have det unmappet |
 | En holdt tasts gentagelser: højst én venter på hovedtråden ad gangen | macOS sender gentagelserne selv; mangos egen gentagelsestimer stabler dem aldrig |
@@ -134,9 +134,12 @@ Hvor koden står, når den ikke står som i mango.
   `wlr_log` på grænsen (`WlrLog.swift`), med wlroots' format og niveau. Porten logger med
   `wlrLog`, som wlroots gør, og udvidelserne med `mangoError`, som mangos kode gør. Uden `-d`
   kun fejl (`WLR_ERROR`, mangos standard), med `-d` alt (`WLR_DEBUG`).
-- **Config-fejl:** mangos `error_store.c` og `error_nag.c` i kernen; `nag_spawn` og `nag_kill`
-  er kald over grænsen, og porten viser mangonags bjælke (`Nag.swift`).
-- **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `EventLoop`
+- **Config-fejl:** mangos `error_store.c` og `error_nag.c` i kernen, og mangonag
+  (`mangonag/mangonag.c`) i `Sources/Mango/mangonag`; `nag_spawn` og `nag_kill` er kald over
+  grænsen, hvor porten kører mangonags `main` i mangos proces. mangonags Wayland-side
+  (`NagDisplay`: bjælken placeret og tegnet, knappernes fork, løkken med `-T`) er portens
+  (`Nag.swift`).
+- **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `NagDisplay` (mangonags Wayland-side), `EventLoop`
   (`wl_event_loop_add_fd` til IPC), `Screen`, `PortHooks`, `ConfigPort` (portens nøgler,
   modifiernavne, tastkoder) og `InputState`.
 - **Porten (`Sources/Port`):** macOS-laget (`Port/macOS`: Accessibility, parkering, fokus,

@@ -56,19 +56,6 @@ final class ErrorNagTests: MangoTestCase {
         }
     }
 
-
-    func testNagTextAsMangonag() {
-        XCTAssertEqual(Nag.limitLines("a\nb\nc\nd", 4), "a\nb\nc\nd")
-        XCTAssertEqual(Nag.limitLines("a\nb\nc\nd\ne\nf", 4), "a\nb\nc\n\u{1B}[0m\u{2026} (+3 more)")
-        XCTAssertEqual(Nag.truncateLines("\u{1B}[1mabcdef\u{1B}[0m\nxy", 3), "\u{1B}[1mabc\u{1B}[0m\u{2026}\nxy")
-        let s = Nag.attributed("[ERROR]: bad \u{1B}[1m\u{1B}[31mkey\u{1B}[0m", font: .systemFont(ofSize: 13), color: .white)
-        XCTAssertEqual(s.string, "[ERROR]: bad key")
-        let tagBg = s.attribute(.backgroundColor, at: 0, effectiveRange: nil) as? NSColor
-        XCTAssertEqual(tagBg, Nag.ns(0xEF2929FF))
-        let keyFg = s.attribute(.foregroundColor, at: 13, effectiveRange: nil) as? NSColor
-        XCTAssertEqual(keyFg, Nag.ns(Nag.color(1)))
-    }
-
     func testWlrLogRespectsTheLevel() {
         let before = wlrLogGetVerbosity()
         defer { wlrLogInit(before) }

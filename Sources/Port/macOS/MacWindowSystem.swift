@@ -53,7 +53,7 @@ class MacWindowSystem: WindowSystem {
     var titleBar: TitleMessageBar?
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
     var dropArea: DropAreaView?
-    let nag = Nag()
+    let nagDisplay = Nag()
     /// Keys and mouse on the tap's own thread, decided by the router there; the trackpad.
     let tap = EventTap()
     let router = InputRouter()
@@ -262,11 +262,11 @@ class MacWindowSystem: WindowSystem {
 
     /// mangonag's bar, or the port's look over it (chutney_style).
     func nagSpawn(_ argv: [String], input: String) {
-        nag.spawn(argv, input: input, macOS: server.config.chutneyStyle)
+        nagDisplay.spawn(argv, input: input, macOS: server.config.chutneyStyle)
     }
 
     func nagKill() {
-        nag.kill()
+        nagDisplay.kill()
     }
 
     /// The config was read (also on each setoption): what macOS cannot do is said once,
