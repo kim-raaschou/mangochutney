@@ -75,6 +75,8 @@ Skal paletten strammes op, er kandidaten de cirka 48 grene for mango-udseende i 
 
 ### 3.2 Menuens konfliktmaskineri: cirka 150–250 linjer
 
+**Gjort 2026-11-08:** `MenuSave.conflicts`, prikkerne i panelet, linjen og "Show Them" i Settings og `-p`-advarslerne er fjernet. Advarslen om, at `chutney_menu.conf` ikke bliver læst, er bevaret.
+
 - Fjern OverridesWindow, `MenuSave.conflicts` og `clear`/`clearAll` samt `-p`-advarslerne om menuens overstyring.
 - En gråtonet "lås" virker ikke. Den udsendte `config.conf` sætter selv gaps og `border_px`, så alle panelets skydere ville være låst fra første dag.
 

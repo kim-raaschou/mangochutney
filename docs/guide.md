@@ -183,10 +183,8 @@ others dimmed: macOS draws the same item on every display. Its menu holds:
 
 The panel sends only mango's own dispatchers (`setlayout`, `setmfact`, `incnmaster`, `setoption`),
 as a bar would over IPC. Its changes are kept in `chutney_menu.conf`, which the config reads last,
-so they survive a reload and win over your own lines. Where one overrules your config, a dot marks
-the control (its tooltip has the line), Settings counts them with **Show Them**, and `mango -p`
-lists them. Delete a line in `chutney_menu.conf` to give the
-key back to your config. Your own config is never written.
+so they survive a reload and win over your own lines. Delete a line in `chutney_menu.conf` to give
+the key back to your config. Your own config is never written.
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |

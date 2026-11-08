@@ -30,52 +30,9 @@ final class MenuSaveTests: MangoTestCase {
         MenuSave.setTagRule(tag: 1, "layout_name", "scroller", in: menu)
         XCTAssertEqual(MenuSave.read(menu), ["border_px=4", "tag_rule=id:1,master_factor:0.60,layout_name:scroller"])
     }
-
-    func testConflictsWithTheConfigAndClearingThem() throws {
-        let conf = dir.appendingPathComponent("config.conf")
-        try "border_px=2\ngap_inner_horizontal=5\ntag_rule=id:1,layout_name:tile\n".write(to: conf, atomically: true, encoding: .utf8)
-        let menu = dir.appendingPathComponent("menu.conf")
-        MenuSave.set("border_px", "4", in: menu)
-        MenuSave.set("gap_inner_horizontal", "5", in: menu)
-        MenuSave.setTagRule(tag: 1, "layout_name", "monocle", in: menu)
-        MenuSave.setTagRule(tag: 1, "master_factor", "0.6", in: menu)
-        let c = MenuSave.conflicts(configURL: conf, menuURL: menu)
-        XCTAssertEqual(c.map(\.key), ["border_px", "tag_rule id:1 layout_name"])
-        XCTAssertEqual(c.first?.configLine, 1)
-        XCTAssertEqual(c.last?.configLine, 3)
-    }
-
-    func testACRLFConfigIsReadByItsValues() throws {
-        let conf = dir.appendingPathComponent("config.conf")
-        try "animations=1\r\nborder_px=4\r\n".write(to: conf, atomically: true, encoding: .utf8)
-        let menu = dir.appendingPathComponent("menu.conf")
-        MenuSave.set("animations", "1", in: menu)
-        MenuSave.set("border_px", "3", in: menu)
-        let c = MenuSave.conflicts(configURL: conf, menuURL: menu)
-        XCTAssertEqual(c.map(\.key), ["border_px"])
-        XCTAssertEqual(c.first?.configValue, "4")
-        XCTAssertEqual(c.first?.configLine, 2)
-    }
 }
 
 extension MenuSaveTests {
-    func testConflictsFollowTheFilesReadBeforeTheMenu() throws {
-        let conf = dir.appendingPathComponent("config.conf")
-        try "border_px=2\r\ngap_inner_horizontal=5\r\nsource_optional=chutney.conf\r\n"
-            .write(to: conf, atomically: true, encoding: .utf8)
-        try "border_px=3\nsource_optional=menu.conf\nsource_optional=later.conf\n"
-            .write(to: dir.appendingPathComponent("chutney.conf"), atomically: true, encoding: .utf8)
-        try "smart_gaps=0\n".write(to: dir.appendingPathComponent("later.conf"), atomically: true, encoding: .utf8)
-        let menu = dir.appendingPathComponent("menu.conf")
-        MenuSave.set("border_px", "4", in: menu)
-        MenuSave.set("gap_inner_horizontal", "6", in: menu)
-        MenuSave.set("smart_gaps", "1", in: menu)
-        let c = MenuSave.conflicts(configURL: conf, menuURL: menu)
-        XCTAssertEqual(c.map(\.key), ["border_px", "gap_inner_horizontal"])
-        XCTAssertEqual(c.map { "\($0.configFile):\($0.configLine)=\($0.configValue)" },
-                       ["chutney.conf:1=3", "config.conf:2=5"])
-    }
-
     func testOwnWritesAreKnownAndHandEditsAreNot() throws {
         let menu = dir.appendingPathComponent("menu.conf")
         MenuSave.set("smart_gaps", "1", in: menu)

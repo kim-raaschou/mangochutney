@@ -100,8 +100,6 @@ final class PermissionsModel: ObservableObject {
     @Published var canSave = true
     @Published var settingsTab = "general"
     var look: AnyView?
-    @Published var menuFile: URL?
-    @Published var overrides = 0
     @Published var hyperKey: String? {
         didSet { if settings, hyperKey != oldValue { onChoice("chutney_hyper_key", hyperKey ?? "none") } }
     }
@@ -133,11 +131,10 @@ public final class Permissions {
     public var firstStartDone: () -> Void = {}
     public struct Choices {
         public var hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL
-        public var menuFile: URL?, overrides: Int
-        public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL,
-                    menuFile: URL? = nil, overrides: Int = 0) {
+
+        public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL) {
             self.hyperKey = hyperKey; self.hyperTap = hyperTap; self.startAtLogin = startAtLogin; self.canSave = canSave
-            self.configURL = configURL; self.menuFile = menuFile; self.overrides = overrides
+            self.configURL = configURL
         }
     }
     public var currentChoices: () -> Choices? = { nil }
@@ -220,8 +217,6 @@ public final class Permissions {
         model.startAtLogin = c?.startAtLogin ?? false
         model.canSave = c?.canSave ?? false
         yourConfig = c?.configURL
-        model.menuFile = c?.menuFile
-        model.overrides = c?.overrides ?? 0
         model.onChoice = { [weak self] key, value in self?.saveChoice(key, value) }
         model.onStartAtLogin = { [weak self] on in self?.setStartAtLogin(on) }
         model.look = lookView()
@@ -445,16 +440,6 @@ private struct YourConfig: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if model.overrides > 0, let menu = model.menuFile {
-                HStack(spacing: 6) {
-                    Circle().fill(Color.accentColor).frame(width: 6, height: 6)
-                    Text("\(model.overrides) choice\(model.overrides == 1 ? "" : "s") made here win\(model.overrides == 1 ? "s" : "") over your config, marked with a dot.")
-                        .font(.callout)
-                    Button("Show Them") { ConfigFiles.open(menu) }
-                        .controlSize(.small)
-                        .help("\(menu.lastPathComponent): delete a line to give the key back to your config")
-                }
-            }
             HStack(spacing: 10) {
                 Button("Open Your Config", action: model.onOpenConfig)
                 Button("mango Documentation") { NSWorkspace.shared.open(Permissions.mangoDocs) }

@@ -33,7 +33,6 @@ final class LayoutPanelModel: ObservableObject {
             DispatchQueue.main.async { [weak self] in self?.resizeHost() }
         }
         guard let server, let m = server.selectedMonitor else { return }
-        conflicts = menuURL.map { MenuSave.conflicts(configURL: server.configURL, menuURL: $0) } ?? []
         layout = m.layout
         physical = server.config.chutneyPhysicalPixels
         pixel = physical ? 1 / max(1, Double(m.screen.scale)) : 1
@@ -67,8 +66,6 @@ final class LayoutPanelModel: ObservableObject {
     func setGap(_ key: String, _ px: Int) {
         option(key, String(max(0, px)))
     }
-
-    @Published var conflicts: [MenuSave.Conflict] = []
 
     func tagField(_ field: String) -> String { "tag_rule id:\(server?.selectedMonitor?.curtag ?? 0) \(field)" }
 
@@ -125,10 +122,8 @@ struct LayoutPanelView: View {
             if model.layout.usesMaster {
                 slider("mfact", value: $model.mfact, in: 0.1...0.9, step: 0.05, percent: true, commit: model.setMfact)
                     .help("master width (the tag's)")
-                    .overrideMark(model, model.tagField("master_factor"))
                 slider("nmaster", value: $model.nmaster, in: 0...6, step: 1, unit: "", commit: model.setNmaster)
                     .help("windows in the master area (the tag's)")
-                    .overrideMark(model, model.tagField("master_count"))
             }
             ForEach(options) { optionView($0) }
         }
@@ -146,20 +141,17 @@ struct LayoutPanelView: View {
                 .toggleStyle(.switch).controlSize(.mini)
                 .disabled(o.disabled(model.config))
                 .help(o.title)
-                .overrideMark(model, o.key)
         case .slider(let kp, let range, let step):
             slider(o.key, value: Binding(get: { model.config[keyPath: kp] }, set: { model.config[keyPath: kp] = $0 }),
                    in: range, step: step, label: String(format: step < 1 ? "%.2f" : "%.0f", model.config[keyPath: kp]),
                    commit: { model.setOption(o.key, String(format: "%.2f", $0)) })
                 .help(o.title)
-                .overrideMark(model, o.key)
         case .intSlider(let kp, let range, let step):
             slider(o.key, value: Binding(get: { Double(model.config[keyPath: kp]) },
                                          set: { model.config[keyPath: kp] = Int($0) }),
                    in: range, step: step, label: "\(model.config[keyPath: kp])",
                    commit: { model.setOption(o.key, String(Int($0))) })
                 .help(o.title)
-                .overrideMark(model, o.key)
         case .choice(let kp, let labels):
             HStack {
                 Text(o.key).font(.system(size: 10, design: .monospaced)).help(o.title)
@@ -170,7 +162,6 @@ struct LayoutPanelView: View {
                 }
                 .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
             }
-            .overrideMark(model, o.key)
         }
     }
 
@@ -220,13 +211,11 @@ struct LookView: View {
                        : "\(Int(model.border)) px",
                    commit: model.setBorder)
                 .help("border width")
-                .overrideMark(model, "border_px")
             header("Effects")
             Toggle("animations", isOn: Binding(get: { model.animations }, set: { model.setAnimations($0) }))
                 .font(.system(size: 10, design: .monospaced))
                 .toggleStyle(.switch)
                 .controlSize(.mini)
-                .overrideMark(model, "animations")
             HStack {
                 Text("animation_type_open").font(.system(size: 10, design: .monospaced))
                 Spacer()
@@ -239,7 +228,6 @@ struct LookView: View {
                 .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
             }
             .disabled(!model.animations)
-            .overrideMark(model, "animation_type_open")
             HStack {
                 Text("tag_animation_direction").font(.system(size: 10, design: .monospaced))
                 Spacer()
@@ -251,7 +239,6 @@ struct LookView: View {
                 .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
             }
             .disabled(!model.animations)
-            .overrideMark(model, "tag_animation_direction")
             Text("Durations and curves: animation_duration_* and animation_curve_* in your config.")
                 .font(.system(size: 10)).foregroundStyle(.secondary)
             header("Menu bar")
@@ -267,7 +254,6 @@ struct LookView: View {
                 .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
             }
             .help("chutney_menu_bar_tag_style")
-            .overrideMark(model, "chutney_menu_bar_tag_style")
             HStack {
                 Text("logo").font(.system(size: 10, design: .monospaced))
                 Spacer()
@@ -280,17 +266,14 @@ struct LookView: View {
                 .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
             }
             .help("chutney_menu_bar_logo")
-            .overrideMark(model, "chutney_menu_bar_logo")
             Toggle("layout icon", isOn: Binding(get: { model.config.chutneyMenuBarLayout },
                                                 set: { model.setOption("chutney_menu_bar_layout", $0 ? "1" : "0") }))
                 .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
                 .help("chutney_menu_bar_layout")
-                .overrideMark(model, "chutney_menu_bar_layout")
             Toggle("key mode", isOn: Binding(get: { model.config.chutneyMenuBarMode },
                                          set: { model.setOption("chutney_menu_bar_mode", $0 ? "1" : "0") }))
                 .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
                 .help("chutney_menu_bar_mode")
-                .overrideMark(model, "chutney_menu_bar_mode")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -472,7 +455,6 @@ struct GapEditor: View {
             }
             }
         }
-        .overrideMark(model, "\(prefix)_\(which)_horizontal", "\(prefix)_\(which)_vertical")
     }
 
     private func gapSlider(_ kind: String, symbol: String?) -> some View {
@@ -522,28 +504,6 @@ struct LayoutGrid: View {
                     .buttonStyle(.plain)
                     .help(ticked ? "In circle_layout: switch_layout and the layout palette" : "Not in circle_layout")
                 }
-            }
-        }
-    }
-}
-
-extension View {
-    @MainActor
-    func overrideMark(_ model: LayoutPanelModel, _ keys: String...) -> some View {
-        modifier(OverrideMark(conflict: model.conflicts.first { keys.contains($0.key) }, accent: model.accent))
-    }
-}
-
-struct OverrideMark: ViewModifier {
-    let conflict: MenuSave.Conflict?
-    let accent: Color
-
-    func body(content: Content) -> some View {
-        content.overlay(alignment: .topLeading) {
-            if let c = conflict {
-                Circle().fill(accent).frame(width: 5, height: 5)
-                    .offset(x: -8, y: 4)
-                    .help("Wins over \(c.configFile):\(c.configLine), which says \(c.configValue)")
             }
         }
     }

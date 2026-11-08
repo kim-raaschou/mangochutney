@@ -36,8 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let key = server.config.chutneyHyperKey
             let menu = MenuSave.url(server.config, configURL: server.configURL)
             return .init(hyperKey: key.isEmpty ? nil : key, hyperTap: server.config.chutneyHyperTap, startAtLogin: login,
-                         canSave: menu != nil, configURL: server.configURL, menuFile: menu,
-                         overrides: menu.map { MenuSave.conflicts(configURL: server.configURL, menuURL: $0).count } ?? 0)
+                         canSave: menu != nil, configURL: server.configURL)
         }
         Permissions.shared.saveChoice = { [weak self] key, value in self?.saveMenuChoice(key, value) }
         Permissions.shared.setStartAtLogin = { [weak self] on in self?.setLogin(on) }
@@ -523,19 +522,11 @@ if check {
         if !parsed.sourcedFiles.contains(where: { $0.standardizedFileURL == menu }) {
             print("warning: chutney_menu_config: \(menu.lastPathComponent) is saved to but not read; end the config with source_optional=\(menu.lastPathComponent)")
         }
-        for c in MenuSave.conflicts(configURL: url, menuURL: menu) {
-            print("warning: \(c.configFile):\(c.configLine) \(c.key) \(c.configValue) is overridden by \(menu.lastPathComponent) (\(c.menuValue))")
-        }
     }
     if parsed.config.chutneyStyle {
         let theme = ChutneyTheme.url(configURL: url)
         if !parsed.sourcedFiles.contains(where: { $0.standardizedFileURL == theme }) {
             print("warning: chutney_style: \(theme.lastPathComponent) is written but not read; add source_optional=\(theme.lastPathComponent) before the menu's source_optional line")
-        } else {
-            let keys = MenuSave.conflicts(configURL: url, menuURL: theme).map(\.key)
-            if !keys.isEmpty {
-                print("note: chutney_style: \(theme.lastPathComponent) draws \(keys.count) colour(s) of \(url.lastPathComponent) in macOS's (\(keys.joined(separator: ", "))); to keep one, set it again after source_optional=\(theme.lastPathComponent)")
-            }
         }
     }
     let sections: [(ConfigNote.Kind, String)] = [
