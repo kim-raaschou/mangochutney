@@ -91,6 +91,7 @@ public final class MangoServer {
                        panFrames: [ClientID: CGRect], dragStart: CGPoint)?
     var scrollerFocusLock = false
 
+    /// The boundary, not in mango: the port's status change, which printstatus gives.
     public var onStateChange: (() -> Void)?
 
     public init(configURL: URL? = nil) {
@@ -108,7 +109,6 @@ public final class MangoServer {
         resetOption(initial: true)
         configWatcherUpdate()
         rebuildMonitors()
-        portHooks.restoreLayout?(self)   // Port extension: not in mango (the layout kept across a restart)
         system.startWatching()
         publishInputState()
         system.startInput()
@@ -128,7 +128,6 @@ public final class MangoServer {
         // not in mango: the pointer shown again, as macOS keeps it hidden after mango
         if cursorHidden { cursorHidden = false; system.setCursorHidden(false) }
         system.drawBorders([])
-        portHooks.saveLayout?(self, true)   // Port extension: not in mango (written before anything moves)
         system.shutdown()
         ipc?.ipcCleanup()
         configErrorNagDestroy()
@@ -687,8 +686,7 @@ public final class MangoServer {
     package func printstatus() {
         publishGlobalKeys()
         ipc?.notifyChanged()
-        onStateChange?()
-        portHooks.saveLayout?(self, false)   // Port extension: not in mango (the layout kept across a restart)
+        onStateChange?()   // the boundary, not in mango: the port's status change
     }
 
     package func handleClientMap(_ c: Client) {

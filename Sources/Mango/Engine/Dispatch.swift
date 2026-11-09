@@ -4,10 +4,7 @@ package extension MangoServer {
     @discardableResult
     public func dispatch(_ d: Dispatch, target: Client? = nil, rescan: Bool = true) -> String? {
         guard Dispatch.isKnown(d.name) else { return "unknown function" }
-        defer {
-            if rescan { system.rescan() }
-            portHooks.saveLayout?(self, false)   // Port extension: not in mango (the layout kept across a restart)
-        }
+        defer { if rescan { system.rescan() } }
         let c = target ?? focused
         let m: Monitor = c?.mon ?? selectedMonitor
         let a0 = d.arg(0), a1 = d.arg(1)

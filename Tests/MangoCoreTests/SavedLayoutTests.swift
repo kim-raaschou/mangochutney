@@ -77,6 +77,36 @@ final class SavedLayoutTests: MangoTestCase {
     }
 
     @MainActor
+    func savingServer(_ url: URL) throws -> MangoServer {
+        let server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/mango.conf"))
+        server.system = FakeWindowSystem(server)
+        server.mac.memory.layoutURL = url
+        server.started = true
+        guard !server.mac.memory.session.isEmpty else { throw XCTSkip("no window server session") }
+        return server
+    }
+
+    @MainActor
+    func testPrintstatusSavesThroughThePortsStatusChange() throws {
+        let url = dir.appendingPathComponent("windows.json")
+        let server = try savingServer(url)
+        var told = 0
+        server.onStatusChange = { told += 1 }
+        server.printstatus()
+        server.mac.memory.queue.sync {}
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "saved, with no hook in mango's printstatus")
+        XCTAssertEqual(told, 1, "and the app is told after")
+    }
+
+    @MainActor
+    func testQuitWritesTheLayoutAtOnce() throws {
+        let url = dir.appendingPathComponent("windows.json")
+        let server = try savingServer(url)
+        server.cleanup()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "written before cleanup returns (the port's shutdown)")
+    }
+
+    @MainActor
     func discover(_ bundle: String, savedAs savedBundle: String) -> Client? {
         let server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/mango.conf"))
         server.system = FakeWindowSystem(server)

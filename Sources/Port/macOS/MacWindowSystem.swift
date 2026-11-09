@@ -19,6 +19,7 @@ class MacWindowSystem: WindowSystem {
     var restackGeneration = 0
     let borders = BorderManager()
     let memory = WindowMemory()
+    var onStatusChange: (() -> Void)?
     var userDrag: UserDrag?
     var restarting = false
     var opacityWarned = false
@@ -59,6 +60,7 @@ class MacWindowSystem: WindowSystem {
 
     init(_ server: MangoServer) {
         self.server = server
+        server.onStateChange = { [unowned self] in statusChanged() }
         tabBars.onSelect = { [weak self] id in self?.barPress(id, isTab: true, right: false, onClose: false) }
         tabBars.onRightClick = { [weak self] id in self?.barPress(id, isTab: true, right: true, onClose: false) }
         groupBars.onSelect = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: false) }
@@ -303,7 +305,13 @@ class MacWindowSystem: WindowSystem {
         _ = KeyNames.keyCodes(forName: "a")
     }
 
+    func statusChanged() {
+        memory.save(server)
+        onStatusChange?()
+    }
+
     func startWatching() {
+        memory.restore(server)
         watcher.delegate = self
         watcher.start()
         missionControl.onExit = { [weak server] in server?.arrangeAll(.none) }
@@ -336,6 +344,7 @@ class MacWindowSystem: WindowSystem {
     }
 
     func shutdown() {
+        memory.save(server, final: true)
         animator.cancelAll()
         if let user = userKeyMappings, appliedKeyMappings != user { KeyboardOptions.apply(user) }
         let restore = DispatchGroup()
@@ -509,6 +518,12 @@ class MacWindowSystem: WindowSystem {
 
 extension MangoServer {
     public func useMacSystem() { system = MacWindowSystem(self) }
+
+    /// What the app does on a status change (the menu bar); the layout is saved first.
+    public var onStatusChange: (() -> Void)? {
+        get { mac.onStatusChange }
+        set { mac.onStatusChange = newValue }
+    }
 
     var mac: MacWindowSystem { system as! MacWindowSystem }
 

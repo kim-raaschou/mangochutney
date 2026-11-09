@@ -85,7 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         server.useMacSystem()
         server.cliDebugLog = cliDebugLog
         self.server = server
-        server.onStateChange = { [weak self] in MainActor.assumeIsolated { self?.refreshStatus() } }
+        server.onStatusChange = { [weak self] in MainActor.assumeIsolated { self?.refreshStatus() } }
         server.setup()
         refreshStatus()
     }
