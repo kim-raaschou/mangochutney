@@ -84,10 +84,14 @@ class MacWindowSystem: WindowSystem {
     private func sendFocus() {
         guard let (c, raise) = pendingFocus else { return }
         pendingFocus = nil
-        guard server.clientByIdAll(c.id) === c else { return }
+        guard Self.stillFocused(c, in: server) else { return }
         let lift = Self.lifts(c, raise: raise, in: server)
         wlrLog(.debug, "\(c.appName): mango focuses window \(c.id)\(lift ? "" : " without lifting it")")
         NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: lift) { [weak self] in self?.restack() }
+    }
+
+    static func stillFocused(_ c: Client, in server: MangoServer) -> Bool {
+        server.clientByIdAll(c.id) === c && server.focused === c
     }
 
     static func lifts(_ c: Client, raise: Bool, in server: MangoServer) -> Bool {

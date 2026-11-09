@@ -282,7 +282,23 @@ public final class AXWriteQueue: WindowWriter {
         }
     }
 
-    public func raise(_ element: AXUIElement) { queue.async { element.raise() } }
+    private var pendingRaise: AXUIElement?
+    var performRaise: (AXUIElement) -> Void = { $0.raise() }
+
+    public func raise(_ element: AXUIElement) {
+        lock.lock()
+        let first = pendingRaise == nil
+        pendingRaise = element
+        lock.unlock()
+        guard first else { return }
+        queue.async { [self] in
+            lock.lock()
+            let el = pendingRaise
+            pendingRaise = nil
+            lock.unlock()
+            if let el { performRaise(el) }
+        }
+    }
 
     public func async(_ body: @escaping () -> Void) { queue.async(execute: body) }
     public func sync(_ body: () -> Void) { queue.sync(execute: body) }
