@@ -50,6 +50,7 @@ extension MacWindowSystem {
         }
         c.frame = actual
         if let target = c.geom, MangoServer.frameDistance(actual, target) > 0.5 {
+            wlrLog(.debug, "\(c.appName): window \(c.id) moved to \(actual) by the app; its tile is \(target)")
             keepPlaced(c, at: target)
         }
         server.updateBorders()

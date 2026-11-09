@@ -107,6 +107,7 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     func windowFocused(id: CGWindowID) {
         guard let c = server.clientByIdAll(id), let m = c.mon else { return }
+        wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map(String.init) ?? "none"))")
         if let ov = server.overviewState {
             if ov.jump == nil, server.focused !== c { server.leaveOverview(select: c) }
             return

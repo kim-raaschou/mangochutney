@@ -86,7 +86,13 @@ extension MacWindowSystem {
 
     func keepPlaced(_ c: Client, at target: CGRect) {
         if c.retryTarget != target { c.retryTarget = target; c.retryCount = 0 }
-        guard c.retryCount < 3 else { return }
+        guard c.retryCount < 3 else {
+            if c.retryCount == 3 {
+                c.retryCount += 1
+                wlrLog(.debug, "\(c.appName): window \(c.id) keeps \(c.frame), not its tile \(target); left there")
+            }
+            return
+        }
         let now = CACurrentMediaTime()
         let wait = c.lastReassert + 1.0 - now
         if wait <= 0 {

@@ -86,6 +86,7 @@ class MacWindowSystem: WindowSystem {
         pendingFocus = nil
         guard server.clientByIdAll(c.id) === c else { return }
         let lift = Self.lifts(c, raise: raise, in: server)
+        wlrLog(.debug, "\(c.appName): mango focuses window \(c.id)\(lift ? "" : " without lifting it")")
         NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: lift) { [weak self] in self?.restack() }
     }
 
