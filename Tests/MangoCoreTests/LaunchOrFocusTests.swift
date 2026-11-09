@@ -38,4 +38,62 @@ final class LaunchOrFocusTests: MangoTestCase {
         }
         XCTAssertEqual(d.args, ["com.mitchellh.ghostty"])
     }
+
+    func testThePictureShowsWhereTheKeysChoiceIsNotGiven() {
+        XCTAssertFalse(LaunchOrFocusPicker.shows(windows: [], current: 9))
+        XCTAssertFalse(LaunchOrFocusPicker.shows(windows: [1], current: 9))
+        XCTAssertFalse(LaunchOrFocusPicker.shows(windows: [1, 2], current: 1), "two, in the app: the other one")
+        XCTAssertTrue(LaunchOrFocusPicker.shows(windows: [1, 2], current: 9), "two, from another app")
+        XCTAssertTrue(LaunchOrFocusPicker.shows(windows: [1, 2], current: nil))
+        XCTAssertTrue(LaunchOrFocusPicker.shows(windows: [1, 2, 3], current: 1))
+    }
+}
+
+@MainActor
+final class LaunchOrFocusPickerTests: MangoTestCase {
+    func testTheKeyAgainMovesAndReturnGoes() {
+        let r = EngineRig()
+        let a = r.window(1), b = r.window(2), c = r.window(3)
+        r.server.arrange(r.monitor, .none)
+        r.server.clientActive(b)
+        r.server.clientActive(a)
+        let picker = LaunchOrFocusPicker.shared
+        defer { picker.close(r.server) }
+        r.server.launchOrFocus("test", command: "")
+        XCTAssertTrue(picker.isOpen)
+        XCTAssertEqual(picker.highlighted, b.id, "the key's own choice: the one used before")
+        XCTAssertEqual(r.server.focused?.id, a.id, "nothing moves yet")
+        r.server.launchOrFocus("test", command: "")
+        XCTAssertEqual(picker.highlighted, c.id, "the key again: the next")
+        picker.key(r.server, keyCode: 36, mods: [], opening: nil)
+        XCTAssertFalse(picker.isOpen)
+        XCTAssertEqual(r.server.focused?.id, c.id)
+    }
+
+    func testEscAndOtherKeysClose() {
+        let r = EngineRig()
+        let a = r.window(1)
+        r.window(2); r.window(3)
+        r.server.arrange(r.monitor, .none)
+        r.server.clientActive(a)
+        let picker = LaunchOrFocusPicker.shared
+        defer { picker.close(r.server) }
+        r.server.launchOrFocus("test", command: "")
+        picker.key(r.server, keyCode: 53, mods: [], opening: nil)
+        XCTAssertFalse(picker.isOpen)
+        XCTAssertEqual(r.server.focused?.id, a.id)
+        r.server.launchOrFocus("test", command: "")
+        picker.key(r.server, keyCode: 4, mods: [], opening: 0)
+        XCTAssertFalse(picker.isOpen, "another key: closed, and it goes on to the app")
+    }
+
+    func testTwoWindowsInTheAppStillToggle() {
+        let r = EngineRig()
+        let a = r.window(1), b = r.window(2)
+        r.server.arrange(r.monitor, .none)
+        r.server.clientActive(a)
+        r.server.launchOrFocus("test", command: "")
+        XCTAssertFalse(LaunchOrFocusPicker.shared.isOpen)
+        XCTAssertEqual(r.server.focused?.id, b.id)
+    }
 }

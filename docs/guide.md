@@ -243,8 +243,11 @@ for on every tag and monitor (not minimized, hidden or on the special tag).
 | no window | starts it (`open -b <bundle id>`, or the command given) |
 | one window | focuses it, viewing its tag |
 | two, one of them focused | focuses the other |
-| two or more, none focused | focuses the one used last, as ⌘Tab does |
-| three or more, one focused | focuses the one used before it (none: the next one) |
+| two or more, none focused | shows them, the one used last chosen, as ⌘Tab does |
+| three or more, one focused | shows them, the one used before it chosen (none: the next one) |
+
+Where it shows them, it is the switcher's panel with the app's windows: the key again, ⇥ or the
+arrows move, Return goes, Esc closes, and any other key closes it and does what it does.
 
 The apps' keys are best in a key mode of their own, entered with one key. `bindc` (mango's `c`
 flag) lets the app's key and the mode's exit share the key:

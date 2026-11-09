@@ -27,6 +27,7 @@ final class InputRouter: @unchecked Sendable {
         var cursorHideOnKeypress = false
         var hoverResizeCursor: String?
         var globalKeys: [RoutedGlobalKey] = []
+        var launchOrFocusPicker: UInt16??   // Port extension: chutney_launch_or_focus's picture is up (its opening key)
     }
 
     private let lock = NSLock()
@@ -70,6 +71,9 @@ final class InputRouter: @unchecked Sendable {
     }
 
     private var hyperHeld = false
+    private var lastKey: UInt16?
+    var lastKeyDown: UInt16? { lock.lock(); defer { lock.unlock() }; return lastKey }
+    private var pickerKeys: Set<UInt16> = []
 
     func key(_ event: KeyEvent, modifierOnlySinceDown: Bool) -> Bool {
         var ev = event
@@ -84,6 +88,8 @@ final class InputRouter: @unchecked Sendable {
             hyperHeld = false
         }
         let s = snapshot
+        if ev.isDown && !ev.isModifierKey { lock.lock(); lastKey = ev.keyCode; lock.unlock() }
+        if let opening = s.launchOrFocusPicker, !ev.isModifierKey, pickerKey(ev, opening: opening) { return true }
         let numbers = s.tabShortcuts > 0 && ev.mods.subtracting(.fn) == .superKey
             && (ev.isModifierKey || Self.digitKeys[ev.keyCode] != nil)
         if numbers != tabNumbersShown {
@@ -119,6 +125,17 @@ final class InputRouter: @unchecked Sendable {
         lock.unlock()
         if let a = u.action { run([a], ev, age: age) }
         return (u.swallow || d.swallow) && !ev.isModifierKey
+    }
+
+    /// Port extension: a key while chutney_launch_or_focus's picture is up. The picker's own keys
+    /// are taken (press and release); any other closes it and goes on as usual (nil).
+    private func pickerKey(_ ev: KeyEvent, opening: UInt16?) -> Bool {
+        if !ev.isDown { return pickerKeys.remove(ev.keyCode) != nil }
+        let code = ev.keyCode, mods = ev.mods
+        let taken = LaunchOrFocusPicker.keys.contains(code) || (code == opening && mods.subtracting(.fn).isEmpty)
+        if taken { pickerKeys.insert(code) }
+        onMain { LaunchOrFocusPicker.shared.key($0, keyCode: code, mods: mods, opening: opening) }
+        return taken
     }
 
     private func run(_ actions: [KeyAction], _ ev: KeyEvent, age: String) {
