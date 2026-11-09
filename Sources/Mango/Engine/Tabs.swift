@@ -90,9 +90,7 @@ package extension MangoServer {
                 },
                 above: f.id, plain: !ported))
         }
-        // Port extension: not in mango. The width in the screen's pixels (chutney_physical_pixels).
-        let px = portHooks.pixelScale?(self, selectedMonitor) ?? 1
-        var style = TabStripStyle(accent: config.focuscolor, accentWidth: CGFloat(min(3, max(1, config.borderpx))) * px)
+        var style = TabStripStyle(accent: config.focuscolor, accentWidth: CGFloat(min(3, max(1, config.borderpx))))
         style.decorate = mangoBarDecorationApplyConfig(config.tabbardata, mango: .mangoTabBar)
         system.drawTabBars(strips, style: style)
         style.decorate = mangoBarDecorationApplyConfig(config.groupbardata, mango: .mangoGroupBar)

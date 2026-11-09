@@ -17,8 +17,6 @@ final class LayoutPanelModel: ObservableObject {
     @Published var border: Double = 0
     @Published var mfact: Double = 0.55
     @Published var nmaster: Double = 1
-    @Published var physical = false
-    @Published var pixel: Double = 1
 
     private func resizeHost() {
         guard let h = host else { return }
@@ -34,10 +32,8 @@ final class LayoutPanelModel: ObservableObject {
         }
         guard let server, let m = server.selectedMonitor else { return }
         layout = m.layout
-        physical = server.config.chutneyPhysicalPixels
-        pixel = physical ? 1 / max(1, Double(m.screen.scale)) : 1
         screenWidth = m.screen.workArea.width
-        border = Double(server.config.borderpx) * pixel
+        border = Double(server.config.borderpx)
         animations = server.config.animations
         config = server.config
         mfact = Double(m.current.settings.mfact)
@@ -89,7 +85,7 @@ final class LayoutPanelModel: ObservableObject {
         option("animations", on ? "1" : "0")
     }
     func setBorder(_ v: Double) {
-        let px = Int((v / pixel).rounded())
+        let px = Int(v.rounded())
         guard px != server?.config.borderpx else { return }
         option("border_px", String(px))
     }
@@ -165,10 +161,6 @@ struct LayoutPanelView: View {
         }
     }
 
-    static func points(_ v: Double) -> String {
-        v == v.rounded() ? String(Int(v)) : String(format: "%g", (v * 100).rounded() / 100)
-    }
-
     private func header(_ s: String) -> some View { panelHeader(s) }
 
     private func slider(_ title: String, value: Binding<Double>, in range: ClosedRange<Double>, step: Double,
@@ -205,10 +197,8 @@ struct LookView: View {
         VStack(alignment: .leading, spacing: 8) {
             header("Desktop")
             GapEditor(model: model)
-            slider("border_px", value: $model.border, in: 0...5, step: model.pixel,
-                   label: model.physical
-                       ? "\(LayoutPanelView.points(model.border)) pt (\(Int((model.border / model.pixel).rounded())) px)"
-                       : "\(Int(model.border)) px",
+            slider("border_px", value: $model.border, in: 0...5, step: 1,
+                   label: "\(Int(model.border)) px",
                    commit: model.setBorder)
                 .help("border width")
             header("Effects")
@@ -410,7 +400,7 @@ struct GapEditor: View {
 
     private var preview: some View {
         Canvas { ctx, size in
-            let k = size.width / max(1, model.screenWidth) * CGFloat(model.pixel)
+            let k = size.width / max(1, model.screenWidth)
             func v(_ which: String, _ dir: String) -> CGFloat { CGFloat(value("\(which)_\(allRound ?? dir)")) * k }
             let ih = v("inner", "horizontal"), iv = v("inner", "vertical")
             let oh = v("outer", "horizontal"), ov = v("outer", "vertical")
@@ -459,12 +449,12 @@ struct GapEditor: View {
 
     private func gapSlider(_ kind: String, symbol: String?) -> some View {
         let v = value(kind)
-        let label = model.physical ? "\(LayoutPanelView.points(Double(v) * model.pixel)) pt" : "\(v) px"
-        let points = Binding<Double>(get: { Double(value(kind)) * model.pixel },
-                                     set: { set(kind, Int(($0 / model.pixel).rounded())) })
+        let label = "\(v) px"
+        let points = Binding<Double>(get: { Double(value(kind)) },
+                                     set: { set(kind, Int($0.rounded())) })
         return HStack(spacing: 6) {
             if let symbol { Image(systemName: symbol).font(.system(size: 8)).foregroundStyle(.secondary).frame(width: 12) }
-            Slider(value: points, in: 0...40, step: model.pixel).controlSize(.small)
+            Slider(value: points, in: 0...40, step: 1).controlSize(.small)
             Text(label).font(.system(size: 10, design: .monospaced)).foregroundStyle(model.accent)
                 .frame(width: 44, alignment: .trailing)
         }

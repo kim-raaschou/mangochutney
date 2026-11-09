@@ -6,7 +6,6 @@ package struct PortHooks {
     package var borderRadius: (@MainActor (MangoServer, Client) -> CGFloat?)?
     package var overlayLook: (@MainActor (MangoServer, DecorateStyle) -> DecorateStyle?)?
     package var focusedBorderOnly: (@MainActor (MangoServer) -> Bool)?
-    package var pixelScale: (@MainActor (MangoServer, Monitor) -> CGFloat)?
     package var ipcGets: [String: @MainActor (MangoServer) -> JSONValue] = [:]
     package var windowLeaving: (@MainActor (MangoServer, Client, [ClientID], ClientID?, [ClientID]) -> Void)?
     package var saveLayout: (@MainActor (MangoServer, Bool) -> Void)?

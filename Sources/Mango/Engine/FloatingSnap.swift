@@ -31,8 +31,7 @@ package extension MangoServer {
     func applyWindowSnap(_ c: Client) {
         guard config.enableFloatingSnap, c.isFloating, let m = c.mon else { return }
         // mango snaps the outer edge while borders are drawn, the window's edge otherwise.
-        // Port extension: not in mango. border_px in the screen's pixels (chutney_physical_pixels).
-        let bw = renderBorder ? CGFloat(config.borderpx) * (portHooks.pixelScale?(self, m) ?? 1) : 0
+        let bw = renderBorder ? CGFloat(config.borderpx) : 0
         func outer(_ x: Client) -> CGRect { x.noBorder || bw == 0 ? x.frame : x.frame.insetBy(dx: -bw, dy: -bw) }
         let others = clientsAll.filter { $0 !== c && $0.isFloating && !$0.parked && $0.isVisible(on: m) }.map(outer)
         let from = outer(c)

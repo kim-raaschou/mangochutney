@@ -84,7 +84,6 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_menu_bar_mode` | the key mode in the menu bar, the default one too (0: only another mode) |
 | `chutney_menu_bar_tag_style` | the menu bar's tags: square, circle (SF Symbols numbers) or text |
 | `chutney_menu_config` | the file the menu's panel saves its settings in; the config reads it with source_optional, last |
-| `chutney_physical_pixels` | border_px and the gaps in the screen's pixels, not points (3 is 1.5 points on Retina) |
 | `chutney_style` | bars, switcher and jump labels in the macOS style where no decorate key is set |
 | `chutney_tab_bar_decorate_icon` | the app's icon before each tab's title in the tab bar |
 | `chutney_group_bar_decorate_icon` | the app's icon before each title in the group bar |

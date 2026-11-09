@@ -60,9 +60,6 @@ extension Config {
     package var chutneyBorderUnfocused: Bool {
         get { bool("chutney_border_unfocused", true) } set { set("chutney_border_unfocused", newValue) }
     }
-    package var chutneyPhysicalPixels: Bool {
-        get { bool("chutney_physical_pixels", false) } set { set("chutney_physical_pixels", newValue) }
-    }
     package var chutneyOverlapWarning: Bool {
         get { bool("chutney_overlap_warning", false) } set { set("chutney_overlap_warning", newValue) }
     }

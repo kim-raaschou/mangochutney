@@ -71,7 +71,7 @@ Porten kalder mangos handlere, som wlroots gør: `handleClientMap`, `handleClien
 
 **Udvidelserne (`Port/Extensions`)**, slået fra uden deres nøgle: `chutney_focus_app`,
 hotkeys- og layout-paletterne, menulinjen, `chutney_style` og temaet, ⌘1–9 i fanebjælken,
-`chutney_floating_color`, `chutney_physical_pixels`, `chutney_ignore_apps`,
+`chutney_floating_color`, `chutney_ignore_apps`,
 `chutney_hyper_modifier`. Nøglerne står i `PortOptions` og `PortConfig`.
 
 ## Gjort

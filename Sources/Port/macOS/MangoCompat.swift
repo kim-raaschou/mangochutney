@@ -119,7 +119,6 @@ public enum MangoCompat {
         "chutney_hotkeys_apps": "the installed apps (from Spotlight) in the hotkeys palette's search",
         "chutney_layout_palette_keys": "the keys that move the layout palette's selection: left,down,up,right (or h,j,k,l); the arrows always work",
         "chutney_overlap_warning": "a tiled window its app keeps larger than its tile (over its neighbour): its tag in orange in the menu bar, with by how much, and to move it to an empty tag or float it",
-        "chutney_physical_pixels": "border_px and the gaps in the screen's pixels, not points (3 is 1.5 points on Retina)",
         "chutney_ignore_apps": "bundle ids that are never managed",
         "chutney_floating_color": "fixed border colour of floating windows, focused or not",
         "chutney_tab_bar_decorate_icon": "the app's icon before each tab's title in the tab bar",

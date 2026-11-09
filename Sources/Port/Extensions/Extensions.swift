@@ -46,9 +46,6 @@ extension MangoServer {
         portHooks.overlayLook = { server, set in server.config.chutneyStyle ? set : nil }
         portHooks.borderRadius = { server, _ in server.config.chutneyStyle ? BorderGeometry.cornerRadius : nil }
         portHooks.focusedBorderOnly = { server in !server.config.chutneyBorderUnfocused }
-        portHooks.pixelScale = { server, m in
-            server.config.chutneyPhysicalPixels ? 1 / max(1, m.screen.scale) : 1
-        }
         portHooks.configLoaded.append { server in server.mac.watcher.ignoredBundleIds = Set(server.config.chutneyIgnoreApps) }
         portHooks.configLoaded.append { server in (server.system as? MacWindowSystem)?.configLoaded(server.config) }
         portHooks.configLoaded.append { server in

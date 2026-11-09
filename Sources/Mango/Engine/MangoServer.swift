@@ -331,10 +331,7 @@ public final class MangoServer {
         let tiled = tiledClients(m)
         let work = m.screen.workArea
         let monGaps = isSpecialActive(m) ? m.specialGaps : m.gaps
-        // Port extension: not in mango. The gaps in the screen's pixels (chutney_physical_pixels).
-        let px = portHooks.pixelScale?(self, m) ?? 1
-        let gaps = enableGaps ? Gaps(ih: monGaps.ih * px, iv: monGaps.iv * px, oh: monGaps.oh * px, ov: monGaps.ov * px)
-            : .zero
+        let gaps = enableGaps ? monGaps : .zero
         let fakeTiled = visible.filter { !$0.isFloating && !$0.isMinimized && !$0.isUnglobal }
 
         // not in mango: pre_calculate_before_arrange's weights, here in arrange
@@ -424,9 +421,8 @@ public final class MangoServer {
             } else if c.isMaximizeScreen {
                 let bw = borderWidth(c, on: m)
                 let noGap = config.monocleNoGap && kind == .monocle
-                // Port extension: not in mango. In the screen's pixels (chutney_physical_pixels).
-                var box = work.insetBy(horizontal: noGap ? 0 : CGFloat(config.gappoh) * px,
-                                       vertical: noGap ? 0 : CGFloat(config.gappov) * px)
+                var box = work.insetBy(horizontal: noGap ? 0 : CGFloat(config.gappoh),
+                                       vertical: noGap ? 0 : CGFloat(config.gappov))
                 if clientWantsGroupBar(c) {
                     box.origin.y += CGFloat(config.groupBarHeight)
                     box.size.height -= CGFloat(config.groupBarHeight)
@@ -595,8 +591,7 @@ public final class MangoServer {
     // not in mango: c->bw (no_border, fullscreen) as check_hit_no_border leaves it, in points
     func borderWidth(_ c: Client, on m: Monitor) -> CGFloat {
         guard config.borderpx > 0, !c.noBorder, !c.isFullscreen, !checkHitNoBorder(c) else { return 0 }
-        // Port extension: not in mango. border_px in the screen's pixels (chutney_physical_pixels).
-        return CGFloat(config.borderpx) * (portHooks.pixelScale?(self, m) ?? 1)
+        return CGFloat(config.borderpx)
     }
 
     // not in mango: client_draw_border for every window at once; the port draws the borders in one overlay

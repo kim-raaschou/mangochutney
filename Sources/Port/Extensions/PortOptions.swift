@@ -61,7 +61,6 @@ enum PortOptions {
         t["chutney_group_bar_decorate_icon"] = O.bool(\.chutneyGroupBarDecorateIcon)
         t["chutney_tab_bar_shortcuts"] = O.bool(\.chutneyTabBarShortcuts)
         t["chutney_border_unfocused"] = O.bool(\.chutneyBorderUnfocused)
-        t["chutney_physical_pixels"] = O.bool(\.chutneyPhysicalPixels)
         t["chutney_overlap_warning"] = O.bool(\.chutneyOverlapWarning)
         t["chutney_hotkeys_apps"] = O.bool(\.chutneyHotkeysApps)
         t["chutney_layout_palette_keys"] = { config, value in
