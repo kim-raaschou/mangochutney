@@ -115,8 +115,8 @@ public enum MangoCompat {
         "chutney_menu_bar_layout": "the layout's icon in the menu bar",
         "chutney_menu_bar_mode": "the key mode in the menu bar, the default one too (0: only another mode)",
         "chutney_style": "bars, switcher and jump labels in the macOS style where no decorate key is set",
-        "chutney_hotkeys_apps": "the installed apps (from Spotlight) in the hotkeys palette's search",
-        "chutney_layout_palette_keys": "the keys that move the layout palette's selection: left,down,up,right (or h,j,k,l); the arrows always work",
+        "chutney_keybindings_spotlight_launch": "the installed applications (Spotlight's Applications) in the keybindings palette's search",
+        "chutney_layout_switcher_keys": "the keys that move the layout switcher's selection: left,down,up,right (or h,j,k,l); the arrows always work",
         "chutney_overlap_warning": "a tiled window its app keeps larger than its tile (over its neighbour): its tag in orange in the menu bar, with by how much, and to move it to an empty tag or float it",
         "chutney_tab_bar_decorate_icon": "the app's icon before each tab's title in the tab bar",
         "chutney_group_bar_decorate_icon": "the app's icon before each title in the group bar",
@@ -129,8 +129,8 @@ public enum MangoCompat {
         "chutney_focus_app": "one key per app: start it, or go to its window",
         "chutney_restart": "quit, with hidden windows left hidden for the next mango (make install, mmsg service restart)",
         "chutney_set_proportion_all": "set_proportion for every window of the tag in view; without a value, scroller_default_proportion",
-        "chutney_toggle_hotkeys_palette": "the hotkeys palette: search the bindings, move with the keys, Return runs one",
-        "chutney_toggle_layout_palette": "the layout palette: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one",
+        "chutney_keybindings": "the keybindings palette: search the bindings, move with the keys, Return runs one",
+        "chutney_layout_switcher": "the layout switcher: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one",
     ]
 
     public static let portDispatchers: Set<String> = Set(portDispatcherText.keys)

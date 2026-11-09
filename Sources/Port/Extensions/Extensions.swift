@@ -21,11 +21,11 @@ extension MangoServer {
             (server.system as? MacWindowSystem)?.restarting = true
             return server.dispatch(Dispatch(name: "quit"))
         }
-        portHooks.extraDispatchers["chutney_toggle_hotkeys_palette"] = { server, _ in
+        portHooks.extraDispatchers["chutney_keybindings"] = { server, _ in
             HotkeysPalette.shared.toggle(server)
             return nil
         }
-        portHooks.extraDispatchers["chutney_toggle_layout_palette"] = { server, _ in
+        portHooks.extraDispatchers["chutney_layout_switcher"] = { server, _ in
             LayoutPalette.shared.toggle(server)
             return nil
         }

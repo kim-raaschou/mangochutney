@@ -27,8 +27,8 @@ final class FirstStartKeysTests: MangoTestCase {
             XCTAssertTrue(["$mod", "$mods", "HYPER"].contains(mods), line)
         }
         let names = p.config.keyBindings.map(\.dispatch.name)
-        XCTAssertTrue(names.contains("chutney_toggle_hotkeys_palette"))
-        XCTAssertTrue(names.contains("chutney_toggle_layout_palette"))
+        XCTAssertTrue(names.contains("chutney_keybindings"))
+        XCTAssertTrue(names.contains("chutney_layout_switcher"))
         XCTAssertEqual(p.config.mouseBindings.count, 2)
         XCTAssertFalse(p.config.gestureBindings.isEmpty)
         XCTAssertEqual(p.config.chutneyHyperKey, "caps_lock")

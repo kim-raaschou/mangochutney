@@ -25,8 +25,8 @@ mango selv melder "Unknown keyword" for hver `chutney_`-linje og læser resten.
 | `chutney_style` | Fanebjælke, gruppebjælke, jump-mærker, switcher, titelbjælke, config-banner og overview i macOS' udseende, hvor ingen `*_decorate_*`-nøgle er sat; mangos farver i macOS' (`chutney_theme.conf`, følger accentfarve og lys/mørk); rammen følger vinduets runde hjørner | til | Mangos udseende og farver |
 | `chutney_tab_bar_decorate_icon`, `chutney_group_bar_decorate_icon` | Appens ikon før titlen i fanebjælken og i gruppebjælken, én nøgle pr. bjælke som mangos `*_decorate_*` | til | Kun titler |
 | `chutney_tab_bar_shortcuts` | ⌘1–9 vælger en fane | til | Ingen |
-| `chutney_toggle_hotkeys_palette` (+ `chutney_hotkeys_*`) | Hotkeys-paletten: søg i bindinger, vinduer og apps | Hyper K | Ingen |
-| `chutney_toggle_layout_palette` (+ `chutney_layout_palette_*`) | Layout-paletten; viser `circle_layout`, Tab og Space sætter den | Hyper L | Ingen |
+| `chutney_keybindings` (+ `chutney_keybindings_spotlight_launch`) | Keybindings-paletten: søg i bindinger, vinduer og programmer | Hyper K | Ingen |
+| `chutney_layout_switcher` (+ `chutney_layout_switcher_*`) | Layout-switcheren; viser `circle_layout`, Tab og Space sætter den | Hyper L | Ingen |
 | `chutney_focus_app` | Én tast pr. app: start den eller gå til dens vindue (med tre eller flere: det, der blev brugt før) | nej | Ingen |
 | `chutney_overlap_warning` | Et flisebelagt vindue, der er større end sit felt (og går ind over naboen), tegner sit tag orange i menulinjen; menuen siger hvor meget og giver forslag med ét klik (til et tomt tag, eller flydende), hver en af mangos kommandoer | nej | Intet mærke |
 | `chutney_hyper_modifier` | Hvad `HYPER` betyder i en binding | `super+ctrl+alt` | Mangos Mod3 |

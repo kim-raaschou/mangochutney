@@ -100,7 +100,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(c.chutneyGroupBarDecorateIcon)
         XCTAssertTrue(c.chutneyTabBarShortcuts)
         XCTAssertEqual(c.chutneyHyperModifier, "super+ctrl+alt")
-        let hotkeys = c.keyBindings.first { $0.dispatch.name == "chutney_toggle_hotkeys_palette" }
+        let hotkeys = c.keyBindings.first { $0.dispatch.name == "chutney_keybindings" }
         XCTAssertEqual(hotkeys?.mods, [.superKey, .ctrl, .alt], "on the Hyper layer")
         XCTAssertEqual(hotkeys?.keyName, "k")
         XCTAssertEqual(c.xkbRulesOptions, "", "Caps Lock as Hyper is chutney_hyper_key's")

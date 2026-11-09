@@ -505,7 +505,7 @@ final class HotkeysModel: ObservableObject {
         case "reload_config": return "config settings"
         case "quit": return "exit"
         case "setkeymode": return "mode"
-        case "chutney_toggle_hotkeys_palette": return "help keys shortcuts hotkeys"
+        case "chutney_keybindings": return "help keys shortcuts hotkeys"
         default: return ""
         }
     }

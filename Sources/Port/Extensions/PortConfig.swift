@@ -51,11 +51,11 @@ extension Config {
     package var chutneyOverlapWarning: Bool {
         get { bool("chutney_overlap_warning", false) } set { set("chutney_overlap_warning", newValue) }
     }
-    package var chutneyHotkeysApps: Bool {
-        get { bool("chutney_hotkeys_apps", true) } set { set("chutney_hotkeys_apps", newValue) }
+    package var chutneyKeybindingsSpotlightLaunch: Bool {
+        get { bool("chutney_keybindings_spotlight_launch", true) } set { set("chutney_keybindings_spotlight_launch", newValue) }
     }
-    package var chutneyLayoutPaletteKeys: [String] {
-        get { list("chutney_layout_palette_keys", ["left", "down", "up", "right"]) }
-        set { port["chutney_layout_palette_keys"] = newValue.joined(separator: ",") }
+    package var chutneyLayoutSwitcherKeys: [String] {
+        get { list("chutney_layout_switcher_keys", ["left", "down", "up", "right"]) }
+        set { port["chutney_layout_switcher_keys"] = newValue.joined(separator: ",") }
     }
 }

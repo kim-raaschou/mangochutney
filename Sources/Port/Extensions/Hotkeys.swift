@@ -21,7 +21,7 @@ public final class HotkeysPalette {
         model.legend = ModifierLegend.text(config)
         let hyper = Modifiers.parse(config.chutneyHyperModifier, hyperModifier: "") ?? []
         model.onLayout = nil
-        let apps = config.chutneyHotkeysApps ? SpotlightApps.shared : nil
+        let apps = config.chutneyKeybindingsSpotlightLaunch ? SpotlightApps.shared : nil
         model.load(server.shortcutRows, hyper: hyper,
                    context: Self.context(server), windows: Self.windows(server), apps: apps?.apps ?? [],
                    usage: HotkeysUsage.scores(HotkeysUsage.read()))

@@ -70,11 +70,11 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 
 | Name | Does |
 | --- | --- |
-| `chutney_hotkeys_apps` | the installed apps (from Spotlight) in the hotkeys palette's search |
+| `chutney_keybindings_spotlight_launch` | the installed applications (Spotlight's Applications) in the keybindings palette's search |
 | `chutney_hyper_key` | the key held as HYPER, as Raycast's Hyper Key: caps_lock, a left_ or right_ control, shift, option or command, f1 … f12 (macOS's own key mapping) |
 | `chutney_hyper_modifier` | what HYPER means in a bind |
 | `chutney_hyper_tap` | Caps Lock or a function key that is Hyper, pressed alone: none, original (the key itself) or escape |
-| `chutney_layout_palette_keys` | the keys that move the layout palette's selection: left,down,up,right (or h,j,k,l); the arrows always work |
+| `chutney_layout_switcher_keys` | the keys that move the layout switcher's selection: left,down,up,right (or h,j,k,l); the arrows always work |
 | `chutney_menu_bar` | menu-bar item with the current tags and layout |
 | `chutney_menu_bar_layout` | the layout's icon in the menu bar |
 | `chutney_menu_bar_logo` | the mango logo in the menu bar: color, mono (the menu bar's colour) or 0 |
@@ -88,6 +88,6 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_focus_app` (dispatcher) | one key per app: start it, or go to its window |
 | `chutney_restart` (dispatcher) | quit, with hidden windows left hidden for the next mango (make install, mmsg service restart) |
 | `chutney_set_proportion_all` (dispatcher) | set_proportion for every window of the tag in view; without a value, scroller_default_proportion |
-| `chutney_toggle_hotkeys_palette` (dispatcher) | the hotkeys palette: search the bindings, move with the keys, Return runs one |
-| `chutney_toggle_layout_palette` (dispatcher) | the layout palette: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one |
+| `chutney_keybindings` (dispatcher) | the keybindings palette: search the bindings, move with the keys, Return runs one |
+| `chutney_layout_switcher` (dispatcher) | the layout switcher: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one |
 <!-- mango-compat:end -->

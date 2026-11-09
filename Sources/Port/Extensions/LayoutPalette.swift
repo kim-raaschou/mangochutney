@@ -94,7 +94,7 @@ public final class LayoutPalette {
         default:
             guard e.modifierFlags.intersection([.command, .control, .option]).isEmpty,
                   let (dx, dy) = LayoutPaletteGrid.direction(keyCode: e.keyCode, characters: e.charactersIgnoringModifiers,
-                                                             keys: server?.config.chutneyLayoutPaletteKeys ?? [])
+                                                             keys: server?.config.chutneyLayoutSwitcherKeys ?? [])
             else { return true }
             model.grid.move(dx, dy)
         }

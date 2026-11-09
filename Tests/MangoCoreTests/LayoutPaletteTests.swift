@@ -69,9 +69,9 @@ final class LayoutPaletteTests: MangoTestCase {
 
     func testConfigKey() {
         var c = Config()
-        XCTAssertEqual(c.chutneyLayoutPaletteKeys, ["left", "down", "up", "right"])
-        c = ConfigParser.parse(text: "chutney_layout_palette_keys=h,j,k,l\nbind=SUPER,l,chutney_toggle_layout_palette\n", baseDirectory: nil, fileName: "t").config
-        XCTAssertEqual(c.chutneyLayoutPaletteKeys, ["h", "j", "k", "l"])
-        XCTAssertTrue(c.keyBindings.contains { $0.dispatch.name == "chutney_toggle_layout_palette" })
+        XCTAssertEqual(c.chutneyLayoutSwitcherKeys, ["left", "down", "up", "right"])
+        c = ConfigParser.parse(text: "chutney_layout_switcher_keys=h,j,k,l\nbind=SUPER,l,chutney_layout_switcher\n", baseDirectory: nil, fileName: "t").config
+        XCTAssertEqual(c.chutneyLayoutSwitcherKeys, ["h", "j", "k", "l"])
+        XCTAssertTrue(c.keyBindings.contains { $0.dispatch.name == "chutney_layout_switcher" })
     }
 }

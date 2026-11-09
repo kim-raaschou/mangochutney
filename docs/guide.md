@@ -197,9 +197,9 @@ the key back to your config. Your own config is never written.
 
 ## The palettes
 
-### Hotkeys palette
+### Keybindings palette
 
-**Hyper K** (`chutney_toggle_hotkeys_palette`), after Omarchy's Super K: every binding, open window
+**Hyper K** (`chutney_keybindings`), after Omarchy's Super K: every binding, open window
 and installed app, searched as you type.
 
 - **Search** finds a binding by what it does, its keys, its dispatcher or a word for it ("close",
@@ -221,18 +221,18 @@ search, closes the group, then the palette.
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `chutney_hotkeys_apps` | `1` | Installed apps (from Spotlight) in the search. |
+| `chutney_keybindings_spotlight_launch` | `1` | Installed applications (Spotlight's Applications) in the search. |
 
-### Layout palette
+### Layout switcher
 
-**Hyper L** (`chutney_toggle_layout_palette`): the layouts of mango's `circle_layout` as icons,
+**Hyper L** (`chutney_layout_switcher`): the layouts of mango's `circle_layout` as icons,
 drawn by mango's own layout code, in its order (all 14 without it). The arrows move, Return sets the
 layout for the tag in view (`setlayout`), Esc closes. Tab shows all 14 with their ticks; Space or a
 click on a tick puts a layout in or out of `circle_layout`.
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `chutney_layout_palette_keys` | `left,down,up,right` | Four keys that move the selection, in the order left, down, up, right (`h,j,k,l` for vim's); the arrows always work. |
+| `chutney_layout_switcher_keys` | `left,down,up,right` | Four keys that move the selection, in the order left, down, up, right (`h,j,k,l` for vim's); the arrows always work. |
 
 Both palettes look as Spotlight does: mango has no palette whose look they could take.
 
@@ -272,8 +272,8 @@ Hyper A, then S: Safari. An app's bundle id: `osascript -e 'id of app "Safari"'`
 | `chutney_focus_app` | `bundle id or app name`[, `command`] | One key per app: start it or go to its window. The command, when given, starts it. |
 | `chutney_restart` | - | mango's `quit`, with hidden windows left hidden: the next mango restores them (`make install` and `mmsg service restart` use it). |
 | `chutney_set_proportion_all` | [`proportion`] | `set_proportion` for every window of the tag in view, in the scroller. Without a value, back to `scroller_default_proportion`. |
-| `chutney_toggle_hotkeys_palette` | - | The hotkeys palette. |
-| `chutney_toggle_layout_palette` | - | The layout palette. |
+| `chutney_keybindings` | - | The keybindings palette. |
+| `chutney_layout_switcher` | - | The layout switcher. |
 
 ## Configuration
 

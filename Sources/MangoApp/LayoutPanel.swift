@@ -492,7 +492,7 @@ struct LayoutGrid: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .help(ticked ? "In circle_layout: switch_layout and the layout palette" : "Not in circle_layout")
+                    .help(ticked ? "In circle_layout: switch_layout and the layout switcher" : "Not in circle_layout")
                 }
             }
         }

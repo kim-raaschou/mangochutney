@@ -55,14 +55,14 @@ enum PortOptions {
         t["chutney_group_bar_decorate_icon"] = O.bool(\.chutneyGroupBarDecorateIcon)
         t["chutney_tab_bar_shortcuts"] = O.bool(\.chutneyTabBarShortcuts)
         t["chutney_overlap_warning"] = O.bool(\.chutneyOverlapWarning)
-        t["chutney_hotkeys_apps"] = O.bool(\.chutneyHotkeysApps)
-        t["chutney_layout_palette_keys"] = { config, value in
+        t["chutney_keybindings_spotlight_launch"] = O.bool(\.chutneyKeybindingsSpotlightLaunch)
+        t["chutney_layout_switcher_keys"] = { config, value in
             let keys = value.lowercased().split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             let arrows: Set<String> = ["left", "down", "up", "right"]
             guard keys.count == 4, keys.allSatisfy({ $0.count == 1 || arrows.contains($0) }) else {
-                return .invalid("Invalid chutney_layout_palette_keys: \(value) (four keys: left,down,up,right or h,j,k,l)")
+                return .invalid("Invalid chutney_layout_switcher_keys: \(value) (four keys: left,down,up,right or h,j,k,l)")
             }
-            config.chutneyLayoutPaletteKeys = keys
+            config.chutneyLayoutSwitcherKeys = keys
             return .applied
         }
         return t
