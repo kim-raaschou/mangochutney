@@ -57,9 +57,7 @@ package extension MangoServer {
             state.thumbnails = true
             let look = OverviewLook(focusColor: config.focuscolor, borderColor: config.bordercolor,
                                     jumpLook: mangoBarDecorationApplyConfig(config.jumplabeldata, mango: .mangoJumpLabel),
-                                    // Port extension: not in mango. The port's look (chutney_macos_appearance).
-                                    mango: barsInsideBorder ? nil
-                                        : (config.rootcolor, CGFloat(config.borderpx), CGFloat(config.borderRadius)))
+                                    mango: (config.rootcolor, CGFloat(config.borderpx), CGFloat(config.borderRadius)))
             overviewState = state
             clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
             system.showOverview(overlayCards(state, focused: state.circleFocus ?? m.sel), on: m, look: look)

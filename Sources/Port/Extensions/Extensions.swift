@@ -33,8 +33,7 @@ extension MangoServer {
         portHooks.saveLayout = { server, final in memory(server)?.save(server, final: final) }
         portHooks.restoreLayout = { server in memory(server)?.restore(server) }
         portHooks.ipcGets["get binds"] = { server in ShortcutFormatter.bindsReply(server.shortcutRows) }
-        portHooks.overlayLook = { server, set in server.config.chutneyMacOSAppearance ? set : nil }
-        portHooks.borderRadius = { server, _ in server.config.chutneyMacOSAppearance ? BorderGeometry.cornerRadius : nil }
+        portHooks.barsInsideBorder = { server in server.config.chutneyMacOSAppearance }
         portHooks.configLoaded.append { server in (server.system as? MacWindowSystem)?.configLoaded(server.config) }
         portHooks.configLoaded.append { server in
             guard ChutneyTheme.sync(configURL: server.configURL, style: server.config.chutneyMacOSAppearance) else { return }

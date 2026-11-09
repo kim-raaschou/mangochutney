@@ -50,14 +50,12 @@ package extension MangoServer {
     }
 
     var barsInsideBorder: Bool {
-        // Port extension: not in mango.
-        portHooks.overlayLook?(self, DecorateStyle()) != nil
+        // Port extension: not in mango. The bars inside the border (chutney_macos_appearance).
+        portHooks.barsInsideBorder?(self) ?? false
     }
 
     func mangoBarDecorationApplyConfig(_ set: DecorateStyle, mango: DecorateStyle) -> DecorateStyle {
-        // Port extension: not in mango. The port may draw the rest its own way (chutney_macos_appearance).
-        if let ported = portHooks.overlayLook?(self, set) { return ported }
-        return set.setValueDefault(from: mango)
+        set.setValueDefault(from: mango)
     }
 
     func topBars(_ c: Client, tabMember: Bool) -> CGFloat {

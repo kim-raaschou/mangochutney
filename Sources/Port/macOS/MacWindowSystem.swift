@@ -147,24 +147,31 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawBorders(_ specs: [BorderSpec]) {
+        let specs = MacOSAppearance.borders(specs, server.config)
         if specs.isEmpty { borders.removeAll() } else { borders.update(specs) }
     }
 
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) {
-        tabBars.update(withTabNumbers(strips), style: withAppIcons(style, server.config.chutneyTabBarDecorateIcon), keyFocus: server.focused?.id)
+        var style = withAppIcons(style, server.config.chutneyTabBarDecorateIcon)
+        style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.tabbardata, server.config)
+        tabBars.update(withTabNumbers(strips), style: style, keyFocus: server.focused?.id)
     }
 
     func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) {
-        groupBars.update(strips, style: withAppIcons(style, server.config.chutneyGroupBarDecorateIcon), keyFocus: server.focused?.id)
+        var style = withAppIcons(style, server.config.chutneyGroupBarDecorateIcon)
+        style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.groupbardata, server.config)
+        groupBars.update(strips, style: style, keyFocus: server.focused?.id)
     }
 
     var windowCornerRadius: CGFloat { BorderGeometry.cornerRadius }
 
     func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) {
         overviewOverlay?.close()
+        let macOS = server.config.chutneyMacOSAppearance
         let overlay = OverviewOverlay(workArea: m.screen.workArea, top: m.screen.frame.minY, focusColor: look.focusColor, borderColor: look.borderColor,
-                                      jumpLook: look.jumpLook,
-                                      mango: look.mango.map { .init(root: $0.root, borderWidth: $0.borderWidth, cornerRadius: $0.cornerRadius) })
+                                      jumpLook: MacOSAppearance.bar(look.jumpLook, set: server.config.jumplabeldata, server.config),
+                                      mango: macOS ? nil : .init(root: look.mango.root, borderWidth: look.mango.borderWidth,
+                                                                 cornerRadius: look.mango.cornerRadius))
         overviewOverlay = overlay
         overlay.show(cards.map(Self.card))
     }
@@ -184,7 +191,7 @@ class MacWindowSystem: WindowSystem {
 
     func showJumpLabels(_ labels: [(String, CGRect)], look: DecorateStyle) {
         jumpLabels?.close()
-        jumpLabels = JumpLabelSet(labels, look: look)
+        jumpLabels = JumpLabelSet(labels, look: MacOSAppearance.bar(look, set: server.config.jumplabeldata, server.config))
     }
 
     func closeJumpLabels() {
@@ -195,7 +202,8 @@ class MacWindowSystem: WindowSystem {
     func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat) {
         switcherPanel?.close()
         switcherPanel = SwitcherPanel(panel: panel, tiles: tiles.map(Self.tile),
-                                      style: .init(focus: look.focus, border: look.border, macOS: look.macOS), scale: scale)
+                                      style: .init(focus: look.focus, border: look.border, macOS: server.config.chutneyMacOSAppearance),
+                                      scale: scale)
     }
 
     func highlightSwitcher(_ tiles: [SwitcherTile]) { switcherPanel?.highlight(tiles.map(Self.tile)) }
@@ -211,7 +219,8 @@ class MacWindowSystem: WindowSystem {
 
     func showTitleMessageBar(frame: CGRect, title: String, appid: String, look: DecorateStyle) {
         if titleBar == nil { titleBar = TitleMessageBar() }
-        titleBar?.show(frame: frame, title: title, appid: appid, style: look)
+        titleBar?.show(frame: frame, title: title, appid: appid,
+                       style: MacOSAppearance.bar(look, set: server.config.titleMessageBardata, server.config))
     }
 
     func hideTitleMessageBar() { titleBar?.hide() }

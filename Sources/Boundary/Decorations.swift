@@ -62,11 +62,11 @@ public struct OverviewLook: Equatable {
     public var focusColor: RGBA
     public var borderColor: RGBA
     public var jumpLook: DecorateStyle
-    public var mango: (root: RGBA, borderWidth: CGFloat, cornerRadius: CGFloat)?
+    public var mango: (root: RGBA, borderWidth: CGFloat, cornerRadius: CGFloat)
     public static func == (a: OverviewLook, b: OverviewLook) -> Bool {
         a.focusColor == b.focusColor && a.borderColor == b.borderColor && a.jumpLook == b.jumpLook
-            && a.mango?.root == b.mango?.root && a.mango?.borderWidth == b.mango?.borderWidth
-            && a.mango?.cornerRadius == b.mango?.cornerRadius
+            && a.mango.root == b.mango.root && a.mango.borderWidth == b.mango.borderWidth
+            && a.mango.cornerRadius == b.mango.cornerRadius
     }
 }
 
@@ -81,5 +81,4 @@ public struct SwitcherTile: Equatable {
 public struct SwitcherLook: Equatable {
     public var focus: RGBA
     public var border: RGBA
-    public var macOS: Bool
 }

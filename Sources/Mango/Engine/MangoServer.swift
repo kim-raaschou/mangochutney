@@ -611,9 +611,7 @@ public final class MangoServer {
                 let top = !barsInsideBorder ? 0
                     : (c === strip ? CGFloat(config.tabBarHeight) : 0) + (clientCheckTabNodeVisible(c, on: m) ? CGFloat(config.groupBarHeight) : 0)
                 f = CGRect(x: f.minX, y: f.minY - top, width: f.width, height: f.height + top)
-                // Port extension: not in mango. The ring may follow macOS's window corners (chutney_macos_appearance).
-                let radius = portHooks.borderRadius?(self, c)
-                    ?? (clientNoRadiusActive(c) ? 0 : CGFloat(config.borderRadius))
+                let radius = clientNoRadiusActive(c) ? 0 : CGFloat(config.borderRadius)
                 specs.append(BorderSpec(id: c.id, frame: f, color: getBorderColor(c), width: width, radius: radius,
                                         split: clientDrawSplitBorder(c, on: m)))
             }
