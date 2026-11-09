@@ -228,7 +228,7 @@ final class MangoCoverageTests: MangoTestCase {
         gesture_live=1
         chutney_hyper_modifier=super+ctrl
         gesture_swipe_distance=300
-        bind=SUPER,a,chutney_focus_app,com.apple.Safari
+        bind=SUPER,a,chutney_launch_or_focus,com.apple.Safari
         window_rule=no_shadow:1,shield_when_capture:1,is_floating:1,app_id:x
         monitor_rule=name:eDP-1,scale:2
         """
@@ -239,7 +239,7 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertNil(byName["gesture_live"], "works: no note")
         XCTAssertEqual(byName["chutney_hyper_modifier"]?.first?.kind, .portExtension)
         XCTAssertNil(byName["gesture_swipe_distance"], "works: no note")
-        XCTAssertEqual(byName["chutney_focus_app"]?.first?.kind, .portExtension)
+        XCTAssertEqual(byName["chutney_launch_or_focus"]?.first?.kind, .portExtension)
         XCTAssertNotNil(byName["window_rule no_shadow"])
         XCTAssertNotNil(byName["window_rule shield_when_capture"])
         XCTAssertNil(byName["window_rule is_floating"])

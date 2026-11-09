@@ -3,18 +3,9 @@ import Mango
 extension MangoServer {
     func registerPortExtensions() {
         portHooks = PortHooks()
-        portHooks.extraDispatchers["chutney_focus_app"] = { server, d in
+        portHooks.extraDispatchers["chutney_launch_or_focus"] = { server, d in
             guard let app = d.args.first, !app.isEmpty, app != "0" else { return "missing app" }
-            server.focusApp(app, command: d.args.dropFirst().joined(separator: ","))
-            return nil
-        }
-        portHooks.extraDispatchers["chutney_set_proportion_all"] = { server, d in
-            guard let m = server.selectedMonitor, m.layout.isScroller, server.overviewState?.monitor !== m else { return nil }
-            let tiled = server.tiledClients(m)
-            if tiled.count == 1 && !server.config.scrollerIgnoreProportionSingle { return nil }
-            let p = d.args.first.flatMap(Double.init).map { CGFloat($0) } ?? m.current.settings.scrollerDefaultProportion
-            for c in tiled { server.scrollGetStackHeadClient(c).scrollerProportion = p }
-            server.arrange(m)
+            server.launchOrFocus(app, command: d.args.dropFirst().joined(separator: ","))
             return nil
         }
         portHooks.extraDispatchers["chutney_restart"] = { server, _ in
@@ -42,12 +33,12 @@ extension MangoServer {
         portHooks.saveLayout = { server, final in memory(server)?.save(server, final: final) }
         portHooks.restoreLayout = { server in memory(server)?.restore(server) }
         portHooks.ipcGets["get binds"] = { server in ShortcutFormatter.bindsReply(server.shortcutRows) }
-        portHooks.overlayLook = { server, set in server.config.chutneyStyle ? set : nil }
-        portHooks.borderRadius = { server, _ in server.config.chutneyStyle ? BorderGeometry.cornerRadius : nil }
+        portHooks.overlayLook = { server, set in server.config.chutneyMacOSAppearance ? set : nil }
+        portHooks.borderRadius = { server, _ in server.config.chutneyMacOSAppearance ? BorderGeometry.cornerRadius : nil }
         portHooks.configLoaded.append { server in (server.system as? MacWindowSystem)?.configLoaded(server.config) }
         portHooks.configLoaded.append { server in
-            guard ChutneyTheme.sync(configURL: server.configURL, style: server.config.chutneyStyle) else { return }
-            mangoError(true, .info, "chutney_style: \(ChutneyTheme.fileName) written for chutney_style=\(server.config.chutneyStyle ? 1 : 0)")
+            guard ChutneyTheme.sync(configURL: server.configURL, style: server.config.chutneyMacOSAppearance) else { return }
+            mangoError(true, .info, "chutney_macos_appearance: \(ChutneyTheme.fileName) written for chutney_macos_appearance=\(server.config.chutneyMacOSAppearance ? 1 : 0)")
             DispatchQueue.main.async { MainActor.assumeIsolated { server.reloadConfig() } }
         }
         observeMacOSTheme()

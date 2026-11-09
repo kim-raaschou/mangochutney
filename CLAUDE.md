@@ -25,7 +25,7 @@ recognise must be marked as port or extension.
    boundary).
 6. **What is not mango is apart and marked.**
    - macOS layer (Accessibility, parking, native focus) lives in `Port/macOS`.
-   - Port extensions (`focus_app`, `chutney_style`, `chutney_overlap_warning`, …) live in
+   - Port extensions (`launch_or_focus`, `chutney_macos_appearance`, `chutney_overlap_warning`, …) live in
      `Port/Extensions`, are off when their key is absent, and change nothing of mango's
      behaviour when off. They hook in only through `PortHooks`. Their config keys are the
      port's (`PortOptions`).
@@ -74,7 +74,7 @@ will do (an access level, one hook call), marked as the port's, and said to the 
 is made.
 
 **When rules meet.** Mango's look and behaviour are the base; the macOS way is a port override,
-off unless set (`chutney_style`). A config key the user sets always wins.
+off unless set (`chutney_macos_appearance`). A config key the user sets always wins.
 
 **Names that clash.** Mango's name wins; our own thing that had the name is renamed.
 

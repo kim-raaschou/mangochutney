@@ -1,11 +1,11 @@
 import AppKit
 import Mango
 
-enum FocusAppRule: Equatable {
+enum LaunchOrFocusRule: Equatable {
     case launch
     case focus(ClientID)
 
-    static func decide(windows: [ClientID], current: ClientID?, recent: [ClientID]) -> FocusAppRule {
+    static func decide(windows: [ClientID], current: ClientID?, recent: [ClientID]) -> LaunchOrFocusRule {
         switch (windows.count, current.flatMap { windows.firstIndex(of: $0) }) {
         case (0, _):
             return .launch
@@ -24,11 +24,11 @@ enum FocusAppRule: Equatable {
 extension MangoServer {
     var focusHistory: [ClientID] { (system as? MacWindowSystem)?.focusHistory ?? [] }
 
-    func focusApp(_ app: String, command: String) {
+    func launchOrFocus(_ app: String, command: String) {
         let key = app.lowercased()
         if overviewState != nil { leaveOverview(select: nil) }
         let windows = appWindowsInGridOrder(key)
-        let rule = FocusAppRule.decide(windows: windows.map(\.id), current: focused?.id, recent: focusHistory)
+        let rule = LaunchOrFocusRule.decide(windows: windows.map(\.id), current: focused?.id, recent: focusHistory)
         switch rule {
         case .launch:
             Spawn.run(command.isEmpty ? "open -b '\(app.replacingOccurrences(of: "'", with: ""))'" : command)

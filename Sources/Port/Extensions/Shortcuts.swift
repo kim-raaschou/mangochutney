@@ -91,7 +91,7 @@ enum ShortcutFormatter {
             let back = a0.hasSuffix("prev")
             let scope = a0.hasPrefix("all_tag") ? " (all tags)" : a0.hasPrefix("all") ? " (all monitors)" : ""
             return "window switcher\(back ? ", backwards" : "")\(scope)"
-        case "chutney_focus_app": return "focus or open \(a0)"
+        case "chutney_launch_or_focus": return "focus or open \(a0)"
         case "overcircle": return "overview, tab mode"
         case "reload_config": return "reload config"
         case "quit": return "quit mango"
@@ -104,7 +104,6 @@ enum ShortcutFormatter {
         case "scroller_stack": return "stack into column \(a0)"
         case "switch_proportion_preset": return "cycle column width"
         case "set_proportion": return "column width \(a0)"
-        case "chutney_set_proportion_all": return a0.isEmpty ? "every column the default width" : "every column width \(a0)"
         case "incnmaster": return "masters \(a0)"
         case "setmfact": return "master size \(a0)"
         case "incgaps": return "gaps \(a0)"

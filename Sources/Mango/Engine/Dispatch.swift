@@ -482,7 +482,7 @@ package extension MangoServer {
             config.alwaysShowGroupBar.toggle()
             arrangeAll(.move)
         default:
-            // Port extension: not in mango. A dispatcher of the port's own (chutney_focus_app).
+            // Port extension: not in mango. A dispatcher of the port's own (chutney_launch_or_focus).
             if let ext = portHooks.extraDispatchers[d.name] {
                 if let error = ext(self, d) { return error }
             }

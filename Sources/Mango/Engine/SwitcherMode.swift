@@ -102,7 +102,7 @@ package extension MangoServer {
             return SwitcherTile(id: id, frame: sw.layout.tiles[i], size: c.frame.size, pid: c.pid,
                                 highlighted: i == sw.index)
         }
-        // Port extension: not in mango. The port's look over mango's (chutney_style).
+        // Port extension: not in mango. The port's look over mango's (chutney_macos_appearance).
         let look = SwitcherLook(focus: config.focuscolor, border: config.bordercolor,
                                 macOS: portHooks.overlayLook?(self, DecorateStyle()) != nil)
         if fresh {

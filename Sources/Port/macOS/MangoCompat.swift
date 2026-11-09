@@ -107,14 +107,13 @@ public enum MangoCompat {
         var t: [String: String] = [
         "chutney_hyper_modifier": "what HYPER means in a bind",
         "chutney_hyper_key": "the key held as HYPER, as Raycast's Hyper Key: caps_lock, a left_ or right_ control, shift, option or command, f1 … f12 (macOS's own key mapping)",
-        "chutney_hyper_tap": "Caps Lock or a function key that is Hyper, pressed alone: none, original (the key itself) or escape",
         "chutney_menu_bar": "menu-bar item with the current tags and layout",
         "chutney_menu_bar_tag_style": "the menu bar's tags: square, circle (SF Symbols numbers) or text",
         "chutney_menu_config": "the file the menu's panel saves its settings in; the config reads it with source_optional, last",
         "chutney_menu_bar_logo": "the mango logo in the menu bar: color, mono (the menu bar's colour) or 0",
         "chutney_menu_bar_layout": "the layout's icon in the menu bar",
         "chutney_menu_bar_mode": "the key mode in the menu bar, the default one too (0: only another mode)",
-        "chutney_style": "bars, switcher and jump labels in the macOS style where no decorate key is set",
+        "chutney_macos_appearance": "bars, switcher and jump labels in the macOS style where no decorate key is set",
         "chutney_keybindings_spotlight_launch": "the installed applications (Spotlight's Applications) in the keybindings palette's search",
         "chutney_layout_switcher_keys": "the keys that move the layout switcher's selection: left,down,up,right (or h,j,k,l); the arrows always work",
         "chutney_overlap_warning": "a tiled window its app keeps larger than its tile (over its neighbour): its tag in orange in the menu bar, with by how much, and to move it to an empty tag or float it",
@@ -126,9 +125,8 @@ public enum MangoCompat {
     }()
 
     static let portDispatcherText: [String: String] = [
-        "chutney_focus_app": "one key per app: start it, or go to its window",
+        "chutney_launch_or_focus": "one key per app: start it, or go to its window",
         "chutney_restart": "quit, with hidden windows left hidden for the next mango (make install, mmsg service restart)",
-        "chutney_set_proportion_all": "set_proportion for every window of the tag in view; without a value, scroller_default_proportion",
         "chutney_keybindings": "the keybindings palette: search the bindings, move with the keys, Return runs one",
         "chutney_layout_switcher": "the layout switcher: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one",
     ]

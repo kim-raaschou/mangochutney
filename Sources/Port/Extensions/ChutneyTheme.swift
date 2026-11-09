@@ -18,7 +18,7 @@ public enum ChutneyTheme {
     ]
 
     static let header = """
-    # Written by Mango Chutney (chutney_style), not for editing: mango's colours in macOS's,
+    # Written by Mango Chutney (chutney_macos_appearance), not for editing: mango's colours in macOS's,
     # written again when the accent colour or light/dark changes. Your own settings are in
     # config.conf; a colour of your own goes there, after its chutney_theme.conf line.
     """
@@ -47,7 +47,7 @@ public enum ChutneyTheme {
     @discardableResult
     public static func sync(configURL: URL, style: Bool? = nil, resolve: (NSColor) -> RGBA? = rgba) -> Bool {
         let file = url(configURL: configURL)
-        let macOS = style ?? ConfigParser.parseConfig(fileAt: configURL).config.chutneyStyle
+        let macOS = style ?? ConfigParser.parseConfig(fileAt: configURL).config.chutneyMacOSAppearance
         let exists = FileManager.default.fileExists(atPath: file.path)
         guard macOS || exists else { return false }
         let text = text(macOS: macOS, resolve: resolve)
@@ -55,7 +55,7 @@ public enum ChutneyTheme {
         do {
             try text.write(to: file, atomically: false, encoding: .utf8)
         } catch {
-            mangoError(true, .info, "chutney_style: could not write \(file.path): \(error)")
+            mangoError(true, .info, "chutney_macos_appearance: could not write \(file.path): \(error)")
             return false
         }
         MenuSave.lastWritten[file.path] = text
@@ -79,7 +79,7 @@ extension MangoServer {
     func observeMacOSTheme() {
         let changed: () -> Void = { [weak self] in
             guard let self, ChutneyTheme.sync(configURL: self.configURL) else { return }
-            mangoError(true, .info, "chutney_style: \(ChutneyTheme.fileName) written for the new accent colour or light/dark")
+            mangoError(true, .info, "chutney_macos_appearance: \(ChutneyTheme.fileName) written for the new accent colour or light/dark")
             self.reloadConfig()
         }
         NotificationCenter.default.addObserver(forName: NSColor.systemColorsDidChangeNotification, object: nil, queue: .main) { _ in

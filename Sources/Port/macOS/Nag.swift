@@ -47,7 +47,17 @@ public final class Nag: NagDisplay {
         p.isFloatingPanel = true
         p.hidesOnDeactivate = false
         p.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        p.contentView = view
+        if macOS {
+            p.isOpaque = false
+            p.backgroundColor = .clear
+            p.hasShadow = true
+            let glass = GlassBacking(material: .hudWindow)
+            glass.frame = view.frame
+            glass.addContent(view)
+            p.contentView = glass
+        } else {
+            p.contentView = view
+        }
         p.orderFrontRegardless()
         panel = p
         if n.timeoutMs > 0 {
@@ -131,7 +141,7 @@ private final class NagView: NSView {
     init(macOS: Bool, onClick: @escaping (CGPoint) -> Void) {
         self.macOS = macOS
         self.onClick = onClick
-        font = macOS ? .monospacedSystemFont(ofSize: 12, weight: .regular)
+        font = macOS ? .systemFont(ofSize: NSFont.systemFontSize)
             : decorateFont(FontDescription(Mango.nag.font ?? "monospace 13"))
         super.init(frame: .zero)
     }
@@ -140,11 +150,11 @@ private final class NagView: NSView {
 
     override var isFlipped: Bool { true }
 
-    var type: NagType {
-        guard macOS else { return Mango.nag.type }
-        return NagType(background: 0xAD401FF5, text: 0xFFFFFFFF, buttonBackground: 0xFFFFFF33,
-                       buttonText: 0xFFFFFFFF, border: 0xAD401F00, borderBottom: 0xAD401F00)
-    }
+    var type: NagType { Mango.nag.type }
+
+    var textColor: NSColor { macOS ? .labelColor : Nag.ns(type.text) }
+    var buttonBackground: NSColor { macOS ? NSColor.labelColor.withAlphaComponent(0.12) : Nag.ns(type.buttonBackground) }
+    var buttonText: NSColor { macOS ? .labelColor : Nag.ns(type.buttonText) }
 
     func size(_ s: String) -> CGSize { (s as NSString).size(withAttributes: [.font: font]) }
 
@@ -161,8 +171,10 @@ private final class NagView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let t = type
-        Nag.ns(t.background).setFill()
-        bounds.fill()
+        if !macOS {
+            Nag.ns(t.background).setFill()
+            bounds.fill()
+        }
 
         let buttons = Mango.nag.buttons
         var buttonsTotal: CGFloat = 0
@@ -173,7 +185,7 @@ private final class NagView: NSView {
         let charW = max(1, Int(size("0000000000").width) / 10)
         let display = nagTruncateLines(Mango.nag.message, Int(textAvail) / charW)
 
-        let text = Nag.attributed(display, font: font, color: Nag.ns(t.text))
+        let text = Nag.attributed(display, font: font, color: textColor)
         let textH = ceil(text.boundingRect(with: CGSize(width: 100_000, height: 100_000), options: [.usesLineFragmentOrigin]).height)
         text.draw(at: CGPoint(x: padding, y: floor((bounds.height - textH) / 2)))
 
@@ -195,8 +207,8 @@ private final class NagView: NSView {
                 Mango.nag.buttons[i].outerHeight = Int(outer.height)
             }
             if macOS {
-                Nag.ns(t.buttonBackground).setFill()
-                NSBezierPath(roundedRect: outer, xRadius: 5, yRadius: 5).fill()
+                buttonBackground.setFill()
+                NSBezierPath(roundedRect: outer, xRadius: 6, yRadius: 6).fill()
             } else {
                 Nag.ns(t.border).setFill()
                 outer.fill()
@@ -204,7 +216,7 @@ private final class NagView: NSView {
                 inner.fill()
             }
             (buttons[i].text as NSString).draw(at: CGPoint(x: inner.minX + buttonPadding, y: inner.minY + buttonPadding),
-                                               withAttributes: [.font: font, .foregroundColor: Nag.ns(t.buttonText)])
+                                               withAttributes: [.font: font, .foregroundColor: buttonText])
             x = outer.minX - buttonGap
         }
 

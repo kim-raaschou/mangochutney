@@ -611,7 +611,7 @@ public final class MangoServer {
                 let top = !barsInsideBorder ? 0
                     : (c === strip ? CGFloat(config.tabBarHeight) : 0) + (clientCheckTabNodeVisible(c, on: m) ? CGFloat(config.groupBarHeight) : 0)
                 f = CGRect(x: f.minX, y: f.minY - top, width: f.width, height: f.height + top)
-                // Port extension: not in mango. The ring may follow macOS's window corners (chutney_style).
+                // Port extension: not in mango. The ring may follow macOS's window corners (chutney_macos_appearance).
                 let radius = portHooks.borderRadius?(self, c)
                     ?? (clientNoRadiusActive(c) ? 0 : CGFloat(config.borderRadius))
                 specs.append(BorderSpec(id: c.id, frame: f, color: getBorderColor(c), width: width, radius: radius,
@@ -659,7 +659,7 @@ public final class MangoServer {
         selectedMonitor = m
         focusStack.removeAll { $0 == c.id }
         focusStack.insert(c.id, at: 0)
-        portHooks.clientFocused?(self, c)   // Port extension: not in mango (chutney_focus_app's "used last")
+        portHooks.clientFocused?(self, c)   // Port extension: not in mango (chutney_launch_or_focus's "used last")
         c.isUrgent = false
         if raise || makeKey { system.focus(c, raise: raise) }
         func tagMatch(_ x: Client) -> Bool { x.mon === m && !x.isMinimized && x.tags & m.tagset[m.seltags] != 0 }

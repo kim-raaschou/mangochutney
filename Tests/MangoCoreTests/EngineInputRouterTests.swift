@@ -79,7 +79,7 @@ final class EngineInputRouterTests: MangoTestCase {
     }
 
     func testBindingsComeBeforeJumpLabels() {
-        let w = KeyBinding(mode: "apps", mods: [], keyName: "w", keyCodes: [13], dispatch: Dispatch(name: "chutney_focus_app", args: ["com.mitchellh.ghostty"]))
+        let w = KeyBinding(mode: "apps", mods: [], keyName: "w", keyCodes: [13], dispatch: Dispatch(name: "chutney_launch_or_focus", args: ["com.mitchellh.ghostty"]))
         let r = router(binds: [w], overview: CGRect(x: 0, y: 0, width: 100, height: 100), jump: true, jumpKeys: [13])
         r.publish { $0.keymode = "apps" }
         XCTAssertTrue(r.key(key(13, [], down: true), modifierOnlySinceDown: false))

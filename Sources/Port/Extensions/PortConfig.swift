@@ -9,8 +9,8 @@ extension Config {
         port[key].map { $0.isEmpty ? [] : $0.split(separator: ",").map(String.init) } ?? unset
     }
 
-    package var chutneyStyle: Bool {
-        get { bool("chutney_style", false) } set { set("chutney_style", newValue) }
+    package var chutneyMacOSAppearance: Bool {
+        get { bool("chutney_macos_appearance", false) } set { set("chutney_macos_appearance", newValue) }
     }
     package var chutneyTabBarDecorateIcon: Bool {
         get { bool("chutney_tab_bar_decorate_icon", false) } set { set("chutney_tab_bar_decorate_icon", newValue) }
@@ -26,9 +26,6 @@ extension Config {
     }
     package var chutneyHyperKey: String {
         get { port["chutney_hyper_key"] ?? "" } set { port["chutney_hyper_key"] = newValue }
-    }
-    package var chutneyHyperTap: String {
-        get { port["chutney_hyper_tap"] ?? "none" } set { port["chutney_hyper_tap"] = newValue }
     }
     package var chutneyMenuBar: Bool {
         get { bool("chutney_menu_bar", false) } set { set("chutney_menu_bar", newValue) }

@@ -44,23 +44,20 @@ package enum KeyboardOptions {
         let usage: UInt64
         package let label: String
         package let symbol: String
-        package let original: UInt16?
+        package let isModifier: Bool
     }
 
-    static let capsLockKeyCode: UInt16 = 57
-
     package static let hyperKeys: [HyperKey] = {
-        var keys = [HyperKey(name: "caps_lock", usage: capsLock, label: "Caps Lock", symbol: "⇪", original: capsLockKeyCode)]
+        var keys = [HyperKey(name: "caps_lock", usage: capsLock, label: "Caps Lock", symbol: "⇪", isModifier: false)]
         for (side, base) in [("left", UInt64(0)), ("right", UInt64(4))] {
             for (name, offset, symbol) in [("control", UInt64(0), "⌃"), ("shift", 1, "⇧"), ("option", 2, "⌥"), ("command", 3, "⌘")] {
                 keys.append(HyperKey(name: "\(side)_\(name)", usage: leftControl + base + offset,
-                                     label: "\(side.capitalized) \(symbol)", symbol: symbol, original: nil))
+                                     label: "\(side.capitalized) \(symbol)", symbol: symbol, isModifier: true))
             }
         }
-        let codes: [UInt16] = [122, 120, 99, 118, 96, 97, 98, 100, 101, 109, 103, 111]
-        for (i, code) in codes.enumerated() {
+        for i in 0..<12 {
             keys.append(HyperKey(name: "f\(i + 1)", usage: 0x7_0000_003A + UInt64(i), label: "F\(i + 1)",
-                                 symbol: "F\(i + 1)", original: code))
+                                 symbol: "F\(i + 1)", isModifier: false))
         }
         return keys
     }()
@@ -69,18 +66,6 @@ package enum KeyboardOptions {
 
     static func hyperKeyMapping(_ name: String) -> Mapping? {
         hyperKey(name).map { Mapping(src: $0.usage, dst: f18) }
-    }
-
-    static func toggleCapsLock() {
-        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(kIOHIDSystemClass))
-        guard service != 0 else { return }
-        defer { IOObjectRelease(service) }
-        var connect: io_connect_t = 0
-        guard IOServiceOpen(service, mach_task_self_, UInt32(kIOHIDParamConnectType), &connect) == KERN_SUCCESS else { return }
-        defer { IOServiceClose(connect) }
-        var on = false
-        IOHIDGetModifierLockState(connect, Int32(kIOHIDCapsLockState), &on)
-        IOHIDSetModifierLockState(connect, Int32(kIOHIDCapsLockState), !on)
     }
 
     static func hidutilJSON(_ m: [Mapping]) -> String {

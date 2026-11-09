@@ -144,7 +144,7 @@ final class GroupTests: MangoTestCase {
         XCTAssertEqual(strip?.frame.maxY ?? 0, c(r, 900_701).frame.minY, accuracy: 1,
                        "mango's: right on top of the bordered window")
         XCTAssertEqual(strip?.plain, true)
-        r.server.config.chutneyStyle = true
+        r.server.config.chutneyMacOSAppearance = true
         strip = r.server.clientDrawGroupBar(animating: [:]).first
         XCTAssertEqual(strip?.frame.maxY ?? 0, c(r, 900_701).frame.minY + BorderGeometry.cornerRadius, accuracy: 1,
                        "the port's: reaching under the window's corners")

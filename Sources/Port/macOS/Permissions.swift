@@ -103,9 +103,6 @@ final class PermissionsModel: ObservableObject {
     @Published var hyperKey: String? {
         didSet { if settings, hyperKey != oldValue { onChoice("chutney_hyper_key", hyperKey ?? "none") } }
     }
-    @Published var hyperTap = "none" {
-        didSet { if settings, hyperTap != oldValue { onChoice("chutney_hyper_tap", hyperTap) } }
-    }
     @Published var startAtLogin = false {
         didSet { if settings, startAtLogin != oldValue { onStartAtLogin(startAtLogin) } }
     }
@@ -130,10 +127,10 @@ public final class Permissions {
     public var installLoginService: () -> Void = {}
     public var firstStartDone: () -> Void = {}
     public struct Choices {
-        public var hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL
+        public var hyperKey: String?, startAtLogin: Bool, canSave: Bool, configURL: URL
 
-        public init(hyperKey: String?, hyperTap: String, startAtLogin: Bool, canSave: Bool, configURL: URL) {
-            self.hyperKey = hyperKey; self.hyperTap = hyperTap; self.startAtLogin = startAtLogin; self.canSave = canSave
+        public init(hyperKey: String?, startAtLogin: Bool, canSave: Bool, configURL: URL) {
+            self.hyperKey = hyperKey; self.startAtLogin = startAtLogin; self.canSave = canSave
             self.configURL = configURL
         }
     }
@@ -213,7 +210,6 @@ public final class Permissions {
         model.settings = false
         model.welcome = false
         model.hyperKey = c?.hyperKey
-        model.hyperTap = c?.hyperTap ?? "none"
         model.startAtLogin = c?.startAtLogin ?? false
         model.canSave = c?.canSave ?? false
         yourConfig = c?.configURL
@@ -233,8 +229,7 @@ public final class Permissions {
         if let url = firstStartConfig, let model {
             ConfigFiles.ensure(url)
             let key = model.hyperKey ?? "caps_lock"
-            let quickPress = KeyboardOptions.hyperKey(key)?.original != nil
-            ConfigFiles.setHyperKey(key, tap: quickPress ? model.hyperTap : "none", configURL: url)
+            ConfigFiles.setHyperKey(key, configURL: url)
             if model.startAtLogin { installLoginService() }
             firstStartConfig = nil
             yourConfig = url
@@ -387,7 +382,7 @@ private struct FirstStartChoices: View {
                         Divider()
                         Text("Caps Lock (recommended)").tag(Optional("caps_lock"))
                         Divider()
-                        ForEach(KeyboardOptions.hyperKeys.filter { $0.original == nil }, id: \.name) { k in
+                        ForEach(KeyboardOptions.hyperKeys.filter(\.isModifier), id: \.name) { k in
                             Text(k.label).tag(Optional(k.name))
                         }
                         Divider()
@@ -397,18 +392,6 @@ private struct FirstStartChoices: View {
                     }
                     .labelsHidden()
                     .fixedSize()
-                }
-                if let key = model.hyperKey.flatMap(KeyboardOptions.hyperKey), key.original != nil {
-                    GridRow {
-                        Text("Quick Press")
-                        Picker("", selection: $model.hyperTap) {
-                            Text("Does Nothing").tag("none")
-                            Text(key.name == "caps_lock" ? "Toggles Caps Lock" : "Sends \(key.label)").tag("original")
-                            Text("Escape").tag("escape")
-                        }
-                        .labelsHidden()
-                        .fixedSize()
-                    }
                 }
             }
             .padding(.leading, 4)

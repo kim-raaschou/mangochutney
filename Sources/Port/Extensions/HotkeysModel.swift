@@ -18,7 +18,7 @@ struct HotkeysContext: Equatable {
 }
 
 struct HotkeysAppStep: Equatable {
-    var rule: FocusAppRule
+    var rule: LaunchOrFocusRule
     var windows: Int
     var inApp: Bool
 }
@@ -127,7 +127,7 @@ final class HotkeysModel: ObservableObject {
             if r.dispatch == "setkeymode", r.args.first == "default", seen.contains(place) { continue }
             var action = r.action
             var names: [String] = []
-            if r.dispatch == "chutney_focus_app", let id = r.args.first {
+            if r.dispatch == "chutney_launch_or_focus", let id = r.args.first {
                 if let name = appName(id) {
                     action = "focus or open \(name)"
                     names.append(name)
@@ -142,7 +142,7 @@ final class HotkeysModel: ObservableObject {
                 row = HotkeyRow(id: row.id + "|" + r.keys, kind: row.kind, section: row.section, keys: keys,
                                 action: action, state: state, enabled: enabled)
             }
-            if r.dispatch == "chutney_focus_app", let id = r.args.first {
+            if r.dispatch == "chutney_launch_or_focus", let id = r.args.first {
                 row.iconPath = appPath(id)
                 row.appID = id
                 row.place = places[id]
@@ -180,7 +180,7 @@ final class HotkeysModel: ObservableObject {
     func setApps(_ apps: [HotkeysApp]) {
         let useCount = Dictionary(apps.map { ($0.bundleID, $0.useCount) }, uniquingKeysWith: max)
         var bound = Set<String>()
-        for i in rows.indices where rows[i].dispatch == "chutney_focus_app" {
+        for i in rows.indices where rows[i].dispatch == "chutney_launch_or_focus" {
             guard let id = rows[i].args.first else { continue }
             bound.insert(id)
             rows[i].useCount = useCount[id] ?? 0
@@ -355,7 +355,7 @@ final class HotkeysModel: ObservableObject {
         return (words, argument)
     }
 
-    static let fractionArgument: Set<String> = ["set_proportion", "chutney_set_proportion_all"]
+    static let fractionArgument: Set<String> = ["set_proportion"]
 
     static func takesValue(_ r: HotkeyRow) -> Bool {
         guard case .binding(let d, _) = r.kind else { return false }
@@ -436,7 +436,7 @@ final class HotkeysModel: ObservableObject {
              "tag_special_tag", "focusid":
             return (nil, c.hasFocused)
         case "setlayout": return (a0 == c.layout ? "●" : nil, true)
-        case "scroller_stack", "set_proportion", "switch_proportion_preset", "chutney_set_proportion_all":
+        case "scroller_stack", "set_proportion", "switch_proportion_preset":
             return (nil, c.hasFocused && scrollerLayouts.contains(c.layout))
         case "dwindle_toggle_split_direction", "dwindle_split_horizontal", "dwindle_split_vertical",
              "dwindle_toggle_current_split":
@@ -492,8 +492,7 @@ final class HotkeysModel: ObservableObject {
         case "move_client", "exchange_client", "zoom": return "move swap window"
         case "movewin", "smartmovewin", "centerwin": return "move position window"
         case "resizewin", "smartresizewin", "setmfact", "set_proportion", "switch_proportion_preset": return "resize size width"
-        case "chutney_set_proportion_all": return "resize size width all every"
-        case "spawn", "spawn_shell", "spawn_on_empty", "chutney_focus_app": return "app open launch start run"
+        case "spawn", "spawn_shell", "spawn_on_empty", "chutney_launch_or_focus": return "app open launch start run"
         case "setlayout", "switch_layout": return "layout arrange"
         case "toggleoverview", "enteroverview", "overcircle": return "expose mission control all windows"
         case "togglejump": return "jump hint label window"
@@ -519,7 +518,7 @@ final class HotkeysModel: ObservableObject {
         if ["drag", "scroll", "swipe", "click"].contains(where: r.keys.contains) { return "Mouse & trackpad" }
         switch r.dispatch {
         case "toggleoverview", "enteroverview", "leaveoverview", "overcircle": return "Windows"
-        case "spawn", "spawn_shell", "spawn_on_empty", "chutney_focus_app": return "Apps"
+        case "spawn", "spawn_shell", "spawn_on_empty", "chutney_launch_or_focus": return "Apps"
         case "focusdir", "focus_window_or_workspace", "focusstack", "focuslast", "togglejump", "switcher",
              "focusmon", "viewcrossmon": return "Focus"
         case "move_client", "exchange_client", "zoom", "smartmovewin", "smartresizewin", "movewin", "resizewin",
@@ -528,7 +527,7 @@ final class HotkeysModel: ObservableObject {
              "viewtoright_have_client", "viewprev_have_client", "viewnext_have_client", "tagtoleft", "tagtoright",
              "toggle_special_tag", "tag_special_tag", "comboview": return "Tags"
         case "switch_layout", "setlayout", "incnmaster", "setmfact", "incgaps", "togglegaps", "switch_proportion_preset",
-             "set_proportion", "chutney_set_proportion_all", "dwindle_toggle_split_direction": return "Layout"
+             "set_proportion", "dwindle_toggle_split_direction": return "Layout"
         case "togglefloating", "toggle_all_floating", "togglefullscreen", "togglefakefullscreen", "togglemaximizescreen",
              "toggleglobal", "toggleoverlay", "killclient", "minimized", "restore_minimized", "toggle_scratchpad",
              "toggle_named_scratchpad": return "Window"

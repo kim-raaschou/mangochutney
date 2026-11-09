@@ -18,14 +18,6 @@ enum PortOptions {
             config.chutneyHyperKey = v == "none" ? "" : v
             return .applied
         }
-        t["chutney_hyper_tap"] = { config, value in
-            let v = value.lowercased()
-            guard ["none", "original", "escape"].contains(v) else {
-                return .invalid("Invalid chutney_hyper_tap: \(value) (none, original or escape)")
-            }
-            config.chutneyHyperTap = v
-            return .applied
-        }
         t["chutney_menu_bar"] = O.bool(\.chutneyMenuBar)
         t["chutney_menu_bar_tag_style"] = { config, value in
             let v = value.lowercased()
@@ -50,7 +42,7 @@ enum PortOptions {
         }
         t["chutney_menu_bar_layout"] = O.bool(\.chutneyMenuBarLayout)
         t["chutney_menu_bar_mode"] = O.bool(\.chutneyMenuBarMode)
-        t["chutney_style"] = O.bool(\.chutneyStyle)
+        t["chutney_macos_appearance"] = O.bool(\.chutneyMacOSAppearance)
         t["chutney_tab_bar_decorate_icon"] = O.bool(\.chutneyTabBarDecorateIcon)
         t["chutney_group_bar_decorate_icon"] = O.bool(\.chutneyGroupBarDecorateIcon)
         t["chutney_tab_bar_shortcuts"] = O.bool(\.chutneyTabBarShortcuts)

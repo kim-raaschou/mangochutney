@@ -168,11 +168,11 @@ public final class HotkeysPalette {
         c.minimizedCount = server.clients.filter(\.isMinimized).count
         c.overview = server.overviewState != nil
         c.gaps = server.enableGaps
-        for r in server.shortcutRows where r.dispatch == "chutney_focus_app" {
+        for r in server.shortcutRows where r.dispatch == "chutney_launch_or_focus" {
             guard let app = r.args.first?.lowercased(), c.appSteps[app] == nil else { continue }
             let windows = server.appWindowsInGridOrder(app).map(\.id)
             let current = server.focused?.id
-            let rule = FocusAppRule.decide(windows: windows, current: current, recent: server.focusHistory)
+            let rule = LaunchOrFocusRule.decide(windows: windows, current: current, recent: server.focusHistory)
             c.appSteps[app] = HotkeysAppStep(rule: rule, windows: windows.count,
                                              inApp: current.map(windows.contains) ?? false)
         }

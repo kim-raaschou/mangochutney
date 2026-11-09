@@ -50,8 +50,7 @@ A window says what Mango Chutney needs and opens the right page of System Settin
   Without it the overview moves the windows themselves. macOS asks to reopen the app once it is
   on; "Continue without Screen Recording" stops the asking.
 - **Your Hyper key**, which must be chosen before Continue, as Raycast's Hyper Key: Caps Lock
-  (recommended), a left or right ⌃ ⇧ ⌥ ⌘, or F1–F12. For Caps Lock and the function keys,
-  **Quick Press**: what the key does pressed alone (nothing, the key itself, or Escape).
+  (recommended), a left or right ⌃ ⇧ ⌥ ⌘, or F1–F12.
 - **Start Mango Chutney at login**, off unless ticked (later: Settings, or `mmsg service install`).
 
 Nothing is written and no key is moved before Continue: Mango Chutney waits for your choice
@@ -148,12 +147,10 @@ the `chutney_hyper_key` line in `chutney_menu.conf`. Settings can keep a key onl
 | :--- | :--- | :--- |
 | `chutney_hyper_modifier` | `super+ctrl+alt` | What `HYPER` means in a binding, in mango's modifier names: ⌃⌥⌘. Leave `shift` out if you use `HYPER+SHIFT` bindings, as the default config does. |
 | `chutney_hyper_key` | unset (the first start: your choice) | One key held as `HYPER`, as Raycast's Hyper Key: `caps_lock`; `left_` or `right_` `control`, `shift`, `option` or `command`; `f1` … `f12`. That key no longer does what it did (Caps Lock types no capitals). Unset: hold the modifiers together. |
-| `chutney_hyper_tap` | `none` | Raycast's Quick Press: Caps Lock or a function key that is Hyper, pressed and let go alone: `none`, `original` (Caps Lock's lock, or the function key) or `escape`. A modifier has none. |
 
 ```ini
-# Caps Lock held is Hyper; tapped alone it is Escape
+# Caps Lock held is Hyper
 chutney_hyper_key=caps_lock
-chutney_hyper_tap=escape
 ```
 
 mango's own `xkb_rules_options=caps:hyper` makes Caps Lock Hyper too.
@@ -172,7 +169,7 @@ others dimmed: macOS draws the same item on every display. Its menu holds:
 - Reload Config (⌘R). Your config opens from Settings (**Open Your Config**).
 - At the bottom, the version running (as `mango -v` and `mmsg get version`).
 - **Settings… (⌘,)**, the first start's window, in two tabs. **General**: the permissions, your
-  Hyper key and Quick Press, the two keys to remember and Start at Login, then **Your config**:
+  Hyper key, the two keys to remember and Start at Login, then **Your config**:
   open it, mango's documentation (every key the config has) and this guide. **Look**: the gaps
   (inner and outer, with a preview at the screen's scale; on a grid tag only the direction
   mango's grid reads, its horizontal gaps all round, or vertical_grid's vertical ones;
@@ -212,8 +209,8 @@ and installed app, searched as you type.
   one row, and the footer says what Return does now ("go to Arc on tag 2").
 - **Without a search** the bindings are grouped by what they do; the rows used most come first.
   Nothing scrolls: a long group gets two columns.
-- **A number after a colon** is a value: `every col :60` sets every column to 60 % with
-  `chutney_set_proportion_all`, `width :0.5` the focused one with `set_proportion`.
+- **A number after a colon** is a value: `width :60` sets the focused column to 60 % with
+  `set_proportion`.
 - The footer shows the binding's key, to learn it for next time.
 
 Keys: ↑ ↓ (or ⇥, ⌃N/⌃P) move, Return runs, → opens a group, ← or ⌫ goes back, Esc clears the
@@ -238,7 +235,7 @@ Both palettes look as Spotlight does: mango has no palette whose look they could
 
 ## One key per app
 
-`chutney_focus_app` gives an app a key of its own, after AeroControl. The app's windows are looked
+`chutney_launch_or_focus` gives an app a key of its own, after AeroControl. The app's windows are looked
 for on every tag and monitor (not minimized, hidden or on the special tag).
 
 | The app has | The key |
@@ -255,9 +252,9 @@ flag) lets the app's key and the mode's exit share the key:
 ```ini
 bind=HYPER,a,setkeymode,apps
 key_mode=apps
-bindc=none,s,chutney_focus_app,com.apple.Safari
+bindc=none,s,chutney_launch_or_focus,com.apple.Safari
 bindc=none,s,setkeymode,default
-bindc=none,v,chutney_focus_app,com.microsoft.VSCode
+bindc=none,v,chutney_launch_or_focus,com.microsoft.VSCode
 bindc=none,v,setkeymode,default
 bind=none,Escape,setkeymode,default
 key_mode=default
@@ -269,9 +266,8 @@ Hyper A, then S: Safari. An app's bundle id: `osascript -e 'id of app "Safari"'`
 
 | Command | Param | Description |
 | :--- | :--- | :--- |
-| `chutney_focus_app` | `bundle id or app name`[, `command`] | One key per app: start it or go to its window. The command, when given, starts it. |
+| `chutney_launch_or_focus` | `bundle id or app name`[, `command`] | One key per app: start it or go to its window. The command, when given, starts it. |
 | `chutney_restart` | - | mango's `quit`, with hidden windows left hidden: the next mango restores them (`make install` and `mmsg service restart` use it). |
-| `chutney_set_proportion_all` | [`proportion`] | `set_proportion` for every window of the tag in view, in the scroller. Without a value, back to `scroller_default_proportion`. |
 | `chutney_keybindings` | - | The keybindings palette. |
 | `chutney_layout_switcher` | - | The layout switcher. |
 
@@ -283,7 +279,7 @@ files are in `~/.config/mango`, read in this order:
 | File | Written by | What |
 | :--- | :--- | :--- |
 | `config.conf` | you | Your config. The first start writes mango's own `assets/config.conf` with its bindings on Hyper, then Mango Chutney's own keys from their marker line to the end, then the first lines to try. Your own settings go there, between the line that reads `chutney_theme.conf` (so a colour of yours wins) and the one that reads `chutney_menu.conf`. |
-| `chutney_theme.conf` | Mango Chutney | With `chutney_style=1`, macOS's colours for mango's colour keys. Not for editing. |
+| `chutney_theme.conf` | Mango Chutney | With `chutney_macos_appearance=1`, macOS's colours for mango's colour keys. Not for editing. |
 | `chutney_menu.conf` | Mango Chutney | The menu's choices, read last, so they win. Delete a line to give the key back to `config.conf`. |
 
 A key set twice takes its last value. Bindings add up instead: of two on the same keys the first one
@@ -307,13 +303,13 @@ mango's [Theming](https://mangowm.github.io/docs/visuals/theming). These are the
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `chutney_style` | `0` (the default config: `1`) | The tab and group bars, jump labels and switcher in the macOS look, wherever no `*_decorate_*` key sets mango's; mango's colours in macOS's; the borders' corners as the windows' own. The bars, the switcher and the palettes (always) stand on Liquid Glass on macOS 26 and later, on the system's blur before it. |
+| `chutney_macos_appearance` | `0` (the default config: `1`) | The tab and group bars, jump labels and switcher in the macOS look, wherever no `*_decorate_*` key sets mango's; mango's colours in macOS's; the borders' corners as the windows' own. The bars, the switcher, the config error bar and the palettes (always) stand on Liquid Glass on macOS 26 and later, on the system's blur before it. |
 | `chutney_overlap_warning` | `0` | A tiled window its app keeps larger than its tile (Claude, VS Code and other apps with a minimum size) goes over its neighbour, as always; with this key the menu bar draws its tag in orange. The menu says which windows go over by how much, and offers to move the one that goes over most to the first empty tag (`tagsilent`) or float it (`togglefloating`), each one of mango's commands run when picked. |
 | `chutney_tab_bar_decorate_icon` | `0` | In mango's tab bar (`monocle_tab_mode`, `deck_tab_mode`): the app's icon before each tab's title. |
 | `chutney_group_bar_decorate_icon` | `0` | In mango's group bar: the app's icon before each member's title. |
 | `chutney_tab_bar_shortcuts` | `0` | ⌘1–9 picks a tab while a tab bar is shown; the numbers show while ⌘ is held. |
 
-**Colours.** With `chutney_style=1` Mango Chutney writes `chutney_theme.conf`, and again when the
+**Colours.** With `chutney_macos_appearance=1` Mango Chutney writes `chutney_theme.conf`, and again when the
 accent colour or light/dark mode changes, then reloads the config: `focus_color` and `split_color`
 are your accent colour, `drop_color` too at mango's alpha, `border_color` the system grey,
 `root_color` the window background, and `urgent_color`, `maximized_screen_color`,
@@ -321,7 +317,7 @@ are your accent colour, `drop_color` too at mango's alpha, `border_color` the sy
 teal. A colour of your own goes after the `source_optional=chutney_theme.conf` line, and wins.
 
 **Corners.** macOS cannot clip a window as mango clips a Wayland surface, so a border is drawn
-around the window. With `chutney_style=1` its inner edge follows the window's own corners: 16
+around the window. With `chutney_macos_appearance=1` its inner edge follows the window's own corners: 16
 points on macOS 27 and 10 on Sonoma and Sequoia (on macOS 26 the corners vary from window to window,
 so some will not match). Without it the corners are mango's `border_radius`.
 

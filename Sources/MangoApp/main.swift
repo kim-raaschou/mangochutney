@@ -30,12 +30,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Permissions.shared.currentChoices = { [weak self] in
             let login = FileManager.default.fileExists(atPath: Self.loginPlist)
             guard let server = self?.server else {
-                return .init(hyperKey: nil, hyperTap: "none", startAtLogin: login, canSave: false,
+                return .init(hyperKey: nil, startAtLogin: login, canSave: false,
                              configURL: self?.configPath ?? ConfigParser.defaultConfigURL())
             }
             let key = server.config.chutneyHyperKey
             let menu = MenuSave.url(server.config, configURL: server.configURL)
-            return .init(hyperKey: key.isEmpty ? nil : key, hyperTap: server.config.chutneyHyperTap, startAtLogin: login,
+            return .init(hyperKey: key.isEmpty ? nil : key, startAtLogin: login,
                          canSave: menu != nil, configURL: server.configURL)
         }
         Permissions.shared.saveChoice = { [weak self] key, value in self?.saveMenuChoice(key, value) }
@@ -433,7 +433,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func saveMenuChoice(_ key: String, _ value: String) {
         guard let server, let url = MenuSave.url(server.config, configURL: server.configURL) else { return }
-        let now = key == "chutney_hyper_key" ? server.config.chutneyHyperKey : server.config.chutneyHyperTap
+        let now = server.config.chutneyHyperKey
         guard value != now, !(value == "none" && now.isEmpty) else { return }
         MenuSave.set(key, value, in: url)
         server.reloadConfig()
@@ -523,10 +523,10 @@ if check {
             print("warning: chutney_menu_config: \(menu.lastPathComponent) is saved to but not read; end the config with source_optional=\(menu.lastPathComponent)")
         }
     }
-    if parsed.config.chutneyStyle {
+    if parsed.config.chutneyMacOSAppearance {
         let theme = ChutneyTheme.url(configURL: url)
         if !parsed.sourcedFiles.contains(where: { $0.standardizedFileURL == theme }) {
-            print("warning: chutney_style: \(theme.lastPathComponent) is written but not read; add source_optional=\(theme.lastPathComponent) before the menu's source_optional line")
+            print("warning: chutney_macos_appearance: \(theme.lastPathComponent) is written but not read; add source_optional=\(theme.lastPathComponent) before the menu's source_optional line")
         }
     }
     let sections: [(ConfigNote.Kind, String)] = [

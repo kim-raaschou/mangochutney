@@ -69,8 +69,8 @@ Porten kalder mangos handlere, som wlroots gør: `handleClientMap`, `handleClien
   hovedtrådens vagt (`MainThreadWatchdog`, kun med `-d`).
 - **Tabeller:** `MangoCompat` (hvad macOS ikke kan, til `mango -p` og docs).
 
-**Udvidelserne (`Port/Extensions`)**, slået fra uden deres nøgle: `chutney_focus_app`,
-hotkeys- og layout-paletterne, menulinjen, `chutney_style` og temaet, ⌘1–9 i fanebjælken,
+**Udvidelserne (`Port/Extensions`)**, slået fra uden deres nøgle: `chutney_launch_or_focus`,
+hotkeys- og layout-paletterne, menulinjen, `chutney_macos_appearance` og temaet, ⌘1–9 i fanebjælken,
 `chutney_hyper_modifier`. Nøglerne står i `PortOptions` og `PortConfig`.
 
 ## Gjort

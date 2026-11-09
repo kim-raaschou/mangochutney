@@ -18,20 +18,20 @@ final class DecorateTests: MangoTestCase {
         XCTAssertEqual(parsed.config.titleMessageBardata.paddingX, 7)
     }
 
-    func testChutneyStyleLeavesTheRestToMacOSAndWithoutItMangosDefaults() {
+    func testChutneyMacOSAppearanceLeavesTheRestToMacOSAndWithoutItMangosDefaults() {
         let r = EngineRig()
-        r.server.config.chutneyStyle = true
+        r.server.config.chutneyMacOSAppearance = true
         r.server.config.tabbardata.bgColor = parseColor("0x112233ff")
         var look = r.server.mangoBarDecorationApplyConfig(r.server.config.tabbardata, mango: .mangoTabBar)
         XCTAssertEqual(look.bgColor, parseColor("0x112233ff"), "a key set wins")
-        XCTAssertNil(look.fontDesc, "chutney_style: the rest is drawn the macOS way")
-        r.server.config.chutneyStyle = false
+        XCTAssertNil(look.fontDesc, "chutney_macos_appearance: the rest is drawn the macOS way")
+        r.server.config.chutneyMacOSAppearance = false
         look = r.server.mangoBarDecorationApplyConfig(r.server.config.tabbardata, mango: .mangoTabBar)
         XCTAssertEqual(look.fontDesc, "monospace Bold 13", "mango's default")
         XCTAssertEqual(look.focusFgColor, parseColor("0x7aa2f7ff"))
         XCTAssertEqual(look.bgColor, parseColor("0x112233ff"))
         r.server.portHooks = PortHooks()
-        r.server.config.chutneyStyle = true
+        r.server.config.chutneyMacOSAppearance = true
         XCTAssertEqual(r.server.mangoBarDecorationApplyConfig(DecorateStyle(), mango: .mangoJumpLabel), .mangoJumpLabel, "without the port: mango")
     }
 
@@ -47,7 +47,7 @@ final class DecorateTests: MangoTestCase {
 
 @MainActor
 final class BorderRadiusTests: MangoTestCase {
-    func testMangosRadiusUnlessChutneyStyle() {
+    func testMangosRadiusUnlessChutneyMacOSAppearance() {
         let r = EngineRig()
         r.server.config.borderRadius = 6
         r.server.config.borderpx = 2
@@ -62,9 +62,9 @@ final class BorderRadiusTests: MangoTestCase {
             return fake.borderSpecs.first { $0.id == c.id }?.radius ?? 0
         }
         XCTAssertEqual(radius(), 6)
-        r.server.config.chutneyStyle = true
+        r.server.config.chutneyMacOSAppearance = true
         XCTAssertEqual(r.server.portHooks.borderRadius?(r.server, c), BorderGeometry.cornerRadius)
-        r.server.config.chutneyStyle = false
+        r.server.config.chutneyMacOSAppearance = false
         c.isFullscreen = true
         XCTAssertEqual(radius(), 0, "mango: none in fullscreen")
         c.isFullscreen = false

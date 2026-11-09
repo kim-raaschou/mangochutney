@@ -106,9 +106,9 @@ final class HotkeysPaletteTests: MangoTestCase {
         chutney_hyper_modifier=super+ctrl+alt
         bind=hyper,a,setkeymode,apps
         key_mode=apps
-        bindc=none,a,chutney_focus_app,company.thebrowser.Browser
+        bindc=none,a,chutney_launch_or_focus,company.thebrowser.Browser
         bindc=none,a,setkeymode,default
-        bindc=none,v,chutney_focus_app,com.microsoft.VSCode
+        bindc=none,v,chutney_launch_or_focus,com.microsoft.VSCode
         bindc=none,v,setkeymode,default
         bind=none,Escape,setkeymode,default
         key_mode=default
@@ -220,7 +220,7 @@ final class HotkeysPaletteTests: MangoTestCase {
     func testInstalledAppsAreFoundOnlyBySearchAndNotTwice() {
         let conf = """
         chutney_hyper_modifier=super+ctrl+alt
-        bind=hyper,a,chutney_focus_app,company.thebrowser.Browser
+        bind=hyper,a,chutney_launch_or_focus,company.thebrowser.Browser
         """
         let installed = [HotkeysApp(name: "Arc", path: "/Applications/Arc.app", bundleID: "company.thebrowser.Browser",
                                     useCount: 900),
@@ -237,7 +237,7 @@ final class HotkeysPaletteTests: MangoTestCase {
                        "a window titled with its app's name is the app's row, not one of its own")
         m.query = "arc"
         guard m.items.count == 1, case .row(let arc) = m.items[0] else { return XCTFail("Arc once: its binding, not its window") }
-        XCTAssertEqual(arc.dispatch, "chutney_focus_app")
+        XCTAssertEqual(arc.dispatch, "chutney_launch_or_focus")
         XCTAssertEqual(arc.useCount, 900, "ranked by the app's use, as the app would be")
         XCTAssertNotNil(arc.iconPath)
         XCTAssertEqual(arc.place, "tag 2", "where its window is, as the window's row would say")
@@ -296,12 +296,12 @@ final class HotkeysPaletteTests: MangoTestCase {
     }
 
     func testAppsWindowsAndAppBindingsShowTheirAppsIcon() {
-        let conf = "chutney_hyper_modifier=super+ctrl+alt\nbind=hyper,a,chutney_focus_app,company.thebrowser.Browser\nbind=hyper,q,killclient,\n"
+        let conf = "chutney_hyper_modifier=super+ctrl+alt\nbind=hyper,a,chutney_launch_or_focus,company.thebrowser.Browser\nbind=hyper,q,killclient,\n"
         let m = model(conf, apps: ["company.thebrowser.Browser": "Arc"],
                       windows: [HotkeysWindow(id: 3, app: "Mail", bundleID: "com.apple.mail", title: "Inbox", tag: 1,
                                               appPath: "/System/Applications/Mail.app")],
                       installed: [HotkeysApp(name: "Notes", path: "/System/Applications/Notes.app", bundleID: "com.apple.Notes")])
-        XCTAssertEqual(m.rows.first { $0.dispatch == "chutney_focus_app" }?.iconPath, "/Applications/Arc.app")
+        XCTAssertEqual(m.rows.first { $0.dispatch == "chutney_launch_or_focus" }?.iconPath, "/Applications/Arc.app")
         XCTAssertNil(m.rows.first { $0.dispatch == "killclient" }?.iconPath, "a binding of mango's own: its symbol")
         XCTAssertEqual(m.rows.first { $0.kind == .window(3) }?.iconPath, "/System/Applications/Mail.app")
         m.query = "notes"
@@ -323,7 +323,7 @@ extension HotkeysPaletteTests {
     func testAnAppsKeySaysWhatReturnDoes() {
         let ws = [HotkeysWindow(id: 1, app: "Arc", bundleID: "a", title: "x", tag: 1),
                   HotkeysWindow(id: 2, app: "Arc", bundleID: "a", title: "y", tag: 2)]
-        func next(_ rule: FocusAppRule, _ n: Int, inApp: Bool = false) -> String {
+        func next(_ rule: LaunchOrFocusRule, _ n: Int, inApp: Bool = false) -> String {
             HotkeysModel.next(HotkeysAppStep(rule: rule, windows: n, inApp: inApp), name: "Arc", windows: ws, viewed: [1])
         }
         XCTAssertEqual(next(.launch, 0), "start Arc")
@@ -362,18 +362,16 @@ final class HotkeysTypedArgumentTests: MangoTestCase {
     }
 
     func testOfferedWithoutAKeyAndRunWithTheTypedShare() throws {
-        let m = model("bind=alt,e,set_proportion,1.0")
-        XCTAssertFalse(m.items.contains { if case .group("Layout", 2) = $0 { return true } else { return false } },
+        let m = model("bind=alt,s,spawn,open -a Notes")
+        XCTAssertFalse(m.items.contains { if case .group("Layout", 1) = $0 { return true } else { return false } },
                        "not among the groups")
-        m.query = "every col w:60"
+        m.query = "column width w:60"
         let r = try XCTUnwrap(selected(m))
-        XCTAssertEqual(r.dispatch, "chutney_set_proportion_all")
+        XCTAssertEqual(r.dispatch, "set_proportion")
         XCTAssertEqual(r.keys, [])
         XCTAssertEqual(m.typedArguments(r), ["0.6"], "over 1: a percentage")
         m.query = "column width :0.5"
         XCTAssertEqual(m.typedArguments(try XCTUnwrap(selected(m))), ["0.5"])
-        m.query = "every col"
-        XCTAssertNil(m.typedArguments(try XCTUnwrap(selected(m))), "no number: its own arguments")
     }
 
     func testTheShareStaysInMangosRange() throws {

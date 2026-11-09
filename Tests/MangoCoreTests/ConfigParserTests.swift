@@ -74,7 +74,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual([c.animationDurationMove, c.animationDurationOpen, c.animationDurationTag], [500, 400, 350])
         XCTAssertEqual(c.focuscolor, parseColor("0xc9b890ff"))
         XCTAssertFalse(c.chutneyMenuBar)
-        XCTAssertFalse(c.chutneyStyle, "mango's look unless chutney_style is set")
+        XCTAssertFalse(c.chutneyMacOSAppearance, "mango's look unless chutney_macos_appearance is set")
         let reload = c.keyBindings.first { $0.dispatch.name == "reload_config" }
         XCTAssertEqual(reload?.mods, [.superKey, .ctrl, .alt], "mango's keys on Hyper")
         XCTAssertEqual(reload?.keyName, "r")
@@ -95,7 +95,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(c.chutneyMenuConfig, "chutney_menu.conf")
         XCTAssertEqual([c.animationDurationMove, c.animationDurationOpen, c.animationDurationTag], [500, 400, 350], "mango's")
         XCTAssertTrue(c.sloppyfocus, "mango's")
-        XCTAssertTrue(c.chutneyStyle)
+        XCTAssertTrue(c.chutneyMacOSAppearance)
         XCTAssertTrue(c.chutneyTabBarDecorateIcon)
         XCTAssertTrue(c.chutneyGroupBarDecorateIcon)
         XCTAssertTrue(c.chutneyTabBarShortcuts)

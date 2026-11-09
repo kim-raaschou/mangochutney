@@ -27,20 +27,20 @@ final class ChutneyThemeTests: MangoTestCase {
     }
 
     func testWrittenOnlyWhenItChanges() {
-        let config = write("config.conf", "chutney_style=1\nsource_optional=chutney_theme.conf\n")
+        let config = write("config.conf", "chutney_macos_appearance=1\nsource_optional=chutney_theme.conf\n")
         XCTAssertTrue(ChutneyTheme.sync(configURL: config, resolve: { _ in self.purple }))
         XCTAssertFalse(ChutneyTheme.sync(configURL: config, resolve: { _ in self.purple }))
         XCTAssertTrue(MenuSave.isOwnWrite(ChutneyTheme.url(configURL: config)))
     }
 
-    func testWithoutChutneyStyleNoFile() {
+    func testWithoutChutneyMacOSAppearanceNoFile() {
         let config = write("config.conf", "focus_color=0xc9b890ff\n")
         XCTAssertFalse(ChutneyTheme.sync(configURL: config, resolve: { _ in self.purple }))
         XCTAssertFalse(FileManager.default.fileExists(atPath: ChutneyTheme.url(configURL: config).path))
     }
 
     func testTheThemeWinsOverMangosExampleAndALaterLineWinsOverIt() {
-        let config = write("config.conf", "chutney_style=1\nfocus_color=0xc9b890ff\nsource_optional=chutney_theme.conf\nborder_color=0x112233ff\n")
+        let config = write("config.conf", "chutney_macos_appearance=1\nfocus_color=0xc9b890ff\nsource_optional=chutney_theme.conf\nborder_color=0x112233ff\n")
         ChutneyTheme.sync(configURL: config, resolve: { _ in self.purple })
         let c = ConfigParser.parseConfig(fileAt: config).config
         XCTAssertEqual(c.focuscolor, parseColor("0x9933ccff")!)

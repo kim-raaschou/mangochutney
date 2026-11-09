@@ -21,7 +21,6 @@ final class InputRouter: @unchecked Sendable {
         var switcherActive = false
         var tagCombo = false
         var capsHyper: Modifiers?
-        var hyperTap: HyperTap = .none
         var wantsMouseMoved = false
         var menuBarTags: [MenuBarTagHit] = []
         var tabShortcuts = 0
@@ -71,34 +70,16 @@ final class InputRouter: @unchecked Sendable {
     }
 
     private var hyperHeld = false
-    private var hyperAlone = false
-    enum HyperTap: Equatable {
-        case none
-        case key(UInt16)
-        case capsLock
-    }
-
-    var hyperTapped: (HyperTap) -> Void = { tap in
-        switch tap {
-        case .none: break
-        case .key(let code): KeyForward.postToFront(keyCode: code)
-        case .capsLock: KeyboardOptions.toggleCapsLock()
-        }
-    }
 
     func key(_ event: KeyEvent, modifierOnlySinceDown: Bool) -> Bool {
         var ev = event
         if let hyper = snapshot.capsHyper {
             if ev.keyCode == KeyboardOptions.hyperKeyCode && !ev.isModifierKey {
-                if ev.isDown && !ev.isRepeat { hyperAlone = true }
-                if !ev.isDown && hyperAlone && snapshot.hyperTap != .none { hyperTapped(snapshot.hyperTap) }
-                if !ev.isDown { hyperAlone = false }
                 hyperHeld = ev.isDown
                 if ev.isDown && !ev.isRepeat { lock.lock(); keyboard.lastHoldKeycode = ev.keyCode; lock.unlock() }
                 return true
             }
             if hyperHeld { ev.mods.formUnion(hyper) }
-            if ev.isDown { hyperAlone = false }
         } else {
             hyperHeld = false
         }
@@ -179,7 +160,6 @@ final class InputRouter: @unchecked Sendable {
         let s = snapshot
         var ev = event
         if hyperHeld, let hyper = s.capsHyper { ev.mods.formUnion(hyper) }
-        hyperAlone = false
         let p = ev.location, button = ev.button
         let mods = ev.mods
         if ev.isDown, button == 0, mods.isEmpty, let hit = s.menuBarTags.first(where: { $0.frame.contains(p) }) {

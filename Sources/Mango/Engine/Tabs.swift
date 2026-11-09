@@ -55,7 +55,7 @@ package extension MangoServer {
     }
 
     func mangoBarDecorationApplyConfig(_ set: DecorateStyle, mango: DecorateStyle) -> DecorateStyle {
-        // Port extension: not in mango. The port may draw the rest its own way (chutney_style).
+        // Port extension: not in mango. The port may draw the rest its own way (chutney_macos_appearance).
         if let ported = portHooks.overlayLook?(self, set) { return ported }
         return set.setValueDefault(from: mango)
     }

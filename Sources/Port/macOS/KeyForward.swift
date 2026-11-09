@@ -14,11 +14,4 @@ enum KeyForward {
         e.flags = flags
         e.postToPid(pid)
     }
-
-    static func postToFront(keyCode: UInt16) {
-        let source = CGEventSource(stateID: .hidSystemState)
-        for down in [true, false] {
-            CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: down)?.post(tap: .cgSessionEventTap)
-        }
-    }
 }

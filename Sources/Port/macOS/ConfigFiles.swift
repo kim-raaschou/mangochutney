@@ -30,15 +30,15 @@ public enum ConfigFiles {
 
     static let hyperKeyLine = "chutney_hyper_key=caps_lock\r\n"
 
-    static func setHyperKey(_ key: String, tap: String, configURL: URL) {
+    static func setHyperKey(_ key: String, configURL: URL) {
         guard let current = try? String(contentsOf: configURL, encoding: .utf8), current.contains(hyperKeyLine) else {
             wlrLog(.info, "keys: no \(hyperKeyLine.trimmingCharacters(in: .newlines)) line in \(configURL.path); the Hyper key is left as it is")
             return
         }
-        let line = "chutney_hyper_key=\(key)\r\n" + (tap == "none" ? "" : "chutney_hyper_tap=\(tap)\r\n")
+        let line = "chutney_hyper_key=\(key)\r\n"
         do {
             try current.replacingOccurrences(of: hyperKeyLine, with: line).write(to: configURL, atomically: true, encoding: .utf8)
-            wlrLog(.info, "keys: Hyper is \(key), pressed alone: \(tap), in \(configURL.path)")
+            wlrLog(.info, "keys: Hyper is \(key), in \(configURL.path)")
         } catch {
             wlrLog(.info, "keys: could not write the config: \(error)")
         }

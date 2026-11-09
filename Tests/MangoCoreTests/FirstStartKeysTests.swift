@@ -57,11 +57,10 @@ final class FirstStartKeysTests: MangoTestCase {
         let shipped = try config()
         XCTAssertEqual(shipped.components(separatedBy: ConfigFiles.hyperKeyLine).count, 2, "once")
         let chosen = shipped.replacingOccurrences(of: ConfigFiles.hyperKeyLine,
-                                                  with: "chutney_hyper_key=right_option\r\nchutney_hyper_tap=escape\r\n")
+                                                  with: "chutney_hyper_key=right_option\r\n")
         let p = ConfigParser.parse(text: chosen, baseDirectory: resources, fileName: "config.conf")
         XCTAssertEqual(p.errors, [])
         XCTAssertEqual(p.config.chutneyHyperKey, "right_option")
-        XCTAssertEqual(p.config.chutneyHyperTap, "escape")
     }
 
     func testYourLinesComeAfterTheTheme() throws {
@@ -78,10 +77,9 @@ final class FirstStartKeysTests: MangoTestCase {
         defer { try? FileManager.default.removeItem(at: dir) }
         let url = dir.appendingPathComponent("config.conf")
         try config().write(to: url, atomically: true, encoding: .utf8)
-        ConfigFiles.setHyperKey("f5", tap: "original", configURL: url)
+        ConfigFiles.setHyperKey("f5", configURL: url)
         let p = ConfigParser.parseConfig(fileAt: url)
         XCTAssertEqual(p.config.chutneyHyperKey, "f5")
-        XCTAssertEqual(p.config.chutneyHyperTap, "original")
     }
 
     func testTheWatcherSeesAFileReplaced() throws {

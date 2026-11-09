@@ -73,7 +73,6 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_keybindings_spotlight_launch` | the installed applications (Spotlight's Applications) in the keybindings palette's search |
 | `chutney_hyper_key` | the key held as HYPER, as Raycast's Hyper Key: caps_lock, a left_ or right_ control, shift, option or command, f1 … f12 (macOS's own key mapping) |
 | `chutney_hyper_modifier` | what HYPER means in a bind |
-| `chutney_hyper_tap` | Caps Lock or a function key that is Hyper, pressed alone: none, original (the key itself) or escape |
 | `chutney_layout_switcher_keys` | the keys that move the layout switcher's selection: left,down,up,right (or h,j,k,l); the arrows always work |
 | `chutney_menu_bar` | menu-bar item with the current tags and layout |
 | `chutney_menu_bar_layout` | the layout's icon in the menu bar |
@@ -81,13 +80,12 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_menu_bar_mode` | the key mode in the menu bar, the default one too (0: only another mode) |
 | `chutney_menu_bar_tag_style` | the menu bar's tags: square, circle (SF Symbols numbers) or text |
 | `chutney_menu_config` | the file the menu's panel saves its settings in; the config reads it with source_optional, last |
-| `chutney_style` | bars, switcher and jump labels in the macOS style where no decorate key is set |
+| `chutney_macos_appearance` | bars, switcher and jump labels in the macOS style where no decorate key is set |
 | `chutney_tab_bar_decorate_icon` | the app's icon before each tab's title in the tab bar |
 | `chutney_group_bar_decorate_icon` | the app's icon before each title in the group bar |
 | `chutney_tab_bar_shortcuts` | ⌘1-9 picks a tab while a tab bar is shown |
-| `chutney_focus_app` (dispatcher) | one key per app: start it, or go to its window |
+| `chutney_launch_or_focus` (dispatcher) | one key per app: start it, or go to its window |
 | `chutney_restart` (dispatcher) | quit, with hidden windows left hidden for the next mango (make install, mmsg service restart) |
-| `chutney_set_proportion_all` (dispatcher) | set_proportion for every window of the tag in view; without a value, scroller_default_proportion |
 | `chutney_keybindings` (dispatcher) | the keybindings palette: search the bindings, move with the keys, Return runs one |
 | `chutney_layout_switcher` (dispatcher) | the layout switcher: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one |
 <!-- mango-compat:end -->
