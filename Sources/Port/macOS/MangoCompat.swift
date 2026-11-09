@@ -375,7 +375,6 @@ package struct MacConfigPort: ConfigPort {
 
     package func knowsDispatcher(_ name: String) -> Bool { MangoCompat.portDispatchers.contains(name) }
 
-    package func hyperModifier(_ config: Config) -> String { config.chutneyHyperModifier }
 
     package func keyCodes(_ name: String) -> [UInt16] { KeySyms.parseKey(forName: name) }
 

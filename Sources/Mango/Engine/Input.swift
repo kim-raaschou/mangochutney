@@ -31,9 +31,7 @@ package extension MangoServer {
             wantsMouseMoved: c.sloppyfocus || c.enableHotarea || c.cursorHideTimeout > 0 || hidden
                 || c.windowRules.contains { $0.confinePointer == true } || c.enableBorderResize,
             cursorHideOnKeypress: c.cursorHideOnKeypress && !hidden,
-            hoverResizeCursor: hoverResizeEdge.isEmpty || grab != nil ? nil : resizeCursorName(hoverResizeEdge, floating: hoverResizeFloating),
-            capsHyper: Self.xkbOptions(c.xkbRulesOptions).contains("caps:hyper")
-                ? Modifiers.parse("hyper", hyperModifier: c.hyperModifier) : nil))
+            hoverResizeCursor: hoverResizeEdge.isEmpty || grab != nil ? nil : resizeCursorName(hoverResizeEdge, floating: hoverResizeFloating)))
         publishGlobalKeys()
     }
 
@@ -50,7 +48,7 @@ package extension MangoServer {
         var keys: [GlobalKey] = []
         for r in rules {
             guard let spec = r.globalKeyBinding, let dash = spec.firstIndex(of: "-"),
-                  let mods = Modifiers.parse(String(spec[..<dash]), hyperModifier: config.hyperModifier) else { continue }
+                  let mods = Modifiers.parse(String(spec[..<dash])) else { continue }
             let name = String(spec[spec.index(after: dash)...]).trimmingCharacters(in: .whitespaces)
             guard let target = windows.first(where: {
                 $0 !== focusedNow && r.isWindowRuleMatches(appId: $0.bundleId, appName: $0.appName, title: $0.title)

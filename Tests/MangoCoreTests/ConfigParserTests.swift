@@ -76,7 +76,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertFalse(c.chutneyMenuBar)
         XCTAssertFalse(c.chutneyMacOSAppearance, "mango's look unless chutney_macos_appearance is set")
         let reload = c.keyBindings.first { $0.dispatch.name == "reload_config" }
-        XCTAssertEqual(reload?.mods, [.superKey, .ctrl, .alt], "mango's keys on Hyper")
+        XCTAssertEqual(reload?.mods, .hyper, "mango's keys on Hyper")
         XCTAssertEqual(reload?.keyName, "r")
         XCTAssertEqual(c.keyBindings.first { $0.dispatch.name == "view" }?.dispatch.args, ["1", "0"], "mango's own arguments")
     }
@@ -101,7 +101,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(c.chutneyTabBarShortcuts)
         XCTAssertEqual(c.chutneyHyperModifier, "super+ctrl+alt")
         let hotkeys = c.keyBindings.first { $0.dispatch.name == "chutney_keybindings" }
-        XCTAssertEqual(hotkeys?.mods, [.superKey, .ctrl, .alt], "on the Hyper layer")
+        XCTAssertEqual(hotkeys?.mods, .hyper, "on the Hyper layer")
         XCTAssertEqual(hotkeys?.keyName, "k")
         XCTAssertEqual(c.xkbRulesOptions, "", "Caps Lock as Hyper is chutney_hyper_key's")
         XCTAssertEqual(c.chutneyHyperKey, "caps_lock")
@@ -278,8 +278,8 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(b[1].mods, [.ctrl, .alt])
         XCTAssertEqual(b[2].mods, [])
         XCTAssertEqual(b[2].keyCodes, [96])
-        XCTAssertEqual(b[3].mods, [.ctrl, .alt])
-        XCTAssertEqual(b[4].mods, [.ctrl, .alt])
+        XCTAssertEqual(b[3].mods, .hyper, "mango's Mod3, not the hyper set")
+        XCTAssertEqual(b[4].mods, .hyper)
         XCTAssertEqual(parsed.errors.count, 1)
         XCTAssertEqual(parsed.errors[0].line, 7)
         XCTAssertTrue(parsed.errors[0].message.hasPrefix("Unknown modifier"))

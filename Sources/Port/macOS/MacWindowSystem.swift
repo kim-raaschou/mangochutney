@@ -443,8 +443,9 @@ class MacWindowSystem: WindowSystem {
     }
 
     func publishInput(_ state: InputState) {
-        let hyperKey = server.config.chutneyHyperKey
-        let hyperModifier = server.config.hyperModifier
+        let hyperKey = !server.config.chutneyHyperKey.isEmpty
+            || MangoServer.xkbOptions(server.config.xkbRulesOptions).contains("caps:hyper")
+        let hyper = KeyboardOptions.hyperSet(server.config)
         router.publish { s in
             s.keymode = state.keymode
             s.bindings = state.bindings
@@ -457,7 +458,8 @@ class MacWindowSystem: WindowSystem {
             s.overcircleActive = state.overcircleActive
             s.switcherActive = state.switcherActive
             s.tagCombo = state.tagCombo
-            s.capsHyper = state.capsHyper ?? (hyperKey.isEmpty ? nil : Modifiers.parse("hyper", hyperModifier: hyperModifier))
+            s.hyper = hyper
+            s.hyperKey = hyperKey
             s.wantsMouseMoved = state.wantsMouseMoved
             s.cursorHideOnKeypress = state.cursorHideOnKeypress
             s.hoverResizeCursor = state.hoverResizeCursor
@@ -488,7 +490,10 @@ class MacWindowSystem: WindowSystem {
 
     func askToCapture() { Permissions.shared.askForCapture() }
 
-    var modifiers: Modifiers { Modifiers(cgFlags: CGEventSource.flagsState(.combinedSessionState)) }
+    var modifiers: Modifiers {
+        KeyboardOptions.hyperMods(Modifiers(cgFlags: CGEventSource.flagsState(.combinedSessionState)),
+                                  hyper: KeyboardOptions.hyperSet(server.config), keyHeld: router.hyperKeyHeld)
+    }
 
     func setFrame(_ c: Client, _ frame: CGRect, size: Bool) {
         writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: frame, setSize: size)

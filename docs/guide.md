@@ -132,8 +132,10 @@ arrows (Spaces). That is why your config has them on Hyper: `var=mod,HYPER` and
 
 ## The Hyper key
 
-A Mac has no Hyper key. In a binding `HYPER` means the modifiers `chutney_hyper_modifier` names,
-held together, and `chutney_hyper_key` makes one key hold them: chosen on the first start, and
+A Mac has no Hyper key. `HYPER` in a binding is mango's own modifier (Mod3), and Mango Chutney
+gives it to you when you hold the modifiers `chutney_hyper_modifier` names, together. A binding
+written with exactly those modifiers and no `HYPER` is never reached (they are `HYPER`), and the
+log says so. `chutney_hyper_key` makes one key `HYPER`: chosen on the first start, and
 later in Settings (⌘, in the menu bar), the same window. It is done with macOS's own key mapping (`hidutil`),
 no Karabiner needed, and only Mango Chutney sees the key as Hyper. Key moves of your own in that
 mapping stay as they are, and are all that is left when Mango Chutney quits.

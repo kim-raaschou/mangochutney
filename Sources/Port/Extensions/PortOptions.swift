@@ -4,7 +4,7 @@ enum PortOptions {
         typealias O = ConfigOptions
         var t: [String: ConfigOptions.Setter] = [:]
         t["chutney_hyper_modifier"] = { config, value in
-            guard let mods = Modifiers.parse(value, hyperModifier: ""), !mods.isEmpty else {
+            guard let mods = Modifiers.parse(value), !mods.isEmpty, !mods.contains(.hyper) else {
                 return .invalid("Invalid chutney_hyper_modifier: \(value)")
             }
             config.chutneyHyperModifier = value

@@ -19,7 +19,7 @@ public final class HotkeysPalette {
         let config = server.config
         model.look = HotkeysLook(config: config)
         model.legend = ModifierLegend.text(config)
-        let hyper = Modifiers.parse(config.chutneyHyperModifier, hyperModifier: "") ?? []
+        let hyper = KeyboardOptions.hyperSet(config)
         model.onLayout = nil
         let apps = config.chutneyKeybindingsSpotlightLaunch ? SpotlightApps.shared : nil
         model.load(server.shortcutRows, hyper: hyper,

@@ -1,6 +1,5 @@
 import Foundation
 
-/// Not in mango: a Mac has no HYPER (Mod3) key; it is chutney_hyper_modifier.
 public struct Modifiers: OptionSet, Hashable, Sendable {
     public let rawValue: UInt8
     public init(rawValue: UInt8) { self.rawValue = rawValue }
@@ -9,8 +8,9 @@ public struct Modifiers: OptionSet, Hashable, Sendable {
     public static let shift = Modifiers(rawValue: 1 << 2)
     public static let alt = Modifiers(rawValue: 1 << 3)
     public static let fn = Modifiers(rawValue: 1 << 4)
+    public static let hyper = Modifiers(rawValue: 1 << 5)
 
-    public static func parse(_ s: String, hyperModifier: String = "super+ctrl+alt") -> Modifiers? {
+    public static func parse(_ s: String) -> Modifiers? {
         var result: Modifiers = []
         var matched = false
         for raw in s.split(separator: "+") {
@@ -22,10 +22,7 @@ public struct Modifiers: OptionSet, Hashable, Sendable {
             case "ctrl", "ctrl_l", "ctrl_r": result.insert(.ctrl); matched = true
             case "shift", "shift_l", "shift_r": result.insert(.shift); matched = true
             case "alt", "alt_l", "alt_r": result.insert(.alt); matched = true
-            case "hyper", "hyper_l", "hyper_r":
-                guard let h = parse(hyperModifier, hyperModifier: "") else { continue }
-                result.formUnion(h)
-                matched = true
+            case "hyper", "hyper_l", "hyper_r": result.insert(.hyper); matched = true
             default:
                 if tok.hasPrefix("code:"), let code = Int(tok.dropFirst(5)) {
                     switch code {
@@ -51,6 +48,7 @@ public struct Modifiers: OptionSet, Hashable, Sendable {
         if contains(.alt) { parts.append("ALT") }
         if contains(.shift) { parts.append("SHIFT") }
         if contains(.fn) { parts.append("FN") }
+        if contains(.hyper) { parts.append("HYPER") }
         return parts.isEmpty ? "NONE" : parts.joined(separator: "+")
     }
 }

@@ -64,6 +64,30 @@ package enum KeyboardOptions {
 
     package static func hyperKey(_ name: String) -> HyperKey? { hyperKeys.first { $0.name == name } }
 
+    /// The keys mango's HYPER (Mod3) is on a Mac: chutney_hyper_modifier.
+    package static func hyperSet(_ config: Config) -> Modifiers {
+        (Modifiers.parse(config.chutneyHyperModifier) ?? []).subtracting(.hyper)
+    }
+
+    /// Bindings no keys can reach: their modifiers hold the whole hyper set, which is HYPER when held.
+    static func unreachable(_ config: Config) -> [String] {
+        let h = hyperSet(config)
+        guard !h.isEmpty else { return [] }
+        func dead(_ m: Modifiers) -> Bool { !m.contains(.hyper) && m.isSuperset(of: h) }
+        return config.keyBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.keyName)" }
+            + config.mouseBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.button)" }
+            + config.axisBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.direction?.rawValue ?? "alldir")" }
+            + config.gestureBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.fingers) fingers" }
+    }
+
+    /// The modifiers held, as mango sees them: the hyper set held is HYPER, and so is the Hyper key.
+    static func hyperMods(_ m: Modifiers, hyper h: Modifiers, keyHeld: Bool) -> Modifiers {
+        var m = m
+        if !h.isEmpty && m.isSuperset(of: h) { m = m.subtracting(h).union(.hyper) }
+        if keyHeld { m.insert(.hyper) }
+        return m
+    }
+
     static func hyperKeyMapping(_ name: String) -> Mapping? {
         hyperKey(name).map { Mapping(src: $0.usage, dst: f18) }
     }

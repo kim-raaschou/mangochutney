@@ -29,7 +29,7 @@ mango selv melder "Unknown keyword" for hver `chutney_`-linje og læser resten.
 | `chutney_layout_switcher` (+ `chutney_layout_switcher_*`) | Layout-switcheren; viser `circle_layout`, Tab og Space sætter den | Hyper L | Ingen |
 | `chutney_launch_or_focus` | Én tast pr. app: start den eller gå til dens vindue; hvor valget ikke er givet (to set udefra, tre eller flere), vises vinduerne i switcherens panel | nej | Ingen |
 | `chutney_overlap_warning` | Et flisebelagt vindue, der er større end sit felt (og går ind over naboen), tegner sit tag orange i menulinjen; menuen siger hvor meget og giver forslag med ét klik (til et tomt tag, eller flydende), hver en af mangos kommandoer | nej | Intet mærke |
-| `chutney_hyper_modifier` | Hvad `HYPER` betyder i en binding | `super+ctrl+alt` | Mangos Mod3 |
+| `chutney_hyper_modifier` | Hvilke taster holdt sammen der er mangos `HYPER` (Mod3); porten oversætter dem, når de kommer ind. En binding på netop de taster uden `HYPER` kan ikke nås, og loggen siger det | `super+ctrl+alt` | Mangos Mod3 |
 
 `Resources/config.conf` er mangos `assets/config.conf`, men med mangos bindinger på Hyper
 (`var=mod,HYPER`, `var=mods,HYPER+SHIFT`), fordi ⌘, ⌥ og ⌃ er macOS' og appernes. Resten følger

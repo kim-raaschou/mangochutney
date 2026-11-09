@@ -72,7 +72,7 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | --- | --- |
 | `chutney_keybindings_spotlight_launch` | the installed applications (Spotlight's Applications) in the keybindings palette's search |
 | `chutney_hyper_key` | the key held as HYPER, as Raycast's Hyper Key: caps_lock, a left_ or right_ control, shift, option or command, f1 … f12 (macOS's own key mapping) |
-| `chutney_hyper_modifier` | what HYPER means in a bind |
+| `chutney_hyper_modifier` | the modifiers that, held together, are mango's HYPER (Mod3) |
 | `chutney_layout_switcher_keys` | the keys that move the layout switcher's selection: left,down,up,right (or h,j,k,l); the arrows always work |
 | `chutney_menu_bar` | menu-bar item with the current tags and layout |
 | `chutney_menu_bar_layout` | the layout's icon in the menu bar |

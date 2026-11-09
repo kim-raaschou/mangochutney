@@ -14,7 +14,6 @@ package struct InputState {
     package var wantsMouseMoved = false
     package var cursorHideOnKeypress = false
     package var hoverResizeCursor: String?
-    package var capsHyper: Modifiers?
 }
 
 package enum OverviewKey: Equatable {

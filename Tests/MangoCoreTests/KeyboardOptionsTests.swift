@@ -42,7 +42,7 @@ final class KeyboardOptionsTests: MangoTestCase {
         r.server.config.xkbRulesOptions = "caps:hyper"
         r.server.config.chutneyHyperModifier = "super+ctrl+alt"
         r.server.publishInputState()
-        let hyper = Modifiers.parse("hyper", hyperModifier: "super+ctrl+alt")!
+        let hyper = Modifiers.hyper
         let router = r.server.mac.router
         router.publish { $0.bindings = [KeyBinding(mods: hyper, keyName: "h", keyCodes: [4],
                                                    dispatch: Dispatch(name: "view", args: ["2"]))] }
@@ -82,7 +82,7 @@ final class KeyboardOptionsTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.chutneyHyperKey = "caps_lock"
         r.server.publishInputState()
-        let hyper = Modifiers.parse("hyper", hyperModifier: r.server.config.hyperModifier)!
+        let hyper = Modifiers.hyper
         let router = r.server.mac.router
         router.publish { $0.bindings = [KeyBinding(mods: hyper, keyName: "h", keyCodes: [4],
                                                    dispatch: Dispatch(name: "view", args: ["2"]))] }

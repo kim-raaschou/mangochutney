@@ -47,17 +47,17 @@ public enum ConfigOptions {
             case .failure(let msg): return .invalid(msg)
             }
         case "mousebind":
-            switch BindingParser.parseMouseBinding(value: value, mode: config.keymode, hyperModifier: config.hyperModifier) {
+            switch BindingParser.parseMouseBinding(value: value, mode: config.keymode) {
             case .success(let b): config.mouseBindings.append(b); return .applied
             case .failure(let msg): return .invalid(msg)
             }
         case "axisbind":
-            switch BindingParser.parseAxisBinding(value: value, mode: config.keymode, hyperModifier: config.hyperModifier) {
+            switch BindingParser.parseAxisBinding(value: value, mode: config.keymode) {
             case .success(let b): config.axisBindings.append(b); return .applied
             case .failure(let msg): return .invalid(msg)
             }
         case "gesturebind":
-            switch BindingParser.parseGestureBinding(value: value, mode: config.keymode, hyperModifier: config.hyperModifier) {
+            switch BindingParser.parseGestureBinding(value: value, mode: config.keymode) {
             case .success(let b): config.gestureBindings.append(b); return .applied
             case .failure(let msg): return .invalid(msg)
             }
@@ -71,8 +71,7 @@ public enum ConfigOptions {
         }
 
         if BindingParser.isKeyBindKeyword(key) {
-            switch BindingParser.parseKeyBinding(keyword: key, value: value, mode: config.keymode,
-                                                 hyperModifier: config.hyperModifier) {
+            switch BindingParser.parseKeyBinding(keyword: key, value: value, mode: config.keymode) {
             case .success(let b):
                 if !b.keyCodes.isEmpty { config.keyBindings.append(b) }
                 return .applied

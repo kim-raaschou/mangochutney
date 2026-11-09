@@ -386,22 +386,24 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(path, NSHomeDirectory() + "/.config/mango/config.conf")
     }
 
-    func testConflictsAreCheckedAfterHyperIsResolved() {
-        let ok = ConfigParser.parse(text: """
+    func testHyperIsItsOwnModifierAsInMango() {
+        let parsed = ConfigParser.parse(text: """
         bind=HYPER,x,killclient
         bind=HYPER+SHIFT,x,quit
-        chutney_hyper_modifier=super+ctrl+alt
-        """, baseDirectory: nil, fileName: "t.conf")
-        XCTAssertEqual(ok.errors, [])
-        let clash = ConfigParser.parse(text: """
-        bind=HYPER,x,killclient
         bind=SUPER+CTRL+ALT,x,quit
         chutney_hyper_modifier=super+ctrl+alt
+        """, baseDirectory: nil, fileName: "t.conf")
+        XCTAssertEqual(parsed.errors, [], "mango: HYPER (Mod3) and SUPER+CTRL+ALT are two chords")
+        XCTAssertEqual(KeyboardOptions.unreachable(parsed.config), ["SUPER+CTRL+ALT,x"],
+                       "the port: those keys held are HYPER, so the port says so")
+        let clash = ConfigParser.parse(text: """
+        bind=HYPER,x,killclient
+        bind=hyper,x,quit
         """, baseDirectory: nil, fileName: "t.conf")
         XCTAssertEqual(clash.errors.map(\.line), [2], "reported at the later binding")
     }
 
-    func testHyperIsResolvedAfterTheWholeFileIsRead() {
+    func testHyperParsesAsMangosMod3WhateverTheHyperSet() {
         let parsed = parse("""
         bind=HYPER,a,killclient
         mousebind=HYPER,btn_left,moveresize,curmove
@@ -410,7 +412,7 @@ final class ConfigFidelityTests: MangoTestCase {
         chutney_hyper_modifier=super+ctrl
         """)
         XCTAssertEqual(parsed.errors, [])
-        let expected: Modifiers = [.superKey, .ctrl]
+        let expected: Modifiers = .hyper
         XCTAssertEqual(parsed.config.keyBindings.first?.mods, expected)
         XCTAssertEqual(parsed.config.mouseBindings.first?.mods, expected)
         XCTAssertEqual(parsed.config.axisBindings.first?.mods, expected)

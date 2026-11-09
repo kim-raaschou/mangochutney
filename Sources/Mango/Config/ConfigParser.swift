@@ -77,16 +77,6 @@ public enum ConfigParser {
         var state = ParserState(baseDirectory: url.deletingLastPathComponent())
         state.emits = emits
         state.parseConfigFile(url.standardizedFileURL, mustExist: true, from: nil, text: text)
-        // not in mango: HYPER is chutney_hyper_modifier, known once the file is read
-        for ref in state.hyperRefs {
-            guard let mods = Modifiers.parse(ref.mods, hyperModifier: state.config.hyperModifier) else { continue }
-            switch ref.kind {
-            case .key: state.config.keyBindings[ref.index].mods = mods
-            case .mouse: state.config.mouseBindings[ref.index].mods = mods
-            case .axis: state.config.axisBindings[ref.index].mods = mods
-            case .gesture: state.config.gestureBindings[ref.index].mods = mods
-            }
-        }
         state.config.overrideConfig()
         state.checkKeyBindingConflicts()
         var parsed = ParsedConfig(config: state.config, errors: state.errors, sourcedFiles: state.sourcedFiles)
@@ -201,9 +191,6 @@ package struct ParserState {
     var mouseLocs: [BindingLocation] = []
     var axisLocs: [BindingLocation] = []
     var gestureLocs: [BindingLocation] = []
-
-    enum BindingKind { case key, mouse, axis, gesture }
-    var hyperRefs: [(kind: BindingKind, index: Int, mods: String)] = []
 
     init(baseDirectory: URL) {
         self.baseDirectory = baseDirectory
@@ -394,33 +381,30 @@ package struct ParserState {
             return
 
         case "mousebind":
-            switch BindingParser.parseMouseBinding(value: value, mode: keyMode, hyperModifier: config.hyperModifier) {
+            switch BindingParser.parseMouseBinding(value: value, mode: keyMode) {
             case .failure(let msg): recordConfigLineError(file, line, msg)
             case .success(let b):
                 let loc = BindingLocation(file: file, line: line)
-                noteHyper(.mouse, value, index: config.mouseBindings.count)
                 config.mouseBindings.append(b); mouseLocs.append(loc)
                 noteDispatch(b.dispatch, file, line)
             }
             return
 
         case "axisbind":
-            switch BindingParser.parseAxisBinding(value: value, mode: keyMode, hyperModifier: config.hyperModifier) {
+            switch BindingParser.parseAxisBinding(value: value, mode: keyMode) {
             case .failure(let msg): recordConfigLineError(file, line, msg)
             case .success(let b):
                 let loc = BindingLocation(file: file, line: line)
-                noteHyper(.axis, value, index: config.axisBindings.count)
                 config.axisBindings.append(b); axisLocs.append(loc)
                 noteDispatch(b.dispatch, file, line)
             }
             return
 
         case "gesturebind":
-            switch BindingParser.parseGestureBinding(value: value, mode: keyMode, hyperModifier: config.hyperModifier) {
+            switch BindingParser.parseGestureBinding(value: value, mode: keyMode) {
             case .failure(let msg): recordConfigLineError(file, line, msg)
             case .success(let b):
                 let loc = BindingLocation(file: file, line: line)
-                noteHyper(.gesture, value, index: config.gestureBindings.count)
                 config.gestureBindings.append(b); gestureLocs.append(loc)
                 noteDispatch(b.dispatch, file, line)
             }
@@ -450,14 +434,12 @@ package struct ParserState {
         }
 
         if BindingParser.isKeyBindKeyword(key) {
-            switch BindingParser.parseKeyBinding(keyword: key, value: value, mode: keyMode,
-                                                 hyperModifier: config.hyperModifier) {
+            switch BindingParser.parseKeyBinding(keyword: key, value: value, mode: keyMode) {
             case .failure(let msg):
                 recordConfigLineError(file, line, msg)
             case .success(let b):
                 guard !b.keyCodes.isEmpty else { return }
                 let loc = BindingLocation(file: file, line: line)
-                noteHyper(.key, value, index: config.keyBindings.count)
                 config.keyBindings.append(b); keyLocs.append(loc)
                 noteDispatch(b.dispatch, file, line)
             }
@@ -472,12 +454,6 @@ package struct ParserState {
         case .unknown: recordConfigLineError(file, line, "Unknown keyword: \(mangoHighlight(key))")
         case .invalid(let msg): recordConfigLineError(file, line, msg)
         }
-    }
-
-    /// Not in mango: HYPER resolved after the port's chutney_hyper_modifier.
-    mutating func noteHyper(_ kind: BindingKind, _ value: String, index: Int) {
-        guard let mods = BindingParser.splitFields(value).first, mods.lowercased().contains("hyper") else { return }
-        hyperRefs.append((kind, index, mods))
     }
 
     /// Not in mango: file:line text for conflict messages.
@@ -505,14 +481,13 @@ public enum BindingParser {
         return f
     }
 
-    public static func parseKeyBinding(keyword: String, value: String, mode: String,
-                                       hyperModifier: String) -> Result<KeyBinding, String> {
+    public static func parseKeyBinding(keyword: String, value: String, mode: String) -> Result<KeyBinding, String> {
         guard isKeyBindKeyword(keyword) else { return .failure("Unknown keyword: \(mangoHighlight(keyword))") }
         let fields = splitFields(value)
         guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
             return .failure("Invalid bind format: \(mangoHighlight(value))")
         }
-        guard let mods = Modifiers.parse(fields[0], hyperModifier: hyperModifier) else {
+        guard let mods = Modifiers.parse(fields[0]) else {
             return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
         }
         let keyName = fields[1]
@@ -529,12 +504,12 @@ public enum BindingParser {
                                    flags: parseBindFlags(forKeyword: keyword), dispatch: dispatch))
     }
 
-    public static func parseMouseBinding(value: String, mode: String, hyperModifier: String) -> Result<MouseBinding, String> {
+    public static func parseMouseBinding(value: String, mode: String) -> Result<MouseBinding, String> {
         let fields = splitFields(value)
         guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
             return .failure("Invalid mousebind format: \(mangoHighlight(value))")
         }
-        guard let mods = Modifiers.parse(fields[0], hyperModifier: hyperModifier) else {
+        guard let mods = Modifiers.parse(fields[0]) else {
             return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
         }
         guard let button = parseButton(fields[1]) else {
@@ -545,12 +520,12 @@ public enum BindingParser {
         }
     }
 
-    public static func parseAxisBinding(value: String, mode: String, hyperModifier: String) -> Result<AxisBinding, String> {
+    public static func parseAxisBinding(value: String, mode: String) -> Result<AxisBinding, String> {
         let fields = splitFields(value)
         guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
             return .failure("Invalid axisbind format: \(mangoHighlight(value))")
         }
-        guard let mods = Modifiers.parse(fields[0], hyperModifier: hyperModifier) else {
+        guard let mods = Modifiers.parse(fields[0]) else {
             return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
         }
         let dir = Direction(mangoName: fields[1])
@@ -562,12 +537,12 @@ public enum BindingParser {
         }
     }
 
-    public static func parseGestureBinding(value: String, mode: String, hyperModifier: String) -> Result<GestureBinding, String> {
+    public static func parseGestureBinding(value: String, mode: String) -> Result<GestureBinding, String> {
         let fields = splitFields(value)
         guard fields.count >= 4, fields[0...3].allSatisfy({ !$0.isEmpty }) else {
             return .failure("Invalid gesturebind format: \(mangoHighlight(value))")
         }
-        guard let mods = Modifiers.parse(fields[0], hyperModifier: hyperModifier) else {
+        guard let mods = Modifiers.parse(fields[0]) else {
             return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
         }
         let dir = Direction(mangoName: fields[1])

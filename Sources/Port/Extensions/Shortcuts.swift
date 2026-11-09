@@ -117,10 +117,15 @@ enum ShortcutFormatter {
         }
     }
 
+    /// HYPER shown as the keys it is (chutney_hyper_modifier).
+    static func held(_ m: Modifiers, _ c: Config) -> Modifiers {
+        m.contains(.hyper) ? m.subtracting(.hyper).union(KeyboardOptions.hyperSet(c)) : m
+    }
+
     static func rows(_ c: Config) -> [ShortcutRow] {
         var rows: [ShortcutRow] = []
         for b in c.keyBindings {
-            var keys = combo(b.mods, b.keyName)
+            var keys = combo(held(b.mods, c), b.keyName)
             if b.flags.contains(.release) { keys += " (release)" }
             rows.append(ShortcutRow(mode: b.mode, keys: keys, action: action(b.dispatch),
                                     dispatch: b.dispatch.name, args: b.dispatch.args))
@@ -133,17 +138,17 @@ enum ShortcutFormatter {
             case .middle: button = "middle click"
             default: button = "button \(b.button.cgButtonNumber)"
             }
-            let p = mods(b.mods)
+            let p = mods(held(b.mods, c))
             rows.append(ShortcutRow(mode: b.mode, keys: p.isEmpty ? button : "\(p) + \(button)",
                                     action: action(b.dispatch), dispatch: b.dispatch.name, args: b.dispatch.args))
         }
         for b in c.axisBindings {
-            let p = mods(b.mods)
+            let p = mods(held(b.mods, c))
             rows.append(ShortcutRow(mode: b.mode, keys: (p.isEmpty ? "" : "\(p) + ") + "scroll \(b.direction?.rawValue ?? "alldir")",
                                     action: action(b.dispatch), dispatch: b.dispatch.name, args: b.dispatch.args))
         }
         for b in c.gestureBindings {
-            let p = mods(b.mods)
+            let p = mods(held(b.mods, c))
             rows.append(ShortcutRow(mode: b.mode, keys: (p.isEmpty ? "" : "\(p) + ") + "\(b.fingers)-finger swipe \(b.direction?.rawValue ?? "any direction")",
                                     action: action(b.dispatch), dispatch: b.dispatch.name, args: b.dispatch.args))
         }

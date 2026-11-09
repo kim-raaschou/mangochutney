@@ -16,7 +16,7 @@ final class ShortcutSchemeTests: MangoTestCase {
 
     func testMangosBindingsAndThePalettesOnHyper() {
         let binds = shipped.config.keyBindings
-        let hyper: Modifiers = [.superKey, .ctrl, .alt]
+        let hyper: Modifiers = .hyper
         XCTAssertEqual(binds.first { $0.dispatch.name == "reload_config" }?.mods, hyper)
         XCTAssertEqual(binds.first { $0.dispatch.name == "tag" && $0.dispatch.arg(0) == "1" }?.mods, hyper.union(.shift))
         for name in ["chutney_keybindings", "chutney_layout_switcher"] {

@@ -9,7 +9,6 @@ package protocol ConfigPort: Sendable {
     func knowsDispatcher(_ name: String) -> Bool
     func keyCodes(_ name: String) -> [UInt16]
     func modifier(_ name: String) -> Modifiers?
-    func hyperModifier(_ config: Config) -> String
 }
 
 public struct ConfigNote: CustomStringConvertible, Equatable {
@@ -37,8 +36,4 @@ public struct ConfigNote: CustomStringConvertible, Equatable {
 
 extension ConfigParser {
     package nonisolated(unsafe) static var port: (any ConfigPort)?
-}
-
-extension Config {
-    package var hyperModifier: String { ConfigParser.port?.hyperModifier(self) ?? "" }
 }

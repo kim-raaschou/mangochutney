@@ -609,7 +609,7 @@ enum HotkeysUsage {
 @MainActor
 public enum ModifierLegend {
     public static func text(_ config: Config) -> String {
-        let hyper = Modifiers.parse(config.chutneyHyperModifier, hyperModifier: "").map(HotkeysModel.symbols) ?? ""
+        let hyper = HotkeysModel.symbols(KeyboardOptions.hyperSet(config))
         let caps = config.xkbRulesOptions.lowercased().split(separator: ",")
             .contains { $0.trimmingCharacters(in: .whitespaces) == "caps:hyper" }
         let key = KeyboardOptions.hyperKey(config.chutneyHyperKey).map { " or \($0.label)" }

@@ -20,7 +20,8 @@ final class InputRouter: @unchecked Sendable {
         var overcircleActive = false
         var switcherActive = false
         var tagCombo = false
-        var capsHyper: Modifiers?
+        var hyper: Modifiers = []
+        var hyperKey = false
         var wantsMouseMoved = false
         var menuBarTags: [MenuBarTagHit] = []
         var tabShortcuts = 0
@@ -71,23 +72,24 @@ final class InputRouter: @unchecked Sendable {
     }
 
     private var hyperHeld = false
+    var hyperKeyHeld: Bool { hyperHeld }
     private var lastKey: UInt16?
     var lastKeyDown: UInt16? { lock.lock(); defer { lock.unlock() }; return lastKey }
     private var pickerKeys: Set<UInt16> = []
 
     func key(_ event: KeyEvent, modifierOnlySinceDown: Bool) -> Bool {
         var ev = event
-        if let hyper = snapshot.capsHyper {
+        if snapshot.hyperKey {
             if ev.keyCode == KeyboardOptions.hyperKeyCode && !ev.isModifierKey {
                 hyperHeld = ev.isDown
                 if ev.isDown && !ev.isRepeat { lock.lock(); keyboard.lastHoldKeycode = ev.keyCode; lock.unlock() }
                 return true
             }
-            if hyperHeld { ev.mods.formUnion(hyper) }
         } else {
             hyperHeld = false
         }
         let s = snapshot
+        ev.mods = KeyboardOptions.hyperMods(ev.mods, hyper: s.hyper, keyHeld: hyperHeld)
         if ev.isDown && !ev.isModifierKey { lock.lock(); lastKey = ev.keyCode; lock.unlock() }
         if let opening = s.launchOrFocusPicker, !ev.isModifierKey, pickerKey(ev, opening: opening) { return true }
         let numbers = s.tabShortcuts > 0 && ev.mods.subtracting(.fn) == .superKey
@@ -176,7 +178,7 @@ final class InputRouter: @unchecked Sendable {
         cancelPendingReleaseBind()
         let s = snapshot
         var ev = event
-        if hyperHeld, let hyper = s.capsHyper { ev.mods.formUnion(hyper) }
+        ev.mods = KeyboardOptions.hyperMods(ev.mods, hyper: s.hyper, keyHeld: hyperHeld)
         let p = ev.location, button = ev.button
         let mods = ev.mods
         if ev.isDown, button == 0, mods.isEmpty, let hit = s.menuBarTags.first(where: { $0.frame.contains(p) }) {
@@ -269,7 +271,7 @@ final class InputRouter: @unchecked Sendable {
     func scroll(_ event: ScrollEvent) -> Bool {
         let s = snapshot
         var ev = event
-        if hyperHeld, let hyper = s.capsHyper { ev.mods.formUnion(hyper) }
+        ev.mods = KeyboardOptions.hyperMods(ev.mods, hyper: s.hyper, keyHeld: hyperHeld)
         let now = CACurrentMediaTime()
         guard let axis = Pointer.handleCursorAxis(direction: ev.direction, mods: ev.mods, now: now,
                                                   applyTime: axisApplyTime, applyDir: axisApplyDir,
