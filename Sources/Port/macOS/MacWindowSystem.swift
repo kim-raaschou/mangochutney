@@ -23,7 +23,6 @@ class MacWindowSystem: WindowSystem {
     var restarting = false
     var opacityWarned = false
     var dispatchersWarned = Set<String>()
-    var focusHistory: [ClientID] = []
     var pressed: (client: Client, frame: CGRect)?
     var tabNumbersShown = false
     var publishedTabShortcuts = 0
@@ -152,6 +151,7 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) {
+        tabBarsChanged()
         var style = withAppIcons(style, server.config.chutneyTabBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.tabbardata, server.config)
         tabBars.update(withTabNumbers(strips), style: style, keyFocus: server.focused?.id)

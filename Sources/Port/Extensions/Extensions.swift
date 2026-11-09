@@ -23,12 +23,6 @@ extension MangoServer {
         func memory(_ server: MangoServer) -> WindowMemory? { (server.system as? MacWindowSystem)?.memory }
         portHooks.windowLeaving = { server, c, group, focus, order in
             memory(server)?.leaving(server, c, group: group, groupFocus: focus, order: order)
-            (server.system as? MacWindowSystem)?.focusHistory.removeAll { $0 == c.id }
-        }
-        portHooks.clientFocused = { server, c in
-            guard let mac = server.system as? MacWindowSystem else { return }
-            mac.focusHistory.removeAll { $0 == c.id }
-            mac.focusHistory.insert(c.id, at: 0)
         }
         portHooks.saveLayout = { server, final in memory(server)?.save(server, final: final) }
         portHooks.restoreLayout = { server in memory(server)?.restore(server) }

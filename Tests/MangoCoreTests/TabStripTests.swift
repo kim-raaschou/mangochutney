@@ -111,6 +111,7 @@ final class TabStripTests: MangoTestCase {
     func testTheEventTapLearnsWhenATabGoes() {
         let r = rig(.monocle, windows: 3)
         r.server.config.chutneyTabBarShortcuts = true
+        r.server.drawsOverlays = true
         r.server.publishInputState()
         XCTAssertTrue(r.server.mac.router.key(cmd(20), modifierOnlySinceDown: false))
         r.server.mac.windowDestroyed(id: 900_102)

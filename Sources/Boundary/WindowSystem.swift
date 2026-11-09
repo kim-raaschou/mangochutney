@@ -9,7 +9,6 @@ package protocol WindowSystem: AnyObject {
     func warp(to p: CGPoint)
     func restack()
     func drawBorders(_ specs: [BorderSpec])
-    func tabBarsChanged()
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle)
     func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle)
     var windowCornerRadius: CGFloat { get }

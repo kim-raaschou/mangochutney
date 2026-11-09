@@ -90,7 +90,7 @@ final class FakeWindowSystem: MacWindowSystem {
     var borderSpecs: [BorderSpec] = []
     override func drawBorders(_ specs: [BorderSpec]) { borderSpecs = specs }
     var tabStrips: [TabStrip] = [], groupStrips: [TabStrip] = []
-    override func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) { tabStrips = strips }
+    override func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) { tabStrips = strips; tabBarsChanged() }
     override func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) { groupStrips = strips }
     var overviewCards: [OverviewCard]?, jumpLabelCount = 0, switcherTiles: [SwitcherTile]?
     var titleMessageBar: String?, specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false

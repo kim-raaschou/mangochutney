@@ -7,7 +7,6 @@ package struct PortHooks {
     package var windowLeaving: (@MainActor (MangoServer, Client, [ClientID], ClientID?, [ClientID]) -> Void)?
     package var saveLayout: (@MainActor (MangoServer, Bool) -> Void)?
     package var restoreLayout: (@MainActor (MangoServer) -> Void)?
-    package var clientFocused: (@MainActor (MangoServer, Client) -> Void)?
     package var configLoaded: [@MainActor (MangoServer) -> Void] = []
 
     package init() {}

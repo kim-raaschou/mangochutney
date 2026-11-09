@@ -22,13 +22,11 @@ enum LaunchOrFocusRule: Equatable {
 }
 
 extension MangoServer {
-    var focusHistory: [ClientID] { (system as? MacWindowSystem)?.focusHistory ?? [] }
-
     func launchOrFocus(_ app: String, command: String) {
         let key = app.lowercased()
         if overviewState != nil { leaveOverview(select: nil) }
         let windows = appWindowsInGridOrder(key)
-        let rule = LaunchOrFocusRule.decide(windows: windows.map(\.id), current: focused?.id, recent: focusHistory)
+        let rule = LaunchOrFocusRule.decide(windows: windows.map(\.id), current: focused?.id, recent: focusStack)
         switch rule {
         case .launch:
             Spawn.run(command.isEmpty ? "open -b '\(app.replacingOccurrences(of: "'", with: ""))'" : command)

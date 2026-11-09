@@ -136,7 +136,7 @@ public final class HotkeysPalette {
             HotkeysUsage.record(row.id)
             let id = row.appID ?? ""
             let windows = server.appWindowsInGridOrder(id.lowercased())
-            if let last = server.focusHistory.lazy.compactMap({ h in windows.first { $0.id == h } }).first ?? windows.first {
+            if let last = server.focusStack.lazy.compactMap({ h in windows.first { $0.id == h } }).first ?? windows.first {
                 server.dispatch(Dispatch(name: "focusid"), target: last)
             } else {
                 NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: path), configuration: NSWorkspace.OpenConfiguration())
@@ -172,7 +172,7 @@ public final class HotkeysPalette {
             guard let app = r.args.first?.lowercased(), c.appSteps[app] == nil else { continue }
             let windows = server.appWindowsInGridOrder(app).map(\.id)
             let current = server.focused?.id
-            let rule = LaunchOrFocusRule.decide(windows: windows, current: current, recent: server.focusHistory)
+            let rule = LaunchOrFocusRule.decide(windows: windows, current: current, recent: server.focusStack)
             c.appSteps[app] = HotkeysAppStep(rule: rule, windows: windows.count,
                                              inApp: current.map(windows.contains) ?? false)
         }

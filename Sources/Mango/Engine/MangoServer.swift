@@ -657,7 +657,6 @@ public final class MangoServer {
         selectedMonitor = m
         focusStack.removeAll { $0 == c.id }
         focusStack.insert(c.id, at: 0)
-        portHooks.clientFocused?(self, c)   // Port extension: not in mango (chutney_launch_or_focus's "used last")
         c.isUrgent = false
         if raise || makeKey { system.focus(c, raise: raise) }
         func tagMatch(_ x: Client) -> Bool { x.mon === m && !x.isMinimized && x.tags & m.tagset[m.seltags] != 0 }

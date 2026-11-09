@@ -67,7 +67,6 @@ package extension MangoServer {
     }
 
     func tabRefreshBars(animating: [ClientID: CGRect] = [:]) {
-        system.tabBarsChanged()   // the boundary, not in mango: the port's tab keys follow the tabs
         guard drawsOverlays else { return }
         var strips: [TabStrip] = []
         for m in monitors {
