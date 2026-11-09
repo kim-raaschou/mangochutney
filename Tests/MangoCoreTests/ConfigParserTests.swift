@@ -75,8 +75,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(c.focuscolor, parseColor("0xc9b890ff"))
         XCTAssertFalse(c.chutneyMenuBar)
         XCTAssertFalse(c.chutneyStyle, "mango's look unless chutney_style is set")
-        XCTAssertNil(c.chutneyFloatingColor)
-        XCTAssertEqual(c.chutneyIgnoreApps, [])
         let reload = c.keyBindings.first { $0.dispatch.name == "reload_config" }
         XCTAssertEqual(reload?.mods, [.superKey, .ctrl, .alt], "mango's keys on Hyper")
         XCTAssertEqual(reload?.keyName, "r")
@@ -521,9 +519,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(c.circleLayout, ["tile", " scroller", "monocle"])
         XCTAssertEqual(ConfigOptions.parseOption(key: "scroller_proportion_preset", value: "0.3,0.6,1", to: &c), .applied)
         XCTAssertEqual(c.scrollerProportionPreset, [0.3, 0.6, 1])
-        XCTAssertEqual(ConfigOptions.parseOption(key: "chutney_ignore_apps", value: "com.a, com.b", to: &c), .applied)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "chutney_ignore_apps", value: "com.c,com.a", to: &c), .applied)
-        XCTAssertEqual(c.chutneyIgnoreApps, ["com.a", "com.b", "com.c"])
         XCTAssertEqual(ConfigOptions.parseOption(key: "chutney_hyper_modifier", value: "ctrl+alt", to: &c), .applied)
         XCTAssertEqual(c.chutneyHyperModifier, "ctrl+alt")
         XCTAssertEqual(ConfigOptions.parseOption(key: "window_rule", value: "app_id:foo,is_floating:1", to: &c), .applied)

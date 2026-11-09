@@ -28,10 +28,7 @@ mango selv melder "Unknown keyword" for hver `chutney_`-linje og læser resten.
 | `chutney_toggle_hotkeys_palette` (+ `chutney_hotkeys_*`) | Hotkeys-paletten: søg i bindinger, vinduer og apps | Hyper K | Ingen |
 | `chutney_toggle_layout_palette` (+ `chutney_layout_palette_*`) | Layout-paletten; viser `circle_layout`, Tab og Space sætter den | Hyper L | Ingen |
 | `chutney_focus_app` | Én tast pr. app: start den eller gå til dens vindue (med tre eller flere: det, der blev brugt før) | nej | Ingen |
-| `chutney_floating_color` | Fast rammefarve for flydende vinduer | nej | Mangos farver |
-| `chutney_border_unfocused` | `0`: ramme kun om det fokuserede vindue | nej (standard `1`) | Ramme om alle |
 | `chutney_overlap_warning` | Et flisebelagt vindue, der er større end sit felt (og går ind over naboen), tegner sit tag orange i menulinjen; menuen siger hvor meget og giver forslag med ét klik (til et tomt tag, eller flydende), hver en af mangos kommandoer | nej | Intet mærke |
-| `chutney_ignore_apps` | Apps, der aldrig styres | nej | Alle styres |
 | `chutney_hyper_modifier` | Hvad `HYPER` betyder i en binding | `super+ctrl+alt` | Mangos Mod3 |
 | `chutney_hyper_tap` | Hyper-tasten trykket alene (Caps Lock eller en funktionstast): `none`, `original` eller `escape` | nej (standard `none`) | Ingen |
 | `chutney_set_proportion_all` (dispatcher) | `set_proportion` for alle vinduer på tagget i visning | nej | `set_proportion` på ét vindue |

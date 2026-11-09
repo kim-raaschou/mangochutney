@@ -27,14 +27,6 @@ final class EngineBorderTests: MangoTestCase {
             return XCTFail("not a mango key, and the ring follows macOS")
         }
     }
-
-    func testFloatingColorParses() {
-        func parse(_ text: String) -> ParsedConfig { ConfigParser.parse(text: text, baseDirectory: nil, fileName: "t") }
-        XCTAssertNil(parse("").config.chutneyFloatingColor, "unset: mango's colours")
-        XCTAssertEqual(parse("chutney_floating_color=0xc9b890ff\n").config.chutneyFloatingColor, parseColor("0xc9b890ff"))
-        XCTAssertNil(parse("chutney_floating_color=0xc9b890ff\nchutney_floating_color=none\n").config.chutneyFloatingColor)
-        XCTAssertFalse(parse("chutney_floating_color=blue\n").errors.isEmpty)
-    }
 }
 
 @MainActor

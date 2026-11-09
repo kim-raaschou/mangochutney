@@ -7,42 +7,13 @@ final class PortHooksTests: MangoTestCase {
     func testWithoutTheExtensionsMangoIsMango() {
         let r = EngineRig()
         r.server.portHooks = PortHooks()
-        r.server.config.chutneyFloatingColor = parseColor("0xff0000ff")
-        let c = r.window(900_800, floating: true)
-        XCTAssertNotEqual(r.server.getBorderColor(c), r.server.config.chutneyFloatingColor, "chutney_floating_color needs the port")
         XCTAssertNil(r.server.portHooks.extraDispatchers["chutney_focus_app"])
         _ = r.server.dispatch(Dispatch(name: "chutney_focus_app", args: ["com.example.none"]))
     }
 
-    func testBorderUnfocusedAndTabIconsNeedThePort() {
-        let r = EngineRig()
-        r.server.renderBorder = true
-        r.server.drawsOverlays = true
-        r.server.config.chutneyBorderUnfocused = false
-        r.server.config.chutneyTabBarDecorateIcon = true
-        let a = r.window(900_810), _ = r.window(900_811)
-        r.server.arrange(r.monitor, .none)
-        r.server.clientFocus(a)
-        let fake = r.server.system as! FakeWindowSystem
-        XCTAssertEqual(fake.borderSpecs.count, 1, "registered: the focused window's border only")
-        r.server.portHooks = PortHooks()
-        r.server.updateBorders()
-        XCTAssertEqual(fake.borderSpecs.count, 2, "without the port: mango's, every window's")
-    }
-
     func testRegisteredTheyWork() {
         let r = EngineRig()
-        r.server.config.chutneyFloatingColor = parseColor("0xff0000ff")
-        let c = r.window(900_803, floating: true)
-        XCTAssertEqual(r.server.getBorderColor(c), r.server.config.chutneyFloatingColor)
         XCTAssertNotNil(r.server.portHooks.extraDispatchers["chutney_focus_app"])
-    }
-
-    func testIgnoreAppsIsTakenWhenTheConfigIsRead() {
-        let r = EngineRig()
-        r.server.config.chutneyIgnoreApps = ["com.example.ignored"]
-        for loaded in r.server.portHooks.configLoaded { loaded(r.server) }
-        XCTAssertEqual(r.server.mac.watcher.ignoredBundleIds, ["com.example.ignored"])
     }
 
     func testThePortsKeysAreItsOwnTable() {

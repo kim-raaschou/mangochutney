@@ -53,7 +53,6 @@ final class BorderRadiusTests: MangoTestCase {
         r.server.config.borderpx = 2
         r.server.renderBorder = true
         r.server.drawsOverlays = true
-        r.server.config.chutneyBorderUnfocused = true
         let c = r.window(900_900)
         r.window(900_901)
         let fake = r.server.system as! FakeWindowSystem

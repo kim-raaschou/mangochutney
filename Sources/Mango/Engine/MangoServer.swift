@@ -170,7 +170,7 @@ public final class MangoServer {
         system.setKeyboardOptions(config.xkbRulesOptions)
         for (k, v) in config.envVars { setenv(k, (v as NSString).expandingTildeInPath, 1) }
         publishInputState()
-        // Port extension: not in mango. The port takes its own options (chutney_ignore_apps).
+        // Port extension: not in mango. The port takes its own options.
         for loaded in portHooks.configLoaded { loaded(self) }
         if !initial {
             for m in monitors {
@@ -557,8 +557,6 @@ public final class MangoServer {
     }
 
     func getBorderColor(_ c: Client) -> RGBA {
-        // Port extension: not in mango. A colour of the port's own (chutney_floating_color).
-        if let color = portHooks.borderColor?(self, c) { return color }
         let isFocused = c.mon === selectedMonitor && selectedMonitor.sel == c.id
         if c.mon !== selectedMonitor { return config.bordercolor }
         if c.isUrgent { return config.urgentcolor }
@@ -606,8 +604,6 @@ public final class MangoServer {
                 let width = borderWidth(c, on: m)
                 guard width > 0 else { continue }
                 let focusedHere = m === selectedMonitor && m.sel == c.id
-                // Port extension: not in mango. Only the focused window's border (chutney_border_unfocused off).
-                if portHooks.focusedBorderOnly?(self) == true && !focusedHere { continue }
                 if m.layout.isMonocleLike && !c.isFloating && m.sel != c.id && tiledCount > 1 {
                     if m.layout == .monocle { continue }
                 }

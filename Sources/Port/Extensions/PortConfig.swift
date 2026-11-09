@@ -21,15 +21,6 @@ extension Config {
     package var chutneyTabBarShortcuts: Bool {
         get { bool("chutney_tab_bar_shortcuts", false) } set { set("chutney_tab_bar_shortcuts", newValue) }
     }
-    package var chutneyFloatingColor: RGBA? {
-        get { port["chutney_floating_color"].flatMap { parseColor($0) } }
-        set {
-            port["chutney_floating_color"] = newValue.map { c in
-                let byte = { (v: Double) in Int((v * 255).rounded()) }
-                return String(format: "0x%02x%02x%02x%02x", byte(c.r), byte(c.g), byte(c.b), byte(c.a))
-            }
-        }
-    }
     package var chutneyHyperModifier: String {
         get { port["chutney_hyper_modifier"] ?? "super+ctrl+alt" } set { port["chutney_hyper_modifier"] = newValue }
     }
@@ -57,9 +48,6 @@ extension Config {
     package var chutneyMenuBarMode: Bool {
         get { bool("chutney_menu_bar_mode", true) } set { set("chutney_menu_bar_mode", newValue) }
     }
-    package var chutneyBorderUnfocused: Bool {
-        get { bool("chutney_border_unfocused", true) } set { set("chutney_border_unfocused", newValue) }
-    }
     package var chutneyOverlapWarning: Bool {
         get { bool("chutney_overlap_warning", false) } set { set("chutney_overlap_warning", newValue) }
     }
@@ -69,8 +57,5 @@ extension Config {
     package var chutneyLayoutPaletteKeys: [String] {
         get { list("chutney_layout_palette_keys", ["left", "down", "up", "right"]) }
         set { port["chutney_layout_palette_keys"] = newValue.joined(separator: ",") }
-    }
-    package var chutneyIgnoreApps: [String] {
-        get { list("chutney_ignore_apps", []) } set { port["chutney_ignore_apps"] = newValue.joined(separator: ",") }
     }
 }

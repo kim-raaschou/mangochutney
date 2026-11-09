@@ -2,10 +2,8 @@ import CoreGraphics
 
 package struct PortHooks {
     package var extraDispatchers: [String: @MainActor (MangoServer, Dispatch) -> String?] = [:]
-    package var borderColor: (@MainActor (MangoServer, Client) -> RGBA?)?
     package var borderRadius: (@MainActor (MangoServer, Client) -> CGFloat?)?
     package var overlayLook: (@MainActor (MangoServer, DecorateStyle) -> DecorateStyle?)?
-    package var focusedBorderOnly: (@MainActor (MangoServer) -> Bool)?
     package var ipcGets: [String: @MainActor (MangoServer) -> JSONValue] = [:]
     package var windowLeaving: (@MainActor (MangoServer, Client, [ClientID], ClientID?, [ClientID]) -> Void)?
     package var saveLayout: (@MainActor (MangoServer, Bool) -> Void)?

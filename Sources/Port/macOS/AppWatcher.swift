@@ -373,9 +373,6 @@ public final class AppWatcher {
 
     public private(set) var apps: [pid_t: AppWorker] = [:]
     private var owners: [CGWindowID: (pid: pid_t, element: AXUIElement)] = [:]
-    public var ignoredBundleIds: Set<String> = [] {
-        didSet { if ignoredBundleIds != oldValue { caughtUp = false } }
-    }
     private var caughtUp = false
     let shared = WatcherShared()
     private var mouseUpMonitor: Any?
@@ -468,7 +465,6 @@ public final class AppWatcher {
         let pid = nsApp.processIdentifier
         guard apps[pid] == nil, pid != getpid() else { return }
         guard nsApp.activationPolicy == .regular, !nsApp.isTerminated else { return }
-        if let b = nsApp.bundleIdentifier, ignoredBundleIds.contains(b) { return }
         let worker = AppWorker(nsApp: nsApp, shared: shared, initial: initial) { [weak self] e in
             MainActor.assumeIsolated { self?.receive(e, pid: pid) }
         }

@@ -42,11 +42,8 @@ extension MangoServer {
         portHooks.saveLayout = { server, final in memory(server)?.save(server, final: final) }
         portHooks.restoreLayout = { server in memory(server)?.restore(server) }
         portHooks.ipcGets["get binds"] = { server in ShortcutFormatter.bindsReply(server.shortcutRows) }
-        portHooks.borderColor = { server, c in server.floatingBorderColor(c) }
         portHooks.overlayLook = { server, set in server.config.chutneyStyle ? set : nil }
         portHooks.borderRadius = { server, _ in server.config.chutneyStyle ? BorderGeometry.cornerRadius : nil }
-        portHooks.focusedBorderOnly = { server in !server.config.chutneyBorderUnfocused }
-        portHooks.configLoaded.append { server in server.mac.watcher.ignoredBundleIds = Set(server.config.chutneyIgnoreApps) }
         portHooks.configLoaded.append { server in (server.system as? MacWindowSystem)?.configLoaded(server.config) }
         portHooks.configLoaded.append { server in
             guard ChutneyTheme.sync(configURL: server.configURL, style: server.config.chutneyStyle) else { return }

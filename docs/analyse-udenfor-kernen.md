@@ -56,7 +56,7 @@ Rækkefølgen er de hele filer først, fordi de er mekaniske at flytte. Mærkern
 | **Menuens gemte valg:** MenuSave, OverridesWindow, konflikter, `-p`-advarsler | ~400 + 96 test | **Skær ned** (punkt 3.2 og afsnit 4). |
 | `chutney_style` og tema (ChutneyTheme, PortAccent) | ~150 | Behold (afsnit 4). |
 | `chutney_focus_app` | ~140 | Behold. Du har 25 taster på den. |
-| Små nøgler: floating_color, tab-genveje, border_unfocused, ignore_apps, set_proportion_all | ~75 | Behold. 10–25 linjer hver, og de er slået fra uden deres nøgle. `physical_pixels` er fjernet 2026-11-09: den stod for 10 af kernens linjer. |
+| Små nøgler: tab-genveje, set_proportion_all | ~75 | Behold. De er slået fra uden deres nøgle. Fjernet 2026-11-09, fordi de rørte kernen eller var ubrugte: `physical_pixels` (10 af kernens linjer), `floating_color`, `border_unfocused` og `ignore_apps`. |
 | `mango -p`, `--list-ignored`, MangoCompat | ~470 | Behold. Regel 1 kræver listen. |
 | `mmsg`s service, logs, reload og binds (porten; mangos mmsg er kernen) | ~410 | Behold. |
 | MainThreadWatchdog | 66 | Behold. Den kører kun med `-d`, og dens timer er nævnt. |

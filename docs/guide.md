@@ -299,7 +299,6 @@ when it is absent: delete them and Mango Chutney behaves as mango, with the conf
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `chutney_ignore_apps` | empty | Bundle ids of apps whose windows mango never manages, comma separated. Several lines add up; an empty value clears the list. To float or place an app's windows instead, use mango's [window rules](https://mangowm.github.io/docs/window-management/rules) (`appid:` is the bundle id). |
 
 ## Theming
 
@@ -309,8 +308,6 @@ mango's [Theming](https://mangowm.github.io/docs/visuals/theming). These are the
 | Setting | Default | Description |
 | :--- | :--- | :--- |
 | `chutney_style` | `0` (the default config: `1`) | The tab and group bars, jump labels and switcher in the macOS look, wherever no `*_decorate_*` key sets mango's; mango's colours in macOS's; the borders' corners as the windows' own. The bars, the switcher and the palettes (always) stand on Liquid Glass on macOS 26 and later, on the system's blur before it. |
-| `chutney_border_unfocused` | `1` | Borders around unfocused windows too. `0`: only the focused window has one. |
-| `chutney_floating_color` | unset | One border colour for floating windows (`0xRRGGBBAA`). Empty or `none`: mango's colours. |
 | `chutney_overlap_warning` | `0` | A tiled window its app keeps larger than its tile (Claude, VS Code and other apps with a minimum size) goes over its neighbour, as always; with this key the menu bar draws its tag in orange. The menu says which windows go over by how much, and offers to move the one that goes over most to the first empty tag (`tagsilent`) or float it (`togglefloating`), each one of mango's commands run when picked. |
 | `chutney_tab_bar_decorate_icon` | `0` | In mango's tab bar (`monocle_tab_mode`, `deck_tab_mode`): the app's icon before each tab's title. |
 | `chutney_group_bar_decorate_icon` | `0` | In mango's group bar: the app's icon before each member's title. |

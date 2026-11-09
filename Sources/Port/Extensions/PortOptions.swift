@@ -3,12 +3,6 @@ enum PortOptions {
     static let setters: [String: ConfigOptions.Setter] = {
         typealias O = ConfigOptions
         var t: [String: ConfigOptions.Setter] = [:]
-        t["chutney_floating_color"] = { config, value in
-            if value.isEmpty || value.lowercased() == "none" { config.chutneyFloatingColor = nil; return .applied }
-            guard let c = parseColor(value) else { return .invalid("Invalid color format: \(value)") }
-            config.chutneyFloatingColor = c
-            return .applied
-        }
         t["chutney_hyper_modifier"] = { config, value in
             guard let mods = Modifiers.parse(value, hyperModifier: ""), !mods.isEmpty else {
                 return .invalid("Invalid chutney_hyper_modifier: \(value)")
@@ -60,7 +54,6 @@ enum PortOptions {
         t["chutney_tab_bar_decorate_icon"] = O.bool(\.chutneyTabBarDecorateIcon)
         t["chutney_group_bar_decorate_icon"] = O.bool(\.chutneyGroupBarDecorateIcon)
         t["chutney_tab_bar_shortcuts"] = O.bool(\.chutneyTabBarShortcuts)
-        t["chutney_border_unfocused"] = O.bool(\.chutneyBorderUnfocused)
         t["chutney_overlap_warning"] = O.bool(\.chutneyOverlapWarning)
         t["chutney_hotkeys_apps"] = O.bool(\.chutneyHotkeysApps)
         t["chutney_layout_palette_keys"] = { config, value in
@@ -70,13 +63,6 @@ enum PortOptions {
                 return .invalid("Invalid chutney_layout_palette_keys: \(value) (four keys: left,down,up,right or h,j,k,l)")
             }
             config.chutneyLayoutPaletteKeys = keys
-            return .applied
-        }
-        t["chutney_ignore_apps"] = { config, value in
-            let ids = value.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
-            if ids.isEmpty { config.chutneyIgnoreApps = []; return .applied }
-            for id in ids where !config.chutneyIgnoreApps.contains(id) { config.chutneyIgnoreApps.append(id) }
             return .applied
         }
         return t
