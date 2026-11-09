@@ -92,7 +92,7 @@ with the keys still on Hyper (⌃⌥⌘ held).
 
 ## Status
 
-Beta (0.0.3-20261105-beta). I use it every day, but there are rough edges. Bugs go in this repo's
+Beta (0.0.4-20261109-beta). I use it every day, but there are rough edges. Bugs go in this repo's
 issues; questions about mango itself go to [mango](https://github.com/mangowm/mango) or its
 [Discord](https://discord.gg/CPjbDxesh5).
 

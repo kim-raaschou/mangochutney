@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 import QuartzCore
 
-public let mangoVersion = "0.0.3-20261105-beta"
+public let mangoVersion = "0.0.4-20261109-beta"
 
 /* Scene layer ids; the scene tree keeps one tree per layer. */
 public enum Lyr: Int, Comparable {
