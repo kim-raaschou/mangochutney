@@ -12,8 +12,11 @@ extension Config {
     package var chutneyStyle: Bool {
         get { bool("chutney_style", false) } set { set("chutney_style", newValue) }
     }
-    package var chutneyTabBarAppIcons: Bool {
-        get { bool("chutney_tab_bar_app_icons", false) } set { set("chutney_tab_bar_app_icons", newValue) }
+    package var chutneyTabBarDecorateIcon: Bool {
+        get { bool("chutney_tab_bar_decorate_icon", false) } set { set("chutney_tab_bar_decorate_icon", newValue) }
+    }
+    package var chutneyGroupBarDecorateIcon: Bool {
+        get { bool("chutney_group_bar_decorate_icon", false) } set { set("chutney_group_bar_decorate_icon", newValue) }
     }
     package var chutneyTabBarShortcuts: Bool {
         get { bool("chutney_tab_bar_shortcuts", false) } set { set("chutney_tab_bar_shortcuts", newValue) }

@@ -37,9 +37,9 @@ extension MacWindowSystem {
         }
     }
 
-    func withAppIcons(_ style: TabStripStyle) -> TabStripStyle {
+    func withAppIcons(_ style: TabStripStyle, _ on: Bool) -> TabStripStyle {
         var s = style
-        s.appIcons = server.config.chutneyTabBarAppIcons
+        s.appIcons = on
         return s
     }
 }

@@ -19,7 +19,7 @@ final class PortHooksTests: MangoTestCase {
         r.server.renderBorder = true
         r.server.drawsOverlays = true
         r.server.config.chutneyBorderUnfocused = false
-        r.server.config.chutneyTabBarAppIcons = true
+        r.server.config.chutneyTabBarDecorateIcon = true
         let a = r.window(900_810), _ = r.window(900_811)
         r.server.arrange(r.monitor, .none)
         r.server.clientFocus(a)

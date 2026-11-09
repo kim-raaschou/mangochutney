@@ -151,11 +151,11 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) {
-        tabBars.update(withTabNumbers(strips), style: withAppIcons(style), keyFocus: server.focused?.id)
+        tabBars.update(withTabNumbers(strips), style: withAppIcons(style, server.config.chutneyTabBarDecorateIcon), keyFocus: server.focused?.id)
     }
 
     func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) {
-        groupBars.update(strips, style: withAppIcons(style), keyFocus: server.focused?.id)
+        groupBars.update(strips, style: withAppIcons(style, server.config.chutneyGroupBarDecorateIcon), keyFocus: server.focused?.id)
     }
 
     var windowCornerRadius: CGFloat { BorderGeometry.cornerRadius }

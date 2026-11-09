@@ -313,7 +313,8 @@ mango's [Theming](https://mangowm.github.io/docs/visuals/theming). These are the
 | `chutney_floating_color` | unset | One border colour for floating windows (`0xRRGGBBAA`). Empty or `none`: mango's colours. |
 | `chutney_physical_pixels` | `0` | `border_px` and the gaps in the screen's pixels rather than points: `border_px=3` is 1.5 points on a Retina screen, as on mango with scale 2. |
 | `chutney_overlap_warning` | `0` | A tiled window its app keeps larger than its tile (Claude, VS Code and other apps with a minimum size) goes over its neighbour, as always; with this key the menu bar draws its tag in orange. The menu says which windows go over by how much, and offers to move the one that goes over most to the first empty tag (`tagsilent`) or float it (`togglefloating`), each one of mango's commands run when picked. |
-| `chutney_tab_bar_app_icons` | `0` | In mango's `monocle_tab_mode` and `deck_tab_mode`: the app's icon before each tab's title. |
+| `chutney_tab_bar_decorate_icon` | `0` | In mango's tab bar (`monocle_tab_mode`, `deck_tab_mode`): the app's icon before each tab's title. |
+| `chutney_group_bar_decorate_icon` | `0` | In mango's group bar: the app's icon before each member's title. |
 | `chutney_tab_bar_shortcuts` | `0` | ⌘1–9 picks a tab while a tab bar is shown; the numbers show while ⌘ is held. |
 
 **Colours.** With `chutney_style=1` Mango Chutney writes `chutney_theme.conf`, and again when the

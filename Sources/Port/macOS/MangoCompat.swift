@@ -122,7 +122,8 @@ public enum MangoCompat {
         "chutney_physical_pixels": "border_px and the gaps in the screen's pixels, not points (3 is 1.5 points on Retina)",
         "chutney_ignore_apps": "bundle ids that are never managed",
         "chutney_floating_color": "fixed border colour of floating windows, focused or not",
-        "chutney_tab_bar_app_icons": "the app's icon before each tab's title",
+        "chutney_tab_bar_decorate_icon": "the app's icon before each tab's title in the tab bar",
+        "chutney_group_bar_decorate_icon": "the app's icon before each title in the group bar",
         "chutney_tab_bar_shortcuts": "⌘1-9 picks a tab while a tab bar is shown",
         ]
         return t

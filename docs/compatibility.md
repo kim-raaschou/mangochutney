@@ -86,7 +86,8 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_menu_config` | the file the menu's panel saves its settings in; the config reads it with source_optional, last |
 | `chutney_physical_pixels` | border_px and the gaps in the screen's pixels, not points (3 is 1.5 points on Retina) |
 | `chutney_style` | bars, switcher and jump labels in the macOS style where no decorate key is set |
-| `chutney_tab_bar_app_icons` | the app's icon before each tab's title |
+| `chutney_tab_bar_decorate_icon` | the app's icon before each tab's title in the tab bar |
+| `chutney_group_bar_decorate_icon` | the app's icon before each title in the group bar |
 | `chutney_tab_bar_shortcuts` | ⌘1-9 picks a tab while a tab bar is shown |
 | `chutney_focus_app` (dispatcher) | one key per app: start it, or go to its window |
 | `chutney_restart` (dispatcher) | quit, with hidden windows left hidden for the next mango (make install, mmsg service restart) |

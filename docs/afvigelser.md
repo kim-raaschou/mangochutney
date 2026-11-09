@@ -23,7 +23,7 @@ mango selv melder "Unknown keyword" for hver `chutney_`-linje og læser resten.
 | `chutney_menu_bar` (+ `_tag_style`, `_logo`, `_layout`, `_mode`) | Menulinjen med tags, layout og layout-panelet | til | Ingen menulinje; tags i en bar via `mmsg watch` |
 | `chutney_menu_config` | Panelets ændringer gemmes i `chutney_menu.conf`, som configen læser sidst; `config.conf` skrives aldrig | `chutney_menu.conf` | `setoption` gemmer intet |
 | `chutney_style` | Fanebjælke, gruppebjælke, jump-mærker, switcher, titelbjælke, config-banner og overview i macOS' udseende, hvor ingen `*_decorate_*`-nøgle er sat; mangos farver i macOS' (`chutney_theme.conf`, følger accentfarve og lys/mørk); rammen følger vinduets runde hjørner | til | Mangos udseende og farver |
-| `chutney_tab_bar_app_icons` | Appens ikon før fanens titel | til | Kun titler |
+| `chutney_tab_bar_decorate_icon`, `chutney_group_bar_decorate_icon` | Appens ikon før titlen i fanebjælken og i gruppebjælken, én nøgle pr. bjælke som mangos `*_decorate_*` | til | Kun titler |
 | `chutney_tab_bar_shortcuts` | ⌘1–9 vælger en fane | til | Ingen |
 | `chutney_toggle_hotkeys_palette` (+ `chutney_hotkeys_*`) | Hotkeys-paletten: søg i bindinger, vinduer og apps | Hyper K | Ingen |
 | `chutney_toggle_layout_palette` (+ `chutney_layout_palette_*`) | Layout-paletten; viser `circle_layout`, Tab og Space sætter den | Hyper L | Ingen |

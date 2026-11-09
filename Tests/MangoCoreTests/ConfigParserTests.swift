@@ -8,6 +8,15 @@ final class ConfigParserTests: MangoTestCase {
                            fileName: "test.conf")
     }
 
+    func testEachBarHasItsOwnIconKey() {
+        let tab = parse("chutney_tab_bar_decorate_icon=1").config
+        XCTAssertTrue(tab.chutneyTabBarDecorateIcon)
+        XCTAssertFalse(tab.chutneyGroupBarDecorateIcon, "as mango's tab_bar_ and group_bar_ keys")
+        let group = parse("chutney_group_bar_decorate_icon=1").config
+        XCTAssertFalse(group.chutneyTabBarDecorateIcon)
+        XCTAssertTrue(group.chutneyGroupBarDecorateIcon)
+    }
+
     private var defaultConfigURL: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -89,7 +98,8 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual([c.animationDurationMove, c.animationDurationOpen, c.animationDurationTag], [500, 400, 350], "mango's")
         XCTAssertTrue(c.sloppyfocus, "mango's")
         XCTAssertTrue(c.chutneyStyle)
-        XCTAssertTrue(c.chutneyTabBarAppIcons)
+        XCTAssertTrue(c.chutneyTabBarDecorateIcon)
+        XCTAssertTrue(c.chutneyGroupBarDecorateIcon)
         XCTAssertTrue(c.chutneyTabBarShortcuts)
         XCTAssertEqual(c.chutneyHyperModifier, "super+ctrl+alt")
         let hotkeys = c.keyBindings.first { $0.dispatch.name == "chutney_toggle_hotkeys_palette" }
