@@ -8,15 +8,17 @@ public enum NativeFocus {
                              completion: (@MainActor () -> Void)? = nil) {
         var psn = ProcessSerialNumber()
         if mango_GetProcessForPID(pid, &psn) == noErr {
-            _ = _SLPSSetFrontProcessWithOptions(&psn, windowID, 0x200 )
+            _ = _SLPSSetFrontProcessWithOptions(&psn, windowID, raise ? 0x200 : 0x400)
             postFocusRecord(&psn, windowID: windowID, kind: 0x01)
             postFocusRecord(&psn, windowID: windowID, kind: 0x02)
         } else {
             NSRunningApplication(processIdentifier: pid)?.activate()
         }
         DispatchQueue.global(qos: .userInteractive).async {
-            element.setMain()
-            if raise { element.raise() }
+            if raise {
+                element.setMain()
+                element.raise()
+            }
             if let completion { DispatchQueue.main.async { MainActor.assumeIsolated { completion() } } }
         }
     }

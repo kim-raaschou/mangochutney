@@ -68,6 +68,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Hvilke vinduer der styres (popups aldrig), og hvilke der åbner flydende (dialoger), afgøres med AeroSpaces heuristik 1:1, med dens app-lister, og én ændring: AeroSpaces regel om vinduesniveau gælder alle apps, ikke kun dem på dens liste, så et vindue over normalt niveau (en notifikation, et flydende panel) aldrig styres; en `window_rule` med `is_floating` vinder. Som i AeroSpace flyder et vindue, der er minimeret, eller hvis app er skjult, når det findes | Wayland siger det med xdg-roller; macOS siger det ikke pålideligt, og AeroSpaces heuristik er afprøvet mod rigtige apps |
 | Et vindue, der ikke kan blive mindre end sit felt, går ind over naboen og vokser indad fra en skærmkant, det ellers ville krydse; mango klipper det (`chutney_overlap_warning`: tagget bliver orange i menulinjen) | Appen afviser størrelsen, og andre apps' vinduer kan ikke klippes |
 | Efter mangos kantgreb (`enable_border_resize`) eller et træk vises en pil, til appen selv sætter sin markør igen, når markøren går ind over en ny del af den; i mango giver wlroots straks appen sin markør tilbage. På macOS 14 er de skrå markører på et flydende vindues hjørner et sigtekors | En app i baggrunden kan sætte markøren (`SetsCursorInBackground`), men ikke bede en anden app om at sætte sin igen; macOS 14 har ingen offentlige skrå markører |
+| Mangos lag (`client_target_layer`) holdes, når mango giver fokus, men et klik med musen løfter altid vinduet; en app, der selv lægger sit vindue frem, når den bliver aktiv eller får sit nøglevindue (fx Arc, IntelliJ), kommer øverst alligevel; og et vindue, der får fokus under et højere lag, løftes heller ikke over sine naboer i sit eget lag | Klikket når macOS, før mango ser det; tastaturfokus kræver, at appen er aktiv, og en aktiv app ordner selv sine vinduer; porten kan lade være med at løfte et vindue, men ikke lægge et andet programs vindue over det aktive |
 | Layoutet holder menulinjen og Dock'en fri | De svarer til mangos bjælker med eksklusiv zone |
 | Ingen skygge, blur, dæmpning, gennemsigtighed eller runde hjørner fra mango; ingen luk- og fade-animationer | macOS tegner andre apps' vinduer; gennemsigtighed kræver SIP slået fra |
 | Animationer skrives via Accessibility (højst 60 Hz) | Ingen compositor |
@@ -126,8 +127,11 @@ Hvor koden står, når den ikke står som i mango.
   skærmens display-ID, ikke navnet, for to skærme kan have samme navn.
 - **Faner:** fanekæden holdes for de tags, der er i visning, som `tab_member_kept` holder den;
   mango kæder den pr. vindue (`Tabs.swift`).
-- **Lag:** `client_reparent_group` (et vindue og dets gruppebjælke flyttes til flise-, flyde- eller
-  toplaget i scenen) har ingen funktion i kernen; porten ordner vinduerne i `restack`.
+- **Lag:** `client_target_layer` er i kernen 1:1, og porten bruger den, når mango giver fokus: ligger
+  et synligt vindue i et højere lag over det, får vinduet fokus uden at blive løftet (`lifts`), så
+  det højere lag bliver øverst. `client_sync_layer` og `client_reparent_group` (et vindue og dets
+  gruppebjælke flyttes til et andet lag i scenen) har ingen funktion i kernen; porten ordner
+  vinduerne i `restack`.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
   subrole); appens egne flyt under et træk tager porten ud (`grabBegan`, `grabEnded`).
 - **Logning:** mangos `common/log.c` i kernen (`mangoError`, `mangoLogInit`) og wlroots'

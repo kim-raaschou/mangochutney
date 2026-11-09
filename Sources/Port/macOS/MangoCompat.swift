@@ -96,7 +96,6 @@ public enum MangoCompat {
             "fade_in_begin_opacity": fade, "fade_out_begin_opacity": fade,
             "focused_opacity": fade, "unfocused_opacity": fade,
             "animation_type_close": closeAnim, "animation_duration_close": closeAnim, "animation_curve_close": closeAnim,
-            "float_full_to_top": .impossible("macOS has no layers for other apps' windows: the window focused last is on top"),
         ]
         t["animation_duration_focus"] = fade
         t["animation_curve_focus"] = fade

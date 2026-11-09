@@ -85,7 +85,17 @@ class MacWindowSystem: WindowSystem {
         guard let (c, raise) = pendingFocus else { return }
         pendingFocus = nil
         guard server.clientByIdAll(c.id) === c else { return }
-        NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: raise) { [weak self] in self?.restack() }
+        let lift = Self.lifts(c, raise: raise, in: server)
+        NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: lift) { [weak self] in self?.restack() }
+    }
+
+    static func lifts(_ c: Client, raise: Bool, in server: MangoServer) -> Bool {
+        guard raise, let m = c.mon else { return false }
+        let layer = server.clientTargetLayer(c)
+        return !server.clientsAll.contains { d in
+            d !== c && d.mon === m && d.isVisible(on: m) && !d.parked
+                && server.clientTargetLayer(d) > layer && d.frame.intersects(c.frame)
+        }
     }
 
     func warp(to p: CGPoint) {

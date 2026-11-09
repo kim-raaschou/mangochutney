@@ -4,6 +4,31 @@ import QuartzCore
 
 public let mangoVersion = "0.0.3-20261105-beta"
 
+/* Scene layer ids; the scene tree keeps one tree per layer. */
+public enum Lyr: Int, Comparable {
+    case bg
+    case blur
+    case bottom
+    case tile
+    case maximize
+    case float
+    case top
+    case fullscreen
+    case overlay
+    case specialDim
+    case specialTile
+    case specialMaximize
+    case specialTop
+    case specialFloat
+    case specialFullscreen
+    case fadeOut
+    case specialOverlay
+    case imPopup
+    case block
+
+    public static func < (a: Lyr, b: Lyr) -> Bool { a.rawValue < b.rawValue }
+}
+
 package enum ArrangeAnimation {
     case none
     case move
@@ -962,6 +987,47 @@ public final class MangoServer {
             clientSetFloating(c, true)
         }
         if rearrange { arrange(m) }
+    }
+
+    // scene layer a client belongs to; only clients actually tagged with tag 0
+    // belong to the special layers
+    public func clientTargetLayer(_ c: Client) -> Lyr {
+        let specialOverlay = c.tags & TagMask.special != 0
+
+        if c.isOverlay {
+            return specialOverlay ? .specialOverlay : .overlay
+        }
+
+        if config.floatFullToTop {
+            if specialOverlay {
+                return c.isFloating || c.isFullscreen ? .top
+                    : c.isMaximizeScreen ? .specialMaximize
+                    : .specialTile
+            }
+
+            if let m = c.mon, isSpecialActive(m) {
+                return c.isFullscreen ? .fullscreen
+                    : c.isFloating ? .float
+                    : c.isMaximizeScreen ? .maximize
+                    : .tile
+            }
+
+            return c.isFloating || c.isFullscreen ? .top
+                : c.isMaximizeScreen ? .maximize
+                : .tile
+        }
+
+        if specialOverlay {
+            return c.isFullscreen ? .specialFullscreen
+                : c.isFloating ? .specialFloat
+                : c.isMaximizeScreen ? .specialMaximize
+                : .specialTile
+        }
+
+        return c.isFullscreen ? .fullscreen
+            : c.isFloating ? .float
+            : c.isMaximizeScreen ? .maximize
+            : .tile
     }
 
 /// Not in mango: the port keeps the scroller's column order in the tag's state.
