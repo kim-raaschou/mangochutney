@@ -109,6 +109,25 @@ final class FakeWindowSystem: MacWindowSystem {
     override func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }
     override func nagSpawn(_ argv: [String], input: String) { nagArgv = argv; nagInput = input }
     override func nagKill() { nagArgv = nil }
+    var fitNotification: (title: String, body: String, fit: Bool)?
+    override func postFitNotification(title: String, body: String, fit: Bool) { fitNotification = (title, body, fit) }
+    override func removeFitNotification() { fitNotification = nil }
+    var axFullscreen: (ClientID) -> Bool? = { _ in false }
+    override func fullscreenNow(_ c: Client) -> Bool? { axFullscreen(c.id) }
+    var onScreen: (CGWindowID) -> Bool = { _ in true }
+    override func windowOnScreen(_ id: CGWindowID) -> Bool { onScreen(id) }
+    var anchored = 0
+    override func focusSpaceAnchor(_ m: Monitor) { anchored += 1 }
+    /// The fullscreen written to each window, and whether the app takes it.
+    var fullscreenWrites: [(ClientID, Bool)] = []
+    var takesFullscreen: (ClientID) -> Bool = { _ in true }
+    override func setNativeFullscreen(_ c: Client, _ fullscreen: Bool, _ done: @escaping @MainActor (Bool) -> Void) {
+        fullscreenWrites.append((c.id, fullscreen))
+        done(takesFullscreen(c.id))
+    }
+    var focusAsked: [ClientID] = []
+    /// The app answers which window has the keys: this one.
+    override func askFocus(_ c: Client) { focusAsked.append(c.id); windowFocused(id: c.id) }
     override func setCursorHidden(_ hidden: Bool) { cursorHidden = hidden }
     var cursorName: String??
     override func setCursor(_ name: String?) { cursorName = .some(name) }

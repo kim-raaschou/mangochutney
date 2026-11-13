@@ -275,6 +275,8 @@ Hyper A, then S: Safari. An app's bundle id: `osascript -e 'id of app "Safari"'`
 | `chutney_restart` | - | mango's `quit`, with hidden windows left hidden: the next mango restores them (`make install` and `mmsg service restart` use it). |
 | `chutney_keybindings` | - | The keybindings palette. |
 | `chutney_layout_switcher` | - | The layout switcher. |
+| `chutney_fit_layout` | - | Fits the selected monitor's layout to the windows larger than their tiles, where it can (`chutney_fit_layout` below). |
+| `chutney_view_fullscreen` | `1`–`12` | Views F tag N of `chutney_fullscreen_tag`: its window in macOS fullscreen is focused and macOS goes to its Space. Nothing where no window is there. For example `bind=HYPER,F1,chutney_view_fullscreen,1`. |
 
 ## Configuration
 
@@ -309,7 +311,9 @@ mango's [Theming](https://mangowm.github.io/docs/visuals/theming). These are the
 | Setting | Default | Description |
 | :--- | :--- | :--- |
 | `chutney_macos_appearance` | `0` (the default config: `1`) | The tab and group bars, jump labels and switcher in the macOS look, wherever no `*_decorate_*` key sets mango's; mango's colours in macOS's; the borders' corners as the windows' own. The bars, the switcher, the config error bar and the palettes (always) stand on Liquid Glass on macOS 26 and later, on the system's blur before it. |
-| `chutney_overlap_warning` | `0` | A tiled window its app keeps larger than its tile (Claude, VS Code and other apps with a minimum size) goes over its neighbour, as always; with this key the menu bar draws its tag in orange. The menu says which windows go over by how much, and offers to move the one that goes over most to the first empty tag (`tagsilent`) or float it (`togglefloating`), each one of mango's commands run when picked. |
+| `chutney_fullscreen_tag` | `0` | As macOS gives a window in fullscreen its own Space, mango gives it its own tag. The tags F1–F12 lie after mango's tags (above `tag_num`); in the menu bar each is drawn as its window's app icon, faint when not viewed, and a click goes into its Space. A window mango manages that goes into macOS fullscreen moves alone to the first free F tag on its monitor and that tag is viewed; the tag it left closes up, and the desktop's windows stay where they are. Into its Space (an app key, a click, a swipe, `chutney_view_fullscreen`), its F tag is viewed; out of it, the tag viewed on the desktop before. A tag with no window to focus takes macOS back to the desktop by mango's own window there. An F tag holds its window alone: from the desktop mango's tag keys do not reach it, and used from it, `tag` and `toggletag` change the window's own tags and `toggleview` is undone. Out of fullscreen it is back on its own tag, in its place. With no free F tag it is out of the layout, as without the key. mango's fullscreen is macOS's: `togglefullscreen` puts the window in macOS fullscreen and onto its F tag (and out again), and a window put in macOS fullscreen by its app (the green button, ⌃⌘F) is in mango's fullscreen; `togglefloating` and `togglemaximizescreen` take it out. An app that cannot go into macOS fullscreen stays in mango's. The default config has the key and Hyper F1–F12 commented out. |
+| `chutney_overlap_warning` | `0` (the default config: `1`) | A tiled window its app keeps larger than its tile (Claude, VS Code and other apps with a minimum size) goes over its neighbour, as always; with this key the menu bar draws its tag in orange. |
+| `chutney_fit_layout` | `0` | Where a tiled window's app keeps it larger than its tile and the layout has room for it on that side (its row for the width, its column for the height, beside the windows that keep their own sizes there, and those that fit at the least size their apps have kept them at while open): mango's `resizewin` on the window by what it lacks, as from the keyboard, in any of mango's layouts. Nothing where there is not room; the window goes over its neighbour, as in mango. `1`: "Fit layout" first in the menu bar's menu, where the layout can be fitted, also when the notification is gone. The dispatcher `chutney_fit_layout` works at any level. `2`: also a macOS notification when a window goes over and the layout can be fitted; its Fit button, or a click on it, fits it (macOS asks once to allow notifications). Where there is no room, a notification says so and what the window needs, with no button. `3`: also by itself, at most three times while the view of tags, layout and windows stays, never in overview or a drag; where there is no room, the same notification. Only the selected monitor. |
 | `chutney_tab_bar_decorate_icon` | `0` | In mango's tab bar (`monocle_tab_mode`, `deck_tab_mode`): the app's icon before each tab's title. |
 | `chutney_group_bar_decorate_icon` | `0` | In mango's group bar: the app's icon before each member's title. |
 | `chutney_tab_bar_shortcuts` | `0` | ⌘1–9 picks a tab while a tab bar is shown; the numbers show while ⌘ is held. |
@@ -381,7 +385,12 @@ What follows from that:
   accepted so a mango config loads; [Compatibility](compatibility.md) lists them.
 - **Spaces:** use one Space per display and switch tags instead. Turn off *Displays have separate
   Spaces* (System Settings › Desktop & Dock). A window in native fullscreen lives in its own Space
-  and is left alone until it comes back.
+  and is left alone until it comes back; then it takes its place again, the app says which window
+  has the keys, and its tile is written once macOS has finished moving it (at the Space change, or
+  at once where that came first). Its place is kept however long it is away. With `chutney_fullscreen_tag=1` it has its own tag while it is in
+  fullscreen. macOS's *Reduce motion* (System Settings › Accessibility › Motion) makes Space changes
+  fade instead of slide; the layout panel shows it under Fullscreen, with a button to that setting,
+  as only System Settings can change it.
 - **Mission Control** draws the parked windows tiny; *Group windows by application* helps:
   `defaults write com.apple.dock expose-group-apps -bool true && killall Dock`.
 - **Trackpad gestures:** macOS uses 3- and 4-finger swipes for Spaces and Mission Control; turn

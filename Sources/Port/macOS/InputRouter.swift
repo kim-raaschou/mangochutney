@@ -46,6 +46,7 @@ final class InputRouter: @unchecked Sendable {
     private var grabbing = false
     private var pressing = false
     private var menuBarPress = false
+    private var pickerPress = false   // Port extension: a click taken by chutney_launch_or_focus's picture
 
     private var pendingDrag: (point: CGPoint, time: UInt32)?
     private var pendingMove: (point: CGPoint, speed: CGFloat)?
@@ -188,6 +189,16 @@ final class InputRouter: @unchecked Sendable {
         }
         if !ev.isDown, menuBarPress {
             menuBarPress = false
+            return true
+        }
+        // Port extension: chutney_launch_or_focus's picture takes a click as mango's switcher does.
+        if ev.isDown, s.launchOrFocusPicker != nil, button == 0 || button == 1 {
+            pickerPress = true
+            onMain { LaunchOrFocusPicker.shared.click($0, at: p, button: button) }
+            return true
+        }
+        if !ev.isDown, pickerPress {
+            pickerPress = false
             return true
         }
         if ev.isDown {

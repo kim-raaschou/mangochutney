@@ -5,8 +5,13 @@ public struct MenuBarTag: Equatable {
     public var number: Int
     public var active: Bool
     public var overlap: Bool
+    /// Port extension: chutney_fullscreen_tag. An F tag: its window's app, drawn by its icon, and its name.
+    public var app: pid_t?
+    public var label: String?
 
-    public init(number: Int, active: Bool, overlap: Bool = false) { self.number = number; self.active = active; self.overlap = overlap }
+    public init(number: Int, active: Bool, overlap: Bool = false, app: pid_t? = nil, label: String? = nil) {
+        self.number = number; self.active = active; self.overlap = overlap; self.app = app; self.label = label
+    }
 }
 
 public struct MenuBarMonitor: Equatable {
@@ -14,15 +19,6 @@ public struct MenuBarMonitor: Equatable {
     public var tags: [MenuBarTag]
     public var layout: LayoutKind
     public var selected: Bool
-}
-
-public struct MenuBarSuggestion: Equatable {
-    public enum Action: Equatable {
-        case moveToTag(ClientID, Int)
-        case float(ClientID)
-    }
-    public var title: String
-    public var action: Action
 }
 
 public struct MenuBarTagHit: Equatable, Sendable {
@@ -54,78 +50,45 @@ public enum MenuBarStatus {
             let active = m.tagset[m.seltags] & bit != 0
             let occupied = server.clientsAll.contains { $0.mon === m && $0.tags & bit != 0 && !$0.isMinimized }
             if active || occupied || m.pertag[i].noHide {
-                tags.append(MenuBarTag(number: i, active: active, overlap: !overlaps(server, m, tag: i).isEmpty))
+                tags.append(MenuBarTag(number: i, active: active, overlap: overlaps(server, m, tag: i)))
             }
         }
+        tags += FullscreenTag.menuBarTags(server, m)   // Port extension: chutney_fullscreen_tag
         if m.tagset[m.seltags] & (1 << 31) != 0 {
-            tags.append(MenuBarTag(number: 0, active: true, overlap: !overlaps(server, m, tag: 0).isEmpty))
+            tags.append(MenuBarTag(number: 0, active: true, overlap: overlaps(server, m, tag: 0)))
         }
         return tags
     }
 
+    /// Port extension: chutney_overlap_warning. A tiled window shown on the tag that its app keeps larger than its tile.
     @MainActor
-    static func overlaps(_ server: MangoServer, _ m: Monitor, tag t: Int) -> [(client: Client, width: Int, height: Int)] {
-        guard server.config.chutneyOverlapWarning else { return [] }
+    static func overlaps(_ server: MangoServer, _ m: Monitor, tag t: Int) -> Bool {
+        guard server.config.chutneyOverlapWarning else { return false }
         let bit: UInt32 = t == 0 ? 1 << 31 : 1 << UInt32(t - 1)
         let shown = server.tiledClients(m).filter { $0.tags & bit != 0 && !$0.parked && $0.geom != nil }
-        return shown.compactMap { c -> (client: Client, width: Int, height: Int)? in
+        return shown.contains { c in
             let tile = shown.filter { $0.geom == c.geom }
             guard tile.count == 1 || c === (tile.first { $0.id == m.sel } ?? tile[0]), let rs = c.refusedSize, let g = c.geom
-            else { return nil }
-            let w = Int((rs.width - g.width).rounded()), h = Int((rs.height - g.height).rounded())
-            guard w > 0 || h > 0 else { return nil }
-            return (c, max(0, w), max(0, h))
-        }.sorted { $0.width + $0.height > $1.width + $1.height }
-    }
-
-    @MainActor
-    public static func overlapLines(_ server: MangoServer)
-        -> [(heading: String, windows: [(app: String, by: String)], suggestions: [MenuBarSuggestion])] {
-        let mons = server.monitors.sorted { ($0.screen.frame.minX, $0.screen.frame.minY) < ($1.screen.frame.minX, $1.screen.frame.minY) }
-        return mons.flatMap { m in
-            (Array(1...server.config.tagNum) + [0]).compactMap { t -> (heading: String, windows: [(app: String, by: String)], suggestions: [MenuBarSuggestion])? in
-                let list = overlaps(server, m, tag: t)
-                guard let first = list.first else { return nil }
-                let tag = t == 0 ? "Special tag" : "Tag \(t)"
-                let on = mons.count > 1 ? " on \(m.screen.name)" : ""
-                let windows = list.map { o in
-                    (o.client.appName, [o.width > 0 ? "\(o.width) pt larger in width" : nil,
-                                        o.height > 0 ? "\(o.height) pt larger in height" : nil].compactMap { $0 }.joined(separator: ", "))
-                }
-                let view = m.tagset[m.seltags]
-                let inView = t == 0 ? view & (1 << 31) != 0 : view & (1 << UInt32(t - 1)) != 0
-                var suggestions: [MenuBarSuggestion] = []
-                if inView {
-                    let c = first.client
-                    if let empty = (1...server.config.tagNum).first(where: { e in
-                        let bit: UInt32 = 1 << UInt32(e - 1)
-                        return view & bit == 0 && !server.clientsAll.contains { $0.mon === m && $0.tags & bit != 0 }
-                    }) {
-                        suggestions.append(MenuBarSuggestion(title: "Move \(c.appName) to tag \(empty)", action: .moveToTag(c.id, empty)))
-                    }
-                    suggestions.append(MenuBarSuggestion(title: "Float \(c.appName)", action: .float(c.id)))
-                }
-                return ("Overlap on \(tag)\(on)", windows, suggestions)
-            }
+            else { return false }
+            return rs.width > g.width + 0.5 || rs.height > g.height + 0.5
         }
     }
 
+    /// Port extension: chutney_fit_layout. The menu's "Fit layout", where the selected monitor's view can be fitted.
     @MainActor
-    public static func apply(_ server: MangoServer, _ s: MenuBarSuggestion) {
-        switch s.action {
-        case .moveToTag(let id, let t):
-            guard let c = server.clientByIdAll(id) else { return }
-            _ = server.dispatch(Dispatch(name: "tagsilent", args: ["\(t)"]), target: c)
-        case .float(let id):
-            guard let c = server.clientByIdAll(id) else { return }
-            _ = server.dispatch(Dispatch(name: "togglefloating"), target: c)
-        }
+    public static func fitTitle(_ server: MangoServer) -> String? {
+        guard server.config.chutneyFitLayout > 0, let m = server.selectedMonitor else { return nil }
+        return FitLayout.plan(server, m)?.title
     }
+
+    @MainActor
+    public static func fit(_ server: MangoServer) { FitLayout.fit(server) }
 
     @MainActor
     public static func viewTag(_ server: MangoServer, monitor name: String, tag: Int) {
         guard tag > 0, let m = server.monitors.first(where: { $0.screen.name == name }) else { return }
         if m !== server.selectedMonitor { server.focusMonitor(m) }
+        if tag > server.config.tagNum { return FullscreenTag.viewTag(server, m, tag: tag) }   // Port extension: chutney_fullscreen_tag
         _ = server.dispatch(Dispatch(name: "view", args: ["\(tag)"]))
     }
 }

@@ -48,6 +48,12 @@ extension Config {
     package var chutneyOverlapWarning: Bool {
         get { bool("chutney_overlap_warning", false) } set { set("chutney_overlap_warning", newValue) }
     }
+    package var chutneyFullscreenTag: Bool {
+        get { bool("chutney_fullscreen_tag", false) } set { set("chutney_fullscreen_tag", newValue) }
+    }
+    package var chutneyFitLayout: Int {
+        get { int("chutney_fit_layout", 0) } set { port["chutney_fit_layout"] = String(newValue) }
+    }
     package var chutneyKeybindingsSpotlightLaunch: Bool {
         get { bool("chutney_keybindings_spotlight_launch", true) } set { set("chutney_keybindings_spotlight_launch", newValue) }
     }

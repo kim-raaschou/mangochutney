@@ -9,14 +9,23 @@ extension MacWindowSystem: AppWatcherDelegate {
         if w.isMinimized { reasons.insert(.minimized) }
         if w.isFullscreen { reasons.insert(.fullscreen) }
         if w.isAppHidden { reasons.insert(.hidden) }
-        if !reasons.isEmpty { foundAway(c, reasons); return }
-        let initial = w.isInitial || !server.started
-        if let d = memory.back(c) {
-            mapBack(c, d, initial: initial)
-        } else if initial {
-            mapInitial(c)
-        } else {
-            server.handleClientMap(c)
+        // Port extension: chutney_fullscreen_tag. In fullscreen it is mapped onto its F tag; with another
+        // reason, when it is back from that.
+        let onFTag = reasons.contains(.fullscreen) && FullscreenTag.isOn(server)
+        if onFTag { reasons.remove(.fullscreen) }
+        if !reasons.isEmpty {
+            foundAway(c, reasons)
+            return
+        }
+        FullscreenTag.mapInFullscreen(server, c, onFTag) {
+            let initial = w.isInitial || !server.started
+            if let d = memory.back(c) {
+                mapBack(c, d, initial: initial)
+            } else if initial {
+                mapInitial(c)
+            } else {
+                server.handleClientMap(c)
+            }
         }
     }
 
@@ -99,7 +108,10 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func windowDestroyed(id: CGWindowID) {
-        if away.removeValue(forKey: id) != nil { return }
+        if away.removeValue(forKey: id) != nil {
+            memory.departed.away.remove(id)
+            return
+        }
         guard let c = server.clientByIdAll(id) else { return }
         server.handleClientUnmap(c)
         server.handleClientDestroy(c)
@@ -113,6 +125,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             return
         }
         if c.groupParked { server.clientFocusGroupMember(c); return }
+        if c.nativeFullscreen, !c.isVisible(on: m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
         if c.isVisible(on: m) {
             if m.sel == id && server.selectedMonitor === m { restack(); return }
             server.clientFocus(c, raise: false)
@@ -142,7 +155,10 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func appTerminated(pid: pid_t) {
-        for (id, e) in away where e.client.pid == pid { away.removeValue(forKey: id) }
+        for (id, e) in away where e.client.pid == pid {
+            away.removeValue(forKey: id)
+            memory.departed.away.remove(id)
+        }
         for c in server.clientsAll where c.pid == pid { windowDestroyed(id: c.id) }
     }
 
@@ -171,7 +187,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         if let c = away[id]?.client {
             c.element = element
             if s.minimized == false { comeBack(id, .minimized) }
-            if s.fullscreen == false { comeBack(id, .fullscreen) }
+            if s.fullscreen == false { backFromFullscreen(id) }
             if !s.appHidden { comeBack(id, .hidden) }
             return
         }
@@ -179,10 +195,11 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.element = element
         guard let m = c.mon else { return }
         animator.cancel(c.id)
+        if s.fullscreen == false, c.nativeFullscreen { fullscreenChanged(c, false) }   // Port extension: chutney_fullscreen_tag
         if s.minimized == true || s.fullscreen == true || s.appHidden {
             wlrLog(.info, "\(c.appName): window \(c.id) went away while its element was dead (minimized \(s.minimized ?? false), fullscreen \(s.fullscreen ?? false), hidden \(s.appHidden))")
             if s.minimized == true { minimizedByMacOS(c, true) }
-            if s.fullscreen == true { goAway(c, .fullscreen) }
+            if s.fullscreen == true, !c.nativeFullscreen { fullscreenChanged(c, true) }   // Port extension: chutney_fullscreen_tag (else away)
             if s.appHidden { goAway(c, .hidden) }
             return
         }
@@ -214,14 +231,80 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func windowGeometryChanged(id: CGWindowID, frame: CGRect, resized: Bool, isFullscreen: Bool?) {
-        if isFullscreen == false, away[id]?.reasons.contains(.fullscreen) == true { comeBack(id, .fullscreen); return }
-        if isFullscreen == true, let c = server.clientByIdAll(id) { goAway(c, .fullscreen); return }
+        if let fs = isFullscreen, windowFullscreenRead(id, fs) { return }
         guard let c = server.clientByIdAll(id) else { return }
         moved(c, to: frame, resized: resized)
     }
 
+    /// macOS's fullscreen read again after a Space change: the resize that tells it can come while the
+    /// port writes the window, and be missed.
+    func windowFullscreen(id: CGWindowID, fullscreen: Bool) {
+        windowFullscreenRead(id, fullscreen, late: true)
+    }
+
+    /// A window's macOS fullscreen as read: into it, or out of it, where that is news. Whether it was.
+    /// `late`: read after a Space change, so macOS may show another Space by now.
+    @discardableResult
+    func windowFullscreenRead(_ id: CGWindowID, _ fullscreen: Bool, late: Bool = false) -> Bool {
+        if !fullscreen, away[id]?.reasons.contains(.fullscreen) == true {
+            backFromFullscreen(id)
+            return true
+        }
+        guard let c = server.clientByIdAll(id) else { return false }
+        if late, !fullscreen, c.fullscreenPending, !c.nativeFullscreen {   // Port extension: chutney_fullscreen_tag
+            FullscreenTag.notTaken(server, c)
+            return true
+        }
+        guard fullscreen != c.nativeFullscreen else { return false }
+        fullscreenChanged(c, fullscreen, late: late)
+        return true
+    }
+
+    /// The active Space changed: each window back from fullscreen meanwhile is placed again, now that
+    /// macOS has finished moving it.
+    func spaceChanged() {
+        FullscreenTag.followSpace(server)   // Port extension: chutney_fullscreen_tag
+        let back = fullscreenReturns
+        fullscreenReturns.removeAll()
+        for id in back { placeAgain(id) }
+    }
+
+    /// A window mango manages went into macOS fullscreen (out of the layout, or to its own tag) or out of it.
+    func fullscreenChanged(_ c: Client, _ fullscreen: Bool, late: Bool = false) {
+        if fullscreen {
+            if FullscreenTag.enter(server, c, discovered: late) { return }   // Port extension: chutney_fullscreen_tag
+            goAway(c, .fullscreen)
+        } else {
+            FullscreenTag.leave(server, c)   // Port extension: chutney_fullscreen_tag
+            returnedFromFullscreen(c)
+        }
+    }
+
+    /// An away window out of macOS fullscreen: back in the layout, and the app says which window has the keys.
+    func backFromFullscreen(_ id: ClientID) {
+        guard let c = away[id]?.client else { return }
+        comeBack(id, .fullscreen)
+        guard server.clientByIdAll(id) === c else { return }
+        askFocus(c)
+        returnedFromFullscreen(c)
+    }
+
+    /// macOS moves a window out of fullscreen until its Space change is done, which may come before or
+    /// after this: it is placed now, and again at the next Space change.
+    func returnedFromFullscreen(_ c: Client) {
+        placeAgain(c.id)
+        fullscreenReturns.insert(c.id)
+    }
+
+    /// The window's frame read again and its monitor's layout written.
+    func placeAgain(_ id: ClientID) {
+        guard let c = server.clientByIdAll(id), let m = c.mon else { return }
+        if let real = windowServerFrame(c.id) { c.frame = real }
+        server.arrange(m, .none)
+    }
+
     func moved(_ c: Client, to actual: CGRect, resized: Bool) {
-        guard !missionControl.isActive else { return }
+        guard !missionControl.isActive, !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
         if animator.isAnimating(c.id) { return }
         if server.grab?.client === c { return }
         if c.parked { keepHidden(c, seenAt: actual); return }

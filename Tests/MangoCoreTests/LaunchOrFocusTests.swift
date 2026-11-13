@@ -87,6 +87,34 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
         XCTAssertFalse(picker.isOpen, "another key: closed, and it goes on to the app")
     }
 
+    func testAClickGoesAsInMangosSwitcher() {
+        let r = EngineRig()
+        let a = r.window(1), b = r.window(2), c = r.window(3)
+        r.server.arrange(r.monitor, .none)
+        r.server.clientActive(a)
+        let picker = LaunchOrFocusPicker.shared
+        defer { picker.close(r.server) }
+        let fake = r.server.system as! FakeWindowSystem
+
+        r.server.launchOrFocus("test", command: "")
+        let tile = picker.tileFrames[c.id]!
+        picker.click(r.server, at: CGPoint(x: tile.midX, y: tile.midY), button: 0)
+        XCTAssertFalse(picker.isOpen)
+        XCTAssertEqual(r.server.focused?.id, c.id, "the left button: the window clicked")
+
+        r.server.launchOrFocus("test", command: "")
+        picker.click(r.server, at: CGPoint(x: 1, y: 1), button: 0)
+        XCTAssertFalse(picker.isOpen, "outside the windows: closed")
+        XCTAssertEqual(r.server.focused?.id, c.id)
+
+        r.server.launchOrFocus("test", command: "")
+        let other = picker.tileFrames[b.id]!
+        picker.click(r.server, at: CGPoint(x: other.midX, y: other.midY), button: 1)
+        XCTAssertFalse(picker.isOpen)
+        XCTAssertEqual(fake.closed, [b.id], "the right button: closes the window clicked")
+        XCTAssertEqual(r.server.focused?.id, c.id)
+    }
+
     func testTwoWindowsInTheAppStillToggle() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2)

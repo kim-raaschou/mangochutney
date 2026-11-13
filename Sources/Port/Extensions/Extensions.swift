@@ -16,12 +16,20 @@ extension MangoServer {
             HotkeysPalette.shared.toggle(server)
             return nil
         }
+        portHooks.extraDispatchers["chutney_fit_layout"] = { server, _ in
+            FitLayout.fit(server)
+            return nil
+        }
+        portHooks.extraDispatchers["chutney_view_fullscreen"] = { server, d in
+            FullscreenTag.viewDispatch(server, d.args.first ?? "")
+        }
         portHooks.extraDispatchers["chutney_layout_switcher"] = { server, _ in
             LayoutPalette.shared.toggle(server)
             return nil
         }
         func memory(_ server: MangoServer) -> WindowMemory? { (server.system as? MacWindowSystem)?.memory }
         portHooks.windowLeaving = { server, c, group, focus, order in
+            FullscreenTag.unmapped(server, c)   // before the memory, which keeps its own tags
             memory(server)?.leaving(server, c, group: group, groupFocus: focus, order: order)
         }
         portHooks.ipcGets["get binds"] = { server in ShortcutFormatter.bindsReply(server.shortcutRows) }

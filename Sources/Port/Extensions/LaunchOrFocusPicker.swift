@@ -3,7 +3,9 @@ import Mango
 
 /// Port extension: not in mango. chutney_launch_or_focus's picture of the app's windows, in the
 /// switcher's panel, where the key's choice is not given: two windows seen from another app, or
-/// three or more. The key again or an arrow moves, Return goes, Esc or any other key closes.
+/// three or more. The key again or an arrow moves, Return or a click goes, Esc, any other key or a
+/// click outside closes, a right click closes the window clicked and the picture. The
+/// highlighted window's title and app stand in mango's title message bar under it, as in mango's switcher.
 @MainActor
 final class LaunchOrFocusPicker {
     static let shared = LaunchOrFocusPicker()
@@ -12,6 +14,8 @@ final class LaunchOrFocusPicker {
     private(set) var windows: [ClientID] = []
     private(set) var index = 0
     private var panel: SwitcherPanel?
+    private var panelFrame: CGRect = .zero
+    private(set) var tileFrames: [ClientID: CGRect] = [:]
 
     var isOpen: Bool { app != nil }
     var highlighted: ClientID? { windows.indices.contains(index) ? windows[index] : nil }
@@ -34,6 +38,7 @@ final class LaunchOrFocusPicker {
         guard !windows.isEmpty else { return }
         index = (index + step + windows.count) % windows.count
         panel?.highlight(tiles(server).tiles)
+        showTitle(server)
     }
 
     func commit(_ server: MangoServer) {
@@ -44,11 +49,23 @@ final class LaunchOrFocusPicker {
 
     func close(_ server: MangoServer) {
         panel?.close()
+        if panel != nil { server.system.hideTitleMessageBar() }
         panel = nil
+        tileFrames = [:]
         guard app != nil else { return }
         app = nil
         windows = []
         server.mac.router.publish { $0.launchOrFocusPicker = nil }
+    }
+
+    /// A click while it is open, its buttons as mango's switcher's: the left goes to the window clicked,
+    /// the right closes it; then the picture closes, as it does on a click outside the windows.
+    func click(_ server: MangoServer, at p: CGPoint, button: Int) {
+        guard isOpen else { return }
+        guard let id = tileFrames.first(where: { $0.value.contains(p) })?.key,
+              let c = server.clientByIdAll(id) else { return close(server) }
+        close(server)
+        if button == 0 { server.clientActive(c) } else { server.system.clientSendClose(c) }
     }
 
     /// Return, keypad Enter, Esc, the arrows and Tab.
@@ -81,9 +98,24 @@ final class LaunchOrFocusPicker {
     private func draw(_ server: MangoServer) {
         let (layout, tiles) = tiles(server)
         guard !tiles.isEmpty else { return close(server) }
+        panelFrame = layout.panel
+        tileFrames = Dictionary(uniqueKeysWithValues: tiles.map { ($0.id, $0.frame) })
         guard server.drawsOverlays else { return }
         let style = SwitcherPanel.Style(focus: server.config.focuscolor, border: server.config.bordercolor,
                                         macOS: server.config.chutneyMacOSAppearance)
         panel = SwitcherPanel(panel: layout.panel, tiles: tiles, style: style, scale: CGFloat(server.selectedMonitor.screen.scale))
+        showTitle(server)
+    }
+
+    /// As mango's switcher_title_message_bar_geometry: the bar under the panel, for the highlighted window.
+    private func showTitle(_ server: MangoServer) {
+        guard panel != nil else { return }
+        guard let c = highlighted.flatMap({ server.clientByIdAll($0) }),
+              let box = SwitcherLayout.titleMessageBarGeometry(below: panelFrame, height: server.config.titleMessageBarHeight,
+                                                               gap: server.config.titleMessageBarGap) else {
+            return server.system.hideTitleMessageBar()
+        }
+        server.system.showTitleMessageBar(frame: box, title: c.title, appid: c.appid,
+                                          look: server.config.titleMessageBardata.setValueDefault(from: .mangoTitleMessageBar))
     }
 }

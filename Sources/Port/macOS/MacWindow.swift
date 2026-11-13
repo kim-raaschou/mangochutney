@@ -15,6 +15,14 @@ final class MacWindow: PlatformWindow {
     var parkRetries = 0
     var deferredRetryPending = false
     var refusedSize: CGSize?
+    /// Port extension: chutney_fullscreen_tag. On its F tag in macOS fullscreen, in its own Space: macOS
+    /// places it, the port writes nothing to it.
+    var nativeFullscreen = false
+    /// Port extension: chutney_fullscreen_tag. The fullscreen the port last told the app (wlroots'
+    /// scheduled.fullscreen), and whether macOS has yet to answer it: till then macOS moves the window and
+    /// the port writes nothing to it.
+    var scheduledFullscreen = false
+    var fullscreenPending = false
 
     let isFloatType: Bool
 
@@ -69,4 +77,18 @@ extension Client {
         get { mac.refusedSize }
         set { mac.refusedSize = newValue }
     }
+    var nativeFullscreen: Bool {
+        get { mac.nativeFullscreen }
+        set { mac.nativeFullscreen = newValue }
+    }
+    var scheduledFullscreen: Bool {
+        get { mac.scheduledFullscreen }
+        set { mac.scheduledFullscreen = newValue }
+    }
+    var fullscreenPending: Bool {
+        get { mac.fullscreenPending }
+        set { mac.fullscreenPending = newValue }
+    }
+    /// Port extension: chutney_fullscreen_tag. In macOS fullscreen, or told to go in or out: macOS places it.
+    var leftToMacOS: Bool { mac.nativeFullscreen || mac.fullscreenPending }
 }

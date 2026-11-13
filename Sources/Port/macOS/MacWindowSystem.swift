@@ -12,6 +12,37 @@ class MacWindowSystem: WindowSystem {
         }
     }
     var heldFocus: Client?
+    var fullscreenTag = FullscreenTag.State()   // Port extension: chutney_fullscreen_tag
+    /// Windows back from macOS fullscreen before its Space change was done: placed again at it.
+    var fullscreenReturns: Set<ClientID> = []
+
+    /// macOS's fullscreen for the window; nil where the app does not answer.
+    func fullscreenNow(_ c: Client) -> Bool? { c.element.attribute("AXFullScreen") as Bool? }
+
+    /// Whether a window is on the active Space.
+    func windowOnScreen(_ id: CGWindowID) -> Bool {
+        guard let info = CGWindowListCopyWindowInfo([.optionIncludingWindow], id) as? [[String: Any]] else { return false }
+        return info.first?[kCGWindowIsOnscreen as String] as? Bool ?? false
+    }
+
+    /// The app is asked which of its windows has the keys; its answer is mango's focus.
+    func askFocus(_ c: Client) { watcher.requestFocusReport(pid: c.pid) }
+
+    /// Port extension: chutney_fullscreen_tag. mango's own window on `m`'s desktop Space focused.
+    func focusSpaceAnchor(_ m: Monitor) { FullscreenTag.focusSpaceAnchor(server, m) }
+
+    /// Port extension: chutney_fullscreen_tag. macOS's fullscreen set for the window; `done` says whether
+    /// the app took it (false where it has no fullscreen button or cannot be set).
+    func setNativeFullscreen(_ c: Client, _ fullscreen: Bool, _ done: @escaping @MainActor (Bool) -> Void) {
+        guard let q = writer(for: c.pid) else { done(false); return }
+        q.async { [el = c.element] in
+            var settable = DarwinBoolean(false)
+            let ok = el.fullscreenButton != nil
+                && AXUIElementIsAttributeSettable(el, "AXFullScreen" as CFString, &settable) == .success && settable.boolValue
+                && el.setAttribute("AXFullScreen", fullscreen as CFBoolean) == .success
+            DispatchQueue.main.async { MainActor.assumeIsolated { done(ok) } }
+        }
+    }
     private var pendingFocus: (client: Client, raise: Bool)?
     var initialSettlePending = false
     var away: [ClientID: (client: Client, reasons: Set<AwayReason>)] = [:]
@@ -23,6 +54,9 @@ class MacWindowSystem: WindowSystem {
     var userDrag: UserDrag?
     var restarting = false
     var opacityWarned = false
+    var fitState = FitLayout.State()   // Port extension: chutney_fit_layout
+    func postFitNotification(title: String, body: String, fit: Bool = true) { FitNotification.shared.post(server, title: title, body: body, fit: fit) }
+    func removeFitNotification() { FitNotification.shared.remove() }
     var dispatchersWarned = Set<String>()
     var pressed: (client: Client, frame: CGRect)?
     var tabNumbersShown = false
@@ -148,7 +182,8 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawBorders(_ specs: [BorderSpec]) {
-        let specs = MacOSAppearance.borders(specs, server.config)
+        // Port extension: chutney_fullscreen_tag. No border for a window in its own fullscreen Space.
+        let specs = MacOSAppearance.borders(specs.filter { server.clientByIdAll($0.id)?.leftToMacOS != true }, server.config)
         if specs.isEmpty { borders.removeAll() } else { borders.update(specs) }
     }
 
@@ -307,6 +342,8 @@ class MacWindowSystem: WindowSystem {
 
     func statusChanged() {
         memory.save(server)
+        FitLayout.statusChanged(server)   // Port extension: chutney_fit_layout
+        FullscreenTag.statusChanged(server)   // Port extension: chutney_fullscreen_tag
         onStatusChange?()
     }
 
@@ -511,6 +548,9 @@ class MacWindowSystem: WindowSystem {
             el.close()
         }
     }
+
+    /// Port extension: chutney_fullscreen_tag (with the key off the app is not told).
+    func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) { FullscreenTag.notify(server, c, fullscreen) }
 
     func settle(_ c: Client) {
         guard let q = writer(for: c.pid) else { return }

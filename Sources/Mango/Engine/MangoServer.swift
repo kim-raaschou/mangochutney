@@ -912,6 +912,7 @@ public final class MangoServer {
         c.isFloating = floating
         guard let m = c.mon else { return }
         if floating && grab?.client !== c {
+            if c.isFullscreen { system.clientNotifyFullscreen(c, false) }
             c.isFullscreen = false
             c.isMaximizeScreen = false
             exitScrollerStack(c)
@@ -946,6 +947,7 @@ public final class MangoServer {
         guard let m = c.mon, grab?.client !== c else { return }
         if overviewState?.monitor === m { return }
         c.isFullscreen = fullscreen
+        system.clientNotifyFullscreen(c, fullscreen)
         if fullscreen {
             c.isMaximizeScreen = false
             exitScrollerStack(c)
@@ -967,6 +969,7 @@ public final class MangoServer {
         if overviewState?.monitor === m { return }
         c.isMaximizeScreen = maximizescreen
         if maximizescreen {
+            if c.isFullscreen { system.clientNotifyFullscreen(c, false) }
             c.isFullscreen = false
             exitScrollerStack(c)
         } else if c.isFloating {

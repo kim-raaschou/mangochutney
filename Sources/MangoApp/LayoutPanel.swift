@@ -7,6 +7,10 @@ import Port
 final class LayoutPanelModel: ObservableObject {
     weak var server: MangoServer?
     weak var host: NSView?
+    /// macOS's Reduce motion (Accessibility › Motion): Space changes fade instead of slide. Only System
+    /// Settings changes it; it is shown here as macOS tells it.
+    @Published var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    private var motionObserver: NSObjectProtocol?
     @Published var layout: LayoutKind = .tile
     @Published var animations = true
     @Published var screenWidth: CGFloat = 1728
@@ -17,6 +21,27 @@ final class LayoutPanelModel: ObservableObject {
     @Published var border: Double = 0
     @Published var mfact: Double = 0.55
     @Published var nmaster: Double = 1
+    @Published var fitInfo = false
+
+    init() {
+        motionObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+        }
+    }
+
+    static let motionSettings = URL(string: "x-apple.systempreferences:com.apple.Accessibility-Settings.extension?Motion")!
+
+    /// System Settings at Accessibility › Motion, where Reduce motion is; the menu closes.
+    func openMotionSettings() {
+        host?.enclosingMenuItem?.menu?.cancelTracking()
+        NSWorkspace.shared.open(Self.motionSettings)
+    }
+
+    func toggleFitInfo() {
+        fitInfo.toggle()
+        refresh()
+    }
 
     private func resizeHost() {
         guard let h = host else { return }
@@ -264,11 +289,71 @@ struct LookView: View {
                                          set: { model.setOption("chutney_menu_bar_mode", $0 ? "1" : "0") }))
                 .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
                 .help("chutney_menu_bar_mode")
+            HStack(spacing: 4) {
+                header("Windows larger than their tile")
+                Button { model.toggleFitInfo() } label: {
+                    Image(systemName: model.fitInfo ? "info.circle.fill" : "info.circle")
+                }
+                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .help(model.fitInfo ? "Hide the explanation" : "What these do")
+            }
+            if model.fitInfo { fitInfoText }
+            Toggle("overlap warning", isOn: Binding(get: { model.config.chutneyOverlapWarning },
+                                                    set: { model.setOption("chutney_overlap_warning", $0 ? "1" : "0") }))
+                .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
+                .help("chutney_overlap_warning: the tag in orange in the menu bar")
+            HStack {
+                Text("fit layout").font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Picker("", selection: Binding(get: { model.config.chutneyFitLayout },
+                                              set: { model.setOption("chutney_fit_layout", String($0)) })) {
+                    Text("off").tag(0)
+                    Text("menu").tag(1)
+                    Text("notify").tag(2)
+                    Text("auto").tag(3)
+                }
+                .pickerStyle(.segmented).controlSize(.mini).frame(width: 150)
+            }
+            .help("chutney_fit_layout: \"Fit layout\" in this menu, also a notification (a Fit button, or no room), or by itself")
+            header("Fullscreen")
+            Toggle("own tag", isOn: Binding(get: { model.config.chutneyFullscreenTag },
+                                            set: { model.setOption("chutney_fullscreen_tag", $0 ? "1" : "0") }))
+                .font(.system(size: 10, design: .monospaced)).toggleStyle(.switch).controlSize(.mini)
+                .help("chutney_fullscreen_tag: a window in macOS fullscreen has its own tag F1–F12, shown as its app's icon in the menu bar, as it has its own Space")
+            HStack {
+                Text("reduce motion").font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Text(model.reduceMotion ? "on" : "off").font(.system(size: 10)).foregroundStyle(.secondary)
+                Button("Settings…") { model.openMotionSettings() }
+                    .controlSize(.mini)
+            }
+            .help("macOS's Reduce motion (Accessibility › Motion): Space changes fade instead of slide, all over macOS. Only System Settings can change it.")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func header(_ s: String) -> some View { panelHeader(s) }
+
+    /// Port extension: not in mango. What chutney_overlap_warning and chutney_fit_layout do.
+    private var fitInfoText: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Some apps will not be smaller than a set size. Such a window stays larger than its tile and covers the window next to it.")
+            Text("overlap warning: its tag turns orange in the menu bar.")
+            Text("fit layout: makes room for it with mango's resizewin. Its tile grows by what the window lacks, and the tiles beside it shrink. Offered only where the row (for width) or the column (for height) has room for it, counting the least size each window there has kept before. Otherwise the layout stays as it is.")
+            VStack(alignment: .leading, spacing: 1) {
+                Text("off: nothing")
+                Text("menu: \"Fit layout: …\" at the top of this menu")
+                Text("notify: also a notification with a Fit button, or one saying there is no room")
+                Text("auto: fits by itself, at most 3 times per view")
+            }
+            .font(.system(size: 10, design: .monospaced))
+            Text("Keys: chutney_overlap_warning, chutney_fit_layout. Bind the dispatcher chutney_fit_layout to fit from a key, whatever the level.")
+        }
+        .font(.system(size: 10)).foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(6)
+        .background(RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.08)))
+    }
 
     private func slider(_ title: String, value: Binding<Double>, in range: ClosedRange<Double>, step: Double,
                         label: String? = nil, commit: @escaping (Double) -> Void) -> some View {

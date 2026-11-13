@@ -60,7 +60,8 @@ final class WindowMemory {
 
     func currentLayout(_ server: MangoServer) -> SavedLayout {
         var windows: [SavedLayout.Window] = server.clientsAll.map { c in
-            SavedLayout.Window(id: c.id, bundleId: c.bundleId, tags: c.tags, displayID: c.mon?.screen.displayID,
+            // Port extension: chutney_fullscreen_tag saves a window on its own tags, not its F tag.
+            SavedLayout.Window(id: c.id, bundleId: c.bundleId, tags: FullscreenTag.savedTags(server, c), displayID: c.mon?.screen.displayID,
                                homeDisplayID: c.oldmonname, isFloating: Self.isFloating(c), isGlobal: c.isGlobal,
                                isOverlay: c.isOverlay, isMinimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
                                isNamedScratchpad: c.isNamedScratchpad, floatFrame: c.floatGeom,
@@ -83,8 +84,9 @@ final class WindowMemory {
         var prevTags: [String: Int] = [:]
         for m in server.monitors {
             let display = String(m.screen.displayID)
-            tagsets[display] = m.tagset[m.seltags]
-            previousTagsets[display] = m.tagset[m.seltags ^ 1]
+            let view = FullscreenTag.savedView(server, m)   // Port extension: chutney_fullscreen_tag
+            tagsets[display] = view.now
+            previousTagsets[display] = view.before
             prevTags[display] = m.prevTag
             tagLayouts[display] = m.pertag.map {
                 SavedLayout.TagLayout(layout: $0.layout.name, configuredLayout: $0.configLayout.name)

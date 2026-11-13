@@ -10,8 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var menuOpen = false
     var tagSpans: [(from: CGFloat, to: CGFloat, monitor: String, tag: Int)] = []
     var mainMenu: NSMenu?
-    var overlapItems: [NSMenuItem] = []
-    var shownSuggestions: [MenuBarSuggestion] = []
+    var fitItems: [NSMenuItem] = []   // Port extension: chutney_fit_layout
     let layoutPanel = LayoutPanelModel()
     var shownStatus = ""
     var permissionObservers: [(NotificationCenter, NSObjectProtocol)] = []
@@ -86,6 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         server.cliDebugLog = cliDebugLog
         self.server = server
         server.onStatusChange = { [weak self] in MainActor.assumeIsolated { self?.refreshStatus() } }
+        FitNotification.shared.install(server)   // Port extension: chutney_fit_layout's Fit button, also from before a restart
         server.setup()
         refreshStatus()
     }
@@ -209,8 +209,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let start = title.size().width
                 defer { tagSpans.append((start, title.size().width, m.name, t.number)) }
                 if style == "text" {
-                    let c = t.number == 0 ? "S" : "\(t.number)"
+                    let c = t.label ?? (t.number == 0 ? "S" : "\(t.number)")
                     text(t.active ? "[\(c)]" : " \(c) ", dim: dim, overlap: t.overlap)
+                } else if let pid = t.app, let img = Self.appTagImage(pid, active: t.active, dim: dim, size: cell) {
+                    image(img, height: cell)   // Port extension: chutney_fullscreen_tag, its window's app
+                    if i < m.tags.count - 1 { space(near) }
                 } else if let img = Self.tagImage(t, style: style, dim: dim) {
                     image(img, height: cell)
                     if i < m.tags.count - 1 { space(near) }
@@ -253,7 +256,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return dim ? dimmed(img) : img
     }
 
-    static let overlapColor = NSColor.systemOrange
+    static let overlapColor = NSColor.systemOrange   // Port extension: chutney_overlap_warning
+
+    /// Port extension: chutney_fullscreen_tag. An F tag drawn as its window's app: whole when viewed, faint when not.
+    static func appTagImage(_ pid: pid_t, active: Bool, dim: Bool, size: CGFloat) -> NSImage? {
+        guard let app = NSRunningApplication(processIdentifier: pid), let icon = app.icon else { return nil }
+        let alpha: CGFloat = active && !dim ? 1 : 0.45
+        let img = NSImage(size: NSSize(width: size, height: size), flipped: false) { rect in
+            icon.draw(in: rect, from: .zero, operation: .sourceOver, fraction: alpha)
+            return true
+        }
+        img.accessibilityDescription = app.localizedName
+        return img
+    }
 
     static func tinted(_ symbol: NSImage, _ color: NSColor) -> NSImage {
         let img = NSImage(size: symbol.size, flipped: false) { rect in
@@ -352,57 +367,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return tagSpans.first { x >= $0.from && x < $0.to }.map { ($0.monitor, $0.tag) }
     }
 
-    func showOverlaps(_ menu: NSMenu) {
-        for i in overlapItems { menu.removeItem(i) }
-        overlapItems = []
-        shownSuggestions = []
+    /// Port extension: chutney_fit_layout. "Fit layout" first in the menu, where the view can be fitted.
+    func showFit(_ menu: NSMenu) {
+        for i in fitItems { menu.removeItem(i) }
+        fitItems = []
+        guard let server, let title = MenuBarStatus.fitTitle(server) else { return }
+        let i = NSMenuItem(title: title, action: #selector(fitLayout(_:)), keyEquivalent: "")
+        i.target = self
+        i.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: nil)
+        fitItems = [i, .separator()]
+        for (n, item) in fitItems.enumerated() { menu.insertItem(item, at: 1 + n) }
+    }
+
+    @objc func fitLayout(_ sender: NSMenuItem) {
         guard let server else { return }
-        let lines = MenuBarStatus.overlapLines(server)
-        guard !lines.isEmpty else { return }
-        var at = 1
-        func add(_ i: NSMenuItem) {
-            menu.insertItem(i, at: at)
-            overlapItems.append(i)
-            at += 1
-        }
-        let font = NSFont.menuFont(ofSize: 0)
-        let bold = NSFont.boldSystemFont(ofSize: font.pointSize)
-        for tag in lines {
-            let h = NSMenuItem(title: tag.heading, action: nil, keyEquivalent: "")
-            h.isEnabled = false
-            h.attributedTitle = NSAttributedString(string: tag.heading, attributes: [.font: bold, .foregroundColor: NSColor.labelColor])
-            h.image = NSImage(systemSymbolName: "exclamationmark.triangle.fill", accessibilityDescription: "overlap")?
-                .withSymbolConfiguration(.init(paletteColors: [Self.overlapColor]))
-            add(h)
-            for w in tag.windows {
-                let i = NSMenuItem(title: "\(w.app): \(w.by)", action: nil, keyEquivalent: "")
-                i.isEnabled = false
-                let t = NSMutableAttributedString(string: w.app, attributes: [.font: font, .foregroundColor: NSColor.labelColor])
-                t.append(NSAttributedString(string: "  \(w.by)", attributes: [.font: font, .foregroundColor: Self.overlapColor]))
-                i.attributedTitle = t
-                i.indentationLevel = 1
-                add(i)
-            }
-            for s in tag.suggestions {
-                let i = NSMenuItem(title: s.title, action: #selector(applySuggestion(_:)), keyEquivalent: "")
-                i.target = self
-                i.tag = shownSuggestions.count
-                i.indentationLevel = 1
-                i.image = NSImage(systemSymbolName: "arrow.turn.down.right", accessibilityDescription: nil)
-                shownSuggestions.append(s)
-                add(i)
-            }
-        }
-        let sep = NSMenuItem.separator()
-        menu.insertItem(sep, at: 1)
-        overlapItems.append(sep)
+        MenuBarStatus.fit(server)
     }
-
-    @objc func applySuggestion(_ sender: NSMenuItem) {
-        guard let server, shownSuggestions.indices.contains(sender.tag) else { return }
-        MenuBarStatus.apply(server, shownSuggestions[sender.tag])
-    }
-
 
     func showMenu(_ menu: NSMenu?) {
         guard let item = statusItem, let menu else { return }
@@ -411,7 +391,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        if menu === mainMenu { showOverlaps(menu) }
+        if menu === mainMenu { showFit(menu) }
         menuOpen = true
         publishTagHits()
         server?.holdNativeFocus = true

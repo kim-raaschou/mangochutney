@@ -116,7 +116,9 @@ public enum MangoCompat {
         "chutney_macos_appearance": "bars, switcher and jump labels in the macOS style where no decorate key is set",
         "chutney_keybindings_spotlight_launch": "the installed applications (Spotlight's Applications) in the keybindings palette's search",
         "chutney_layout_switcher_keys": "the keys that move the layout switcher's selection: left,down,up,right (or h,j,k,l); the arrows always work",
-        "chutney_overlap_warning": "a tiled window its app keeps larger than its tile (over its neighbour): its tag in orange in the menu bar, with by how much, and to move it to an empty tag or float it",
+        "chutney_fullscreen_tag": "a window mango manages that goes into macOS fullscreen moves alone to its own tag F1–F12 after mango's tags, as macOS gives it its own Space, drawn in the menu bar as its app's icon: the tag it leaves closes up, its Space and its tag are viewed together, and out of fullscreen it is back on its tag, in its place; mango's togglefullscreen is macOS fullscreen, and macOS fullscreen is mango's",
+        "chutney_overlap_warning": "a tiled window its app keeps larger than its tile (over its neighbour): its tag in orange in the menu bar",
+        "chutney_fit_layout": "where a tiled window's app keeps it larger than its tile: where the layout has room for it on that side, mango's resizewin on it by what it lacks; 1: \"Fit layout\" in the menu bar's menu, 2: also a macOS notification with a Fit button, or one saying there is no room, 3: by itself (the dispatcher chutney_fit_layout always)",
         "chutney_tab_bar_decorate_icon": "the app's icon before each tab's title in the tab bar",
         "chutney_group_bar_decorate_icon": "the app's icon before each title in the group bar",
         "chutney_tab_bar_shortcuts": "⌘1-9 picks a tab while a tab bar is shown",
@@ -128,6 +130,8 @@ public enum MangoCompat {
         "chutney_launch_or_focus": "one key per app: start it, or go to its window",
         "chutney_restart": "quit, with hidden windows left hidden for the next mango (make install, mmsg service restart)",
         "chutney_keybindings": "the keybindings palette: search the bindings, move with the keys, Return runs one",
+        "chutney_fit_layout": "fit the selected monitor's layout to the windows larger than their tiles, with mango's resizewin, where the layout has room",
+        "chutney_view_fullscreen": "chutney_fullscreen_tag's F tag N (1–12): its window in macOS fullscreen focused, so macOS goes to its Space",
         "chutney_layout_switcher": "the layout switcher: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one",
     ]
 

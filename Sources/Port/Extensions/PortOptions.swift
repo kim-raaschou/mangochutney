@@ -47,6 +47,14 @@ enum PortOptions {
         t["chutney_group_bar_decorate_icon"] = O.bool(\.chutneyGroupBarDecorateIcon)
         t["chutney_tab_bar_shortcuts"] = O.bool(\.chutneyTabBarShortcuts)
         t["chutney_overlap_warning"] = O.bool(\.chutneyOverlapWarning)
+        t["chutney_fullscreen_tag"] = O.bool(\.chutneyFullscreenTag)
+        t["chutney_fit_layout"] = { config, value in
+            guard let level = Int(value.trimmingCharacters(in: .whitespaces)), (0...3).contains(level) else {
+                return .invalid("Invalid chutney_fit_layout: \(value) (0, 1: the menu, 2: and a notification, 3: by itself)")
+            }
+            config.chutneyFitLayout = level
+            return .applied
+        }
         t["chutney_keybindings_spotlight_launch"] = O.bool(\.chutneyKeybindingsSpotlightLaunch)
         t["chutney_layout_switcher_keys"] = { config, value in
             let keys = value.lowercased().split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }

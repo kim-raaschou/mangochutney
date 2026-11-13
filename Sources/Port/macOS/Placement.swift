@@ -29,6 +29,7 @@ extension MacWindowSystem {
     }
 
     func resize(_ c: Client, to tile: CGRect, _ anim: ArrangeAnimation, cover: CGRect? = nil, now: CGRect? = nil) {
+        if c.leftToMacOS { c.geom = tile.rounded(); return }   // Port extension: chutney_fullscreen_tag
         guard let q = writer(for: c.pid), let m = c.mon else { return }
         c.geom = tile.rounded()
         var target = tile.rounded()
@@ -39,7 +40,10 @@ extension MacWindowSystem {
         let wasParked = c.parked
         c.parked = false
         c.parkRetries = 0
-        if !wasParked && !c.isPendingOpenAnimation && c.frame == target && !animator.isAnimating(c.id) { return }
+        if !wasParked && !c.isPendingOpenAnimation && c.frame == target && !animator.isAnimating(c.id) {
+            if c.refusedSize != nil { reconcileFrame(c, c.frame) }   // its tile is where it stands: no longer over
+            return
+        }
 
         let moving = !wasParked && !c.isPendingOpenAnimation
         c.writes += 1
@@ -174,6 +178,7 @@ extension MacWindowSystem {
     }
 
     func hide(_ c: Client, tagout t: TagoutAnimation) {
+        guard !c.leftToMacOS, !fullscreenTagViewed(c) else { c.tagouting = false; return }   // Port extension: chutney_fullscreen_tag
         guard !c.parked, let q = writer(for: c.pid), t.durationMs > 0, c.frame != t.to else {
             c.tagouting = false
             hide(c)
@@ -193,7 +198,8 @@ extension MacWindowSystem {
     }
 
     func hide(_ c: Client) {
-        guard !c.parked, let m = c.mon, let q = writer(for: c.pid) else { return }
+        // Port extension: chutney_fullscreen_tag (leftToMacOS, fullscreenTagViewed)
+        guard !c.parked, !c.leftToMacOS, !fullscreenTagViewed(c), let m = c.mon, let q = writer(for: c.pid) else { return }
         animator.cancel(c.id)
         c.parked = true
         c.frame = CGRect(origin: parkedOrigin(c, on: m), size: c.frame.size)
@@ -201,6 +207,13 @@ extension MacWindowSystem {
         watcher.suppressGeometry(c.id, until: c.ignoreMovesUntil)
         q.setFrame(c.element, id: c.id, frame: c.frame, setSize: false)
         q.readBack(c.element) { [weak self] actual in self?.keepHidden(c, seenAt: actual) }
+    }
+
+    /// Port extension: chutney_fullscreen_tag. While an F tag is viewed the desktop's windows are in
+    /// another Space: they stay where they are.
+    func fullscreenTagViewed(_ c: Client) -> Bool {
+        guard let m = c.mon else { return false }
+        return FullscreenTag.isFullscreenView(m, server.config)
     }
 
     func parkedOrigin(_ c: Client, on m: Monitor) -> CGPoint {

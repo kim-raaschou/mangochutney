@@ -25,7 +25,7 @@ OLD_APP       := Mango.app
 OLD_LABEL     := dev.mango.wm
 LABEL         := dev.mangochutney
 
-.PHONY: all build app test install uninstall run clean check mango-diff readme-tables config-diff release cask
+.PHONY: all build app icon test install uninstall run clean check mango-diff readme-tables config-diff release cask
 
 all: app
 
@@ -41,6 +41,7 @@ app: build
 	cp $(BUILD_DIR)/mmsg "$(APP)/Contents/MacOS/mmsg"
 	cp Resources/config.conf "$(APP)/Contents/Resources/config.conf"
 	cp Resources/mango.svg "$(APP)/Contents/Resources/mango.svg"
+	cp Resources/AppIcon.icns Resources/Assets.car "$(APP)/Contents/Resources/"
 	@if [ "$(CODESIGN_IDENTITY)" != "-" ] && ! security find-identity -p codesigning | grep -qF '"$(CODESIGN_IDENTITY)"'; then \
 		echo "error: no code signing identity named \"$(CODESIGN_IDENTITY)\". Available:"; \
 		security find-identity -p codesigning | grep '"' || echo "  (none: create one in Keychain Access › Certificate Assistant)"; \
@@ -53,6 +54,15 @@ app: build
 
 # XCTest ships with Xcode, not with the Command Line Tools.
 XCODE_DEV := $(shell test -d /Applications/Xcode.app && echo /Applications/Xcode.app/Contents/Developer)
+
+# The app's icon from mango's logo (script/app-icon.swift), compiled by actool into an asset
+# catalog (Assets.car, what macOS's notifications read) and an .icns; both kept in Resources/.
+icon:
+	swift script/app-icon.swift Resources/mango.svg dist/icon/Assets.xcassets
+	$(if $(XCODE_DEV),DEVELOPER_DIR=$(XCODE_DEV)) xcrun actool dist/icon/Assets.xcassets --compile dist/icon \
+		--platform macosx --minimum-deployment-target 14.0 --app-icon AppIcon \
+		--output-partial-info-plist dist/icon/partial.plist >/dev/null
+	cp dist/icon/Assets.car dist/icon/AppIcon.icns Resources/
 
 test:
 	$(if $(XCODE_DEV),DEVELOPER_DIR=$(XCODE_DEV)) swift test

@@ -33,6 +33,8 @@ public protocol AppWatcherDelegate: AnyObject {
     func appResponding(pid: pid_t, responding: Bool)
     func appTerminated(pid: pid_t)
     func screensChanged()
+    func spaceChanged()
+    func windowFullscreen(id: CGWindowID, fullscreen: Bool)
 }
 
 enum AppEvent {
@@ -44,6 +46,7 @@ enum AppEvent {
     case focused(CGWindowID)
     case responding(Bool)
     case reacquired(CGWindowID, AXUIElement, ReacquiredState)
+    case fullscreenStates([(CGWindowID, Bool)])
 }
 
 public struct ReacquiredState {
@@ -100,6 +103,7 @@ public final class AppWorker: @unchecked Sendable {
     private let lock = NSLock()
     private var refreshQueued = false
     private var queuedRecheck = false
+    private var queuedFullscreen = false
 
     private var pendingGeometry: [CGWindowID: (CGRect, Bool, Bool?)] = [:]
     private var geometryScheduled = false
@@ -148,26 +152,28 @@ public final class AppWorker: @unchecked Sendable {
         DispatchQueue.main.async { [deliver] in deliver(e) }
     }
 
-    func requestRefresh(recheck: Bool) {
+    func requestRefresh(recheck: Bool, fullscreen: Bool = false) {
         lock.lock()
         if refreshQueued {
             queuedRecheck = queuedRecheck || recheck
+            queuedFullscreen = queuedFullscreen || fullscreen
             lock.unlock()
             return
         }
         refreshQueued = true
         queuedRecheck = recheck
+        queuedFullscreen = fullscreen
         lock.unlock()
         thread.perform { [self] in
             lock.lock()
-            let r = queuedRecheck
+            let r = queuedRecheck, f = queuedFullscreen
             refreshQueued = false
             lock.unlock()
-            runRefresh(recheck: r)
+            runRefresh(recheck: r, fullscreen: f)
         }
     }
 
-    private func runRefresh(recheck: Bool, notified: Bool = false) {
+    private func runRefresh(recheck: Bool, notified: Bool = false, fullscreen: Bool = false) {
         let isInitialScan = initial && !scannedOnce
         scannedOnce = true
         subscribeApp()
@@ -208,6 +214,10 @@ public final class AppWorker: @unchecked Sendable {
                                                      fullscreen: Self.answeredBool(el, "AXFullScreen"), appHidden: nsApp.isHidden)))
         }
         if !out.found.isEmpty { post(.discovered(out.found)) }
+        if fullscreen {
+            let states = listed.compactMap { id, el in Self.answeredBool(el, "AXFullScreen").map { (id, $0) } }
+            if !states.isEmpty { post(.fullscreenStates(states)) }
+        }
         for (id, why) in out.gone {
             switch why {
             case .elementInvalid: wlrLog(.debug, "\(name): window \(id) gone (no longer listed, element invalid)")
@@ -324,7 +334,7 @@ public final class AppWorker: @unchecked Sendable {
             guard let id = windowID(of: element), !shared.isSuppressed(id) else { return }
             let resized = notification == kAXResizedNotification
             guard let frame = element.frame else { return }
-            queueGeometry(id, frame, resized: resized, fullscreen: resized ? element.isFullscreen : nil)
+            queueGeometry(id, frame, resized: resized, fullscreen: resized ? Self.answeredBool(element, "AXFullScreen") : nil)
         case kAXTitleChangedNotification:
             if let id = windowID(of: element) { post(.title(id, element.title)) }
         default:
@@ -421,7 +431,10 @@ public final class AppWatcher {
             }
         }
         nc.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refreshAll() }
+            MainActor.assumeIsolated {
+                self?.refreshAll(fullscreen: true)
+                self?.delegate?.spaceChanged()
+            }
         }
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
             nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
@@ -509,13 +522,17 @@ public final class AppWatcher {
         case .focused(let id):
             guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid, owners[id] != nil else { return }
             delegate?.windowFocused(id: id)
+        case .fullscreenStates(let states):
+            for (id, fs) in states where owners[id] != nil { delegate?.windowFullscreen(id: id, fullscreen: fs) }
         }
     }
 
-    public func refreshAll(recheckRejected: Bool = false) {
+    /// Every app's windows listed again; `fullscreen`: and each one's macOS fullscreen told, read on the
+    /// app's own thread.
+    public func refreshAll(recheckRejected: Bool = false, fullscreen: Bool = false) {
         for w in apps.values {
             if kill(w.pid, 0) != 0 && errno == ESRCH { unregister(pid: w.pid); continue }
-            w.requestRefresh(recheck: recheckRejected)
+            w.requestRefresh(recheck: recheckRejected, fullscreen: fullscreen)
         }
         guard !caughtUp else { return }
         caughtUp = true

@@ -10,6 +10,8 @@ struct DepartedGroup: Codable, Equatable {
 struct DepartedWindows {
     static let keepFor: CFTimeInterval = 3600
     private(set) var entries: [CGWindowID: DepartedWindow] = [:]
+    /// Windows away (minimized, fullscreen, hidden): kept however long they are away.
+    var away: Set<CGWindowID> = []
     var groups: [DepartedGroup] = []
     private var waveOrder: [CGWindowID]?
 
@@ -34,7 +36,7 @@ struct DepartedWindows {
     }
 
     mutating func prune(now: CFTimeInterval) {
-        entries = entries.filter { $0.value.fromSavedLayout || now - $0.value.at < Self.keepFor }
+        entries = entries.filter { $0.value.fromSavedLayout || away.contains($0.key) || now - $0.value.at < Self.keepFor }
         pruneGroups()
     }
 

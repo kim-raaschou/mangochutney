@@ -525,9 +525,9 @@ final class HotkeysModel: ObservableObject {
              "centerwin", "scroller_stack", "tagmon", "tagcrossmon": return "Move & swap"
         case "view", "toggleview", "tag", "tagsilent", "toggletag", "viewtoleft", "viewtoright", "viewtoleft_have_client",
              "viewtoright_have_client", "viewprev_have_client", "viewnext_have_client", "tagtoleft", "tagtoright",
-             "toggle_special_tag", "tag_special_tag", "comboview": return "Tags"
+             "toggle_special_tag", "tag_special_tag", "comboview", "chutney_view_fullscreen": return "Tags"
         case "switch_layout", "setlayout", "incnmaster", "setmfact", "incgaps", "togglegaps", "switch_proportion_preset",
-             "set_proportion", "dwindle_toggle_split_direction": return "Layout"
+             "set_proportion", "dwindle_toggle_split_direction", "chutney_fit_layout": return "Layout"
         case "togglefloating", "toggle_all_floating", "togglefullscreen", "togglefakefullscreen", "togglemaximizescreen",
              "toggleglobal", "toggleoverlay", "killclient", "minimized", "restore_minimized", "toggle_scratchpad",
              "toggle_named_scratchpad": return "Window"
