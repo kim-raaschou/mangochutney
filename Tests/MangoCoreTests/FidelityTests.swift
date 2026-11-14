@@ -585,7 +585,7 @@ final class FidelityTests: MangoTestCase {
     func testFullscreenIsRefusedInOverview() {
         let r = EngineRig()
         let a = r.map(1)
-        r.server.toggleOverview(onlyCurrent: false, jump: false)
+        r.server.toggleOverview(onlyCurrent: false)
         XCTAssertNotNil(r.server.overviewState)
         d(r, "togglefullscreen", [], a)
         d(r, "togglemaximizescreen", [], a)
@@ -639,7 +639,7 @@ final class FidelityTests: MangoTestCase {
     func testMinimizedIsRefusedInOverview() {
         let r = EngineRig()
         let a = r.map(1)
-        r.server.toggleOverview(onlyCurrent: false, jump: false)
+        r.server.toggleOverview(onlyCurrent: false)
         d(r, "minimized", [], a)
         XCTAssertFalse(a.isMinimized)
     }
@@ -1204,7 +1204,7 @@ final class FidelityTests: MangoTestCase {
     func testAnOverviewClickOnNothingKeepsTheOverview() {
         let r = EngineRig()
         r.map(1)
-        r.server.toggleOverview(onlyCurrent: false, jump: false)
+        r.server.toggleOverview(onlyCurrent: false)
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 1, y: 1080), mods: [])
         XCTAssertNotNil(r.server.overviewState)
     }
@@ -1229,7 +1229,7 @@ final class FidelityTests: MangoTestCase {
         r.server.selectedMonitor = side
         let a = r.map(1)
         a.tags = 1 << 2
-        r.server.toggleOverview(onlyCurrent: false, jump: false)
+        r.server.toggleOverview(onlyCurrent: false)
         XCTAssertTrue(r.server.overviewState?.monitor === side)
         r.server.rebuildMonitors(screens: [r.screen])
         XCTAssertNil(r.server.overviewState)

@@ -7,7 +7,9 @@ package struct InputState {
     package var axisBindings: [AxisBinding] = []
     package var axisTimeout: Double = 0.1
     package var overviewFrame: CGRect?
-    package var jumpLabels: [String]?
+    /// mango's is_jump_mode on the selected monitor, and the jump_keycodes of its clients.
+    package var jumpMode = false
+    package var jumpKeycodes: Set<UInt16> = []
     package var overcircleActive = false
     package var switcherActive = false
     package var tagCombo = false
@@ -18,7 +20,7 @@ package struct InputState {
 
 package enum OverviewKey: Equatable {
     case escape
-    case jump(String)
+    case jump(UInt16)
 }
 
 package struct GlobalKey: Equatable {

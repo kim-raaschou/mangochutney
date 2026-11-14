@@ -91,12 +91,12 @@ extension Keyboard {
     }
 
 /// mango handle_keyboard_key
-    package static func handleUnboundKey(_ k: KeyInput, state: inout KeyboardState, jumpActive: Bool, isEscape: Bool,
-                                         jumpLabel: String?, globalKeys: [(mods: Modifiers, keyCodes: Set<UInt16>, pid: pid_t)])
+    package static func handleUnboundKey(_ k: KeyInput, state: inout KeyboardState, jumpMode: Bool, isEscape: Bool,
+                                         isJumpKey: Bool, globalKeys: [(mods: Modifiers, keyCodes: Set<UInt16>, pid: pid_t)])
         -> (action: KeyAction?, swallow: Bool) {
-        if jumpActive, k.isDown {
+        if jumpMode, k.isDown {
             if isEscape { state.boundKeys.insert(k.keyCode); return (.overviewKey(.escape), true) }
-            if let jumpLabel { state.boundKeys.insert(k.keyCode); return (.overviewKey(.jump(jumpLabel)), true) }
+            if isJumpKey { state.boundKeys.insert(k.keyCode); return (.overviewKey(.jump(k.keyCode)), true) }
         }
         if !k.isDown, let pid = state.forwardedKeys.removeValue(forKey: k.keyCode) {
             return (.forward(pid, down: false), true)

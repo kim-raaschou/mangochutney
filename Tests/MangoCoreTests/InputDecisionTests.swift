@@ -67,16 +67,16 @@ final class InputDecisionTests: MangoTestCase {
 
     func testHandleUnboundKey() {
         var st = KeyboardState()
-        XCTAssertEqual(Keyboard.handleUnboundKey(key(53, []), state: &st, jumpActive: true, isEscape: true,
-                                                 jumpLabel: nil, globalKeys: []).action, .overviewKey(.escape))
-        XCTAssertEqual(Keyboard.handleUnboundKey(key(0, []), state: &st, jumpActive: true, isEscape: false,
-                                                 jumpLabel: "A", globalKeys: []).action, .overviewKey(.jump("A")))
+        XCTAssertEqual(Keyboard.handleUnboundKey(key(53, []), state: &st, jumpMode: true, isEscape: true,
+                                                 isJumpKey: false, globalKeys: []).action, .overviewKey(.escape))
+        XCTAssertEqual(Keyboard.handleUnboundKey(key(0, []), state: &st, jumpMode: true, isEscape: false,
+                                                 isJumpKey: true, globalKeys: []).action, .overviewKey(.jump(0)))
         let g = [(mods: Modifiers.ctrl, keyCodes: Set<UInt16>([1]), pid: pid_t(42))]
-        XCTAssertEqual(Keyboard.handleUnboundKey(key(1, .ctrl), state: &st, jumpActive: false, isEscape: false,
-                                                 jumpLabel: nil, globalKeys: g).action, .forward(42, down: true))
-        XCTAssertEqual(Keyboard.handleUnboundKey(key(1, [], down: false), state: &st, jumpActive: false, isEscape: false,
-                                                 jumpLabel: nil, globalKeys: g).action, .forward(42, down: false))
-        XCTAssertNil(Keyboard.handleUnboundKey(key(2, []), state: &st, jumpActive: false, isEscape: false,
-                                               jumpLabel: nil, globalKeys: g).action)
+        XCTAssertEqual(Keyboard.handleUnboundKey(key(1, .ctrl), state: &st, jumpMode: false, isEscape: false,
+                                                 isJumpKey: false, globalKeys: g).action, .forward(42, down: true))
+        XCTAssertEqual(Keyboard.handleUnboundKey(key(1, [], down: false), state: &st, jumpMode: false, isEscape: false,
+                                                 isJumpKey: false, globalKeys: g).action, .forward(42, down: false))
+        XCTAssertNil(Keyboard.handleUnboundKey(key(2, []), state: &st, jumpMode: false, isEscape: false,
+                                               isJumpKey: false, globalKeys: g).action)
     }
 }

@@ -15,7 +15,7 @@ final class InputRouter: @unchecked Sendable {
         var axisBindings: [AxisBinding] = []
         var axisTimeout: TimeInterval = 0.1
         var overviewFrame: CGRect?
-        var jumpActive = false
+        var jumpMode = false
         var jumpKeys: Set<UInt16> = []
         var overcircleActive = false
         var switcherActive = false
@@ -120,10 +120,9 @@ final class InputRouter: @unchecked Sendable {
             if !ev.isRepeat { onMain { $0.tabFocusMember(number: n) } }
             return true
         }
-        let label = s.jumpKeys.contains(ev.keyCode) ? KeyNames.name(forKeyCode: ev.keyCode).uppercased() : nil
         lock.lock()
-        let u = Keyboard.handleUnboundKey(k, state: &keyboard, jumpActive: s.overviewFrame != nil && s.jumpActive,
-                                          isEscape: ev.keyCode == 53, jumpLabel: label,
+        let u = Keyboard.handleUnboundKey(k, state: &keyboard, jumpMode: s.jumpMode,
+                                          isEscape: ev.keyCode == 53, isJumpKey: s.jumpKeys.contains(ev.keyCode),
                                           globalKeys: s.globalKeys.map { ($0.mods, $0.keyCodes, $0.pid) })
         lock.unlock()
         if let a = u.action { run([a], ev, age: age) }

@@ -52,7 +52,6 @@ public struct TabStripStyle: Equatable {
 public struct OverviewCard: Equatable {
     public var id: ClientID
     public var frame: CGRect
-    public var label: String?
     public var title: String
     public var pid: pid_t
     public var focused: Bool
@@ -61,10 +60,9 @@ public struct OverviewCard: Equatable {
 public struct OverviewLook: Equatable {
     public var focusColor: RGBA
     public var borderColor: RGBA
-    public var jumpLook: DecorateStyle
     public var mango: (root: RGBA, borderWidth: CGFloat, cornerRadius: CGFloat)
     public static func == (a: OverviewLook, b: OverviewLook) -> Bool {
-        a.focusColor == b.focusColor && a.borderColor == b.borderColor && a.jumpLook == b.jumpLook
+        a.focusColor == b.focusColor && a.borderColor == b.borderColor
             && a.mango.root == b.mango.root && a.mango.borderWidth == b.mango.borderWidth
             && a.mango.cornerRadius == b.mango.cornerRadius
     }

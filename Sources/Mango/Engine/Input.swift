@@ -26,8 +26,11 @@ package extension MangoServer {
         system.publishInput(InputState(
             keymode: mode, bindings: c.keyBindings, mouseBindings: c.mouseBindings, axisBindings: c.axisBindings,
             axisTimeout: Double(c.axisBindApplyTimeout) / 1000, overviewFrame: ov?.monitor.screen.frame,
-            jumpLabels: ov?.jump.map { Array($0.keys) },
-            overcircleActive: ov?.circle == true && ov?.jump == nil, switcherActive: sw, tagCombo: combo,
+            jumpMode: selectedMonitor?.isJumpMode ?? false,
+            jumpKeycodes: Set(clients.filter { $0.mon === selectedMonitor }.flatMap {
+                [$0.jumpKeycodes.keycode1, $0.jumpKeycodes.keycode2, $0.jumpKeycodes.keycode3].compactMap { $0 }
+            }),
+            overcircleActive: ov.map { isOvercircleMode($0.monitor) } ?? false, switcherActive: sw, tagCombo: combo,
             wantsMouseMoved: c.sloppyfocus || c.enableHotarea || c.cursorHideTimeout > 0 || hidden
                 || c.windowRules.contains { $0.confinePointer == true } || c.enableBorderResize,
             cursorHideOnKeypress: c.cursorHideOnKeypress && !hidden,
@@ -64,7 +67,7 @@ package extension MangoServer {
         for a in actions {
             switch a {
             case .leaveOvercircle:
-                if let ov = overviewState, ov.circle, ov.jump == nil {
+                if let ov = overviewState, isOvercircleMode(ov.monitor) {
                     leaveOverview(select: ov.circleFocus.flatMap { clientByIdAll($0) })
                 }
             case .switcherCommit:
@@ -75,10 +78,16 @@ package extension MangoServer {
                 tagCombo = false
             case .binding(let b, let held):
                 _ = dispatch(b.dispatch, rescan: !held)
+            // not in mango: the event tap decided before the bindings ran; is_jump_mode is asked after them
             case .overviewKey(.escape):
-                leaveOverview(select: nil)
-            case .overviewKey(.jump(let name)):
-                if let id = overviewState?.jump?[name], let c = clientByIdAll(id) { leaveOverview(select: c) }
+                if selectedMonitor?.isJumpMode == true {
+                    toggleJump()
+                }
+            case .overviewKey(.jump(let keycode)):
+                if let m = selectedMonitor, m.isJumpMode, let target = keyboardFindJumpClient(m, keycode) {
+                    clientFocus(target, true)
+                    leaveOverview(select: target)
+                }
             case .forward:
                 break
             }
@@ -286,7 +295,7 @@ package extension MangoServer {
         default: inHotarea = p.y > f.maxY - s && p.x < f.minX + s && p.x >= f.minX && p.y <= f.maxY
         }
         if config.enableHotarea && !m.isInHotarea && inHotarea {
-            toggleOverview(onlyCurrent: false, jump: false)
+            toggleOverview(onlyCurrent: false)
             m.isInHotarea = true
         } else if config.enableHotarea && m.isInHotarea && !inHotarea {
             m.isInHotarea = false

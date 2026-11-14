@@ -70,7 +70,6 @@ class MacWindowSystem: WindowSystem {
     let tabBars = TabBarManager()
     let groupBars = TabBarManager()
     var overviewOverlay: OverviewOverlay?
-    var jumpLabels: JumpLabelSet?
     var switcherPanel: SwitcherPanel?
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
     var swipeSent: Swipe?
@@ -266,7 +265,6 @@ class MacWindowSystem: WindowSystem {
         overviewOverlay?.close()
         let macOS = server.config.chutneyMacOSAppearance
         let overlay = OverviewOverlay(workArea: m.screen.workArea, top: m.screen.frame.minY, focusColor: look.focusColor, borderColor: look.borderColor,
-                                      jumpLook: MacOSAppearance.bar(look.jumpLook, set: server.config.jumplabeldata, server.config),
                                       mango: macOS ? nil : .init(root: look.mango.root, borderWidth: look.mango.borderWidth,
                                                                  cornerRadius: look.mango.cornerRadius))
         overviewOverlay = overlay
@@ -284,17 +282,7 @@ class MacWindowSystem: WindowSystem {
     }
 
     static func card(_ c: OverviewCard) -> OverviewOverlay.Card {
-        .init(id: c.id, frame: c.frame, label: c.label, title: c.title, pid: c.pid, focused: c.focused)
-    }
-
-    func showJumpLabels(_ labels: [(String, CGRect)], look: DecorateStyle) {
-        jumpLabels?.close()
-        jumpLabels = JumpLabelSet(labels, look: MacOSAppearance.bar(look, set: server.config.jumplabeldata, server.config))
-    }
-
-    func closeJumpLabels() {
-        jumpLabels?.close()
-        jumpLabels = nil
+        .init(id: c.id, frame: c.frame, title: c.title, pid: c.pid, focused: c.focused)
     }
 
     func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat) {
@@ -319,6 +307,15 @@ class MacWindowSystem: WindowSystem {
         let bar = TitleMessageBarDecoration(data) { [unowned self] in server.config }
         bar.setSize(width, height)
         return bar
+    }
+
+    func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel? {
+        JumpLabelNode(data) { [unowned self] in server.config }
+    }
+
+    func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
+        let codes = KeyNames.keyCodes(forName: String(keysym))
+        return MultiKeycode(keycode1: codes.first, keycode2: codes.dropFirst().first, keycode3: codes.dropFirst(2).first)
     }
 
     func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) {
@@ -567,8 +564,8 @@ class MacWindowSystem: WindowSystem {
             s.axisBindings = state.axisBindings
             s.axisTimeout = state.axisTimeout
             s.overviewFrame = state.overviewFrame
-            s.jumpActive = state.jumpLabels != nil
-            s.jumpKeys = Set((state.jumpLabels ?? []).flatMap { KeyNames.keyCodes(forName: $0.lowercased()) })
+            s.jumpMode = state.jumpMode
+            s.jumpKeys = state.jumpKeycodes
             s.overcircleActive = state.overcircleActive
             s.switcherActive = state.switcherActive
             s.tagCombo = state.tagCombo

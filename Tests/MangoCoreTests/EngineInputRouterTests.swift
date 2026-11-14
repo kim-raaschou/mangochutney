@@ -13,7 +13,7 @@ final class EngineInputRouterTests: MangoTestCase {
             s.mouseBindings = mouse
             s.axisBindings = axis
             s.overviewFrame = overview
-            s.jumpActive = jump
+            s.jumpMode = jump
             s.jumpKeys = jumpKeys
             s.axisTimeout = 0.1
         }
@@ -210,7 +210,7 @@ final class MangoInputStateTests: MangoTestCase {
     func testAPassthroughKeyStillReachesTheJumpLabels() {
         let p = KeyBinding(mods: [], keyName: "a", keyCodes: [0], flags: .passthrough, dispatch: Dispatch(name: "spawn", args: ["x"]))
         let r = InputRouter()
-        r.publish { s in s.bindings = [p]; s.overviewFrame = CGRect(x: 0, y: 0, width: 100, height: 100); s.jumpActive = true; s.jumpKeys = [0] }
+        r.publish { s in s.bindings = [p]; s.overviewFrame = CGRect(x: 0, y: 0, width: 100, height: 100); s.jumpMode = true; s.jumpKeys = [0] }
         XCTAssertTrue(r.key(key(0, [], down: true), modifierOnlySinceDown: false), "the jump label takes it")
     }
 
@@ -220,7 +220,7 @@ final class MangoInputStateTests: MangoTestCase {
         XCTAssertFalse(plain.key(key(53, [], down: true), modifierOnlySinceDown: false))
         XCTAssertFalse(plain.key(key(36, [], down: true), modifierOnlySinceDown: false))
         let jump = InputRouter()
-        jump.publish { s in s.overviewFrame = CGRect(x: 0, y: 0, width: 100, height: 100); s.jumpActive = true }
+        jump.publish { s in s.overviewFrame = CGRect(x: 0, y: 0, width: 100, height: 100); s.jumpMode = true }
         XCTAssertTrue(jump.key(key(53, [], down: true), modifierOnlySinceDown: false))
     }
 }

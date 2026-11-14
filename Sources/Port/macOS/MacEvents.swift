@@ -31,6 +31,7 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     private func mapInitial(_ c: Client) {
         c.isPendingOpenAnimation = false
+        server.clientAddJumpLabelNode(c)
         c.mon = nil
         server.clientInsertTilingOrder(c)
         server.focusStack.insert(c.id, at: 0)
@@ -55,6 +56,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func mapBack(_ c: Client, _ d: DepartedWindow, initial: Bool) {
+        server.clientAddJumpLabelNode(c)
         c.mon = nil
         server.clients.insert(c, at: DepartedWindow.insertionIndex(of: c.id, snapshot: d.orderSnapshot,
                                                                    into: server.clients.map(\.id)))
@@ -125,7 +127,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         guard let m = c.mon else { return }
         wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map(String.init) ?? "none"))")
         if let ov = server.overviewState {
-            if ov.jump == nil, server.focused !== c { server.leaveOverview(select: c) }
+            if !ov.monitor.isJumpMode, server.focused !== c { server.leaveOverview(select: c) }
             return
         }
         if c.groupParked { server.clientFocusGroupMember(c); return }

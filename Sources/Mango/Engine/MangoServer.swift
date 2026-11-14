@@ -187,6 +187,9 @@ public final class MangoServer {
                 titleMessageBarApplyConfig(m)
                 titleMessageBarUpdate(m)
             }
+            for c in clients {   // not in mango: of reapply_property only client_set_group_config
+                clientSetGroupConfig(c)
+            }
             system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side
         }
         for cmd in config.exec { system.spawnShell(cmd) }
@@ -322,8 +325,7 @@ public final class MangoServer {
     package func arrange(_ m: Monitor, _ anim: ArrangeAnimation = .move) {
         guard started else { return }
         if let ov = overviewState, ov.monitor === m {
-            if !ov.thumbnails { overview(ov); return }
-// not in mango: the pictures are the cards; the real windows stay under them.
+            overview(ov)
             return
         }
         if m.sel == nil { m.sel = clientFocusTop(m)?.id }
@@ -767,6 +769,7 @@ public final class MangoServer {
 
     package func handleClientMap(_ c: Client) {
         guard clientByIdAll(c.id) == nil else { return }
+        clientAddJumpLabelNode(c)
         c.mon = nil
         clientInsertTilingOrder(c)
         focusStack.insert(c.id, at: 0)
@@ -1159,6 +1162,12 @@ public final class MangoServer {
         // Port extension: not in mango. Its group and its place in the order, for when the
         // window comes back (macOS reports windows gone and back around sleep).
         let group = c.isGroupMember ? groupMembers(c) : []
+
+        if let label = c.jumpLabelNode {
+            label.destroy()
+            c.jumpLabelNode = nil
+        }
+
         if c.isGroupMember {
             if c.isGroupFocus, let r = c.groupNext ?? c.groupPrev {
                 r.mon = c.mon

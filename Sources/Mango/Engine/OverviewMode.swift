@@ -5,8 +5,6 @@ package struct OverviewState {
     package let monitor: Monitor
     package let previousSel: ClientID?
     var cards: [ClientID: CGRect]
-    package var jump: [String: ClientID]?
-    var labelsShown = false
     var circle = false
     package var members: [ClientID] = []
     package var circleFocus: ClientID?
@@ -18,10 +16,10 @@ package extension MangoServer {
     func isOvercircleMode(_ m: Monitor) -> Bool {
         // not in mango: no ov_normal_mode
         guard let ov = overviewState, ov.monitor === m else { return false }
-        return ov.circle && ov.jump == nil
+        return ov.circle && !m.isJumpMode
     }
 
-    func toggleOverview(onlyCurrent: Bool, jump: Bool, circle: Bool = false) {
+    func toggleOverview(onlyCurrent: Bool, circle: Bool = false) {
         if overviewState != nil { leaveOverview(select: nil); return }
         let m = selectedMonitor!
         let tagmask = TagMask.mask(forTagNum: config.tagNum)
@@ -31,6 +29,10 @@ package extension MangoServer {
         }
         guard !members.isEmpty else {
             titleMessageBarHide(m)
+            // not in mango: jump mode ends as when leaving overview (a mango bug, docs/afvigelser.md §6).
+            if m.isJumpMode {
+                finishJumpMode(m)
+            }
             return
         }
         for c in members {
@@ -57,16 +59,9 @@ package extension MangoServer {
         state.circle = circle
         state.members = members.map(\.id)
         state.circleFocus = circle ? focusID : nil
-        if jump {
-            var map: [String: ClientID] = [:]
-            let letters = config.jumpLabels.map { String($0).uppercased() }
-            for (i, c) in members.enumerated() where i < letters.count { map[letters[i]] = c.id }
-            state.jump = map
-        }
         if system.canCapture {   // not in mango: the port's side
             state.thumbnails = true
             let look = OverviewLook(focusColor: config.focuscolor, borderColor: config.bordercolor,
-                                    jumpLook: mangoBarDecorationApplyConfig(config.jumplabeldata, mango: .mangoJumpLabel),
                                     mango: (config.rootcolor, CGFloat(config.borderpx), CGFloat(config.borderRadius)))
             overviewState = state
             clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
@@ -81,15 +76,6 @@ package extension MangoServer {
         clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
         arrange(m)
         titleMessageBarUpdateGeometry(m)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
-        if jump, let map = state.jump {
-            system.whenAnimationsIdle { [weak self] in   // not in mango: the port's side
-                guard let self, var ov = self.overviewState, ov.monitor === m, ov.jump != nil, !ov.labelsShown else { return }
-                let look = self.mangoBarDecorationApplyConfig(self.config.jumplabeldata, mango: .mangoJumpLabel)
-                self.system.showJumpLabels(map.compactMap { label, id in ov.cards[id].map { (label, $0) } }, look: look)
-                ov.labelsShown = true
-                self.overviewState = ov
-            }
-        }
         printstatus()
     }
 
@@ -107,10 +93,9 @@ package extension MangoServer {
 
     /// Not in mango: card list for the port's overview overlay.
     func overlayCards(_ ov: OverviewState, focused: ClientID?) -> [OverviewCard] {
-        let labelOf = Dictionary((ov.jump ?? [:]).map { ($0.value, $0.key) }, uniquingKeysWith: { a, _ in a })
-        return ov.cards.compactMap { id, frame in
+        ov.cards.compactMap { id, frame in
             guard let c = clientByIdAll(id) else { return nil }
-            return OverviewCard(id: id, frame: frame, label: labelOf[id], title: c.title.isEmpty ? c.appName : c.title,
+            return OverviewCard(id: id, frame: frame, title: c.title.isEmpty ? c.appName : c.title,
                                 pid: c.pid, focused: id == focused)
         }
     }
@@ -154,14 +139,143 @@ package extension MangoServer {
 
     func overview(_ ov: OverviewState) {
         let m = ov.monitor
-        for c in clientsAll where c.mon === m {
-            if let f = ov.cards[c.id] {
-                system.resize(c, to: f, .move)
-            } else {
-                system.hide(c)
+        if !ov.thumbnails {   // not in mango: the pictures are the cards; the real windows stay under them
+            for c in clientsAll where c.mon === m {
+                if let f = ov.cards[c.id] {
+                    system.resize(c, to: f, .move)
+                } else {
+                    system.hide(c)
+                }
+            }
+            updateBorders()
+        }
+
+        if m.isJumpMode {
+            createJumpHints(m)
+        }
+    }
+
+    func beginJumpMode(_ m: Monitor) {
+        m.isJumpMode = true
+        publishInputState()   // not in mango: the event tap's snapshot
+    }
+
+    func createJumpHints(_ m: Monitor) {
+        // Uses the static default sequence when jump_labels is not configured.
+        let jumpLabels = Array(config.jumpLabels)
+        if jumpLabels.isEmpty {
+            return
+        }
+        let jumpLabelsLen = jumpLabels.count
+        var labelIdx = 0
+
+        for c in clients {
+            if c.isVisible(on: m) && !c.isUnglobal {   // not in mango: no X11 popups
+                if labelIdx >= jumpLabelsLen {
+                    break
+                }
+                let cChar = jumpLabels[labelIdx]
+                c.jumpChar = cChar
+                findKeycodesForChar(cChar, &c.jumpKeycodes)
+
+                c.jumpLabelNode?.update(String(cChar), m.screen.scale)
+                overviewUpdateJumpLabel(c)
+                labelIdx += 1
             }
         }
-        updateBorders()
+        publishInputState()   // not in mango: the event tap's snapshot
+    }
+
+    func finishJumpMode(_ m: Monitor) {
+        if !m.isJumpMode {
+            return
+        }
+
+        for c in clients {
+            if c.mon !== m {
+                continue
+            }
+
+            c.jumpChar = nil
+            c.jumpKeycodes = MultiKeycode()
+
+            if let label = c.jumpLabelNode, label.enabled {
+                label.setEnabled(false)
+            }
+        }
+        m.isJumpMode = false
+        publishInputState()   // not in mango: the event tap's snapshot
+    }
+
+    func overviewUpdateJumpLabel(_ c: Client) {
+        guard let m = c.mon, let ov = overviewState, ov.monitor === m, m.isJumpMode, c.jumpChar != nil,
+              let label = c.jumpLabelNode else { return }
+        // not in mango: the client's card stands for its ov_card_tree and c->animation.current
+        guard let cur = ov.cards[c.id] else { return }
+
+        let lw = label.logicalWidth
+        let lh = label.logicalHeight
+        if lw <= 0 || lh <= 0 {
+            if label.enabled {
+                label.setEnabled(false)
+            }
+            return
+        }
+
+        let lx = cur.minX + ((cur.width - lw) / 2).rounded(.towardZero)
+        let ly = cur.minY + ((cur.height - lh) / 2).rounded(.towardZero)
+        let mm = m.screen.frame
+        if lx < mm.minX || ly < mm.minY || lx + lw > mm.maxX || ly + lh > mm.maxY {
+            if label.enabled {
+                label.setEnabled(false)
+            }
+            return
+        }
+
+        label.setPosition(lx, ly)
+        if !label.enabled {
+            label.setEnabled(true)
+            label.raiseToTop()
+        }
+    }
+
+    /// mango find_keycodes_for_char (config/binding_parse.c)
+    func findKeycodesForChar(_ cChar: Character?, _ multiKc: inout MultiKeycode) {
+        multiKc = MultiKeycode()
+
+        guard let cChar else { return }
+
+        multiKc = system.findKeycodesForKeysym(cChar)   // not in mango: the port's side (xkb's keymap)
+    }
+
+    /// mango toggle_jump (dispatch/bind.c)
+    func toggleJump() {
+        guard let m = selectedMonitor else { return }
+
+        if overviewState?.monitor !== m {
+            beginJumpMode(m)
+            toggleOverview(onlyCurrent: false)
+            return
+        }
+
+        leaveOverview(select: nil)
+    }
+
+    /// mango keyboard_find_jump_client (input/keyboard.c)
+    func keyboardFindJumpClient(_ m: Monitor, _ keycode: UInt16) -> Client? {
+        for c in clients {
+            if c.mon !== m {
+                continue
+            }
+
+            if keycode == c.jumpKeycodes.keycode1 ||
+                keycode == c.jumpKeycodes.keycode2 ||
+                keycode == c.jumpKeycodes.keycode3 {
+                return c
+            }
+        }
+
+        return nil
     }
 
     // Saves the window old state when switching from the normal view to overview.
@@ -196,9 +310,11 @@ package extension MangoServer {
     // not in mango: set_overview's leaving branch, which toggle_overview with a tc runs
     func leaveOverview(select: Client?) {
         guard let ov = overviewState else { return }
-        if ov.labelsShown { system.closeJumpLabels() }
         if ov.thumbnails { system.closeOverview() }
         titleMessageBarHide(ov.monitor)
+        if ov.monitor.isJumpMode {
+            finishJumpMode(ov.monitor)
+        }
         overviewState = nil
         let m = ov.monitor
         let sel = select ?? m.sel.flatMap { clientByIdAll($0) }

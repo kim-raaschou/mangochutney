@@ -160,9 +160,19 @@ Hvor koden står, når den ikke står som i mango.
   skift), hvor mangos `client_draw_frame` flytter den med hvert billede. `is_overcircle_mode` har
   ingen `ov_normal_mode`. `chutney_launch_or_focus` lægger den under sit eget panel gennem
   `PortHooks.titleMessageBarGeometry`.
+- **Jump-tilstand:** mangos `toggle_jump`, `begin_jump_mode`, `create_jump_hints`, `finish_jump_mode`,
+  `overview_update_jump_label` og `keyboard_find_jump_client` står i kernen med `Monitor.isJumpMode` og
+  klientens `jumpChar`, `jumpKeycodes` og `jumpLabelNode`; mærket selv (`MangoJumpLabel`, mangos
+  `text-node.c` og scene-node) tegner porten som et lille panel over overview, og
+  `find_keycodes_for_keysym` (xkb's keymap) er portens tastaturtabel. Mærket sættes én gang ved kortets
+  mål, hvor mangos `overview_layout_card` flytter det med hvert billede, og dets sted er skærmens,
+  da porten ikke har klientens scene-træ. Event-tap-tråden får `is_jump_mode` og klienternes taster i
+  `InputState`, så den kan sluge dem; hovedtråden spørger på `is_jump_mode`, efter at bindingerne har
+  kørt, som mango. Har en gennemslupnings-binding (`bindp`) forladt overview, er tasten dog slugt, hvor
+  mango sender den videre.
 - **Config-watcheren:** mangos `config/watcher.c` med dens kqueue-del (mangos egen på macOS) står i
   kernen (`Config/Watcher.swift`); dens filer og debounce-timer er wayland's event loop på grænsen.
-- **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `NagDisplay` (mangonags Wayland-side), `EventLoop`
+- **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `MangoBarDecoration` og `MangoJumpLabel` (mangos tekstnoder), `NagDisplay` (mangonags Wayland-side), `EventLoop`
   (`wl_event_loop_add_fd` og `_add_timer`, til IPC og config-watcheren), `Screen`, `PortHooks`, `ConfigPort` (portens nøgler,
   modifiernavne, tastkoder) og `InputState`.
 - **Porten (`Sources/Port`):** macOS-laget (`Port/macOS`: Accessibility, parkering, fokus,
@@ -180,4 +190,5 @@ aftalt, rettet så lidt som muligt, mærket `a mango bug` i koden og låst med e
 | Værnet mod en `source`, der læser sig selv (direkte eller gennem en anden fil): mango læser den igen og igen, til stakken løber tør | går ned | filen læses én gang, og det meldes | `includeStack` i `ConfigParser.swift`; `testASourceCycleIsReadOnce` |
 | Et træk i `fair`, `vertical_fair`, `grid` og `vertical_grid` vælger naboen på den side af vinduet, man trækker i (`cursor_in_left_half`), og overskriver straks valget med tastaturets (*"Keyboard hotkey logic unchanged"*): naboen til højre, og kun for den yderste kolonne til højre den til venstre | tre kolonner, træk i midterste vindues venstre kant: dens højre kant flytter sig | venstre kant flytter sig | Tastaturets valg bruges kun ved tastaturet (`!isdrag`), og trækkets valg, som mango selv udregner, står. `resizeTileGridFair` i `Dispatch.swift`; `testAGridDragMovesTheEdgeItGrabs` |
 | `focus_direction` sender venstre og højre gennem `focus_stack`, når tagget er monocle, også i overview, hvor kortene ligger i et gitter; samme funktion springer stakken over i overview tre linjer længere nede (`if (!isoverview)`) | overview fra et monocle-tag: venstre/højre følger vinduernes rækkefølge, ikke kortene | venstre/højre går til kortet ved siden af | Monocle-grenen gælder ikke i overview, som mangos egen `!isoverview`. `focusDirection` i `Dispatch.swift`; `testMonocleInTheOverviewGoesByTheCards` |
+| `togglejump` på en skærm uden vinduer sætter `is_jump_mode` (`begin_jump_mode`), men `set_overview` vender om uden at gå i overview, så flaget bliver stående: kun at forlade overview rydder det | indtil næste overview er switcheren afvist, og Escape sluges i alle apps (`toggle_jump`) | jump-tilstanden slutter igen | Den tomme vej kalder `finish_jump_mode`, som mangos egen vej ud af overview gør. `toggleOverview` i `OverviewMode.swift`; `testToggleJumpOnAnEmptyMonitorLeavesNoJumpMode` |
 | Ved reload giver `parse_tagrule` alle vinduer master-bredden fra den sidste skærms tag, også vinduer på andre skærme, så en `tag_rule` med `monitor_name` kun virker på den sidste skærm | to skærme, 0,3 og 0,7: begge får 0,7 | hver skærms vinduer får deres egen | `c.mon === self` i `parseTagrule`; `testAReloadKeepsEachMonitorsOwnMfact` |

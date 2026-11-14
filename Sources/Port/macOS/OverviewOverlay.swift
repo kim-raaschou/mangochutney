@@ -6,7 +6,6 @@ final class OverviewOverlay {
     struct Card {
         var id: ClientID
         var frame: CGRect
-        var label: String?
         var title: String
         var pid: pid_t
         var focused: Bool
@@ -18,7 +17,6 @@ final class OverviewOverlay {
     private let workArea: CGRect
     private let focusColor: CGColor
     private let borderColor: CGColor
-    private let jumpLook: DecorateStyle
     struct MangoLook {
         var root: RGBA
         var borderWidth: CGFloat
@@ -28,9 +26,7 @@ final class OverviewOverlay {
 
     private let origin: CGPoint
 
-    init(workArea: CGRect, top: CGFloat? = nil, focusColor: RGBA, borderColor: RGBA, jumpLook: DecorateStyle = DecorateStyle(),
-         mango: MangoLook? = nil) {
-        self.jumpLook = jumpLook
+    init(workArea: CGRect, top: CGFloat? = nil, focusColor: RGBA, borderColor: RGBA, mango: MangoLook? = nil) {
         self.mango = mango
         self.workArea = workArea
         origin = CGPoint(x: workArea.minX, y: min(top ?? workArea.minY, workArea.minY))
@@ -113,17 +109,6 @@ final class OverviewOverlay {
         title.truncationMode = .end
         title.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
         l.addSublayer(title)
-        if let label = c.label {
-            let badge = CALayer()
-            badge.name = "badge"
-            badge.setValue(label, forKey: "label")
-            let t = CATextLayer()
-            t.string = label
-            t.alignmentMode = .center
-            t.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
-            badge.addSublayer(t)
-            l.addSublayer(badge)
-        }
         parent.addSublayer(l)
         layers[c.id] = l
         return l
@@ -138,8 +123,6 @@ final class OverviewOverlay {
                 s.frame = CGRect(x: b.midX - side / 2, y: b.midY - side / 2 - 10, width: side, height: side)
             case "title":
                 s.frame = CGRect(x: 8, y: b.midY + side(b) / 2, width: b.width - 16, height: 18)
-            case "badge":
-                layoutBadge(s, on: Self.shownRect(of: l))
             default:
                 break
             }
@@ -147,37 +130,6 @@ final class OverviewOverlay {
     }
 
     private func side(_ b: CGRect) -> CGFloat { min(64, b.width * 0.4, b.height * 0.4) }
-
-    static func shownRect(of l: CALayer) -> CGRect {
-        let b = l.bounds
-        guard let contents = l.contents, CFGetTypeID(contents as CFTypeRef) == CGImage.typeID else { return b }
-        let image = contents as! CGImage
-        guard image.width > 0, image.height > 0, b.width > 0, b.height > 0 else { return b }
-        let scale = min(b.width / CGFloat(image.width), b.height / CGFloat(image.height))
-        let w = CGFloat(image.width) * scale, h = CGFloat(image.height) * scale
-        return CGRect(x: b.midX - w / 2, y: b.midY - h / 2, width: w, height: h)
-    }
-
-    static func badgeSide(for shown: CGRect) -> CGFloat {
-        max(18, min(64, min(shown.width, shown.height) * 0.5))
-    }
-
-    private func layoutBadge(_ badge: CALayer, on shown: CGRect) {
-        let label = badge.value(forKey: "label") as? String ?? ""
-        let look = JumpLabelLook(label, decorate: jumpLook, side: Self.badgeSide(for: shown), ring: focusColor)
-        badge.frame = CGRect(x: shown.midX - look.size.width / 2, y: shown.midY - look.size.height / 2,
-                             width: look.size.width, height: look.size.height)
-        badge.backgroundColor = look.background
-        badge.borderColor = look.border
-        badge.cornerRadius = look.cornerRadius
-        badge.borderWidth = look.borderWidth
-        if let t = badge.sublayers?.first as? CATextLayer {
-            t.font = look.font
-            t.fontSize = look.font.pointSize
-            t.foregroundColor = look.text
-            t.frame = look.textFrame
-        }
-    }
 
     func captureCards(scale: CGFloat) {
         let sizes = layers.mapValues { CGSize(width: $0.frame.width * scale, height: $0.frame.height * scale) }
@@ -192,7 +144,6 @@ final class OverviewOverlay {
         CATransaction.setAnimationDuration(0.12)
         l.contents = image
         for s in l.sublayers ?? [] where s.name == "icon" || s.name == "title" { s.isHidden = true }
-        for s in l.sublayers ?? [] where s.name == "badge" { layoutBadge(s, on: Self.shownRect(of: l)) }
         CATransaction.commit()
     }
 

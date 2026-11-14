@@ -93,6 +93,19 @@ public struct Dispatch: Equatable, Hashable, Sendable {
     }
 }
 
+public struct MultiKeycode: Equatable, Sendable {
+    // not in mango: nil for none, as macOS's key code 0 is a key
+    public var keycode1: UInt16?
+    public var keycode2: UInt16?
+    public var keycode3: UInt16?
+
+    public init(keycode1: UInt16? = nil, keycode2: UInt16? = nil, keycode3: UInt16? = nil) {
+        self.keycode1 = keycode1
+        self.keycode2 = keycode2
+        self.keycode3 = keycode3
+    }
+}
+
 public struct KeyBindingFlags: OptionSet, Hashable, Sendable {
     public let rawValue: UInt8
     public init(rawValue: UInt8) { self.rawValue = rawValue }

@@ -393,10 +393,10 @@ package extension MangoServer {
 
         case "toggleoverview":
             guard grab == nil else { return nil }
-            toggleOverview(onlyCurrent: a0 == "1", jump: false)
+            toggleOverview(onlyCurrent: a0 == "1")
         case "enteroverview":
             guard grab == nil else { return nil }
-            if overviewState == nil { toggleOverview(onlyCurrent: false, jump: false) }
+            if overviewState == nil { toggleOverview(onlyCurrent: false) }
         case "leaveoverview":
             guard grab == nil else { return nil }
             if overviewState != nil { leaveOverview(select: focused) }
@@ -404,7 +404,7 @@ package extension MangoServer {
             guard grab == nil else { return nil }
             let dir = a0.lowercased()
             let next = dir == "next" || dir == "current_next"
-            if var ov = overviewState, ov.monitor === selectedMonitor, ov.jump == nil, let sel = focused {
+            if var ov = overviewState, ov.monitor === selectedMonitor, !selectedMonitor.isJumpMode, let sel = focused {
                 if !ov.circle {
                     ov.circle = true
                     ov.circleFocus = sel.id
@@ -414,13 +414,13 @@ package extension MangoServer {
             } else if overviewState != nil {
                 leaveOverview(select: nil)
             } else {
-                toggleOverview(onlyCurrent: dir.hasPrefix("current"), jump: false, circle: true)
+                toggleOverview(onlyCurrent: dir.hasPrefix("current"), circle: true)
             }
         case "switcher":
             switcher(a0)
         case "togglejump":
             guard grab == nil else { return nil }
-            if overviewState == nil { toggleOverview(onlyCurrent: false, jump: true) } else { leaveOverview(select: nil) }
+            toggleJump()
 
         case "dwindle_toggle_split_direction":
             guard let c else { return nil }

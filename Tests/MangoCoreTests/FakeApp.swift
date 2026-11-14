@@ -81,6 +81,25 @@ final class FakeBar: MangoBarDecoration {
     func destroy() { destroyed = true }
 }
 
+/// mango's MangoJumpLabel as the tests see it.
+@MainActor
+final class FakeJumpLabel: MangoJumpLabel {
+    var enabled = false
+    var logicalWidth: CGFloat = 0
+    var logicalHeight: CGFloat = 0
+    var text: String?
+    var position = CGPoint.zero
+    var data: DecorateStyle
+    var destroyed = false
+    init(_ data: DecorateStyle) { self.data = data }
+    func setEnabled(_ enabled: Bool) { self.enabled = enabled }
+    func setPosition(_ x: CGFloat, _ y: CGFloat) { position = CGPoint(x: x, y: y) }
+    func raiseToTop() {}
+    func update(_ text: String, _ scale: Double) { self.text = text; logicalWidth = 40; logicalHeight = 40 }
+    func applyConfig(_ data: DecorateStyle) { self.data = data }
+    func destroy() { destroyed = true }
+}
+
 @MainActor
 final class FakeWindowSystem: MacWindowSystem {
     var fakePointer = CGPoint(x: 1, y: 1)
@@ -108,14 +127,12 @@ final class FakeWindowSystem: MacWindowSystem {
     var tabStrips: [TabStrip] = [], groupStrips: [TabStrip] = []
     override func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) { tabStrips = strips; tabBarsChanged() }
     override func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) { groupStrips = strips }
-    var overviewCards: [OverviewCard]?, jumpLabelCount = 0, switcherTiles: [SwitcherTile]?
+    var overviewCards: [OverviewCard]?, switcherTiles: [SwitcherTile]?
     var specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
     override func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
     override func updateOverview(_ cards: [OverviewCard]) { overviewCards = cards }
     override func captureOverviewCards(scale: CGFloat) {}
     override func closeOverview() { overviewCards = nil }
-    override func showJumpLabels(_ labels: [(String, CGRect)], look: DecorateStyle) { jumpLabelCount = labels.count }
-    override func closeJumpLabels() { jumpLabelCount = 0 }
     override func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat) { switcherTiles = tiles }
     override func switcherApplyHighlight(_ tiles: [SwitcherTile]) { switcherTiles = tiles }
     override func closeSwitcherPanel() { switcherTiles = nil }
@@ -124,6 +141,17 @@ final class FakeWindowSystem: MacWindowSystem {
         let bar = FakeBar(data)
         bars.append(bar)
         return bar
+    }
+    var jumpLabels: [ClientID: FakeJumpLabel] = [:]
+    override func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel? {
+        let label = FakeJumpLabel(data)
+        jumpLabels[c.id] = label
+        return label
+    }
+    /// A fixed keymap: a letter's key code is its place in the alphabet.
+    override func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
+        guard let a = keysym.lowercased().first?.asciiValue, a >= 97, a <= 122 else { return MultiKeycode() }
+        return MultiKeycode(keycode1: UInt16(a - 97))
     }
     override func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) { specialDimAlpha = alpha }
     override func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }

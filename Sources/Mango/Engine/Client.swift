@@ -105,6 +105,9 @@ public final class Client {
     public var overviewIsFloatingBak = false
     public var overviewIsFullscreenBak = false
     public var overviewIsMaximizeScreenBak = false
+    public var jumpChar: Character?
+    public var jumpKeycodes = MultiKeycode()
+    package var jumpLabelNode: MangoJumpLabel?
 
     package init(id: ClientID, pid: pid_t, platform: PlatformWindow, bundleId: String, appName: String, title: String,
          monitor: Monitor, tags: UInt32, frame: CGRect) {
@@ -164,6 +167,7 @@ public final class Monitor {
     public var ovbkCurrentTagset: UInt32 = 0
     public var ovbkPrevTagset: UInt32 = 0
     package var titleMessageBar: MangoBarDecoration?
+    public var isJumpMode = false
 
     public var getMonCurtag: Int {
         // special workspace uses slot 0; all-tags is an ordinary multi-tag view
