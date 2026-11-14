@@ -35,6 +35,7 @@ extension MangoServer {
             memory(server)?.leaving(server, c, group: group, groupFocus: focus, order: order)
         }
         portHooks.ipcGets["get binds"] = { server in ShortcutFormatter.bindsReply(server.shortcutRows) }
+        portHooks.titleMessageBarGeometry = { server, m in LaunchOrFocusPicker.shared.titleMessageBarGeometry(server, m) }
         portHooks.barsInsideBorder = { server in server.config.chutneyMacOSAppearance }
         portHooks.configLoaded.append { server in (server.system as? MacWindowSystem)?.configLoaded(server.config) }
         portHooks.configLoaded.append { server in

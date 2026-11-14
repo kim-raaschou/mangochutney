@@ -66,7 +66,6 @@ class MacWindowSystem: WindowSystem {
     var overviewOverlay: OverviewOverlay?
     var jumpLabels: JumpLabelSet?
     var switcherPanel: SwitcherPanel?
-    var titleBar: TitleMessageBar?
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
     var swipeSent: Swipe?
     var dropArea: DropAreaView?
@@ -258,13 +257,11 @@ class MacWindowSystem: WindowSystem {
         .init(id: t.id, frame: t.frame, size: t.size, pid: t.pid, highlighted: t.highlighted)
     }
 
-    func showTitleMessageBar(frame: CGRect, title: String, appid: String, look: DecorateStyle) {
-        if titleBar == nil { titleBar = TitleMessageBar() }
-        titleBar?.show(frame: frame, title: title, appid: appid,
-                       style: MacOSAppearance.bar(look, set: server.config.titleMessageBardata, server.config))
+    func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateStyle, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
+        let bar = TitleMessageBarDecoration(data) { [unowned self] in server.config }
+        bar.setSize(width, height)
+        return bar
     }
-
-    func titleMessageBarHide() { titleBar?.hide() }
 
     func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) {
         let id = m.screen.displayID

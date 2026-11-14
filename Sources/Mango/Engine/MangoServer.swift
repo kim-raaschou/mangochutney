@@ -184,6 +184,8 @@ public final class MangoServer {
                 m.specialGaps = Gaps(ih: CGFloat(config.specialGappih), iv: CGFloat(config.specialGappiv),
                                      oh: CGFloat(config.specialGappoh), ov: CGFloat(config.specialGappov))
                 m.parseTagrule(config: config, clients: clientsAll)
+                titleMessageBarApplyConfig(m)
+                titleMessageBarUpdate(m)
             }
             system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side
         }
@@ -239,6 +241,7 @@ public final class MangoServer {
         let removed = monitors.filter { m in !newMonitors.contains { $0 === m } }
         let added = newMonitors.filter { m in !monitors.contains { $0 === m } }
         if let ov = overviewState, removed.contains(where: { $0 === ov.monitor }) { leaveOverview(select: nil) }
+        for m in removed { titleMessageBarFinish(m) }
         monitors = newMonitors
         if selectedMonitor == nil || removed.contains(where: { $0 === selectedMonitor }) {
             selectedMonitor = monitors.first { $0.screen.isMain } ?? monitors[0]

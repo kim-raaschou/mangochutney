@@ -54,6 +54,7 @@ package extension MangoServer {
         switcherState = SwitcherState(monitor: m, scope: scope, tiles: tiles.map(\.id), index: index,
                                  layout: SwitcherLayout.switcherLayout(sizes: tiles.map(\.frame.size), monitor: m.screen.frame))
         drawSwitcher(fresh: true)
+        titleMessageBarUpdate(m)
     }
 
     func switcherCycle(_ dir: Int) {
@@ -61,13 +62,15 @@ package extension MangoServer {
         sw.index = (sw.index + dir + sw.tiles.count) % sw.tiles.count
         switcherState = sw
         drawSwitcher(fresh: false)
+        titleMessageBarUpdate(sw.monitor)
     }
 
     func switcherClose() {
-        guard switcherState != nil else { return }
+        guard let sw = switcherState else { return }
+        let m = sw.monitor
         switcherState = nil
         system.closeSwitcherPanel()
-        system.titleMessageBarHide()
+        titleMessageBarHide(m)
     }
 
     func switcherCommitClient(_ c: Client?) {
@@ -92,6 +95,7 @@ package extension MangoServer {
         sw.layout = SwitcherLayout.switcherLayout(sizes: sizes, monitor: sw.monitor.screen.frame)
         switcherState = sw
         drawSwitcher(fresh: true)
+        titleMessageBarUpdate(sw.monitor)
     }
 
     // not in mango: switcher_tile_create's tiles, drawn by the port in one overlay
@@ -108,39 +112,13 @@ package extension MangoServer {
         } else {
             system.switcherApplyHighlight(tiles)
         }
-        titleMessageBarRefresh(sw.monitor)
     }
 
     func switcherTitleMessageBarGeometry(_ m: Monitor) -> (client: Client, box: CGRect)? {
-        guard let sw = switcherState, sw.monitor === m, let c = clientByIdAll(sw.tiles[sw.index]),
-              let box = SwitcherLayout.titleMessageBarGeometry(below: sw.layout.panel, height: config.titleMessageBarHeight,
-                                                               gap: config.titleMessageBarGap) else { return nil }
-        return (c, box)
-    }
+        guard let sw = switcherState, sw.monitor === m, !sw.tiles.isEmpty, sw.index >= 0, sw.index < sw.tiles.count,
+              let c = clientByIdAll(sw.tiles[sw.index]) else { return nil }
 
-    func overcircleTitleBarGeometry(_ m: Monitor) -> (client: Client, box: CGRect)? {
-        guard let ov = overviewState, ov.monitor === m, ov.circle, let id = ov.circleFocus, let card = ov.cards[id],
-              let c = clientByIdAll(id),
-              let box = SwitcherLayout.titleMessageBarGeometry(below: card, height: config.titleMessageBarHeight,
-                                                               gap: config.titleMessageBarGap) else { return nil }
-        return (c, box)
-    }
-
-    func titleMessageBarGeometry(_ m: Monitor) -> (client: Client, box: CGRect)? {
-        switcherTitleMessageBarGeometry(m) ?? overcircleTitleBarGeometry(m)
-    }
-
-    func titleMessageBarRefresh(_ m: Monitor) {
-        guard drawsOverlays, let (c, box) = titleMessageBarGeometry(m), box.width > 0, box.height > 0 else {
-            system.titleMessageBarHide()
-            return
-        }
-        system.showTitleMessageBar(frame: box, title: c.title, appid: c.appid,
-                                   look: mangoBarDecorationApplyConfig(config.titleMessageBardata, mango: .mangoTitleMessageBar))
-    }
-
-    func titleMessageBarUpdateTitle(_ c: Client) {
-        guard let m = c.mon ?? selectedMonitor, titleMessageBarGeometry(m)?.client === c else { return }
-        titleMessageBarRefresh(m)
+        return (c, CGRect(x: sw.layout.panel.minX, y: sw.layout.panel.maxY + CGFloat(config.titleMessageBarGap),
+                          width: sw.layout.panel.width, height: CGFloat(config.titleMessageBarHeight)))
     }
 }

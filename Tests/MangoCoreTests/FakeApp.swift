@@ -60,6 +60,27 @@ final class FakeApp: WindowWriter {
     func restoreAppSettings() {}
 }
 
+/// mango's MangoBarDecoration as the tests see it.
+@MainActor
+final class FakeBar: MangoBarDecoration {
+    var enabled = true
+    var lastText: String?
+    var lastScale = 0.0
+    var frame = CGRect.zero
+    var data: DecorateStyle
+    var updates = 0, raises = 0, destroyed = false
+    init(_ data: DecorateStyle) { self.data = data }
+    func setEnabled(_ enabled: Bool) { self.enabled = enabled }
+    func setPosition(_ x: CGFloat, _ y: CGFloat) { frame.origin = CGPoint(x: x, y: y) }
+    func raiseToTop() { raises += 1 }
+    func update(_ text: String, _ scale: Double) { lastText = text; lastScale = scale; updates += 1 }
+    func setSize(_ width: CGFloat, _ height: CGFloat) { frame.size = CGSize(width: width, height: height) }
+    func setFocus(_ focused: Bool) {}
+    func setCenterSecondaryLine(_ center: Bool) {}
+    func applyConfig(_ data: DecorateStyle) { self.data = data }
+    func destroy() { destroyed = true }
+}
+
 @MainActor
 final class FakeWindowSystem: MacWindowSystem {
     var fakePointer = CGPoint(x: 1, y: 1)
@@ -86,7 +107,7 @@ final class FakeWindowSystem: MacWindowSystem {
     override func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) { tabStrips = strips; tabBarsChanged() }
     override func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) { groupStrips = strips }
     var overviewCards: [OverviewCard]?, jumpLabelCount = 0, switcherTiles: [SwitcherTile]?
-    var titleMessageBar: String?, specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
+    var specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
     override func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
     override func updateOverview(_ cards: [OverviewCard]) { overviewCards = cards }
     override func captureOverviewCards(scale: CGFloat) {}
@@ -96,8 +117,12 @@ final class FakeWindowSystem: MacWindowSystem {
     override func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat) { switcherTiles = tiles }
     override func switcherApplyHighlight(_ tiles: [SwitcherTile]) { switcherTiles = tiles }
     override func closeSwitcherPanel() { switcherTiles = nil }
-    override func showTitleMessageBar(frame: CGRect, title: String, appid: String, look: DecorateStyle) { titleMessageBar = title }
-    override func titleMessageBarHide() { titleMessageBar = nil }
+    var bars: [FakeBar] = []
+    override func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateStyle, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
+        let bar = FakeBar(data)
+        bars.append(bar)
+        return bar
+    }
     override func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) { specialDimAlpha = alpha }
     override func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }
     override func nagSpawn(_ argv: [String], input: String) { nagArgv = argv; nagInput = input }

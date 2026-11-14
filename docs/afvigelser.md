@@ -146,6 +146,13 @@ Hvor koden står, når den ikke står som i mango.
   grænsen, hvor porten kører mangonags `main` i mangos proces. mangonags Wayland-side
   (`NagDisplay`: bjælken placeret og tegnet, knappernes fork, løkken med `-T`) er portens
   (`Nag.swift`).
+- **Title message bar:** mangos `draw/title_message_bar.c` står i kernen (`Engine/TitleMessageBar.swift`),
+  én bar pr. skærm (`Monitor.titleMessageBar`); baren selv (`MangoBarDecoration`, mangos `text-node.c`
+  og scene-node) tegner porten. I overcircle ligger den under klientens kort, ikke under `c->geom`
+  eller `c->animation.current`, og den sættes én gang, når kortet er sat (ved start og ved hvert
+  skift), hvor mangos `client_draw_frame` flytter den med hvert billede. `is_overcircle_mode` har
+  ingen `ov_normal_mode`. `chutney_launch_or_focus` lægger den under sit eget panel gennem
+  `PortHooks.titleMessageBarGeometry`.
 - **Config-watcheren:** mangos `config/watcher.c` med dens kqueue-del (mangos egen på macOS) står i
   kernen (`Config/Watcher.swift`); dens filer og debounce-timer er wayland's event loop på grænsen.
 - **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `NagDisplay` (mangonags Wayland-side), `EventLoop`

@@ -74,9 +74,4 @@ public enum SwitcherLayout {
         return Result(panel: CGRect(x: panelX, y: panelY, width: panelW, height: panelH),
                       tiles: tiles, tileHeight: tileH)
     }
-
-    public static func titleMessageBarGeometry(below box: CGRect, height: Int, gap: Int) -> CGRect? {
-        guard height > 0, box.width > 0 else { return nil }
-        return CGRect(x: box.minX, y: box.maxY + CGFloat(gap), width: box.width, height: CGFloat(height))
-    }
 }

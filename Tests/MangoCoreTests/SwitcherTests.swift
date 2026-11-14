@@ -30,12 +30,6 @@ final class SwitcherTests: MangoTestCase {
                                  CGRect(x: 1062, y: 418, width: 369, height: 280)])
     }
 
-    func testTheTitleBarLiesBelowAndIsOffAtHeightZero() {
-        let panel = CGRect(x: 10, y: 20, width: 300, height: 100)
-        XCTAssertEqual(SwitcherLayout.titleMessageBarGeometry(below: panel, height: 52, gap: 20), CGRect(x: 10, y: 140, width: 300, height: 52))
-        XCTAssertNil(SwitcherLayout.titleMessageBarGeometry(below: panel, height: 0, gap: 20))
-    }
-
     func testNextStartsOnThePreviousWindowAndPrevOnTheLeastRecent() {
         let r = rig()
         open(r)

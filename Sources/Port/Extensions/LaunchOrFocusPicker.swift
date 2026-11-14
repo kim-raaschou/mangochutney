@@ -15,6 +15,7 @@ final class LaunchOrFocusPicker {
     private(set) var index = 0
     private var panel: SwitcherPanel?
     private var panelFrame: CGRect = .zero
+    private var monitor: Monitor?
     private(set) var tileFrames: [ClientID: CGRect] = [:]
 
     var isOpen: Bool { app != nil }
@@ -28,6 +29,7 @@ final class LaunchOrFocusPicker {
         close(server)
         self.app = app
         self.windows = windows
+        monitor = server.selectedMonitor
         index = windows.firstIndex(of: start) ?? 0
         let opening = server.mac.router.lastKeyDown
         server.mac.router.publish { $0.launchOrFocusPicker = .some(opening) }
@@ -49,8 +51,9 @@ final class LaunchOrFocusPicker {
 
     func close(_ server: MangoServer) {
         panel?.close()
-        if panel != nil { server.system.titleMessageBarHide() }
+        if panel != nil, let monitor { server.titleMessageBarHide(monitor) }
         panel = nil
+        monitor = nil
         tileFrames = [:]
         guard app != nil else { return }
         app = nil
@@ -108,14 +111,13 @@ final class LaunchOrFocusPicker {
     }
 
     /// As mango's switcher_title_message_bar_geometry: the bar under the panel, for the highlighted window.
+    func titleMessageBarGeometry(_ server: MangoServer, _ m: Monitor) -> (client: Client, box: CGRect)? {
+        guard panel != nil, monitor === m, let c = highlighted.flatMap({ server.clientByIdAll($0) }) else { return nil }
+        return (c, CGRect(x: panelFrame.minX, y: panelFrame.maxY + CGFloat(server.config.titleMessageBarGap),
+                          width: panelFrame.width, height: CGFloat(server.config.titleMessageBarHeight)))
+    }
+
     private func showTitle(_ server: MangoServer) {
-        guard panel != nil else { return }
-        guard let c = highlighted.flatMap({ server.clientByIdAll($0) }),
-              let box = SwitcherLayout.titleMessageBarGeometry(below: panelFrame, height: server.config.titleMessageBarHeight,
-                                                               gap: server.config.titleMessageBarGap) else {
-            return server.system.titleMessageBarHide()
-        }
-        server.system.showTitleMessageBar(frame: box, title: c.title, appid: c.appid,
-                                          look: server.config.titleMessageBardata.setValueDefault(from: .mangoTitleMessageBar))
+        if let monitor { server.titleMessageBarUpdate(monitor) }
     }
 }

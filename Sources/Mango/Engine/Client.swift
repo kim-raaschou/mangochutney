@@ -163,6 +163,7 @@ public final class Monitor {
     public var specialEmptyView = false
     public var ovbkCurrentTagset: UInt32 = 0
     public var ovbkPrevTagset: UInt32 = 0
+    package var titleMessageBar: MangoBarDecoration?
 
     public var getMonCurtag: Int {
         // special workspace uses slot 0; all-tags is an ordinary multi-tag view

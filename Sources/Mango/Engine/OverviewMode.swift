@@ -14,6 +14,13 @@ package struct OverviewState {
 }
 
 package extension MangoServer {
+    /// mango is_overcircle_mode (monitor.c)
+    func isOvercircleMode(_ m: Monitor) -> Bool {
+        // not in mango: no ov_normal_mode
+        guard let ov = overviewState, ov.monitor === m else { return false }
+        return ov.circle && ov.jump == nil
+    }
+
     func toggleOverview(onlyCurrent: Bool, jump: Bool, circle: Bool = false) {
         if overviewState != nil { leaveOverview(select: nil); return }
         let m = selectedMonitor!
@@ -22,7 +29,10 @@ package extension MangoServer {
             c.mon === m && !c.isMinimized && !c.isUnglobal && c.tags & TagMask.special == 0
                 && (!onlyCurrent || c.isVisible(on: m))
         }
-        guard !members.isEmpty else { return }
+        guard !members.isEmpty else {
+            titleMessageBarHide(m)
+            return
+        }
         for c in members {
             c.overining = true
             overviewBackup(c)
@@ -62,7 +72,7 @@ package extension MangoServer {
             clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
             system.showOverview(overlayCards(state, focused: state.circleFocus ?? m.sel), on: m, look: look)   // not in mango: the port's side
             overviewCardSurfaceAdd(state)
-            titleMessageBarRefresh(m)
+            titleMessageBarUpdateGeometry(m)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
             printstatus()
             return
         }
@@ -70,7 +80,7 @@ package extension MangoServer {
         overviewState = state
         clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
         arrange(m)
-        titleMessageBarRefresh(m)
+        titleMessageBarUpdateGeometry(m)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
         if jump, let map = state.jump {
             system.whenAnimationsIdle { [weak self] in   // not in mango: the port's side
                 guard let self, var ov = self.overviewState, ov.monitor === m, ov.jump != nil, !ov.labelsShown else { return }
@@ -131,15 +141,16 @@ package extension MangoServer {
                                             titleBlockHeight: config.titleMessageBarHeight > 0
                                                 ? CGFloat(config.titleMessageBarHeight + config.titleMessageBarGap) : 0)
         overviewState = ov
-        titleMessageBarRefresh(ov.monitor)
         if ov.thumbnails {
             system.updateOverview(overlayCards(ov, focused: next))   // not in mango: the port's side
 // not in mango: only selected; the real window stays under the pictures
             if let c = clientByIdAll(next) { clientFocus(c, raise: false) }
+            titleMessageBarUpdateGeometry(ov.monitor)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
             return
         }
         overview(ov)
         if let c = clientByIdAll(next) { clientFocus(c) }
+        titleMessageBarUpdateGeometry(ov.monitor)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
     }
 
     func overview(_ ov: OverviewState) {
@@ -188,7 +199,7 @@ package extension MangoServer {
         guard let ov = overviewState else { return }
         if ov.labelsShown { system.closeJumpLabels() }
         if ov.thumbnails { system.closeOverview() }
-        if ov.circle { system.titleMessageBarHide() }
+        titleMessageBarHide(ov.monitor)
         overviewState = nil
         let m = ov.monitor
         let sel = select ?? m.sel.flatMap { clientByIdAll($0) }

@@ -37,6 +37,7 @@ Den 2. november var kernen 13.272 linjer.
 | Fil | Hvad | Mangos tilsvarende |
 |---|---|---|
 | `WindowSystem.swift` | Det, mango beder systemet om: flyt, skjul, fokus, hæv, tegn rammer, faner, overview, skifter | wlroots' scene, seat og output |
+| `MangoBarDecoration.swift` | En bar med tekst, som porten tegner: slå til og fra, sted, størrelse, tekst, stil | mangos `MangoBarDecoration` (`text-node.c`) og dens scene-node |
 | `EventLoop.swift` | `addFd`: kald mig, når der kan læses; `addTimer` og `timerUpdate` | `wl_event_loop_add_fd`, `wl_event_loop_add_timer` (IPC, config-watcheren) |
 | `Screen.swift` | En skærm: ramme, arbejdsområde, skala, opdateringsfrekvens | `wlr_output` |
 | `InputState.swift` | Det, event-tap-tråden skal vide for at afgøre en tast eller et klik | – |

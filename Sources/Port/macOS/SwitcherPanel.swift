@@ -183,6 +183,73 @@ final class TitleMessageBar {
     func hide() {
         window.orderOut(nil)
     }
+
+    func close() {
+        window.close()
+    }
+}
+
+/// mango's MangoBarDecoration of type TitleMessageBar, drawn in its own window.
+@MainActor
+final class TitleMessageBarDecoration: MangoBarDecoration {
+    private let bar = TitleMessageBar()
+    private let config: @MainActor () -> Config
+    private var data: DecorateStyle
+    private var frame = CGRect.zero
+    private(set) var enabled = true
+    private(set) var lastText: String?
+    private(set) var lastScale = 0.0
+
+    init(_ data: DecorateStyle, config: @escaping @MainActor () -> Config) {
+        self.data = data
+        self.config = config
+    }
+
+    func setEnabled(_ enabled: Bool) {
+        self.enabled = enabled
+        if enabled { draw() } else { bar.hide() }
+    }
+
+    func setPosition(_ x: CGFloat, _ y: CGFloat) {
+        frame.origin = CGPoint(x: x, y: y)
+        draw()
+    }
+
+    func raiseToTop() { draw() }
+
+    func update(_ text: String, _ scale: Double) {
+        lastText = text
+        lastScale = scale
+        draw()
+    }
+
+    func setSize(_ width: CGFloat, _ height: CGFloat) {
+        frame.size = CGSize(width: width, height: height)
+        draw()
+    }
+
+    /// The bar is drawn focused, as mango always sets it.
+    func setFocus(_ focused: Bool) {}
+
+    /// The second line is drawn centred, as mango always sets it.
+    func setCenterSecondaryLine(_ center: Bool) {}
+
+    func applyConfig(_ data: DecorateStyle) {
+        self.data = data
+        draw()
+    }
+
+    func destroy() { bar.close() }
+
+    private func draw() {
+        guard enabled, frame.width > 0, frame.height > 0, let text = lastText else { return }
+        let cut = text.lastIndex(of: "\n")
+        let title = cut.map { String(text[..<$0]) } ?? text
+        let appid = cut.map { String(text[text.index(after: $0)...]) } ?? ""
+        let config = config()
+        bar.show(frame: frame, title: title, appid: appid,
+                 style: MacOSAppearance.bar(data, set: config.titleMessageBardata, config))
+    }
 }
 
 private final class TitleMessageBarView: NSView {
