@@ -142,7 +142,7 @@ final class SwipeDriveTests: MangoTestCase {
         let r = rig("moveresize", nil, args: ["curmove"])
         let c = r.server.clientByIdAll(1)!
         _ = r.server.dispatch(Dispatch(name: "togglefloating"), target: c)
-        r.server.clientFocus(c)
+        r.server.clientFocus(c, true)
         r.settle(0.2)
         let fake = r.server.system as! FakeWindowSystem
         fake.fakePointer = c.frame.center
@@ -176,7 +176,7 @@ final class SwipeDriveTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.current.layout = .scroller
         r.map(1); r.map(2); r.map(3)
-        r.server.clientFocus(r.server.clientByIdAll(2))
+        r.server.clientFocus(r.server.clientByIdAll(2), true)
         r.server.arrange(r.monitor, .none)
         r.settle(0.2)
         r.server.config.gestureBindings = [GestureBinding(mods: [], direction: nil, fingers: 4,

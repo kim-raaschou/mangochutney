@@ -248,7 +248,7 @@ final class ScratchpadPlaceTests: MangoTestCase {
         r.window(1)
         r.window(2)
         r.server.arrange(r.monitor, .none)
-        r.server.clientFocus(r.server.clientByIdAll(2)!)
+        r.server.clientFocus(r.server.clientByIdAll(2)!, true)
         _ = r.server.dispatch(Dispatch(name: "minimized", args: []))
         return r
     }
@@ -317,7 +317,7 @@ final class ScratchpadPlaceTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "movewin", args: ["-100", "-50"]), target: c)
         _ = r.server.dispatch(Dispatch(name: "restore_minimized", args: []), target: c)
         XCTAssertFalse(c.isCustomSize, "out of the scratchpad")
-        r.server.clientFocus(c)
+        r.server.clientFocus(c, true)
         _ = r.server.dispatch(Dispatch(name: "minimized", args: []))
         toggle(r)
         XCTAssertEqual(c.geom!.midX, r.screen.workArea.midX, accuracy: 1, "centred again")

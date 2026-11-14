@@ -27,7 +27,7 @@ final class TabStripTests: MangoTestCase {
 
     func testMembersOtherThanTheFocusedOneAreHidden() {
         let r = rig(.monocle, windows: 3)
-        r.server.clientFocus(r.server.clientByIdAll(900_101)!, raise: false)
+        r.server.clientFocus(r.server.clientByIdAll(900_101)!, false)
         r.server.arrange(r.monitor, .none)
         let parked = { (id: CGWindowID) in r.server.clientByIdAll(id)!.parked }
         XCTAssertEqual([parked(900_100), parked(900_101), parked(900_102)], [true, false, true])
@@ -47,11 +47,11 @@ final class TabStripTests: MangoTestCase {
 
     func testTheDeckHidesItsStackButTheFocusedMember() {
         let r = rig(.deck, windows: 4)
-        r.server.clientFocus(r.server.clientByIdAll(900_102)!, raise: false)
+        r.server.clientFocus(r.server.clientByIdAll(900_102)!, false)
         r.server.arrange(r.monitor, .none)
         let parked = (0..<4).map { r.server.clientByIdAll(CGWindowID(900_100 + $0))!.parked }
         XCTAssertEqual(parked, [false, true, false, true])
-        r.server.clientFocus(r.server.clientByIdAll(900_100)!, raise: false)
+        r.server.clientFocus(r.server.clientByIdAll(900_100)!, false)
         XCTAssertFalse(r.server.clientByIdAll(900_102)!.parked, "the master focused: the stack keeps its last focused member")
     }
 

@@ -143,13 +143,12 @@ package extension MangoServer {
         overviewState = ov
         if ov.thumbnails {
             system.updateOverview(overlayCards(ov, focused: next))   // not in mango: the port's side
-// not in mango: only selected; the real window stays under the pictures
-            if let c = clientByIdAll(next) { clientFocus(c, raise: false) }
+            if let c = clientByIdAll(next) { clientFocus(c, true) }
             titleMessageBarUpdateGeometry(ov.monitor)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
             return
         }
         overview(ov)
-        if let c = clientByIdAll(next) { clientFocus(c) }
+        if let c = clientByIdAll(next) { clientFocus(c, true) }
         titleMessageBarUpdateGeometry(ov.monitor)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
     }
 
@@ -220,7 +219,7 @@ package extension MangoServer {
         fixMonTagsetFromOverview(m)
         for id in ov.members { clientByIdAll(id)?.overining = false }
         if !ov.thumbnails { arrange(m) }
-        if let s = sel, s.tags & target != 0 { clientFocus(s) }
+        if let s = sel, s.tags & target != 0 { clientFocus(s, true) }
         printstatus()
     }
 }

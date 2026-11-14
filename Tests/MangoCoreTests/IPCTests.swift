@@ -93,7 +93,7 @@ final class IPCTests: MangoTestCase {
             rig.server.selectedMonitor = dp1
             rig.server.arrange(dp1, .none)
             rig.server.arrange(hdmi, .none)
-            rig.server.clientFocus(c1)
+            rig.server.clientFocus(c1, true)
             (rig.server.system as! FakeWindowSystem).fakePointer = CGPoint(x: 12.5, y: 40)
             let path = "/tmp/mango-test-\(getpid())-\(Int.random(in: 0..<100000)).sock"
             server = IPCServer(server: rig.server, loop: MainEventLoop(), socketPath: path, version: "0.0-test")

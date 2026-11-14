@@ -8,7 +8,7 @@ final class SmallOptionTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.enableHotarea = true
         let c = r.window(900_600)
-        r.server.clientFocus(c, raise: false)
+        r.server.clientFocus(c, false)
         let f = r.monitor.screen.frame
         let corner = CGPoint(x: f.minX + 2, y: f.maxY - 2), away = CGPoint(x: f.midX, y: f.midY)
         c.isFullscreen = true

@@ -9,8 +9,8 @@ final class SwitcherTests: MangoTestCase {
         r.window(900_200)
         r.window(900_201)
         r.window(900_202, tags: 2)
-        r.server.clientFocus(r.server.clientByIdAll(900_200)!, raise: false)
-        r.server.clientFocus(r.server.clientByIdAll(900_201)!, raise: false)
+        r.server.clientFocus(r.server.clientByIdAll(900_200)!, false)
+        r.server.clientFocus(r.server.clientByIdAll(900_201)!, false)
         return r
     }
 

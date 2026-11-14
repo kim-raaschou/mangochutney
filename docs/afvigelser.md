@@ -76,7 +76,8 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Et vindue i macOS' egen fuldskærm (den grønne knap), i Dock'en (med `ignore_minimize`, mangos standard), i en skjult app (⌘H) eller i en app, der ikke svarer, mens det er parkeret, unmappes med mangos `handle_client_unmap` og mappes tilbage på sin plads, når det kommer igen; pladsen huskes, så længe det er væk. Fra fuldskærm siger appen, hvilket vindue der har tasterne, og flisen skrives, når macOS har flyttet det færdigt. Mango ser det ikke imens, heller ikke i `mmsg get all-clients` | macOS har allerede taget vinduet væk; mango ville have det unmappet |
 | Mangos `client_notify_fullscreen` siger kun appen besked med `chutney_fullscreen_tag`; uden nøglen fylder mangos fullscreen skærmen, uden at appen ved det. `togglefakefullscreen` siger aldrig appen besked. En app, der ikke kan gå i macOS-fullscreen, bliver i mangos. macOS-fullscreen fra appen går gennem mangos `togglefullscreen`, som også tager vinduet ud af en scratchpad; mangos `handle_client_request_fullscreen` gør ikke | macOS kan kun sige en app, at den er i fullscreen, med sin egen fullscreen, som giver vinduet sit eget Space; fake fullscreen findes ikke på macOS |
 | En holdt tasts gentagelser: højst én venter på hovedtråden ad gangen | macOS sender gentagelserne selv; mangos egen gentagelsestimer stabler dem aldrig |
-| Fokus sendes til macOS én gang pr. tur, for det sidst fokuserede vindue | Fokus på macOS er en synkron forespørgsel til WindowServer og appen; mangos `client_focus` sætter kun tilstand |
+| Fokus sendes til macOS én gang pr. tur, for det sidst fokuserede vindue, og mangos løft (`client_raise_group`, `client_raise_tab`) af det vindue går med i samme kald; et parkeret gruppemedlem løftes ikke. Mens portens panel eller overviewets billeder er fremme, holdes fokus tilbage og gives, når de lukker | Fokus på macOS er en synkron forespørgsel til WindowServer og appen; et løft og et fokus hver for sig går i to køer og flimrer |
+| Seatet (`keyboardFocusedSurface`, mangos `client_focus` vender tidligt om på det) er det vindue, mango sidst gav tasterne; det ryddes, når macOS giver tasterne til en anden app eller et vindue, mango ikke styrer. Har macOS selv givet et vindue tasterne (et klik, ⌘Tab), sender `client_notify_enter` intet | macOS flytter tasterne uden mango; wlroots' seat ved altid, hvor de er |
 | Kant-, fane- og gruppevinduer lægges kun om, når de ligger forkert | Hver omlægning venter på WindowServer; én forespørgsel på rækkefølgen er billigere |
 | En dialog arver ikke sit hovedvindues tags og skærm | Accessibility siger ikke pålideligt, hvem der ejer en dialog |
 | Vinduer, der er der ved start eller kommer igen efter dvale, beholder deres plads; layout, tags og grupper gemmes og kommer igen efter en genstart og dvale | En genstart af mango lukker ikke vinduerne, og macOS melder vinduer væk og tilbage omkring dvale |
@@ -146,6 +147,12 @@ Hvor koden står, når den ikke står som i mango.
   grænsen, hvor porten kører mangonags `main` i mangos proces. mangonags Wayland-side
   (`NagDisplay`: bjælken placeret og tegnet, knappernes fork, løkken med `-T`) er portens
   (`Nag.swift`).
+- **`client_focus`:** 1:1 med mangos trin og rækkefølge, `lift` skrevet ud ved hvert kald. Uden
+  macOS-del: `session_locked`, `isfocusing` og opacity, `tab_sync_focus` og
+  `client_check_tab_node_visible` (porten tegner bjælkerne ud fra `sel`), idle inhibit, vrr, foreign
+  toplevel, løkken over de andre skærme, `exclusive_focus` (layer shell), `client_wants_focus` (X11) og
+  pointer constraints. Af `pointer_process_motion(0, …)` kun markørens resize-billede. Uden klient
+  kommer `printstatus` efter, at `sel` er ryddet, for portens status læser den med det samme.
 - **Title message bar:** mangos `draw/title_message_bar.c` står i kernen (`Engine/TitleMessageBar.swift`),
   én bar pr. skærm (`Monitor.titleMessageBar`); baren selv (`MangoBarDecoration`, mangos `text-node.c`
   og scene-node) tegner porten. I overcircle ligger den under klientens kort, ikke under `c->geom`

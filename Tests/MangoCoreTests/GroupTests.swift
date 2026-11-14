@@ -9,7 +9,7 @@ final class GroupTests: MangoTestCase {
         r.monitor.current.layout = .tile
         for i in 0..<3 { r.window(CGWindowID(900_700 + i)) }
         r.server.arrange(r.monitor, .none)
-        r.server.clientFocus(r.server.clientByIdAll(900_701)!, raise: false)
+        r.server.clientFocus(r.server.clientByIdAll(900_701)!, false)
         return r
     }
 

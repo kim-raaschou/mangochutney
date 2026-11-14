@@ -8,7 +8,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.newIsMaster = false
         let a = r.map(1), _ = r.map(2), _ = r.map(3)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         r.map(4)
         XCTAssertEqual(r.server.clients.map(\.id), [1, 2, 3, 4])
     }
@@ -38,10 +38,10 @@ final class FidelityTests: MangoTestCase {
         r.server.config.warpcursor = true
         let a = r.window(1), b = r.window(2), c = r.window(3)
         r.server.arrange(r.monitor)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         XCTAssertEqual(fake(r).warps, [], "client_focus does not warp")
         c.noFocus = true
-        r.server.clientFocus(c)
+        r.server.clientFocus(c, true)
         XCTAssertEqual(r.monitor.sel, a.id, "no_focus: not focused")
         _ = r.server.dispatch(Dispatch(name: "focusstack", args: ["next"]))
         XCTAssertEqual(r.monitor.sel, b.id, "the next in the client list")
@@ -55,8 +55,8 @@ final class FidelityTests: MangoTestCase {
         r.server.config.newIsMaster = false
         let a = r.window(1), _ = r.window(2), c = r.window(3)
         r.server.arrange(r.monitor)
-        r.server.clientFocus(c)
-        r.server.clientFocus(a)
+        r.server.clientFocus(c, true)
+        r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
         XCTAssertEqual(r.monitor.sel, c.id)
     }
@@ -66,7 +66,7 @@ final class FidelityTests: MangoTestCase {
         r.server.config.focusCrossTag = true
         let a = r.window(1, tags: 1), _ = r.window(2, tags: 1 << 1)
         r.server.arrange(r.monitor)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["down"]))
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
     }
@@ -75,7 +75,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2), c = r.window(3)
         r.server.arrange(r.monitor)
-        r.server.clientFocus(b); r.server.clientFocus(c); r.server.clientFocus(a)
+        r.server.clientFocus(b, true); r.server.clientFocus(c, true); r.server.clientFocus(a, true)
         r.server.clientExchange(a, b)
         XCTAssertEqual(Array(r.server.focusStack.prefix(2)), [a.id, b.id])
         XCTAssertEqual(r.server.clients.map(\.id).prefix(2), [2, 1])
@@ -85,9 +85,9 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.current.layout = .scroller
         let a = r.map(1), _ = r.map(2), _ = r.map(3), d = r.map(4)
-        r.server.clientFocus(d)
+        r.server.clientFocus(d, true)
         r.server.clientSwitchView(1 << 1)
-        r.server.clientFocus(r.map(5))
+        r.server.clientFocus(r.map(5), true)
         r.server.focusStack.removeAll { $0 == a.id }
         r.server.focusStack.insert(a.id, at: 0)
         r.server.clientSwitchView(1)
@@ -108,7 +108,7 @@ final class FidelityTests: MangoTestCase {
         }
         let expected = i + 1 < col.count ? col[i + 1] : col[i - 1]
         XCTAssertNotEqual(expected, a.id, "the focused window is outside the stack")
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         r.server.mac.windowDestroyed(id: c.id)
         XCTAssertEqual(r.monitor.sel, expected, "the stack neighbour, though the gone window had no focus")
     }
@@ -219,9 +219,9 @@ final class FidelityTests: MangoTestCase {
         r.server.arrange(r.monitor)
         a.isFullscreen = true
         XCTAssertTrue(r.server.tabMembers(r.monitor).contains { $0 === a }, "fullscreen: a member")
-        r.server.clientFocus(b)
+        r.server.clientFocus(b, true)
         XCTAssertTrue(r.server.tabChainFocus(r.server.tabMembers(r.monitor), on: r.monitor) === b)
-        r.server.clientFocus(c)
+        r.server.clientFocus(c, true)
         XCTAssertTrue(r.server.tabChainFocus(r.server.tabMembers(r.monitor), on: r.monitor) === b, "the one shown last")
     }
 
@@ -333,7 +333,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1), _ = r.window(2), _ = r.window(3)
         r.server.arrange(r.monitor)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "overcircle", args: ["next"]))
         XCTAssertNotNil(r.server.overviewState)
         r.server.overCircle(forward: true)
@@ -650,7 +650,7 @@ final class FidelityTests: MangoTestCase {
         let b = r.map(2)
         d(r, "minimized", [], a)
         b.tags = 0b11
-        r.server.clientFocus(b)
+        r.server.clientFocus(b, true)
         d(r, "restore_minimized")
         XCTAssertEqual(a.tags, 0b11)
         XCTAssertFalse(a.isFloating)
@@ -968,7 +968,7 @@ final class FidelityTests: MangoTestCase {
         let b = r.map(2)
         b.tags = 1 << 1
         r.server.arrange(r.monitor, .none)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         r.server.handleClientActivationRequest(b)
         XCTAssertTrue(b.isUrgent)
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1)
@@ -982,7 +982,7 @@ final class FidelityTests: MangoTestCase {
         let b = r.map(2)
         b.tags = 1 << 1
         r.server.arrange(r.monitor, .none)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         r.server.handleClientActivationRequest(b)
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
         XCTAssertTrue(r.server.focused === b)
@@ -994,7 +994,7 @@ final class FidelityTests: MangoTestCase {
         r.server.config.focusOnActivate = false
         let a = r.map(1)
         let b = r.map(2)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         r.server.mac.windowFocused(id: b.id)
         XCTAssertTrue(r.server.focused === b)
         XCTAssertFalse(b.isUrgent)
@@ -1031,7 +1031,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertEqual([a.isFloating, b.isFullscreen, c.isMaximizeScreen], [false, false, false])
         var moved = false
         for d in ["left", "right", "up", "down"] {
-            r.server.clientFocus(b)
+            r.server.clientFocus(b, true)
             _ = r.server.dispatch(Dispatch(name: "focusdir", args: [d]))
             if r.monitor.sel != b.id { moved = true }
         }
@@ -1049,7 +1049,7 @@ final class FidelityTests: MangoTestCase {
         let cards = try XCTUnwrap(r.server.overviewState?.cards)
         let top = cards.values.map(\.minY).min()!
         let start = try XCTUnwrap(cards.filter { $0.value.minY == top }.max { $0.value.minX < $1.value.minX })
-        r.server.clientFocus(r.server.clientByIdAll(start.key)!)
+        r.server.clientFocus(r.server.clientByIdAll(start.key)!, true)
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
         XCTAssertEqual(r.monitor.sel, start.key, "no card to the right of the top row's last")
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["left"]))
@@ -1075,9 +1075,9 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         let c = r.map(3)
-        r.server.clientFocus(a)
-        r.server.clientFocus(b)
-        r.server.clientFocus(c)
+        r.server.clientFocus(a, true)
+        r.server.clientFocus(b, true)
+        r.server.clientFocus(c, true)
         d(r, "minimized", [], b)
         XCTAssertTrue(r.server.focused === c)
         d(r, "focuslast")
@@ -1166,12 +1166,12 @@ final class FidelityTests: MangoTestCase {
         r.server.selectedMonitor = side
         let b1 = r.map(2, frame: CGRect(x: 1800, y: 100, width: 800, height: 600))
         let b2 = r.map(3, frame: CGRect(x: 2800, y: 100, width: 600, height: 600))
-        r.server.clientFocus(b2)
-        r.server.clientFocus(b1)
-        r.server.clientFocus(b2)
+        r.server.clientFocus(b2, true)
+        r.server.clientFocus(b1, true)
+        r.server.clientFocus(b2, true)
         let top = r.server.clientFocusTop(side)
         XCTAssertTrue(top === b2)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         XCTAssertTrue(r.server.selectedMonitor === r.monitor)
         r.server.config.focusCrossMonitor = false
         d(r, "focusdir", ["right"])
@@ -1216,7 +1216,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         r.server.selectedMonitor = side
         let b = r.map(2)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         XCTAssertTrue(r.server.selectedMonitor === r.monitor)
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: side.screen.frame.midX, y: side.screen.frame.midY), mods: [])
         XCTAssertTrue(r.server.selectedMonitor === side)
@@ -1393,7 +1393,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         b.tags = 1 << 1
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         r.monitor.tagset[r.monitor.seltags] = 1
         d(r, "toggleoverview")
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], TagMask.mask(forTagNum: 9))
@@ -1433,7 +1433,7 @@ final class FidelityTests: MangoTestCase {
     func testFocusNoneKeepsAShownSelection() {
         let r = EngineRig()
         let a = r.map(1)
-        r.server.clientFocus(nil)
+        r.server.clientFocus(nil, false)
         XCTAssertEqual(r.monitor.sel, a.id)
     }
 
@@ -1456,7 +1456,7 @@ final class FidelityTests: MangoTestCase {
         r.server.clients = [a, b, c]
         r.server.arrange(r.monitor, .none)
         d(r, "togglefloating", [], b)
-        r.server.clientFocus(c)
+        r.server.clientFocus(c, true)
         d(r, "togglefloating", [], b)
         let ids = [a, b, c].map(\.id)
         XCTAssertEqual(r.monitor.current.state.scrollerState.columns(for: ids), [[a.id], [b.id], [c.id]])
@@ -1566,7 +1566,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         let a = r.map(1), b = r.map(2)
         a.ignoreMinimize = true
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         r.server.mac.windowReacquired(id: a.id, element: r.app.element(for: a.id),
                                       state: ReacquiredState(frame: nil, minimized: true, fullscreen: false, appHidden: false))
         XCTAssertNil(r.server.clientByIdAll(a.id), "away in the Dock: unmapped")
@@ -1614,10 +1614,10 @@ final class FidelityTests: MangoTestCase {
     func testFocusstackAndFocusidTakeTheTarget() {
         let r = EngineRig()
         let a = r.map(1), b = r.map(2), c = r.map(3)
-        r.server.clientFocus(a)
+        r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "focusstack", args: ["next"]), target: b)
         XCTAssertEqual(r.monitor.sel, r.server.getNextStackClient(b, reverse: false)?.id, "from b, not from a")
-        r.server.clientFocus(c)
+        r.server.clientFocus(c, true)
         _ = r.server.dispatch(Dispatch(name: "focusid"))
         XCTAssertEqual(r.monitor.sel, c.id, "no target: nothing")
     }

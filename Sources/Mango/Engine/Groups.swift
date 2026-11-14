@@ -54,7 +54,7 @@ package extension MangoServer {
 
     package func clientFocusGroupMember(_ c: Client) {
         guard clientGroupSwapFocus(c) else { return }
-        clientFocus(c)
+        clientFocus(c, true)
         if let m = c.mon { arrange(m) }
     }
 

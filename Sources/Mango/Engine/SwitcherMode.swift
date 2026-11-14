@@ -77,7 +77,7 @@ package extension MangoServer {
         switcherClose()
         guard let c, switcherClientEligible(c), let cm = c.mon else { return }
         if !c.isVisible(on: cm) { clientViewOnMonitor(getTagsFirstTag(c.tags), on: cm) }
-        clientFocus(c)
+        clientFocus(c, true)
     }
 
     func switcherCommit() {

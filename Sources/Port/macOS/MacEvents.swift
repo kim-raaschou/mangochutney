@@ -96,7 +96,7 @@ extension MacWindowSystem: AppWatcherDelegate {
                 self.initialSettlePending = false
                 self.server.arrangeAll(.none)
                 if self.server.focused == nil, let c = self.server.clientFocusTop(self.server.selectedMonitor) {
-                    self.server.clientFocus(c)
+                    self.server.clientFocus(c, true)
                 }
                 self.server.printstatus()
                 if self.server.clients.count != self.loggedWindowCount {
@@ -118,7 +118,11 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func windowFocused(id: CGWindowID) {
-        guard let c = server.clientByIdAll(id), let m = c.mon else { return }
+        guard let c = server.clientByIdAll(id) else {
+            seatFocus = nil   // the keyboard is on a window mango does not manage
+            return
+        }
+        guard let m = c.mon else { return }
         wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map(String.init) ?? "none"))")
         if let ov = server.overviewState {
             if ov.jump == nil, server.focused !== c { server.leaveOverview(select: c) }
@@ -127,8 +131,10 @@ extension MacWindowSystem: AppWatcherDelegate {
         if c.groupParked { server.clientFocusGroupMember(c); return }
         if c.nativeFullscreen, !c.isVisible(on: m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
         if c.isVisible(on: m) {
-            if m.sel == id && server.selectedMonitor === m { restack(); return }
-            server.clientFocus(c, raise: false)
+            if m.sel == id && server.selectedMonitor === m { seatFocus = c; restack(); return }
+            macOSFocused = c.id
+            server.clientFocus(c, false)
+            macOSFocused = nil
             return
         }
         if c.isMinimized { return }
@@ -169,6 +175,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func appActivated(pid: pid_t) {
+        if seatFocus?.pid != pid { seatFocus = nil }   // another app has the keyboard
         restack(pid: pid)
         watcher.requestFocusReport(pid: pid)
     }

@@ -123,7 +123,7 @@ final class FitLayoutTests: MangoTestCase {
         for id: CGWindowID in 1...3 { r.window(id) }
         for c in r.server.tiledClients(r.monitor) { r.server.setSizePer(r.monitor, c) }
         r.app.minSize[2] = CGSize(width: 1600, height: 0)
-        r.server.clientFocus(r.server.clientByIdAll(2)!)
+        r.server.clientFocus(r.server.clientByIdAll(2)!, true)
         r.server.arrange(r.monitor, .none)
         r.settle(1.5)
         XCTAssertEqual(over(r), [2])

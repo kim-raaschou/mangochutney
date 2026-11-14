@@ -63,7 +63,7 @@ final class DragTileTests: MangoTestCase {
 
     func testTheScrollerStacksItAboveOrBelow() {
         let r = rig(.scroller)
-        r.server.clientFocus(r.server.clientByIdAll(900_500)!, raise: false)
+        r.server.clientFocus(r.server.clientByIdAll(900_500)!, false)
         r.server.arrange(r.monitor)
         let f = frame(r, 900_500)
         r.server.clientBeginDragFloat(r.server.clientByIdAll(900_502)!, at: CGPoint(x: 1, y: 1))

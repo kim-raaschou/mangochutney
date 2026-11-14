@@ -255,7 +255,7 @@ public final class MangoServer {
                 clientChangeMon(c, to: m, focus: false)
             }
         }
-        if started && (!removed.isEmpty || !added.isEmpty) { clientFocus(clientFocusTop(selectedMonitor)) }
+        if started && (!removed.isEmpty || !added.isEmpty) { clientFocus(clientFocusTop(selectedMonitor), true) }
     }
 
     func clientChangeMon(_ c: Client, to m: Monitor, focus: Bool = true) {
@@ -643,42 +643,109 @@ public final class MangoServer {
         updateBorders(animating: frames)
     }
 
-/// Not in mango: `raise` and `makeKey` for macOS's keyboard focus and window order (mango's lift).
-    package func clientFocus(_ c: Client?, raise: Bool = true, makeKey: Bool = false) {
-        defer { pointerCheckConfineClient() }
-        guard let c else {
-            let sm: Monitor = selectedMonitor
-            if !(sm.sel.flatMap { clientByIdAll($0) }?.isVisible(on: sm) ?? false) { sm.sel = nil }
-            updateBorders()
-            printstatus()
-            return
-        }
-        if c.noFocus { return }
+    package func clientFocus(_ c: Client?, _ lift: Bool) {
+        let oldKeyboardFocusSurface = system.keyboardFocusedSurface
+
+        if let c, clientByIdAll(c.id) !== c { return }
+
+        if let c, c.noFocus { return }
+
         // Not in mango here (client_active's step): a parked group member takes its group's
         // place first.
-        if c.groupParked { clientGroupSwapFocus(c) }
-        guard let m = c.mon else { return }
-        if m.sel != c.id {
+        if let c, c.groupParked { clientGroupSwapFocus(c) }
+
+        /* Raise client in stacking order if requested */
+        if let c, lift {
+            clientRaiseGroup(c)
+            clientRaiseTab(c)
+        }
+
+        if let c, oldKeyboardFocusSurface === c, selectedMonitor.sel != nil {
+            return
+        }
+
+        if let c, let m = c.mon {
+            selectedMonitor = m
             m.prevsel = m.sel
             m.sel = c.id
+            // not in mango: isfocusing, tab_sync_focus, client_check_tab_node_visible, idle inhibit,
+            // vrr and opacity; the port draws the bars from sel
+
+            // decide whether need to re-arrange
+
+            // change focus link position
+            focusStack.removeAll { $0 == c.id }
+            focusStack.insert(c.id, at: 0)
+
+            func tagMatch(_ x: Client) -> Bool { x.mon === m && !x.isMinimized && x.tags & m.tagset[m.seltags] != 0 }
+            if let p = m.prevsel.flatMap({ clientByIdAll($0) }), tagMatch(p), tagMatch(c), !c.isFloating,
+               m.layout.isScroller || m.layout == .monocle || tabMembers(m).contains(where: { $0 === c }) {
+                arrange(m, .move)
+            } else {
+                updateBorders()   // not in mango: the port's side
+            }
+
+            // change border color
+            c.isUrgent = false
         }
-        selectedMonitor = m
-        focusStack.removeAll { $0 == c.id }
-        focusStack.insert(c.id, at: 0)
-        c.isUrgent = false
-        if raise || makeKey { system.focus(c, raise: raise) }
-        func tagMatch(_ x: Client) -> Bool { x.mon === m && !x.isMinimized && x.tags & m.tagset[m.seltags] != 0 }
-        if let p = m.prevsel.flatMap({ clientByIdAll($0) }), tagMatch(p), tagMatch(c), !c.isFloating,
-           m.layout.isScroller || m.layout == .monocle || tabMembers(m).contains(where: { $0 === c }) {
-            arrange(m, .move)
-        } else {
-            updateBorders()
+
+        /* Deactivate old client if focus is changing */
+        if let old = oldKeyboardFocusSurface, c == nil || old !== c {
+            // not in mango: no layer shell (exclusive_focus); client_wants_focus is X11's
+            system.clientActivateSurface(old, false)
         }
         system.restack()   // not in mango: the port's side
-        if let ov = overviewState, ov.thumbnails, ov.monitor === m {
+        if let c, let ov = overviewState, ov.thumbnails, ov.monitor === c.mon {
             system.updateOverview(overlayCards(ov, focused: ov.circle ? (ov.circleFocus ?? c.id) : c.id))   // not in mango: the port's side
         }
-        printstatus()
+        if c != nil { printstatus() }   // not in mango: with no client, after sel is cleared; the port's status reads it at once
+
+        guard let c else {
+            let sm: Monitor = selectedMonitor
+            if let id = sm.sel, !(clientByIdAll(id)?.isVisible(on: sm) ?? false) {
+                sm.sel = nil
+            }
+            printstatus()
+            updateBorders()   // not in mango: the port's side
+
+            system.keyboardNotifyClearFocus()
+            pointerCheckConfineClient()
+            return
+        }
+
+        /* Change cursor surface */
+        // not in mango: of pointer_process_motion(0, …) only its resize cursor
+        let p = system.pointer
+        let pointed = clientAtPoint(p)
+        pointerUpdateResizeCursor(pointed, surfaceAt(pointed, p), p)
+
+        /* Have a client, so focus its top-level wlr_surface */
+        system.clientNotifyEnter(c)
+
+        /* Activate the new client */
+        system.clientActivateSurface(c, true)
+
+        pointerCheckConfineClient()
+    }
+
+    func clientRaiseGroup(_ c: Client) {
+        if c.mon == nil { return }
+
+        var cur: Client? = clientGroupHead(c)
+        while let it = cur {
+            // not in mango: the group bar is placed by the port's restack
+            system.raise(it)
+            cur = it.groupNext
+        }
+    }
+
+    func clientRaiseTab(_ c: Client) {
+        guard let m = c.mon, tabMembers(m).contains(where: { $0 === c }) else { return }
+
+        for it in tabMembers(m) where it !== c && clientTargetLayer(it) == clientTargetLayer(c) {
+            system.raise(c)
+            // not in mango: the tab bar is placed by the port's restack
+        }
     }
 
     func pointerWarpToClient(_ c: Client) {
@@ -875,7 +942,7 @@ public final class MangoServer {
             clientSetFloating(c, c.isFloating)
             clientSetFullscreen(c, c.isFullscreen, rearrange: true)
         }
-        if focus { clientFocus(clientFocusTop(selectedMonitor)) }
+        if focus { clientFocus(clientFocusTop(selectedMonitor), true) }
     }
 
 /// Not in mango: the port's overview leaves the tags in view, so the overview backup is the tagset.
@@ -1120,7 +1187,7 @@ public final class MangoServer {
         if m === selectedMonitor {
             var next = stackNext ?? stackPrev ?? clientFocusTop(m)
             if let n = next, !n.isVisible(on: m) { next = clientFocusTop(m) }
-            if let next { clientFocus(next) } else if overviewState?.monitor === m { leaveOverview(select: nil) }
+            if let next { clientFocus(next, true) } else if overviewState?.monitor === m { leaveOverview(select: nil) }
         }
         printstatus()
     }
@@ -1134,7 +1201,7 @@ public final class MangoServer {
         if config.focusOnActivate && !c.isTagSilent && c.id != selectedMonitor.sel {
             if c.tags & TagMask.special != 0, let m = c.mon {
                 if isSpecialActive(m) {
-                    clientFocus(c)
+                    clientFocus(c, true)
                 } else {
                     toggleSpecialTagMon(m)
                 }

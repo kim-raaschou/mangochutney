@@ -99,7 +99,9 @@ final class FakeWindowSystem: MacWindowSystem {
     override func askToCapture() { asked += 1 }
     var focused: [(id: ClientID, raise: Bool)] = []
     var warps: [CGPoint] = []
-    override func focus(_ c: Client, raise: Bool) { focused.append((c.id, raise)) }
+    override func sendNativeFocus(_ c: Client, raise: Bool) { focused.append((c.id, raise)) }
+    var raised: [ClientID] = []
+    override func sendNativeRaise(_ c: Client) { raised.append(c.id) }
     override func warp(to p: CGPoint) { warps.append(p); fakePointer = p }
     var borderSpecs: [BorderSpec] = []
     override func drawBorders(_ specs: [BorderSpec]) { borderSpecs = specs }

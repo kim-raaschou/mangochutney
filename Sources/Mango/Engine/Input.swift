@@ -128,7 +128,7 @@ package extension MangoServer {
             let c = bar == nil ? clientAtPoint(p) : nil
             // not in mango: not in overview, and not the focused one again (macOS has focused it with the click)
             if let c, let cm = c.mon, c.isVisible(on: cm), overviewState == nil, selectedMonitor.sel != c.id {
-                clientFocus(c)
+                clientFocus(c, true)
             }
             if overviewState != nil, let c, button == 0 { leaveOverview(select: c); return true }
             if overviewState != nil, let c, button == 1 { pendingKillClient(c); return true }
@@ -337,7 +337,7 @@ package extension MangoServer {
                 let dc = d.client
                 if clientByIdAll(dc.id) === dc {
                     if dc.isGroupMember { _ = clientGroupLeave(dc) }
-                    clientFocus(dc)
+                    clientFocus(dc, true)
                     pointerBeginMoveResize(dc, .move, at: p)
                 }
             }
@@ -371,9 +371,9 @@ package extension MangoServer {
             return p
         }
         if let ov = overviewState {
-// not in mango: without raising; the real window is under the pictures.
+// not in mango: the real window is under the pictures.
             guard config.sloppyfocus, !ov.circle, let c = clientAtPoint(p), selectedMonitor.sel != c.id else { return p }
-            clientFocus(c, raise: false)
+            clientFocus(c, false)
             return p
         }
         // not in mango: a held button is an app's own drag (macOS moves its window)
@@ -385,7 +385,7 @@ package extension MangoServer {
         if scrollerFocusLock && !inside { return p }
         let offEdge = scrollTiled && m.layout.isScroller && !inside
         let held = offEdge && (!config.edgeScrollerPointerFocus || Double(speed) < config.edgeScrollerFocusAllowSpeed)
-        if !held && (selectedMonitor.sel != c.id || selectedMonitor !== m) { clientFocus(c, raise: false, makeKey: true) }
+        if !held && (selectedMonitor.sel != c.id || selectedMonitor !== m) { clientFocus(c, false) }
         if offEdge && m.sel == c.id { scrollerFocusLock = true }
         return p
     }

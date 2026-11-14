@@ -504,7 +504,7 @@ package extension MangoServer {
                         }
                     }
 
-                    clientFocus(target, raise: true)
+                    clientFocus(target, true)
                     arrange(m)
                 } else {
                     wlrLog(.debug, "swipe drive: pan revert, offset=\(Int(offset))")

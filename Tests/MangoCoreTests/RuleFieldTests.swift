@@ -38,7 +38,7 @@ final class RuleFieldTests: MangoTestCase {
         r.server.rebuildMonitors(screens: [r.screen, big])
         let c = r.window(900_302, floating: true, frame: float)
         c.floatGeom = float
-        r.server.clientFocus(c, raise: false)
+        r.server.clientFocus(c, false)
         let target = r.server.monitors.first { $0.screen.displayID == 2 }!
         r.server.tagMonitor(c, to: target, newtags: 0)
         XCTAssertEqual(c.floatGeom.width, (600 * 2560 / r.screen.workArea.width).rounded(.down))
@@ -65,7 +65,7 @@ final class RuleFieldTests: MangoTestCase {
         r.server.config.windowRules = [rule]
         let obs = otherApp(r, 900_310, pid: 4242, bundleId: "com.obsproject.Studio")
         let editor = r.window(900_311)
-        r.server.clientFocus(editor, raise: false)
+        r.server.clientFocus(editor, false)
 
         var sent: [(UInt16, Bool, pid_t)] = []
         r.server.mac.router.forward = { code, _, down, pid in sent.append((code, down, pid)) }
@@ -79,11 +79,11 @@ final class RuleFieldTests: MangoTestCase {
         XCTAssertEqual(Set(sent.map(\.2)), [4242])
 
         sent.removeAll()
-        r.server.clientFocus(obs, raise: false)
+        r.server.clientFocus(obs, false)
         XCTAssertFalse(r.server.mac.router.key(down, modifierOnlySinceDown: false), "the window has the focus: the key goes there anyway")
         XCTAssertTrue(sent.isEmpty)
 
-        r.server.clientFocus(editor, raise: false)
+        r.server.clientFocus(editor, false)
         r.server.mac.windowDestroyed(id: 900_310)
         XCTAssertFalse(r.server.mac.router.key(down, modifierOnlySinceDown: false), "no window: an ordinary key")
     }
@@ -98,7 +98,7 @@ final class RuleFieldTests: MangoTestCase {
         r.server.config.keyBindings = [KeyBinding(mods: [.ctrl, .alt], keyName: "o", keyCodes: [o],
                                               dispatch: Dispatch(name: "togglegaps", args: []))]
         _ = otherApp(r, 900_312, pid: 4242, bundleId: "com.obsproject.Studio")
-        r.server.clientFocus(r.window(900_313), raise: false)
+        r.server.clientFocus(r.window(900_313), false)
         r.server.publishInputState()
         var sent = 0
         r.server.mac.router.forward = { _, _, _, _ in sent += 1 }

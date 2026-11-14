@@ -7,8 +7,8 @@ class MacWindowSystem: WindowSystem {
     var holdFocus = false {
         didSet {
             guard !holdFocus, oldValue, let c = heldFocus else { return }
-            heldFocus = nil
-            if server.clientByIdAll(c.id) === c { focus(c, raise: true) }
+            if server.clientByIdAll(c.id) === c { raise(c) }
+            releaseHeldFocus()
         }
     }
     var heldFocus: Client?
@@ -43,7 +43,13 @@ class MacWindowSystem: WindowSystem {
             DispatchQueue.main.async { MainActor.assumeIsolated { done(ok) } }
         }
     }
-    private var pendingFocus: (client: Client, raise: Bool)?
+    private var pendingFocus: Client?
+    private var pendingRaises: [Client] = []
+    private var flushScheduled = false
+    /// wlroots' seat: the client mango last gave the keyboard.
+    var seatFocus: Client?
+    /// macOS gave this window the keyboard itself: mango's notify sends nothing.
+    var macOSFocused: ClientID?
     var initialSettlePending = false
     var away: [ClientID: (client: Client, reasons: Set<AwayReason>)] = [:]
     var loggedWindowCount = -1
@@ -111,22 +117,73 @@ class MacWindowSystem: WindowSystem {
 
     func quit() { NSApp.terminate(nil) }
 
+    /// The port's own focus: back to mango's window after the port's panel.
     func focus(_ c: Client, raise: Bool) {
-        if holdFocus { heldFocus = c; return }
-        let first = pendingFocus == nil
-        pendingFocus = (c, raise || (pendingFocus?.client === c && pendingFocus?.raise == true))
-        guard first else { return }
-        DispatchQueue.main.async { [weak self] in MainActor.assumeIsolated { self?.sendFocus() } }
+        seatFocus = c
+        if raise { self.raise(c) }
+        focusLater(c)
     }
 
-    private func sendFocus() {
-        guard let (c, raise) = pendingFocus else { return }
-        pendingFocus = nil
-        guard Self.stillFocused(c, in: server) else { return }
-        let lift = Self.lifts(c, raise: raise, in: server)
-        wlrLog(.debug, "\(c.appName): mango focuses window \(c.id)\(lift ? "" : " without lifting it")")
-        NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: lift) { [weak self] in self?.restack() }
+    var keyboardFocusedSurface: Client? {
+        seatFocus.flatMap { server.clientByIdAll($0.id) === $0 ? $0 : nil }
     }
+
+    func clientNotifyEnter(_ c: Client) {
+        seatFocus = c
+        if macOSFocused == c.id { return }
+        focusLater(c)
+    }
+
+    /// macOS activates a window as it gives it the keyboard (clientNotifyEnter).
+    func clientActivateSurface(_ c: Client, _ activated: Bool) {}
+
+    /// The seat only: macOS keeps its focus.
+    func keyboardNotifyClearFocus() { seatFocus = nil }
+
+    /// A scene raise: done with the turn's focus, as one native call where it is the focused window.
+    /// Whether it is parked is read at the flush, after the turn's arrange has placed it.
+    func raise(_ c: Client) {
+        pendingRaises.removeAll { $0 === c }
+        pendingRaises.append(c)
+        scheduleFlush()
+    }
+
+    private func focusLater(_ c: Client) {
+        if holdFocus || overviewOverlay != nil { heldFocus = c; return }
+        pendingFocus = c
+        scheduleFlush()
+    }
+
+    func releaseHeldFocus() {
+        guard !holdFocus, overviewOverlay == nil, let c = heldFocus else { return }
+        heldFocus = nil
+        if server.clientByIdAll(c.id) === c { focusLater(c) }
+    }
+
+    private func scheduleFlush() {
+        guard !flushScheduled else { return }
+        flushScheduled = true
+        DispatchQueue.main.async { [weak self] in MainActor.assumeIsolated { self?.flushFocus() } }
+    }
+
+    private func flushFocus() {
+        flushScheduled = false
+        let raises = pendingRaises, f = pendingFocus
+        pendingRaises = []
+        pendingFocus = nil
+        let shown = raises.filter { server.clientByIdAll($0.id) === $0 && !$0.parked && !$0.groupParked }
+        for r in shown where r !== f { sendNativeRaise(r) }
+        guard let c = f, Self.stillFocused(c, in: server) else { return }
+        let lift = Self.lifts(c, raise: shown.contains { $0 === c }, in: server)
+        wlrLog(.debug, "\(c.appName): mango focuses window \(c.id)\(lift ? "" : " without lifting it")")
+        sendNativeFocus(c, raise: lift)
+    }
+
+    func sendNativeFocus(_ c: Client, raise: Bool) {
+        NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: raise) { [weak self] in self?.restack() }
+    }
+
+    func sendNativeRaise(_ c: Client) { writer(for: c.pid)?.raise(c.element) }
 
     static func stillFocused(_ c: Client, in server: MangoServer) -> Bool {
         server.clientByIdAll(c.id) === c && server.focused === c
@@ -223,6 +280,7 @@ class MacWindowSystem: WindowSystem {
     func closeOverview() {
         overviewOverlay?.close()
         overviewOverlay = nil
+        releaseHeldFocus()
     }
 
     static func card(_ c: OverviewCard) -> OverviewOverlay.Card {
@@ -536,7 +594,6 @@ class MacWindowSystem: WindowSystem {
 
     func surfaceAt(_ p: CGPoint) -> ClientID? { CursorHider.windowAt(p) }
 
-    func raise(_ c: Client) { writer(for: c.pid)?.raise(c.element) }
 
     func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool) {
         writer(for: c.pid)?.async { [el = c.element] in el.setMinimized(minimizeWindow) }

@@ -125,7 +125,7 @@ package extension MangoServer {
         if isTab {
             tabFocusMember(c.id)
         } else if !c.isGroupMember {
-            clientFocus(c)
+            clientFocus(c, true)
         } else {
             clientFocusGroupMember(c)
         }
@@ -133,7 +133,7 @@ package extension MangoServer {
 
     func tabFocusMember(_ id: CGWindowID) {
         guard let c = clientByIdAll(id), let m = c.mon else { return }
-        clientFocus(c)
+        clientFocus(c, true)
         arrange(m, .none)
     }
 }

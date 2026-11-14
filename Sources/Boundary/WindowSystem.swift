@@ -5,7 +5,14 @@ import CoreGraphics
 package protocol WindowSystem: AnyObject {
     var pointer: CGPoint { get }
     func quit()
-    func focus(_ c: Client, raise: Bool)
+    /// wlroots' seat->keyboard_state.focused_surface: the client mango last gave the keyboard.
+    var keyboardFocusedSurface: Client? { get }
+    /// client_notify_enter (wlr_seat_keyboard_notify_enter).
+    func clientNotifyEnter(_ c: Client)
+    /// client_activate_surface.
+    func clientActivateSurface(_ c: Client, _ activated: Bool)
+    /// wlr_seat_keyboard_notify_clear_focus.
+    func keyboardNotifyClearFocus()
     func warp(to p: CGPoint)
     func restack()
     func drawBorders(_ specs: [BorderSpec])

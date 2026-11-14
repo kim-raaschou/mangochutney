@@ -69,7 +69,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         r.window(900_410, frame: CGRect(x: 100, y: 100, width: 600, height: 800))
         r.window(900_411, frame: CGRect(x: w.maxX - 300, y: 100, width: 600, height: 400))
         r.window(900_412, frame: CGRect(x: w.maxX - 300, y: 520, width: 600, height: 400))
-        r.server.clientFocus(r.server.clientByIdAll(900_410)!, raise: false)
+        r.server.clientFocus(r.server.clientByIdAll(900_410)!, false)
         startFrames = [900_410: CGRect(x: 100, y: 100, width: 600, height: 800),
                        900_411: CGRect(x: w.maxX - 300, y: 100, width: 600, height: 400),
                        900_412: CGRect(x: w.maxX - 300, y: 520, width: 600, height: 400)]

@@ -124,7 +124,7 @@ enum FullscreenTag {
             let desktop = m.tagset[m.seltags ^ 1]
             server.clientViewOnMonitor(c.tags, on: m)
             m.tagset[m.seltags ^ 1] = desktop & ~mask(server.config) != 0 ? desktop : m.tagset[m.seltags]
-            server.clientFocus(c)
+            server.clientFocus(c, true)
         } else {
             server.arrange(m, .none)
             server.printstatus()
@@ -189,7 +189,7 @@ enum FullscreenTag {
             if before != m.curtag { m.prevTag = before }
             server.arrange(m, .none)
         }
-        server.clientFocus(c)
+        server.clientFocus(c, true)
         server.printstatus()
         return true
     }

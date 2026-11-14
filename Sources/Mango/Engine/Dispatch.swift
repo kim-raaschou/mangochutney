@@ -30,7 +30,7 @@ package extension MangoServer {
                 if begin { tc = fc; break }
             }
             guard let tc, tc.tags != 0, tc.tags & TagMask.special == 0 else { return nil }
-            clientFocus(tc)
+            clientFocus(tc, true)
             clientSwitchView(getTagsFirstTag(tc.tags))
         case "focusid":
             guard let target else { return "client not found" }
@@ -79,7 +79,7 @@ package extension MangoServer {
             // not in mango: the port keeps the scroller's column order in its state; the
             // column of the window put first goes first, as mango's list order makes it.
             if let zm = z.mon, zm.layout.isScroller { zm.current.state.scrollerState.moveColumnToFront(z.id) }
-            clientFocus(z)
+            clientFocus(z, true)
             arrange(selectedMonitor)
 
         case "incnmaster":
@@ -155,7 +155,7 @@ package extension MangoServer {
             guard newtags != 0 else { return nil }
             if tagCombo {
                 selectedMonitor.tagset[selectedMonitor.seltags] |= newtags
-                clientFocus(clientFocusTop(selectedMonitor))
+                clientFocus(clientFocusTop(selectedMonitor), true)
                 arrange(selectedMonitor, .none)
             } else {
                 tagCombo = true
@@ -169,7 +169,7 @@ package extension MangoServer {
             let n = selectedMonitor.tagset[selectedMonitor.seltags] ^ (target & TagMask.mask(forTagNum: config.tagNum))
             guard n != 0 else { printstatus(); return nil }
             selectedMonitor.tagset[selectedMonitor.seltags] = n
-            clientFocus(clientFocusTop(selectedMonitor))
+            clientFocus(clientFocusTop(selectedMonitor), true)
             for t in tiledClients(selectedMonitor) { setSizePer(selectedMonitor, t, resetProportion: true) }
             arrange(selectedMonitor)
         case "viewtoleft", "viewtoright":
@@ -241,7 +241,7 @@ package extension MangoServer {
             }
             if newtags != 0 {
                 sel.tags = newtags
-                clientFocus(clientFocusTop(selectedMonitor))
+                clientFocus(clientFocusTop(selectedMonitor), true)
                 arrange(selectedMonitor)
             }
 
@@ -254,7 +254,7 @@ package extension MangoServer {
             let remaining = c.tags & ~(cm.tagset[cm.seltags] & TagMask.mask(forTagNum: config.tagNum))
             if remaining == 0 { pendingKillClient(c); return nil }
             c.tags = remaining
-            clientFocus(clientFocusTop(selectedMonitor))
+            clientFocus(clientFocusTop(selectedMonitor), true)
             arrange(cm)
         case "togglefloating":
             guard grab == nil, overviewState?.monitor !== selectedMonitor,
@@ -330,7 +330,7 @@ package extension MangoServer {
             r.mon = sm
             r.isPendingOpenAnimation = true
             clientSetFloating(r, isFloatingBeforeScratchpad)
-            clientFocus(r)
+            clientFocus(r, true)
             pointerWarpToClient(r)
         case "toggle_scratchpad":
             toggleScratchpad()
@@ -527,7 +527,7 @@ package extension MangoServer {
             if ui & TagMask.special != 0, let cm = c.mon { arrange(cm) }
         }
         clientSwitchView(ui, allMonitors: allMonitors)
-        clientFocus(target)
+        clientFocus(target, true)
         printstatus()
     }
 
@@ -545,7 +545,7 @@ package extension MangoServer {
         for fc in clients where fc !== c && c.tags & fc.tags != 0 && (fc.isFullscreen || fc.isMaximizeScreen) && !c.isFloating {
             clearFullscreenFlag(fc)
         }
-        clientFocus(clientFocusTop(selectedMonitor))
+        clientFocus(clientFocusTop(selectedMonitor), true)
         arrange(m)
     }
 
@@ -560,7 +560,7 @@ package extension MangoServer {
         if c.isInScratchpad {
             let visible = c.isInScratchpad && !c.isMinimized && c.mon.map { c.tags & $0.tagset[$0.seltags] != 0 } == true
             if visible {
-                clientFocus(c)
+                clientFocus(c, true)
             } else if c.isNamedScratchpad {
                 applyNamedScratchpad(c)
             } else {
@@ -577,7 +577,7 @@ package extension MangoServer {
             return
         }
         if let cm = c.mon { clientViewOnMonitor(getTagsFirstTag(c.tags), on: cm, changeFocus: true) }
-        clientFocus(c)
+        clientFocus(c, true)
     }
 
     package func getTagsFirstTag(_ tags: UInt32) -> UInt32 {
@@ -638,7 +638,7 @@ package extension MangoServer {
         for c in clients where c.isVisible(on: m) && (c.isGlobal || c.isUnglobal || (c.tags & ~TagMask.special).nonzeroBitCount > 1) {
             setSizePer(m, c, resetProportion: true)
         }
-        if changeFocus ?? (m === selectedMonitor) { clientFocus(clientFocusTop(m)) }
+        if changeFocus ?? (m === selectedMonitor) { clientFocus(clientFocusTop(m), true) }
         arrange(m, wantAnimation ? .tag(forward: forward) : .move)
         printstatus()
     }
@@ -1415,7 +1415,7 @@ package extension MangoServer {
     func focusStack(_ dir: NextPrev, from target: Client? = nil) {
         guard let sel = target ?? clientFocusTop(selectedMonitor),
               let tc = getNextStackClient(sel, reverse: dir == .prev) else { return }
-        clientFocus(tc)
+        clientFocus(tc, true)
         if config.warpcursor { pointerWarpToClient(tc) }
     }
 
@@ -1451,7 +1451,7 @@ package extension MangoServer {
             }
         }
         if let c {
-            clientFocus(c)
+            clientFocus(c, true)
             if config.warpcursor { pointerWarpToClient(c) }
         } else if !isSpecialActive(m) {
             if config.focusCrossTag {
@@ -1467,7 +1467,7 @@ package extension MangoServer {
         if overviewState?.monitor === m { return }
         let c = getFocusedStackClient(directionSelect(dir), nil)
         if let c, c.mon === m {
-            clientFocus(c)
+            clientFocus(c, true)
             if config.warpcursor { pointerWarpToClient(c) }
             return
         }
@@ -1633,10 +1633,11 @@ package extension MangoServer {
         selectedMonitor = target
         if config.warpcursor { pointerWarpToMonitor(target) }
         if let c = clientFocusTop(target) {
-            clientFocus(c)
+            clientFocus(c, true)
         } else {
             target.sel = nil
-            clientFocus(nil)
+            system.keyboardNotifyClearFocus()
+            clientFocus(nil, false)
         }
     }
 
@@ -1727,7 +1728,7 @@ package extension MangoServer {
         let target = getTagsFirstTag(c.tags)
 
         clientViewOnMonitor(target, on: selectedMonitor, changeFocus: true)
-        clientFocus(c)
+        clientFocus(c, true)
         arrange(selectedMonitor)
         if config.warpcursor, let cm = c.mon { pointerWarpToMonitor(cm) }
     }
@@ -1798,7 +1799,7 @@ package extension MangoServer {
         c.tags = 0
         c.isMinimized = true
         c.isInScratchpad = true
-        clientFocus(clientFocusTop(selectedMonitor))
+        clientFocus(clientFocusTop(selectedMonitor), true)
         arrange(m)
         clients.removeAll { $0 === c }
         clients.insert(c, at: 0)
@@ -1817,7 +1818,7 @@ package extension MangoServer {
             arrange(m)
         }
         c.isMinimized = false
-        clientFocus(c)
+        clientFocus(c, true)
     }
 
     func showScratchpad(_ c: Client) {
@@ -1852,7 +1853,7 @@ package extension MangoServer {
             if shown {
                 c.tags = getTagsFirstTag(selectedMonitor.tagset[selectedMonitor.seltags])
                 arrange(selectedMonitor)
-                clientFocus(c)
+                clientFocus(c, true)
                 return true
             }
         }
@@ -1866,7 +1867,7 @@ package extension MangoServer {
         c.scratchpadTagin = true
         if shown {
             arrange(m)
-            clientFocus(c)
+            clientFocus(c, true)
         } else {
             showScratchpad(c)
         }
