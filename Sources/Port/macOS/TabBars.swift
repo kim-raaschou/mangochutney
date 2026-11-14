@@ -250,10 +250,18 @@ final class TabStripView: NSView {
         let padY = CGFloat(d.paddingY ?? 0)
         let inner = strip.frame.width - 2 * inset
         let count = tabs.count
-        frames = TabStripLayout.segmentFrames(width: inner - gap * CGFloat(max(0, count - 1)), count: count)
-            .enumerated().map { i, f in
-                CGRect(x: inset + f.minX + gap * CGFloat(i), y: inset, width: f.width, height: height - 2 * inset)
+        if strip.plain, strip.segments.count == count {
+            // mango's look: each member's bar where mango puts it
+            frames = strip.segments.map {
+                CGRect(x: $0.frame.minX - strip.frame.minX, y: $0.frame.minY - strip.frame.minY,
+                       width: $0.frame.width, height: $0.frame.height)
             }
+        } else {
+            frames = TabStripLayout.segmentFrames(width: inner - gap * CGFloat(max(0, count - 1)), count: count)
+                .enumerated().map { i, f in
+                    CGRect(x: inset + f.minX + gap * CGFloat(i), y: inset, width: f.width, height: height - 2 * inset)
+                }
+        }
         layoutCloseButtons(strip)
         for (t, f) in zip(tabs, frames) {
             t.layer.frame = f

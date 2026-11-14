@@ -126,6 +126,17 @@ Hvor koden står, når den ikke står som i mango.
   skærmens display-ID, ikke navnet, for to skærme kan have samme navn.
 - **Faner:** fanekæden holdes for de tags, der er i visning, som `tab_member_kept` holder den;
   mango kæder den pr. vindue (`Tabs.swift`).
+- **Fane- og gruppebjælker:** mangos `client_draw_tabbar` og `client_draw_group_bar` står i kernen
+  (`Tabs.swift`) med anker (`c->geom` under åbne-animationen), kantklipning (`compute_edge_offsets`,
+  `client_is_ignore_output_clip`) og bredde-deling. De kaldes for alle vinduer på én gang
+  (`tabRefreshBars`), ikke fra `client_set_clip` pr. vindue, og porten tegner hver bjælke som ét
+  panel med en boks pr. medlem, hvor mango har en bar-node pr. medlem. Klippes en fanebjælke helt
+  væk, tegner porten ingen; mango lader barerne stå, hvor de var.
+- **Hvad der er under markøren:** mangos `node_at_point` går scenen igennem fra øverste lag; porten
+  har ingen scene, så `clientAtPoint` skriver rækkefølgen ud (overview-kort, flydende og
+  scratchpad, det valgte vindue, så resten; med special-tagget fremme kun dets vinduer, som mangos
+  dæmpning ingen vinduer under sig giver). Bjælkerne svarer portens paneler for (`BarButton`), og
+  fladen giver `surfaceAt`. Lag-flader og IM-popups har macOS ikke.
 - **Lag:** `client_target_layer` er i kernen 1:1, og porten bruger den, når mango giver fokus: ligger
   et synligt vindue i et højere lag over det, får vinduet fokus uden at blive løftet (`lifts`), så
   det højere lag bliver øverst. `client_sync_layer` og `client_reparent_group` (et vindue og dets

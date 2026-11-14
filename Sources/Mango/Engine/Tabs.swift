@@ -66,59 +66,141 @@ package extension MangoServer {
         clientWantsGroupBar(c) && overviewState?.monitor !== m && !c.isFullscreen && !c.parked && c.isVisible(on: m)
     }
 
+    // not in mango: client_set_clip's client_draw_group_bar and client_draw_tabbar for every client at once
     func tabRefreshBars(animating: [ClientID: CGRect] = [:]) {
         guard drawsOverlays else { return }
         var strips: [TabStrip] = []
+        var groups: [TabStrip] = []
         for m in monitors {
-            guard let f = tabChainFocus(tabMembers(m), on: m), !f.parked, !f.isFullscreen, !f.isMaximizeScreen else { continue }
-            let members = tabMembers(m)
-            let h = CGFloat(config.tabBarHeight)
-            let radius = system.windowCornerRadius   // not in mango: the port's side
-            let ported = barsInsideBorder
-            let shown = ported ? shownFrame(f, animating: animating)
-                               : shownFrame(f, animating: animating).insetBy(dx: -borderWidth(f, on: m), dy: -borderWidth(f, on: m))
-            let group = clientCheckTabNodeVisible(f, on: m) ? CGFloat(config.groupBarHeight) : 0
-            let under = group > 0 || !ported ? 0 : min(radius, shown.height)
-            strips.append(TabStrip(
-                frame: CGRect(x: shown.minX, y: shown.minY - group - h, width: shown.width, height: h + under),
-                barHeight: h, cornerRadius: radius,
-                segments: members.map { c in
-                    .init(id: c.id, title: c.title.isEmpty ? c.appName : c.title, focused: c === f, pid: c.pid)
-                },
-                above: f.id, plain: !ported))
+            for c in visibleClients(m) where clientCheckTabNodeVisible(c, on: m) {
+                if let s = clientDrawGroupBar(c, computeEdgeOffsets(c, animating: animating), animating: animating) {
+                    groups.append(s)
+                }
+            }
+            guard let f = tabChainFocus(tabMembers(m), on: m), !f.parked else { continue }   // not in mango: parked is the port's
+            if let s = clientDrawTabbar(f, computeEdgeOffsets(f, animating: animating), animating: animating) {
+                strips.append(s)
+            }
         }
         var style = TabStripStyle(accent: config.focuscolor, accentWidth: CGFloat(min(3, max(1, config.borderpx))))
         style.decorate = mangoBarDecorationApplyConfig(config.tabbardata, mango: .mangoTabBar)
         system.drawTabBars(strips, style: style)
         style.decorate = mangoBarDecorationApplyConfig(config.groupbardata, mango: .mangoGroupBar)
-        system.drawGroupBars(clientDrawGroupBar(animating: animating), style: style)
+        system.drawGroupBars(groups, style: style)
     }
 
-    func clientDrawGroupBar(animating: [ClientID: CGRect]) -> [TabStrip] {
-        var out: [TabStrip] = []
-        for m in monitors {
-            for c in visibleClients(m) where clientCheckTabNodeVisible(c, on: m) {
-                let ported = barsInsideBorder
-                let bw = ported ? 0 : borderWidth(c, on: m)
-                let shown = shownFrame(c, animating: animating).insetBy(dx: -bw, dy: -bw)
-                let h = CGFloat(config.groupBarHeight)
-                let radius = system.windowCornerRadius   // not in mango: the port's side
-                let under = ported ? min(radius, shown.height) : 0
-                out.append(TabStrip(
-                    frame: CGRect(x: shown.minX, y: shown.minY - h, width: shown.width, height: h + under),
-                    barHeight: h, cornerRadius: radius,
-                    segments: groupMembers(c).map { g in
-                        .init(id: g.id, title: g.title.isEmpty ? g.appName : g.title, focused: g === c, pid: g.pid)
-                    },
-                    above: c.id,
-                    closeButton: config.groupBarCloseButtonEnable
-                        ? .init(size: CGFloat(config.groupBarButtonSize), margin: CGFloat(config.groupBarButtonMargin),
-                                color: config.groupBarButtonColor)
-                        : nil,
-                    plain: !ported))
-            }
+    // not in mango: c->animation.current, the box the window is drawn in
+    func animationCurrent(_ c: Client, animating: [ClientID: CGRect]) -> CGRect {
+        let bw = c.mon.map { borderWidth(c, on: $0) } ?? 0
+        return shownFrame(c, animating: animating).insetBy(dx: -bw, dy: -bw)
+    }
+
+    func clientIsIgnoreOutputClip(_ c: Client, animating: [ClientID: CGRect]) -> Bool {
+        // not in mango: animation.tagining is a running tag animation that is not a tagout
+        let running = animating[c.id] != nil || system.clientAnimationRunning(c)
+        let tagining = running && c.action == .tag && !c.tagouting
+        return grab?.client === c || (!Self.isScrollTiled(c) && !tagining && !c.tagouting)
+    }
+
+    /// mango compute_edge_offsets (animation/client.c): x left, y top, width right, height bottom.
+    func computeEdgeOffsets(_ c: Client, animating: [ClientID: CGRect]) -> CGRect {
+        guard let mon = c.mon, !clientIsIgnoreOutputClip(c, animating: animating) else { return .zero }
+        let cur = animationCurrent(c, animating: animating), m = mon.screen.frame
+        return CGRect(x: max(0, m.minX - cur.minX), y: max(0, m.minY - cur.minY),
+                      width: max(0, cur.maxX - m.maxX), height: max(0, cur.maxY - m.maxY))
+    }
+
+    // not in mango: the edge clipping both bars share, as client_draw_tabbar and client_draw_group_bar write it
+    func clipBar(_ anchor: CGRect, y: CGFloat, height: CGFloat, _ offsets: CGRect, on m: Monitor) -> CGRect {
+        var tabX = anchor.minX, tabY = y, tw = anchor.width, th = height
+        if offsets.minY > 0 {
+            tabY = m.screen.frame.minY
+            th = height - offsets.minY
         }
-        return out
+        if offsets.height > 0 { th = th - max(0, offsets.height - anchor.height) }
+        if offsets.width > 0 { tw = tw - offsets.width }
+        if offsets.minX > 0 {
+            tabX = m.screen.frame.minX
+            tw = tw - offsets.minX
+        }
+        return CGRect(x: tabX, y: tabY, width: tw, height: th)
+    }
+
+    // not in mango: global_draw_tab_bar and global_draw_group_bar for every member, side by side
+    func barSegments(_ bar: CGRect, _ members: [Client]) -> [CGRect] {
+        let count = members.count
+        let tw = Int(bar.width.rounded(.towardZero))
+        let barW = tw / count, rem = tw % count
+        var x = bar.minX
+        return (0..<count).map { i in
+            let w = CGFloat(barW + (i < rem ? 1 : 0))
+            defer { x += w }
+            return CGRect(x: x, y: bar.minY, width: w, height: bar.height)
+        }
+    }
+
+    func clientDrawTabbar(_ c: Client, _ offsets: CGRect, animating: [ClientID: CGRect]) -> TabStrip? {
+        guard let m = c.mon, c.isTabFocus else { return nil }
+        let members = tabMembers(m)
+        guard tabLayoutActive(m), !c.isFullscreen, !c.isMaximizeScreen else { return nil }
+        let count = members.count
+        if count < 2 { return nil }
+        var anchor = animationCurrent(c, animating: animating)
+        let running = animating[c.id] != nil || system.clientAnimationRunning(c)   // not in mango: c->animation.running
+        if running && c.action == .open {
+            let bw = borderWidth(c, on: m)
+            anchor = (c.geom ?? c.frame).insetBy(dx: -bw, dy: -bw)
+        }
+        // Port extension: not in mango. The bars inside the border (chutney_macos_appearance).
+        let ported = barsInsideBorder
+        if ported { anchor = anchor.insetBy(dx: borderWidth(c, on: m), dy: borderWidth(c, on: m)) }
+        let groupH = clientWantsGroupBar(c) ? CGFloat(config.groupBarHeight) : 0
+        /* Tab strip sits above the group strip when both are present. */
+        let h = CGFloat(config.tabBarHeight)
+        let bar = clipBar(anchor, y: anchor.minY - h - groupH, height: h, offsets, on: m)
+        // not in mango: mango leaves the bars where they were, the port draws none
+        if bar.width <= 0 || bar.height <= 0 { return nil }
+        let radius = system.windowCornerRadius   // not in mango: the port's side
+        let under = groupH > 0 || !ported ? 0 : min(radius, anchor.height)
+        return TabStrip(
+            frame: CGRect(x: bar.minX, y: bar.minY, width: bar.width, height: bar.height + under),
+            barHeight: bar.height, cornerRadius: radius,
+            segments: zip(members, barSegments(bar, members)).map { cur, box in
+                .init(id: cur.id, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur.isTabFocus,
+                      pid: cur.pid, frame: box)
+            },
+            above: c.id, plain: !ported)
+    }
+
+    func clientDrawGroupBar(_ c: Client, _ offsets: CGRect, animating: [ClientID: CGRect]) -> TabStrip? {
+        guard let m = c.mon, clientWantsGroupBar(c) else { return nil }
+        /* Owner hidden by tab: hide the whole strip, otherwise its nodes (they are
+         * not children of the window) would float over the visible window. */
+        if c.isTabHidden { return nil }
+        let members = groupMembers(c)
+        var current = animationCurrent(c, animating: animating)
+        // Port extension: not in mango. The bars inside the border (chutney_macos_appearance).
+        let ported = barsInsideBorder
+        if ported { current = current.insetBy(dx: borderWidth(c, on: m), dy: borderWidth(c, on: m)) }
+        let h = CGFloat(config.groupBarHeight)
+        let bar = clipBar(current, y: current.minY - h, height: h, offsets, on: m)
+        if bar.width <= 0 || bar.height <= 0 { return nil }
+        let radius = system.windowCornerRadius   // not in mango: the port's side
+        let under = ported ? min(radius, current.height) : 0
+        let sel = selectedMonitor.sel
+        return TabStrip(
+            frame: CGRect(x: bar.minX, y: bar.minY, width: bar.width, height: bar.height + under),
+            barHeight: bar.height, cornerRadius: radius,
+            segments: zip(members, barSegments(bar, members)).map { cur, box in
+                .init(id: cur.id, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur.id == sel,
+                      pid: cur.pid, frame: box)
+            },
+            above: c.id,
+            closeButton: config.groupBarCloseButtonEnable
+                ? .init(size: CGFloat(config.groupBarButtonSize), margin: CGFloat(config.groupBarButtonMargin),
+                        color: config.groupBarButtonColor)
+                : nil,
+            plain: !ported)
     }
 
     func clientHandleDecorateClick(_ c: Client, isTab: Bool) {

@@ -131,21 +131,27 @@ final class GroupTests: MangoTestCase {
         XCTAssertEqual(c(r, 900_700).geom!.minY, master.minY, accuracy: 1)
     }
 
+    func groupBar(_ r: EngineRig) -> TabStrip? {
+        r.server.drawsOverlays = true
+        r.server.tabRefreshBars()
+        return (r.server.system as! FakeWindowSystem).groupStrips.first
+    }
+
     func testTheGroupBarNamesTheMembers() {
         let r = rig()
         run(r, "groupjoin", "down")
-        var strip = r.server.clientDrawGroupBar(animating: [:]).first
+        var strip = groupBar(r)
         XCTAssertEqual(strip?.segments.map(\.id), [900_701, 900_702])
         XCTAssertEqual(strip?.segments.first?.focused, true)
         XCTAssertNil(strip?.closeButton)
         r.server.config.groupBarCloseButtonEnable = true
-        strip = r.server.clientDrawGroupBar(animating: [:]).first
+        strip = groupBar(r)
         XCTAssertEqual(strip?.closeButton?.size, 16)
         XCTAssertEqual(strip?.frame.maxY ?? 0, c(r, 900_701).frame.minY, accuracy: 1,
                        "mango's: right on top of the bordered window")
         XCTAssertEqual(strip?.plain, true)
         r.server.config.chutneyMacOSAppearance = true
-        strip = r.server.clientDrawGroupBar(animating: [:]).first
+        strip = groupBar(r)
         XCTAssertEqual(strip?.frame.maxY ?? 0, c(r, 900_701).frame.minY + BorderGeometry.cornerRadius, accuracy: 1,
                        "the port's: reaching under the window's corners")
     }
