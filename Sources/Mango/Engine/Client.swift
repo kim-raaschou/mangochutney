@@ -153,6 +153,7 @@ public final class Monitor {
     public var screen: Screen
     public var tagset: [UInt32] = [1, 1]
     public var seltags = 0
+    static let pertagSlots = 31 + 1   // PERTAG_SLOTS (tag_num_MAX + 1)
     public var pertag: [Pertag] = []
     public var sel: ClientID?
     var lastResizeTime: UInt32 = 0   // not in mango: last_resize_frame, as the time of that frame
@@ -186,7 +187,7 @@ public final class Monitor {
                     oh: CGFloat(config.gappoh), ov: CGFloat(config.gappov))
         specialGaps = Gaps(ih: CGFloat(config.specialGappih), iv: CGFloat(config.specialGappiv),
                            oh: CGFloat(config.specialGappoh), ov: CGFloat(config.specialGappov))
-        pertag = (0...31).map { _ in
+        pertag = (0..<Monitor.pertagSlots).map { _ in
             Pertag(layout: .tile, settings: PertagSettings(
                 nmaster: config.defaultNmaster,
                 mfact: CGFloat(config.defaultMfact),

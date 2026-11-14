@@ -170,6 +170,14 @@ Hvor koden står, når den ikke står som i mango.
   `InputState`, så den kan sluge dem; hovedtråden spørger på `is_jump_mode`, efter at bindingerne har
   kørt, som mango. Har en gennemslupnings-binding (`bindp`) forladt overview, er tasten dog slugt, hvor
   mango sender den videre.
+- **`reset_option` og opstarten:** `reset_option` har mangos trin i mangos rækkefølge
+  (`MangoServer.resetOption`), og opstarten følger `setup` og `run`: `exec` og `exec_once` kører
+  til sidst, når skærmene er sat op, og et reload kører kun `exec`. Uden macOS-del, mærket i koden:
+  `init_baked_points` (portens animator bager sine egne kurver), `reset_blur_params`,
+  `reapply_rootbg` (porten læser `rootcolor`, hvor den tegner), `reapply_keyboard`,
+  `reapply_monitor_rules`, xcursor-delen af `reapply_cursor_style` og `bw` og
+  `client_set_tab_bar_config` i `reapply_property` (kanten og bjælken tegnes ud fra config).
+  `reapply_pointer`s plads har portens gestus-overvågning. `run`s del ligger sidst i `setup`.
 - **Config-watcheren:** mangos `config/watcher.c` med dens kqueue-del (mangos egen på macOS) står i
   kernen (`Config/Watcher.swift`); dens filer og debounce-timer er wayland's event loop på grænsen.
 - **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `MangoBarDecoration` og `MangoJumpLabel` (mangos tekstnoder), `NagDisplay` (mangonags Wayland-side), `EventLoop`

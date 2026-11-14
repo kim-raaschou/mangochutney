@@ -1485,7 +1485,7 @@ final class FidelityTests: MangoTestCase {
         try "exec=FOO=1 echo a | cat\nexec_once=echo b\n".write(to: url, atomically: true, encoding: .utf8)
         r.server.configURL = url
         r.server.reloadConfig()
-        XCTAssertEqual(fake(r).shelled, ["FOO=1 echo a | cat", "echo b"])
+        XCTAssertEqual(fake(r).shelled, ["FOO=1 echo a | cat"], "reset_option runs exec, not exec_once")
     }
 
     func testCenterwinLeavesFullscreenAndMaximized() {

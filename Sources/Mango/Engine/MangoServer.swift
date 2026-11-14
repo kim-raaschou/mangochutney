@@ -64,7 +64,6 @@ public final class MangoServer {
     package var drawsOverlays = false
     package internal(set) var started = false
     public var cliDebugLog = false
-    var execOnceDone = false
 
     package var overviewState: OverviewState? { didSet { publishInputState() } }
     package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
@@ -116,23 +115,31 @@ public final class MangoServer {
         if cliDebugLog {
             config.logLevel = .debug
         }
+        // not in mango: no init_baked_points, the port's animator bakes its own curves
+        setEnvWithoutDisplay()
         wlrLogInit(config.logLevel)
-        resetOption(initial: true)
+        system.setKeyboardOptions(config.xkbRulesOptions)   // not in mango: keyboard_group_create's keymap, the port's side
+        // Port extension: not in mango. The port takes its own options.
+        for loaded in portHooks.configLoaded { loaded(self) }
         rebuildMonitors()
         system.startWatching()   // not in mango: the port's side
         publishInputState()
         system.startInput()   // not in mango: the port's side
         system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side
-        pointerCursorActivity()
 
         let server = IPCServer(server: self, loop: system.eventLoop, version: mangoVersion)
         do { try server.ipcInit(); ipc = server } catch { wlrLog(.error, "IPC server failed: \(error)") }   // not in mango: ipc_init's failures thrown
         configWatcherInit(system.eventLoop)
+        configErrorNagInit()
 
+        // not in mango: run's part of the start, in setup
+        setEnvDisplay()
         started = true
         arrangeAll(.none)
         printstatus()
-        configErrorNagInit()
+        pointerCursorActivity()
+        runExec()
+        runExecOnce()
     }
 
     public func cleanup() {
@@ -171,35 +178,100 @@ public final class MangoServer {
         configFiles.map(\.path)
     }
 
-    func resetOption(initial: Bool = false) {
-        system.setKeyboardOptions(config.xkbRulesOptions)
-        for (k, v) in config.envVars { setenv(k, (v as NSString).expandingTildeInPath, 1) }
-        publishInputState()
+    func setEnvWithoutDisplay() {
+        for (k, v) in config.envVars {
+            if k == "DISPLAY" {
+                continue // Skip setting DISPLAY
+            }
+            setenv(k, v, 1)
+        }
+    }
+
+    func setEnvDisplay() {
+        for (k, v) in config.envVars where k == "DISPLAY" {
+            setenv("DISPLAY", v, 1)
+        }
+    }
+
+    func runExec() {
+        for cmd in config.exec { system.spawnShell(cmd) }
+    }
+
+    func runExecOnce() {
+        for cmd in config.execOnce { system.spawnShell(cmd) }
+    }
+
+    func reapplyProperty() {
+        // reset border width when config change
+        for c in clients {
+            // not in mango: no bw to reset, the border width is read from the config where it is drawn
+            clientSetGroupConfig(c)
+            // not in mango: no client_set_tab_bar_config, the port draws the tab bar from the config
+        }
+    }
+
+    func reapplyTagrule() {
+        for m in monitors {
+            m.parseTagrule(config: config, clients: clientsAll)
+        }
+    }
+
+    func resetOption() {
+        // not in mango: no init_baked_points, the port's animator bakes its own curves
+        pointerCursorActivity()
+        resetKeyboardLayout()
+        // not in mango: no reset_blur_params, macOS has no blur (MangoCompat)
+        setEnvWithoutDisplay()
+        setEnvDisplay()
+        runExec()
+
+        reapplyCursorStyle()
+        reapplyProperty()
+        // not in mango: no reapply_rootbg, the port reads rootcolor where it draws
+        // not in mango: no reapply_keyboard, key repeat is macOS's (MangoCompat)
+        system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side, where reapply_pointer stands
+        reapplyMaster()
+
+        reapplyTagrule()
+        // not in mango: no reapply_monitor_rules, monitor_rule is macOS's (MangoCompat)
+
         // Port extension: not in mango. The port takes its own options.
         for loaded in portHooks.configLoaded { loaded(self) }
-        if !initial {
+        publishInputState()   // not in mango: the event tap's snapshot
+
+        /* A global reload must re-apply every monitor, not just the selected one:
+         * layout-affecting options such as always_show_group_bar reserve or release
+         * space on all outputs. */
+        for m in monitors {
+            titleMessageBarApplyConfig(m)
+            titleMessageBarUpdate(m)
+            arrange(m)
+        }
+    }
+
+    func resetKeyboardLayout() {
+        system.setKeyboardOptions(config.xkbRulesOptions)   // not in mango: xkb_keymap_new_from_names, the port's side
+    }
+
+    func reapplyCursorStyle() {
+        // not in mango: no xcursor manager, macOS draws the cursor (MangoCompat)
+        if !cursorHidden {
+            lastPointerActivity = CACurrentMediaTime()
+            armCursorHideTimer()
+        }
+    }
+
+    func reapplyMaster() {
+        for i in 0..<Monitor.pertagSlots {
             for m in monitors {
+                m.pertag[i].settings.nmaster = config.defaultNmaster
+                m.pertag[i].settings.mfact = CGFloat(config.defaultMfact)
                 m.gaps = Gaps(ih: CGFloat(config.gappih), iv: CGFloat(config.gappiv),
                               oh: CGFloat(config.gappoh), ov: CGFloat(config.gappov))
                 m.specialGaps = Gaps(ih: CGFloat(config.specialGappih), iv: CGFloat(config.specialGappiv),
                                      oh: CGFloat(config.specialGappoh), ov: CGFloat(config.specialGappov))
-                m.parseTagrule(config: config, clients: clientsAll)
-                titleMessageBarApplyConfig(m)
-                titleMessageBarUpdate(m)
             }
-            for c in clients {   // not in mango: of reapply_property only client_set_group_config
-                clientSetGroupConfig(c)
-            }
-            system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side
         }
-        for cmd in config.exec { system.spawnShell(cmd) }
-        publishInputState()
-        pointerCursorActivity()
-        if !execOnceDone {
-            execOnceDone = true
-            for cmd in config.execOnce { system.spawnShell(cmd) }
-        }
-        if !initial { arrangeAll(.move) }
     }
 
     public func reloadConfig() {
