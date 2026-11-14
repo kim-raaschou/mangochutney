@@ -39,7 +39,6 @@ package protocol WindowSystem: AnyObject {
     func rescan()
     func spawn(_ command: String)
     func spawnShell(_ command: String)
-    func watchConfig(_ files: [URL])
     func cancelAnimation(_ id: ClientID)
     func animatedFrame(_ id: ClientID) -> CGRect?
     func whenAnimationsIdle(_ body: @escaping () -> Void)

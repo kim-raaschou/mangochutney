@@ -79,7 +79,6 @@ class MacWindowSystem: WindowSystem {
     let animator = Animator()
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
-    var configWatcher: ConfigWatcher?
     var writerOverride: ((pid_t) -> (any WindowWriter)?)?
     var stackingOverride: (() -> [StackedWindow])?
 
@@ -419,15 +418,6 @@ class MacWindowSystem: WindowSystem {
     func spawn(_ command: String) { Spawn.run(command) }
 
     func spawnShell(_ command: String) { Spawn.shell(command) }
-
-    func watchConfig(_ files: [URL]) {
-        configWatcher = nil
-        guard !files.isEmpty else { return }
-        configWatcher = ConfigWatcher(files: files) { [weak server] changed in
-            if changed.allSatisfy(MenuSave.isOwnWrite) { return }
-            MainActor.assumeIsolated { server?.reloadConfig() }
-        }
-    }
 
     func cancelAnimation(_ id: ClientID) { animator.cancel(id) }
     func animatedFrame(_ id: ClientID) -> CGRect? { animator.shownRect(id) }

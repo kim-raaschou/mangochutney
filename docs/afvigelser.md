@@ -21,7 +21,7 @@ mango selv melder "Unknown keyword" for hver `chutney_`-linje og læser resten.
 | Nøgle / dispatcher | Gør | I standardconfigen | Uden den (mango) |
 |---|---|---|---|
 | `chutney_menu_bar` (+ `_tag_style`, `_logo`, `_layout`, `_mode`) | Menulinjen med tags, layout og layout-panelet | til | Ingen menulinje; tags i en bar via `mmsg watch` |
-| `chutney_menu_config` | Panelets ændringer gemmes i `chutney_menu.conf`, som configen læser sidst; `config.conf` skrives aldrig | `chutney_menu.conf` | `setoption` gemmer intet |
+| `chutney_menu_config` | Panelets ændringer gemmes i `chutney_menu.conf`, som configen læser sidst; `config.conf` skrives aldrig. Mangos config-watcher læser ikke panelets egen skrivning igen (`configWriteIsOwn`) | `chutney_menu.conf` | `setoption` gemmer intet |
 | `chutney_macos_appearance` | Fanebjælke, gruppebjælke, jump-mærker, switcher, titelbjælke, config-banner og overview i macOS' udseende, hvor ingen `*_decorate_*`-nøgle er sat; mangos farver i macOS' (`chutney_theme.conf`, følger accentfarve og lys/mørk); rammen følger vinduets runde hjørner | til | Mangos udseende og farver |
 | `chutney_tab_bar_decorate_icon`, `chutney_group_bar_decorate_icon` | Appens ikon før titlen i fanebjælken og i gruppebjælken, én nøgle pr. bjælke som mangos `*_decorate_*` | til | Kun titler |
 | `chutney_tab_bar_shortcuts` | ⌘1–9 vælger en fane | til | Ingen |
@@ -146,8 +146,10 @@ Hvor koden står, når den ikke står som i mango.
   grænsen, hvor porten kører mangonags `main` i mangos proces. mangonags Wayland-side
   (`NagDisplay`: bjælken placeret og tegnet, knappernes fork, løkken med `-T`) er portens
   (`Nag.swift`).
+- **Config-watcheren:** mangos `config/watcher.c` med dens kqueue-del (mangos egen på macOS) står i
+  kernen (`Config/Watcher.swift`); dens filer og debounce-timer er wayland's event loop på grænsen.
 - **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `NagDisplay` (mangonags Wayland-side), `EventLoop`
-  (`wl_event_loop_add_fd` til IPC), `Screen`, `PortHooks`, `ConfigPort` (portens nøgler,
+  (`wl_event_loop_add_fd` og `_add_timer`, til IPC og config-watcheren), `Screen`, `PortHooks`, `ConfigPort` (portens nøgler,
   modifiernavne, tastkoder) og `InputState`.
 - **Porten (`Sources/Port`):** macOS-laget (`Port/macOS`: Accessibility, parkering, fokus,
   appens egne træk, vinduer ved start og tilbage, vinduer væk i `AwayWindows`, `KeySyms`,

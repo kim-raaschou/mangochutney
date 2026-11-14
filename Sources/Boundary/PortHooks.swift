@@ -6,6 +6,7 @@ package struct PortHooks {
     package var ipcGets: [String: @MainActor (MangoServer) -> JSONValue] = [:]
     package var windowLeaving: (@MainActor (MangoServer, Client, [ClientID], ClientID?, [ClientID]) -> Void)?
     package var configLoaded: [@MainActor (MangoServer) -> Void] = []
+    package var configWriteIsOwn: (@MainActor ([String]) -> Bool)?
 
     package init() {}
 }

@@ -95,6 +95,11 @@ public final class MangoServer {
     var swipeFingers = 0
     var gestureDriveMon: Monitor?
     var gestureDriveActive = false
+    var watchTimer: EventSource?
+    var watchedFiles: [WatchedFile] = []
+    var watcherActive = false
+    var kqueueFd: Int32 = -1
+    var kqueueSource: EventSource?
     var scrollerFocusLock = false
 
     /// The boundary, not in mango: the port's status change, which printstatus gives.
@@ -113,7 +118,6 @@ public final class MangoServer {
         }
         wlrLogInit(config.logLevel)
         resetOption(initial: true)
-        configWatcherUpdate()
         rebuildMonitors()
         system.startWatching()   // not in mango: the port's side
         publishInputState()
@@ -123,6 +127,7 @@ public final class MangoServer {
 
         let server = IPCServer(server: self, loop: system.eventLoop, version: mangoVersion)
         do { try server.ipcInit(); ipc = server } catch { wlrLog(.error, "IPC server failed: \(error)") }   // not in mango: ipc_init's failures thrown
+        configWatcherInit(system.eventLoop)
 
         started = true
         arrangeAll(.none)
@@ -136,6 +141,7 @@ public final class MangoServer {
         system.drawBorders([])
         system.shutdown()   // not in mango: the port's side
         ipc?.ipcCleanup()
+        configWatcherDestroy()
         configErrorNagDestroy()
     }
 
@@ -161,14 +167,8 @@ public final class MangoServer {
         configErrorNagUpdate()
     }
 
-    // not in mango: config_watcher_update's track_path for each file once, the watching the port's
-    func configWatcherUpdate() {
-        guard config.autoReloadConfig else { return system.watchConfig([]) }
-        var paths: [String] = []
-        for url in [configURL] + configFiles {
-            if let p = resolveWatchPath(url.path), !paths.contains(p) { paths.append(p) }
-        }
-        system.watchConfig(paths.map { URL(fileURLWithPath: $0) })
+    func configGetFilePaths() -> [String] {
+        configFiles.map(\.path)
     }
 
     func resetOption(initial: Bool = false) {

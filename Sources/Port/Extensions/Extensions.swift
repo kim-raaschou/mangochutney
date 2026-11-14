@@ -1,8 +1,10 @@
+import Foundation
 import CoreGraphics
 import Mango
 extension MangoServer {
     func registerPortExtensions() {
         portHooks = PortHooks()
+        portHooks.configWriteIsOwn = { paths in paths.allSatisfy { MenuSave.isOwnWrite(URL(fileURLWithPath: $0)) } }
         portHooks.extraDispatchers["chutney_launch_or_focus"] = { server, d in
             guard let app = d.args.first, !app.isEmpty, app != "0" else { return "missing app" }
             server.launchOrFocus(app, command: d.args.dropFirst().joined(separator: ","))

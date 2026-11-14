@@ -130,10 +130,9 @@ final class FakeWindowSystem: MacWindowSystem {
     }
     var keyboardOptions: String?
     override func setKeyboardOptions(_ options: String) { keyboardOptions = options }
-    var spawned: [String] = [], shelled: [String] = [], watchedConfig: [URL] = []
+    var spawned: [String] = [], shelled: [String] = []
     override func spawn(_ command: String) { spawned.append(command) }
     override func spawnShell(_ command: String) { spawned.append(command); shelled.append(command) }
-    override func watchConfig(_ files: [URL]) { watchedConfig = files }
 }
 
 @MainActor

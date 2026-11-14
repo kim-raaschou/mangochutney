@@ -81,18 +81,4 @@ final class FirstStartKeysTests: MangoTestCase {
         let p = ConfigParser.parseConfig(fileAt: url)
         XCTAssertEqual(p.config.chutneyHyperKey, "f5")
     }
-
-    func testTheWatcherSeesAFileReplaced() throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: dir) }
-        let url = dir.appendingPathComponent("config.conf")
-        try "gappih=5\n".write(to: url, atomically: true, encoding: .utf8)
-        let before = ConfigWatcher.state(url)
-        try "gappih=5\n".write(to: url, atomically: true, encoding: .utf8)
-        XCTAssertNotNil(before)
-        XCTAssertNotEqual(ConfigWatcher.state(url), before)
-        try FileManager.default.removeItem(at: url)
-        XCTAssertNil(ConfigWatcher.state(url))
-    }
 }

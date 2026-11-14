@@ -27,7 +27,7 @@ final class MangoCoverageTests: MangoTestCase {
         while let f = files?.nextObject() as? URL {
             guard f.pathExtension == "swift" else { continue }
             let rel = String(f.path.dropFirst(base.path.count + 1))
-            if skip.contains(where: { rel.hasPrefix($0) }) { continue }
+            if skip.contains(where: { rel.hasPrefix($0) }) && rel != "Mango/Config/Watcher.swift" { continue }
             out += (try? String(contentsOf: f, encoding: .utf8)) ?? ""
             out += "\n"
         }
