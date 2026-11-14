@@ -110,7 +110,7 @@ final class WindowMemory {
             queue.sync { Self.write(now, to: url) }
             return
         }
-        if departed.hasSavedEntries { departed.dropSaved(keeping: server.system.allWindowIDs()) }
+        if departed.hasSavedEntries { departed.dropSaved(keeping: server.mac.allWindowIDs()) }
         let now = currentLayout(server)
         guard now != lastSaved else { return }
         lastSaved = now

@@ -13,11 +13,11 @@ package extension MangoServer {
         setSizePer(m, c)
         if config.dragTileToTile, config.dragTileSmall {
             let small = CGRect(x: p.x.rounded() - 150, y: p.y.rounded() - 150, width: 300, height: 300)
-            system.cancelAnimation(c.id)
+            system.cancelAnimation(c.id)   // not in mango: the port's side
             c.frame = small
             system.setFrame(c, small, size: true)
             updateBorders(animating: [c.id: small])
-            system.readFrame(c) { [weak self] actual in
+            system.readFrame(c) { [weak self] actual in   // not in mango: the port's side
                 guard let self, let actual, self.dragTile?.client === c, actual.size != small.size else { return }
                 c.frame.size = actual.size
                 self.updateBorders(animating: [c.id: c.frame])

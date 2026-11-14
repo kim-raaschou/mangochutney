@@ -69,7 +69,7 @@ final class FakeWindowSystem: MacWindowSystem {
     var closed: [ClientID] = []
     override func clientSendClose(_ c: Client) { closed.append(c.id) }
     override var pointer: CGPoint { fakePointer }
-    override var modifiers: Modifiers { fakeModifiers }
+    override func keyboardHardModifiers() -> Modifiers { fakeModifiers }
     override var mouseButtons: Int { 0 }
     override func startInput() {}
     override func watchGestures(_ on: Bool) {}
@@ -79,14 +79,7 @@ final class FakeWindowSystem: MacWindowSystem {
     var focused: [(id: ClientID, raise: Bool)] = []
     var warps: [CGPoint] = []
     override func focus(_ c: Client, raise: Bool) { focused.append((c.id, raise)) }
-    override func warp(to p: CGPoint) { warps.append(p) }
-    var fakeAnimating = false
-    var animationProgress: [Double] = [], resumedFrom: [Double] = [], letGo = 0
-    override var animationsActive: Bool { fakeAnimating }
-    override func holdAnimations() {}
-    override func setAnimationProgress(_ p: Double) { animationProgress.append(p) }
-    override func resumeAnimations(from p: Double) { resumedFrom.append(p) }
-    override func letGoAnimations() { letGo += 1 }
+    override func warp(to p: CGPoint) { warps.append(p); fakePointer = p }
     var borderSpecs: [BorderSpec] = []
     override func drawBorders(_ specs: [BorderSpec]) { borderSpecs = specs }
     var tabStrips: [TabStrip] = [], groupStrips: [TabStrip] = []
@@ -101,10 +94,10 @@ final class FakeWindowSystem: MacWindowSystem {
     override func showJumpLabels(_ labels: [(String, CGRect)], look: DecorateStyle) { jumpLabelCount = labels.count }
     override func closeJumpLabels() { jumpLabelCount = 0 }
     override func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat) { switcherTiles = tiles }
-    override func highlightSwitcher(_ tiles: [SwitcherTile]) { switcherTiles = tiles }
+    override func switcherApplyHighlight(_ tiles: [SwitcherTile]) { switcherTiles = tiles }
     override func closeSwitcherPanel() { switcherTiles = nil }
     override func showTitleMessageBar(frame: CGRect, title: String, appid: String, look: DecorateStyle) { titleMessageBar = title }
-    override func hideTitleMessageBar() { titleMessageBar = nil }
+    override func titleMessageBarHide() { titleMessageBar = nil }
     override func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) { specialDimAlpha = alpha }
     override func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }
     override func nagSpawn(_ argv: [String], input: String) { nagArgv = argv; nagInput = input }

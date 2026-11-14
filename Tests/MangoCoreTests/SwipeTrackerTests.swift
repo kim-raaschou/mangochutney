@@ -40,7 +40,10 @@ final class SwipeTrackerTests: MangoTestCase {
         r.server.config.gestureBindings = [GestureBinding(mods: [], direction: direction, fingers: s.fingers,
                                                           dispatch: Dispatch(name: "togglegaps"))]
         let before = r.server.enableGaps
-        r.server.pointerProcessSwipeEnd(s)
+        r.server.swipeDx = s.dx
+        r.server.swipeDy = s.dy
+        r.server.swipeFingers = s.fingers
+        r.server.pointerProcessSwipeEnd()
         return r.server.enableGaps != before
     }
 

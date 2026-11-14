@@ -67,7 +67,7 @@ package extension MangoServer {
         guard switcherState != nil else { return }
         switcherState = nil
         system.closeSwitcherPanel()
-        system.hideTitleMessageBar()
+        system.titleMessageBarHide()
     }
 
     func switcherCommitClient(_ c: Client?) {
@@ -106,7 +106,7 @@ package extension MangoServer {
         if fresh {
             system.showSwitcher(panel: sw.layout.panel, tiles: tiles, look: look, scale: CGFloat(sw.monitor.screen.scale))
         } else {
-            system.highlightSwitcher(tiles)
+            system.switcherApplyHighlight(tiles)
         }
         titleMessageBarRefresh(sw.monitor)
     }
@@ -132,7 +132,7 @@ package extension MangoServer {
 
     func titleMessageBarRefresh(_ m: Monitor) {
         guard drawsOverlays, let (c, box) = titleMessageBarGeometry(m), box.width > 0, box.height > 0 else {
-            system.hideTitleMessageBar()
+            system.titleMessageBarHide()
             return
         }
         system.showTitleMessageBar(frame: box, title: c.title, appid: c.appid,

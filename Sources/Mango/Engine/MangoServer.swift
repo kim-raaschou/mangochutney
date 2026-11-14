@@ -86,9 +86,15 @@ public final class MangoServer {
     var hoverResizeFloating = false
     var cursorHideTimerArmed = false
     var lastPointerActivity: CFTimeInterval = 0
-    var swipeDrive: SwipeDrive?
-    var swipeDriving: (binding: GestureBinding, monitor: Monitor, startSel: ClientID?,
-                       panFrames: [ClientID: CGRect], dragStart: CGPoint)?
+    var swipeDrive = SwipeDrive()
+    var swipeActive = false
+    var swipeLocked = false
+    var swipeHorizontal = false
+    var swipeDx = 0.0
+    var swipeDy = 0.0
+    var swipeFingers = 0
+    var gestureDriveMon: Monitor?
+    var gestureDriveActive = false
     var scrollerFocusLock = false
 
     /// The boundary, not in mango: the port's status change, which printstatus gives.
@@ -100,7 +106,7 @@ public final class MangoServer {
 
     public func setup() {
         drawsOverlays = true
-        system.prepare()
+        system.prepare()   // not in mango: the port's side
         parseConfig()
         if cliDebugLog {
             config.logLevel = .debug
@@ -109,10 +115,10 @@ public final class MangoServer {
         resetOption(initial: true)
         configWatcherUpdate()
         rebuildMonitors()
-        system.startWatching()
+        system.startWatching()   // not in mango: the port's side
         publishInputState()
-        system.startInput()
-        system.watchGestures(!config.gestureBindings.isEmpty)
+        system.startInput()   // not in mango: the port's side
+        system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side
         pointerCursorActivity()
 
         let server = IPCServer(server: self, loop: system.eventLoop, version: mangoVersion)
@@ -128,7 +134,7 @@ public final class MangoServer {
         // not in mango: the pointer shown again, as macOS keeps it hidden after mango
         if cursorHidden { cursorHidden = false; system.setCursorHidden(false) }
         system.drawBorders([])
-        system.shutdown()
+        system.shutdown()   // not in mango: the port's side
         ipc?.ipcCleanup()
         configErrorNagDestroy()
     }
@@ -179,7 +185,7 @@ public final class MangoServer {
                                      oh: CGFloat(config.specialGappoh), ov: CGFloat(config.specialGappov))
                 m.parseTagrule(config: config, clients: clientsAll)
             }
-            system.watchGestures(!config.gestureBindings.isEmpty)
+            system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side
         }
         for cmd in config.exec { system.spawnShell(cmd) }
         publishInputState()
@@ -665,9 +671,9 @@ public final class MangoServer {
         } else {
             updateBorders()
         }
-        system.restack()
+        system.restack()   // not in mango: the port's side
         if let ov = overviewState, ov.thumbnails, ov.monitor === m {
-            system.updateOverview(overlayCards(ov, focused: ov.circle ? (ov.circleFocus ?? c.id) : c.id))
+            system.updateOverview(overlayCards(ov, focused: ov.circle ? (ov.circleFocus ?? c.id) : c.id))   // not in mango: the port's side
         }
         printstatus()
     }
@@ -1097,7 +1103,7 @@ public final class MangoServer {
         switcherRemoveClient(id)
         if grab?.client === c { grab = nil }
         if dragTile?.client === c { dragTile = nil; system.showDropArea(nil, color: config.dropcolor) }
-        system.cancelAnimation(id)
+        system.cancelAnimation(id)   // not in mango: the port's side
         for m in monitors {
             for p in m.pertag {
                 p.state.scrollerState.scrollerNodeRemove(id)

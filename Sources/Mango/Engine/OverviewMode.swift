@@ -53,26 +53,26 @@ package extension MangoServer {
             for (i, c) in members.enumerated() where i < letters.count { map[letters[i]] = c.id }
             state.jump = map
         }
-        if system.canCapture {
+        if system.canCapture {   // not in mango: the port's side
             state.thumbnails = true
             let look = OverviewLook(focusColor: config.focuscolor, borderColor: config.bordercolor,
                                     jumpLook: mangoBarDecorationApplyConfig(config.jumplabeldata, mango: .mangoJumpLabel),
                                     mango: (config.rootcolor, CGFloat(config.borderpx), CGFloat(config.borderRadius)))
             overviewState = state
             clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
-            system.showOverview(overlayCards(state, focused: state.circleFocus ?? m.sel), on: m, look: look)
+            system.showOverview(overlayCards(state, focused: state.circleFocus ?? m.sel), on: m, look: look)   // not in mango: the port's side
             overviewCardSurfaceAdd(state)
             titleMessageBarRefresh(m)
             printstatus()
             return
         }
-        system.askToCapture()
+        system.askToCapture()   // not in mango: the port's side
         overviewState = state
         clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
         arrange(m)
         titleMessageBarRefresh(m)
         if jump, let map = state.jump {
-            system.whenAnimationsIdle { [weak self] in
+            system.whenAnimationsIdle { [weak self] in   // not in mango: the port's side
                 guard let self, var ov = self.overviewState, ov.monitor === m, ov.jump != nil, !ov.labelsShown else { return }
                 let look = self.mangoBarDecorationApplyConfig(self.config.jumplabeldata, mango: .mangoJumpLabel)
                 self.system.showJumpLabels(map.compactMap { label, id in ov.cards[id].map { (label, $0) } }, look: look)
@@ -106,7 +106,7 @@ package extension MangoServer {
     }
 
     func overviewCardSurfaceAdd(_ ov: OverviewState) {
-        if ov.thumbnails { system.captureOverviewCards(scale: CGFloat(ov.monitor.screen.scale)) }
+        if ov.thumbnails { system.captureOverviewCards(scale: CGFloat(ov.monitor.screen.scale)) }   // not in mango: the port's side
     }
 
 
@@ -133,7 +133,7 @@ package extension MangoServer {
         overviewState = ov
         titleMessageBarRefresh(ov.monitor)
         if ov.thumbnails {
-            system.updateOverview(overlayCards(ov, focused: next))
+            system.updateOverview(overlayCards(ov, focused: next))   // not in mango: the port's side
 // not in mango: only selected; the real window stays under the pictures
             if let c = clientByIdAll(next) { clientFocus(c, raise: false) }
             return
@@ -188,7 +188,7 @@ package extension MangoServer {
         guard let ov = overviewState else { return }
         if ov.labelsShown { system.closeJumpLabels() }
         if ov.thumbnails { system.closeOverview() }
-        if ov.circle { system.hideTitleMessageBar() }
+        if ov.circle { system.titleMessageBarHide() }
         overviewState = nil
         let m = ov.monitor
         let sel = select ?? m.sel.flatMap { clientByIdAll($0) }

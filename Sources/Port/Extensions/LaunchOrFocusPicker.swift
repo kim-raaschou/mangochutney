@@ -49,7 +49,7 @@ final class LaunchOrFocusPicker {
 
     func close(_ server: MangoServer) {
         panel?.close()
-        if panel != nil { server.system.hideTitleMessageBar() }
+        if panel != nil { server.system.titleMessageBarHide() }
         panel = nil
         tileFrames = [:]
         guard app != nil else { return }
@@ -113,7 +113,7 @@ final class LaunchOrFocusPicker {
         guard let c = highlighted.flatMap({ server.clientByIdAll($0) }),
               let box = SwitcherLayout.titleMessageBarGeometry(below: panelFrame, height: server.config.titleMessageBarHeight,
                                                                gap: server.config.titleMessageBarGap) else {
-            return server.system.hideTitleMessageBar()
+            return server.system.titleMessageBarHide()
         }
         server.system.showTitleMessageBar(frame: box, title: c.title, appid: c.appid,
                                           look: server.config.titleMessageBardata.setValueDefault(from: .mangoTitleMessageBar))

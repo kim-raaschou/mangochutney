@@ -143,7 +143,7 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     func minimizedByMacOS(_ c: Client, _ minimized: Bool) {
         if minimized && c.ignoreMinimize { goAway(c, .minimized); return }
-        if minimized { unminimize(c) }
+        if minimized { clientSetMinimized(c, false) }
         server.handleClientRequestMinimize(c, minimized)
     }
 

@@ -411,7 +411,7 @@ package struct ParserState {
             return
 
         case "switchbind":
-            note(file, line, .noEffect, key, ConfigParser.port?.optionNote(key, applied: false)?.1 ?? "")
+            note(file, line, .noEffect, key, ConfigParser.port?.optionNote(key, applied: false)?.1 ?? "")   // not in mango: the port's side
             return
 
         case "window_rule", "window_rule_once":
@@ -419,7 +419,7 @@ package struct ParserState {
             if keep { config.windowRules.append(rule) }
             for p in problems { recordConfigLineError(file, line, p) }
             for (field, _) in RuleParser.tokens(value) {
-                if let (kind, n) = ConfigParser.port?.windowRuleNote(field) { note(file, line, kind, "window_rule \(field)", n) }
+                if let (kind, n) = ConfigParser.port?.windowRuleNote(field) { note(file, line, kind, "window_rule \(field)", n) }   // not in mango: the port's side
             }
             return
 
@@ -448,9 +448,9 @@ package struct ParserState {
 
         switch ConfigOptions.parseOption(key: key, value: value, to: &config) {
         case .applied:
-            if let (kind, n) = ConfigParser.port?.optionNote(key, applied: true) { note(file, line, kind, key, n) }
+            if let (kind, n) = ConfigParser.port?.optionNote(key, applied: true) { note(file, line, kind, key, n) }   // not in mango: the port's side
         case .ignored:
-            if let (kind, n) = ConfigParser.port?.optionNote(key, applied: false) { note(file, line, kind, key, n) }
+            if let (kind, n) = ConfigParser.port?.optionNote(key, applied: false) { note(file, line, kind, key, n) }   // not in mango: the port's side
         case .unknown: recordConfigLineError(file, line, "Unknown keyword: \(mangoHighlight(key))")
         case .invalid(let msg): recordConfigLineError(file, line, msg)
         }

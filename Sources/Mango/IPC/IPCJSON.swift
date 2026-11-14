@@ -248,7 +248,7 @@ package extension MangoServer {
             ("active_tags", monitorActiveTags(m)),
             ("active_client", monitorActiveClient(m)),
             ("keymode", .string(keyMode)),
-            ("keyboardlayout", .string(system.keyboardLayout)),
+            ("keyboardlayout", .string(system.ipcGetLayoutStr())),
         ])
     }
 
@@ -281,7 +281,7 @@ package extension MangoServer {
         case .keymode:
             return .object([("keymode", .string(keyMode))])
         case .keyboardLayout:
-            return .object([("layout", .string(system.keyboardLayout))])
+            return .object([("layout", .string(system.ipcGetLayoutStr()))])
         }
     }
 }

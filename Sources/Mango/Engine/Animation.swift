@@ -18,6 +18,16 @@ package struct ClientAnimation: Equatable {
 }
 
 package extension MangoServer {
+    func clientAnimationsEnabled(_ c: Client?) -> Bool {
+        if let c, c.noAnimation { return false }
+        if config.animations { return true }
+        return clientGestureDriven(c)
+    }
+
+    func clientGestureDriven(_ c: Client?) -> Bool {
+        gestureDriveActive && c != nil && c?.mon === gestureDriveMon
+    }
+
     // not in mango: resize's choice of animation, which the port asks before it moves the window
     func clientAnimation(_ c: Client, to target: CGRect, _ anim: ArrangeAnimation, current: CGRect,
                          shown: Bool) -> ClientAnimation {
@@ -30,7 +40,7 @@ package extension MangoServer {
             a.action = .overview
             a.durationMs = config.animationDurationTag
             a.curve = config.animationCurveTag
-            if c.id != c.mon?.sel { a.from = setOverviewEnterAnimation(target) }
+            if clientGestureDriven(c) || c.id != c.mon?.sel { a.from = setOverviewEnterAnimation(c, target, current: current) }
         } else if c.scratchpadShown && c.scratchpadTagin {
             c.scratchpadTagin = false
             a.action = .tag
@@ -63,7 +73,8 @@ package extension MangoServer {
             a.action = .none
             a.from = target
         }
-        if !config.animations || c.noAnimation || grab?.client === c { a.durationMs = 0 }
+        if !clientAnimationsEnabled(c) || grab?.client === c { a.durationMs = 0 }
+        c.action = a.action   // not in mango: c->animation.action as resize leaves it
         return a
     }
 
@@ -114,8 +125,14 @@ package extension MangoServer {
         return nil
     }
 
-/// mango set_overview_enter_animation (animation/client.c). Not in mango: no gesture-driven start; the port's live gesture moves the cards.
-    func setOverviewEnterAnimation(_ target: CGRect) -> CGRect {
+/// mango set_overview_enter_animation (animation/client.c).
+    func setOverviewEnterAnimation(_ c: Client, _ target: CGRect, current: CGRect) -> CGRect {
+        if clientGestureDriven(c) {
+            var start = c.overviewBackupGeom ?? .zero
+            if start.width <= 0 || start.height <= 0 { start = current }
+            return start
+        }
+
         let w = (target.width * 1.2).rounded(.towardZero), h = (target.height * 1.2).rounded(.towardZero)
         return CGRect(x: target.minX + ((target.width - w) / 2).rounded(.towardZero),
                       y: target.minY + ((target.height - h) / 2).rounded(.towardZero), width: w, height: h)
@@ -123,7 +140,7 @@ package extension MangoServer {
 
     func setArrangeHidden(_ m: Monitor, _ c: Client, _ anim: ArrangeAnimation) {
         if c.tagouting { return }
-        let animates = !c.isPendingOpenAnimation && !c.parked && config.animations && !c.noAnimation && grab?.client !== c
+        let animates = !c.isPendingOpenAnimation && !c.parked && clientAnimationsEnabled(c) && grab?.client !== c
         let special = c.tags & TagMask.special != 0
         if !special && c.isInScratchpad && c.isMinimized {
             if animates {

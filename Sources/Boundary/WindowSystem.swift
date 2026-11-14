@@ -19,10 +19,10 @@ package protocol WindowSystem: AnyObject {
     func showJumpLabels(_ labels: [(String, CGRect)], look: DecorateStyle)
     func closeJumpLabels()
     func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat)
-    func highlightSwitcher(_ tiles: [SwitcherTile])
+    func switcherApplyHighlight(_ tiles: [SwitcherTile])
     func closeSwitcherPanel()
     func showTitleMessageBar(frame: CGRect, title: String, appid: String, look: DecorateStyle)
-    func hideTitleMessageBar()
+    func titleMessageBarHide()
     func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>)
     func showDropArea(_ area: CGRect?, color: RGBA)
     func nagSpawn(_ argv: [String], input: String)
@@ -31,7 +31,7 @@ package protocol WindowSystem: AnyObject {
     func setCursor(_ name: String?)
     func surfaceAt(_ p: CGPoint) -> ClientID?
     func raise(_ c: Client)
-    func unminimize(_ c: Client)
+    func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool)
     func prepare()
     func startWatching()
     func shutdown()
@@ -43,18 +43,15 @@ package protocol WindowSystem: AnyObject {
     func cancelAnimation(_ id: ClientID)
     func animatedFrame(_ id: ClientID) -> CGRect?
     func whenAnimationsIdle(_ body: @escaping () -> Void)
-    var animationsActive: Bool { get }
-    func holdAnimations()
-    func setAnimationProgress(_ p: Double)
-    func resumeAnimations(from p: Double)
-    func letGoAnimations()
+    func clientAnimationRunning(_ c: Client) -> Bool
+    func clientAnimationSetProgress(_ c: Client, _ p: Double)
+    func clientAnimationResume(_ c: Client, _ remaining: Double)
     var canCapture: Bool { get }
     func askToCapture()
-    var modifiers: Modifiers { get }
+    func keyboardHardModifiers() -> Modifiers
     var screens: [Screen] { get }
-    func allWindowIDs() -> Set<ClientID>
     func setKeyboardOptions(_ options: String)
-    var keyboardLayout: String { get }
+    func ipcGetLayoutStr() -> String
     var mouseButtons: Int { get }
     func startInput()
     func watchGestures(_ on: Bool)
@@ -65,8 +62,6 @@ package protocol WindowSystem: AnyObject {
     func resize(_ c: Client, to frame: CGRect, _ anim: ArrangeAnimation, cover: CGRect?, now: CGRect?)
     func hide(_ c: Client)
     func hide(_ c: Client, tagout: TagoutAnimation)
-    func keepHidden(_ c: Client, seenAt actual: CGRect?)
-    func keepPlaced(_ c: Client, at target: CGRect)
     func settle(_ c: Client)
     func setFrame(_ c: Client, _ frame: CGRect, size: Bool)
     func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void)

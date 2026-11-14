@@ -2,75 +2,193 @@ import XCTest
 @testable import Mango
 @testable import Port
 
+/// mango's swipe drive (trackpad.c): the fingers drive the transition the binding starts.
 @MainActor
 final class SwipeDriveTests: MangoTestCase {
-    func s(_ dx: Double, _ dy: Double = 0) -> Swipe { .init(dx: dx, dy: dy, fingers: 4) }
-
-    func rig(_ name: String = "viewtoright", _ direction: Direction = .right, minSpeed: Double = 50) -> (EngineRig, FakeWindowSystem) {
+    func rig(_ name: String = "viewtoright", _ direction: Direction? = .right, args: [String] = [],
+             minSpeed: Double = 50, windows: Bool = true) -> EngineRig {
         let r = EngineRig()
-        r.map(1)
+        if windows {
+            r.map(1)
+            r.map(2).tags = 2
+            r.server.arrange(r.monitor, .none)
+            r.settle(0.2)
+        }
         r.server.config.gestureSwipeMinSpeedToForce = minSpeed
         r.server.config.gestureBindings = [GestureBinding(mods: [], direction: direction, fingers: 4,
-                                                          dispatch: Dispatch(name: name))]
-        let fake = r.server.system as! FakeWindowSystem
-        fake.fakeAnimating = true
-        return (r, fake)
+                                                          dispatch: Dispatch(name: name, args: args))]
+        return r
     }
 
-    func update(_ r: EngineRig, _ sw: Swipe, _ t: UInt32) { r.server.handleCursorSwipeUpdate(sw, time: t) }
+    func begin(_ r: EngineRig) { r.server.handleCursorSwipeBegin(4) }
+    func move(_ r: EngineRig, _ dx: Double, _ dy: Double = 0, _ t: UInt32) {
+        r.server.handleCursorSwipeUpdate(Swipe(dx: dx, dy: dy, fingers: 4), time: t)
+    }
+    func end(_ r: EngineRig) { r.server.handleCursorSwipeEnd() }
+    func viewed(_ r: EngineRig) -> UInt32 { r.monitor.tagset[r.monitor.seltags] }
+
+    /// Slowly to `total` along x, 10 units a step, 100 ms apart.
+    func slowly(_ r: EngineRig, to total: Double) {
+        var x = 20.0
+        move(r, 20, 0, 0)
+        var t: UInt32 = 1000
+        while x < total { move(r, 10, 0, t); x += 10; t += 100 }
+    }
 
     func testItLocksAfterSixteenUnitsOnTheLongerAxis() {
-        let (r, _) = rig()
-        update(r, s(10, 5), 0)
-        XCTAssertEqual(r.server.swipeDrive?.locked, false)
-        update(r, s(20, 5), 10)
-        XCTAssertEqual(r.server.swipeDrive?.locked, true)
-        XCTAssertEqual(r.server.swipeDrive?.horizontal, true)
-        XCTAssertNotNil(r.server.swipeDriving, "to the right: the binding drives")
-        let (l, _) = rig()
-        update(l, s(-20), 0)
-        XCTAssertNil(l.server.swipeDriving, "to the left: no binding")
+        let r = rig()
+        begin(r)
+        move(r, 10, 5, 0)
+        XCTAssertFalse(r.server.swipeLocked)
+        move(r, 10, 0, 10)
+        XCTAssertTrue(r.server.swipeLocked)
+        XCTAssertTrue(r.server.swipeHorizontal)
+        XCTAssertTrue(r.server.swipeDrive.active, "to the right: the binding drives")
+        XCTAssertTrue(r.server.gestureDriveActive)
+        let l = rig()
+        begin(l)
+        move(l, -20, 0, 0)
+        XCTAssertFalse(l.server.swipeDrive.consumed, "to the left: no binding")
+        let v = rig()
+        begin(v)
+        move(v, 0, -20, 0)
+        XCTAssertFalse(v.server.swipeHorizontal)
     }
 
-    func testProgressAndUndo() {
-        let (r, fake) = rig()
-        update(r, s(20), 0)
-        update(r, s(20), 10)
-        XCTAssertEqual(fake.animationProgress.last ?? -1, 16.0 / 300, accuracy: 0.001)
-        for (i, x) in stride(from: 30.0, through: 120, by: 10).enumerated() { update(r, s(x), UInt32(1000 + i * 100)) }
-        r.server.handleCursorSwipeEnd(s(120))
-        XCTAssertEqual(fake.letGo, 1, "a third of the way, slowly: undone")
-        XCTAssertTrue(fake.resumedFrom.isEmpty)
+    func testTheTransitionFollowsTheFingersInAStraightLine() {
+        let r = rig()
+        begin(r)
+        move(r, 20, 0, 0)
+        let start = r.app.frames[2]!
+        move(r, 134, 0, 10)   // axis 154: half of the 300 from the base at 4
+        let half = r.app.frames[2]!
+        move(r, 150, 0, 20)
+        let to = r.app.frames[2]!
+        XCTAssertNotEqual(start, to)
+        XCTAssertEqual(half, CGRect.lerp(start, to, 0.5).rounded(), "client_animation_set_progress is linear")
     }
 
-    func testPastHalfWayFinishes() {
-        let (r, fake) = rig()
-        update(r, s(20), 0)
-        for (i, x) in stride(from: 30.0, through: 120, by: 10).enumerated() { update(r, s(x), UInt32(1000 + i * 100)) }
-        update(r, s(200), 3000)
-        r.server.handleCursorSwipeEnd(s(200))
-        XCTAssertEqual(fake.resumedFrom.count, 1, "past half way: finished")
+    func testHeldStillWhileTheFingersRest() {
+        let r = rig()
+        begin(r)
+        move(r, 20, 0, 0)
+        move(r, 100, 0, 10)
+        let f = r.app.frames[2]
+        r.settle(0.5)
+        XCTAssertEqual(r.app.frames[2], f, "a gesture-driven client is not drawn on")
     }
 
-    func testOverviewIsAlwaysFinished() {
-        let (r, fake) = rig("toggleoverview", .up)
-        update(r, s(0, -20), 0)
-        update(r, s(0, -30), 1000)
-        r.server.handleCursorSwipeEnd(s(0, -30))
-        XCTAssertEqual(fake.resumedFrom.count, 1)
+    func testShortOfHalfWaySlowlyItIsUndone() {
+        let r = rig()
+        begin(r)
+        slowly(r, to: 120)
+        end(r)
+        XCTAssertEqual(viewed(r), 1, "the opposite view")
+        XCTAssertFalse(r.server.gestureDriveActive)
+    }
+
+    func testPastHalfWayItFinishesAtOnceWithAnimationsOff() {
+        let r = rig()
+        let c = r.server.clientByIdAll(2)!
+        begin(r)
+        slowly(r, to: 200)
+        end(r)
+        XCTAssertEqual(viewed(r), 2)
+        XCTAssertEqual(r.app.frames[2], c.geom, "no animations: at its end at once")
+    }
+
+    func testWithAnimationsOnTheRestRunsFromWhereItIs() {
+        let r = rig()
+        r.server.config.animations = true
+        let c = r.server.clientByIdAll(2)!
+        begin(r)
+        slowly(r, to: 200)
+        let at = r.app.frames[2]
+        end(r)
+        XCTAssertEqual(r.app.frames[2], at, "on from where the fingers left it")
+        r.settle(0.6)
+        XCTAssertEqual(r.app.frames[2], c.geom)
     }
 
     func testAFlickFinishesShortOfTheRatio() {
-        let (r, fake) = rig(minSpeed: 1000)
-        update(r, s(20), 0)
-        update(r, s(60), 50)
-        r.server.handleCursorSwipeEnd(s(60))
-        XCTAssertEqual(fake.resumedFrom.count, 1, "within 200 ms: a flick")
+        let r = rig(minSpeed: 1000)
+        begin(r)
+        move(r, 20, 0, 0)
+        move(r, 40, 0, 50)
+        end(r)
+        XCTAssertEqual(viewed(r), 2, "within 200 ms: a flick")
     }
 
-    func testAVerticalSwipeLocksVertically() {
-        let (r, _) = rig()
-        update(r, s(0, -20), 0)
-        XCTAssertEqual(r.server.swipeDrive?.horizontal, false)
+    func testOverviewIsAlwaysFinished() {
+        let r = rig("toggleoverview", .up)
+        begin(r)
+        move(r, 0, -20, 0)
+        move(r, 0, -10, 1000)
+        end(r)
+        XCTAssertNotNil(r.server.overviewState)
+    }
+
+    func testFiredWithNoTransitionItIsNotFiredAgainAtTheEnd() {
+        let r = rig(windows: false)
+        begin(r)
+        move(r, 20, 0, 0)
+        move(r, 200, 0, 10)
+        XCTAssertFalse(r.server.gestureDriveActive, "unfrozen at once")
+        end(r)
+        XCTAssertEqual(viewed(r), 2, "once, not again on release")
+    }
+
+    func testADragMovesTheWindowWithTheFingers() {
+        let r = rig("moveresize", nil, args: ["curmove"])
+        let c = r.server.clientByIdAll(1)!
+        _ = r.server.dispatch(Dispatch(name: "togglefloating"), target: c)
+        r.server.clientFocus(c)
+        r.settle(0.2)
+        let fake = r.server.system as! FakeWindowSystem
+        fake.fakePointer = c.frame.center
+        let before = c.frame
+        begin(r)
+        move(r, 20, 0, 0)
+        XCTAssertTrue(r.server.trackpadGestureDragActive())
+        move(r, 30, 0, 10)
+        let dx = 30 * r.monitor.screen.workArea.width / 300
+        XCTAssertEqual(c.frame.minX - before.minX, dx, accuracy: 1)
+        end(r)
+        XCTAssertNil(r.server.grab)
+        XCTAssertFalse(r.server.trackpadGestureDragActive())
+    }
+
+    func testADragWithNoDistanceDoesNotMove() {
+        let r = rig("moveresize", nil, args: ["curmove"])
+        r.server.config.gestureSwipeDistance = 0
+        let c = r.server.clientByIdAll(1)!
+        _ = r.server.dispatch(Dispatch(name: "togglefloating"), target: c)
+        r.settle(0.2)
+        let before = c.frame
+        begin(r)
+        move(r, 20, 0, 0)
+        move(r, 30, 0, 10)
+        XCTAssertEqual(c.frame, before)
+        end(r)
+    }
+
+    func testAPanInTheScrollerFocusesTheWindowItBrings() {
+        let r = EngineRig()
+        r.monitor.current.layout = .scroller
+        r.map(1); r.map(2); r.map(3)
+        r.server.clientFocus(r.server.clientByIdAll(2))
+        r.server.arrange(r.monitor, .none)
+        r.settle(0.2)
+        r.server.config.gestureBindings = [GestureBinding(mods: [], direction: nil, fingers: 4,
+                                                          dispatch: Dispatch(name: "focusdir", args: ["right"]))]
+        let sel = r.monitor.sel
+        begin(r)
+        move(r, -20, 0, 0)
+        XCTAssertTrue(r.server.swipeDrive.pan)
+        XCTAssertTrue(r.server.gestureDriveActive, "mango freezes for a pan too")
+        move(r, -150, 0, 1000)
+        end(r)
+        XCTAssertNotEqual(r.monitor.sel, sel, "the window panned to the middle")
+        XCTAssertFalse(r.server.gestureDriveActive)
     }
 }

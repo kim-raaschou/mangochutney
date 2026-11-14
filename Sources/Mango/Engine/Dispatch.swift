@@ -4,7 +4,7 @@ package extension MangoServer {
     @discardableResult
     public func dispatch(_ d: Dispatch, target: Client? = nil, rescan: Bool = true) -> String? {
         guard Dispatch.isKnown(d.name) else { return "unknown function" }
-        defer { if rescan { system.rescan() } }
+        defer { if rescan { system.rescan() } }   // not in mango: the port's side
         let c = target ?? focused
         let m: Monitor = c?.mon ?? selectedMonitor
         let a0 = d.arg(0), a1 = d.arg(1)
@@ -318,7 +318,7 @@ package extension MangoServer {
             }
             if r == nil { r = clients.first { $0.isMinimized && !$0.isNamedScratchpad } }
             guard let r else { return nil }
-            if !r.ignoreMinimize { system.unminimize(r) }   // not in mango: macOS's own minimize undone
+            if !r.ignoreMinimize { system.clientSetMinimized(r, false) }   // not in mango: macOS's own minimize undone
             let isFloatingBeforeScratchpad = r.isFloatingBeforeScratchpad
             r.isInScratchpad = false
             r.isFloatingBeforeScratchpad = false
@@ -1806,7 +1806,7 @@ package extension MangoServer {
 
     func showHideClient(_ c: Client) {
         guard let m = c.mon else { return }
-        if !c.ignoreMinimize { system.unminimize(c) }   // not in mango: macOS's own minimize undone
+        if !c.ignoreMinimize { system.clientSetMinimized(c, false) }   // not in mango: macOS's own minimize undone
         setSizePer(m, c)
         let target = getTagsFirstTag(c.oldTags)
         if !c.isInScratchpad {

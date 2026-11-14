@@ -68,6 +68,7 @@ class MacWindowSystem: WindowSystem {
     var switcherPanel: SwitcherPanel?
     var titleBar: TitleMessageBar?
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
+    var swipeSent: Swipe?
     var dropArea: DropAreaView?
     let nagDisplay = Nag()
     let tap = EventTap()
@@ -95,6 +96,10 @@ class MacWindowSystem: WindowSystem {
     init(_ server: MangoServer) {
         self.server = server
         server.onStateChange = { [unowned self] in statusChanged() }
+        animator.frozen = { [weak server] id in
+            guard let server, let c = server.clientByIdAll(id) else { return false }
+            return server.clientGestureDriven(c)
+        }
         tabBars.onSelect = { [weak self] id in self?.barPress(id, isTab: true, right: false, onClose: false) }
         tabBars.onRightClick = { [weak self] id in self?.barPress(id, isTab: true, right: true, onClose: false) }
         groupBars.onSelect = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: false) }
@@ -146,7 +151,7 @@ class MacWindowSystem: WindowSystem {
     func restack() { restack(pid: server.focused?.pid) }
 
     func barPress(_ id: ClientID, isTab: Bool, right: Bool, onClose: Bool) {
-        server.pointerProcessButtonPress(button: right ? 1 : 0, pressed: true, at: pointer, mods: modifiers,
+        server.pointerProcessButtonPress(button: right ? 1 : 0, pressed: true, at: pointer, mods: keyboardHardModifiers(),
                                          bar: BarButton(client: id, isTab: isTab, onClose: onClose))
     }
 
@@ -243,7 +248,7 @@ class MacWindowSystem: WindowSystem {
                                       scale: scale)
     }
 
-    func highlightSwitcher(_ tiles: [SwitcherTile]) { switcherPanel?.highlight(tiles.map(Self.tile)) }
+    func switcherApplyHighlight(_ tiles: [SwitcherTile]) { switcherPanel?.highlight(tiles.map(Self.tile)) }
 
     func closeSwitcherPanel() {
         switcherPanel?.close()
@@ -260,7 +265,7 @@ class MacWindowSystem: WindowSystem {
                        style: MacOSAppearance.bar(look, set: server.config.titleMessageBardata, server.config))
     }
 
-    func hideTitleMessageBar() { titleBar?.hide() }
+    func titleMessageBarHide() { titleBar?.hide() }
 
     func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) {
         let id = m.screen.displayID
@@ -304,7 +309,7 @@ class MacWindowSystem: WindowSystem {
 
     var mouseButtons: Int { Int(NSEvent.pressedMouseButtons) }
 
-    var keyboardLayout: String { KeyNames.currentLayoutName() }
+    func ipcGetLayoutStr() -> String { KeyNames.currentLayoutName() }
 
     var keyMappings: [KeyboardOptions.Mapping] = []
     var userKeyMappings: [KeyboardOptions.Mapping]?
@@ -427,17 +432,44 @@ class MacWindowSystem: WindowSystem {
     func cancelAnimation(_ id: ClientID) { animator.cancel(id) }
     func animatedFrame(_ id: ClientID) -> CGRect? { animator.shownRect(id) }
     func whenAnimationsIdle(_ body: @escaping () -> Void) { animator.whenIdle(body) }
-    var animationsActive: Bool { animator.isActive }
-    func holdAnimations() { animator.hold() }
-    func setAnimationProgress(_ p: Double) { animator.setProgress(p) }
-    func resumeAnimations(from p: Double) { animator.resume(from: p) }
-    func letGoAnimations() { animator.letGo() }
+    /// mango's c->animation.running && c->need_output_flush.
+    func clientAnimationRunning(_ c: Client) -> Bool { animator.isAnimating(c.id) }
+
+    func clientAnimationSetProgress(_ c: Client, _ p: Double) {
+        animator.setProgress(c.id, min(1, max(0, p)))
+        c.isPendingOpenAnimation = false
+    }
+
+    func clientAnimationResume(_ c: Client, _ remaining: Double) {
+        guard animator.isAnimating(c.id) else { return }
+        if !server.config.animations || remaining < 0.05 {
+            c.action = .move
+            c.overining = false
+            animator.finish(c.id)
+            return
+        }
+        animator.restart(c.id)
+    }
 
     var screens: [Screen] { Screens.all() }
 
     func windowServerFrame(_ id: ClientID) -> CGRect? {
         if let windowServerOverride { return windowServerOverride(id) }
         return AppWorker.windowServerFrame(id)
+    }
+
+    /// macOS's tracker gives the swipe so far and no begin; mango's handlers get a begin and each step.
+    func swipeUpdate(_ s: Swipe, _ time: UInt32) {
+        let sent = swipeSent ?? Swipe(dx: 0, dy: 0, fingers: s.fingers)
+        if swipeSent == nil { server.handleCursorSwipeBegin(s.fingers) }
+        swipeSent = s
+        server.handleCursorSwipeUpdate(Swipe(dx: s.dx - sent.dx, dy: s.dy - sent.dy, fingers: s.fingers), time: time)
+    }
+
+    func swipeEnd() {
+        guard swipeSent != nil else { return }
+        swipeSent = nil
+        server.handleCursorSwipeEnd()
     }
 
     func startInput() {
@@ -450,11 +482,11 @@ class MacWindowSystem: WindowSystem {
         tap.onMouseMoved = { p in r.mouseMoved(p) }
         tap.onScroll = { ev in r.scroll(ev) }
         if !tap.start() { wlrLog(.error, "could not create event tap (Accessibility permission missing?)") }
-        gestures.onEvent = { [weak server] event, time in
+        gestures.onEvent = { [weak self] event, time in
             MainActor.assumeIsolated {
                 switch event {
-                case .update(let s): server?.handleCursorSwipeUpdate(s, time: time)
-                case .end(let s): server?.handleCursorSwipeEnd(s)
+                case .update(let s): self?.swipeUpdate(s, time)
+                case .end: self?.swipeEnd()
                 }
             }
         }
@@ -519,15 +551,15 @@ class MacWindowSystem: WindowSystem {
 
     func raise(_ c: Client) { writer(for: c.pid)?.raise(c.element) }
 
-    func unminimize(_ c: Client) {
-        writer(for: c.pid)?.async { [el = c.element] in el.setMinimized(false) }
+    func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool) {
+        writer(for: c.pid)?.async { [el = c.element] in el.setMinimized(minimizeWindow) }
     }
 
     var canCapture: Bool { WindowSnapshot.hasPermission }
 
     func askToCapture() { Permissions.shared.askForCapture() }
 
-    var modifiers: Modifiers {
+    func keyboardHardModifiers() -> Modifiers {
         KeyboardOptions.hyperMods(Modifiers(cgFlags: CGEventSource.flagsState(.combinedSessionState)),
                                   hyper: KeyboardOptions.hyperSet(server.config), keyHeld: router.hyperKeyHeld)
     }

@@ -13,6 +13,7 @@ public final class Animator {
         var duration: TimeInterval
         var curve: BezierCurve
         var unseen = false
+        var current: CGRect?
         var completion: (() -> Void)?
         var generation: Int
     }
@@ -32,33 +33,38 @@ public final class Animator {
 
     public func isAnimating(_ id: CGWindowID) -> Bool { jobs[id] != nil }
 
-    public private(set) var holding = false
+    /// The jobs a gesture holds still: mango's client_draw_frame skips a gesture-driven client.
+    public var frozen: ((CGWindowID) -> Bool)?
 
-    public func hold() { holding = true }
+    /// mango client_animation_set_progress: a straight line from where it started to where it goes.
+    public func setProgress(_ id: CGWindowID, _ p: Double) {
+        guard let job = jobs[id], !job.unseen else { return }
+        let rect = CGRect.lerp(job.from, job.to, CGFloat(p)).rounded()
+        jobs[id]?.current = rect
+        job.queue.setFrame(job.element, id: id, frame: rect, setSize: job.from.size != job.to.size,
+                           animating: job.from.size != job.to.size,
+                           written: reporter(id, job.generation, final: false))
+    }
 
-    public func setProgress(_ p: Double) {
-        guard holding else { return }
-        for (id, job) in jobs where !job.unseen {
-            let rect = CGRect.lerp(job.from, job.to, CGFloat(job.curve.findAnimationCurveAt(at: p))).rounded()
-            job.queue.setFrame(job.element, id: id, frame: rect, setSize: job.from.size != job.to.size,
-                               animating: job.from.size != job.to.size,
-                               written: reporter(id, job.generation, final: false))
+    /// mango client_animation_resume's restart: on from where it is, over the whole duration.
+    public func restart(_ id: CGWindowID) {
+        guard let job = jobs[id] else { return }
+        jobs[id]?.from = job.current ?? job.from
+        jobs[id]?.start = CACurrentMediaTime()
+        ensureTimer()
+    }
+
+    /// mango client_animation_resume's snap: at its end at once.
+    public func finish(_ id: CGWindowID) {
+        guard let job = jobs.removeValue(forKey: id) else { return }
+        job.queue.setFrame(job.element, id: id, frame: job.to, setSize: true, animating: false,
+                           written: reporter(id, job.generation, final: true))
+        job.completion?()
+        if jobs.isEmpty {
+            link?.invalidate(); link = nil
+            timer?.cancel(); timer = nil
+            flushIdleWaitersLater()
         }
-    }
-
-    public func resume(from p: Double) {
-        guard holding else { return }
-        holding = false
-        let now = CACurrentMediaTime()
-        for id in jobs.keys { jobs[id]!.start = now - p * jobs[id]!.duration }
-        if !jobs.isEmpty { ensureTimer() }
-    }
-
-    public func letGo() {
-        guard holding else { return }
-        holding = false
-        for id in jobs.keys { jobs[id]!.start = 0 }
-        if !jobs.isEmpty { ensureTimer() }
     }
     public var isActive: Bool { !jobs.isEmpty }
     private var idleWaiters: [() -> Void] = []
@@ -190,10 +196,10 @@ public final class Animator {
     }
 
     private func tick() {
-        if holding { return }
         let now = CACurrentMediaTime()
         var finished: [CGWindowID] = []
         for (id, job) in jobs {
+            if frozen?(id) == true { continue }
             let t = min(1, (now - job.start) / job.duration)
             if job.unseen && t < 1 { continue }
             let f = CGFloat(job.curve.findAnimationCurveAt(at: t))

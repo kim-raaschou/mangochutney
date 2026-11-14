@@ -56,7 +56,7 @@ package extension MangoServer {
             keys.append(GlobalKey(mods: mods, keyName: name, pid: target.pid))
         }
         publishedGlobalKeys = !keys.isEmpty
-        system.publishGlobalKeys(keys)
+        system.publishGlobalKeys(keys)   // not in mango: the port's side
     }
 
     // not in mango: what the port's event-tap thread decided (Keyboard.handleKeyboardKey), on the main thread
@@ -98,7 +98,7 @@ package extension MangoServer {
         return vis.first { clientGeom($0).contains(p) }
     }
 
-    /// Not in mango: the surface of mango's xytonode; the border is a node, not a surface.
+    /// Not in mango: the surface of mango's node_at_point; the border is a node, not a surface.
     func surfaceAt(_ c: Client?, _ p: CGPoint) -> ClientID? {
         guard let c, c.frame.contains(p) else { return nil }
         return system.surfaceAt(p)
@@ -116,6 +116,7 @@ package extension MangoServer {
     func pointerProcessButtonPress(button: Int, pressed: Bool, at p: CGPoint, mods: Modifiers,
                                    bar: BarButton? = nil, borderResizeTaken: Bool = true) -> Bool {
         pointerCursorActivity()
+        if trackpadGestureDragActive() { return true }
         if pressed {
             if let m = monitorAtPoint(p) { selectedMonitor = m }
             if let sw = switcherState, button == 0 || button == 1 {
@@ -181,7 +182,7 @@ package extension MangoServer {
     func pointerBeginMoveResize(_ c: Client?, _ mode: Grab.Mode, at p: CGPoint, edge: WlrEdges = []) -> Bool {
         guard grab == nil else { return false }
         guard let c, !c.isFullscreen, !c.isMaximizeScreen else { return false }
-        system.cancelAnimation(c.id)
+        system.cancelAnimation(c.id)   // not in mango: the port's side
         if mode == .move && !c.isFloating { clientBeginDragFloat(c, at: p) }
         let start = c.frame
         var g = Grab(client: c, mode: mode, startMouse: p, startFrame: start)
@@ -236,7 +237,7 @@ package extension MangoServer {
     func pointerEndGrabClient(_ g: Grab, at p: CGPoint, followPointer: Bool = true) {
         let c = g.client
         system.grabEnded(c)   // not in mango: the port's side
-        defer { system.settle(c) }
+        defer { system.settle(c) }   // not in mango: the port's side
         guard let m = c.mon else { grab = nil; return }
         let moved = p != g.grabPointer
         /* A plain click on a resize border must not snap the window; every other
@@ -479,6 +480,11 @@ package extension MangoServer {
         !c.isFloating && !c.isMinimized && !c.isMaximizeScreen && !c.isFullscreen && !c.isUnglobal
     }
 
+    /// mango ISSCROLLTILED (client.h).
+    static func isScrollTiled(_ c: Client) -> Bool {
+        !c.isFloating && !c.isMinimized && !c.isUnglobal
+    }
+
     func clientResizeEdgeAt(_ c: Client, _ surface: ClientID?, _ x: CGFloat, _ y: CGFloat) -> WlrEdges {
         if c.parked { return [] }   // not in mango: c->scene->node.enabled is the port's parked
         if c.isFullscreen || c.isMaximizeScreen || c.overviewIsMaximizeScreenBak || c.overviewIsFullscreenBak { return [] }
@@ -550,7 +556,7 @@ package extension MangoServer {
 
     @discardableResult
     func fireGestureMotion(_ dir: Direction, _ fingers: Int) -> Bool {
-        let mods = system.modifiers.subtracting(.fn)
+        let mods = system.keyboardHardModifiers().subtracting(.fn)
         var handled = false
         for b in config.gestureBindings where (b.mode == "common" || b.mode == keyMode) && b.mods == mods
             && b.fingers == fingers && !b.isUndir && (b.direction == nil || b.direction == dir) {

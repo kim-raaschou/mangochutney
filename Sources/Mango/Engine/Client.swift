@@ -99,6 +99,7 @@ public final class Client {
     public var isFloatingBeforeScratchpad = false
     public var overining = false
     public var tagouting = false
+    package var action: AnimationAction = .none
     public var scratchpadTagin = false
     public var overviewBackupGeom: CGRect?
     public var overviewIsFloatingBak = false

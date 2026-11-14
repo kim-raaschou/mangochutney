@@ -89,6 +89,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | `confine_pointer` sætter markøren tilbage, når den er nået over kanten | macOS flytter markøren, før mango ser bevægelsen |
 | `xkb_rules_options`: kun de muligheder, der flytter taster, med macOS' egen omlægning | macOS har ingen xkb |
 | Systemets trackpad-gestures konkurrerer med `gesturebind` | macOS ejer dem |
+| Swipe: porten giver mangos `handle_cursor_swipe_begin` og hvert trin ud fra den samlede afstand, macOS' multitouch melder; et swipe er aldrig `cancelled` | macOS' private multitouch-ramme har ingen begin-, trin- eller annulleringshændelser, kun fingrenes positioner |
 | IPC: Unix-socket `/tmp/mango-<bruger>.sock`, kun brugerens (0600), og en anden kørende mangos socket overtages ikke; `mmsg` bruger den, når `MANGO_INSTANCE_SIGNATURE` mangler (mango: fejl), og `SO_NOSIGPIPE` for `MSG_NOSIGNAL`; `get tag` tager tallet som sidste felt; sende-bufferen er 1 MB | Ingen `XDG_RUNTIME_DIR`; et program, Dock'en eller Terminal starter, er ikke mangos barn; skærmnavne har mellemrum; macOS' buffer er 8 KB, og et svar sendes uden at vente |
 | `source=` med relativ sti læses fra config-mappen; ingen `/etc/mango`-fallback | Under launchd er arbejdsmappen `/`; macOS har ingen `/etc`-config |
 | Første start skriver `Resources/config.conf` som `config.conf`: mangos config med mangos taster på Hyper (en tast, brugeren vælger som i Raycasts Hyper Key: Caps Lock, en venstre/højre modifier eller F1–F12; `chutney_hyper_key`), ikke mangos egne taster, og de første linjer at prøve nær slutningen. Også et velkomstvindue, der åbner Getting Started | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config. mangos taster (⌘M, ⌘N, ⌥+bogstav, ⌃+pile) er macOS' og appernes genveje |
@@ -129,6 +130,11 @@ Hvor koden står, når den ikke står som i mango.
   det højere lag bliver øverst. `client_sync_layer` og `client_reparent_group` (et vindue og dets
   gruppebjælke flyttes til et andet lag i scenen) har ingen funktion i kernen; porten ordner
   vinduerne i `restack`.
+- **Animationer:** `c->animation` (kører, start, nu, varighed) står i portens `Animator`; kernen
+  spørger `clientAnimationRunning` og kalder mangos `client_animation_set_progress` og
+  `client_animation_resume` over grænsen, og `client_draw_frame`s spring over et vindue, en gest
+  holder (`client_gesture_driven`), er animatorens `frozen`. `c.action` sættes i
+  `clientAnimation`, som står for mangos `resize`.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
   subrole); appens egne flyt under et træk tager porten ud (`grabBegan`, `grabEnded`).
 - **Logning:** mangos `common/log.c` i kernen (`mangoError`, `mangoLogInit`) og wlroots'

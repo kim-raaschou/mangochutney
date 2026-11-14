@@ -473,7 +473,7 @@ public final class IPCServer {
             } else if cmd == "get keymode" {
                 return .object([("keymode", .string(server.keyMode))])
             } else if cmd == "get keyboardlayout" {
-                return .object([("layout", .string(server.system.keyboardLayout))])
+                return .object([("layout", .string(server.system.ipcGetLayoutStr()))])
             } else if cmd == "get last_open_surface" || cmd.hasPrefix("get last_open_surface ") {
                 let m = cmd == "get last_open_surface" ? server.selectedMonitor : server.monitorByName(String(cmd.dropFirst(22)))
                 guard let m else { return IPCJSON.monitorNotFound }

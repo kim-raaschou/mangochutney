@@ -73,7 +73,7 @@ package extension MangoServer {
             guard let f = tabChainFocus(tabMembers(m), on: m), !f.parked, !f.isFullscreen, !f.isMaximizeScreen else { continue }
             let members = tabMembers(m)
             let h = CGFloat(config.tabBarHeight)
-            let radius = system.windowCornerRadius
+            let radius = system.windowCornerRadius   // not in mango: the port's side
             let ported = barsInsideBorder
             let shown = ported ? shownFrame(f, animating: animating)
                                : shownFrame(f, animating: animating).insetBy(dx: -borderWidth(f, on: m), dy: -borderWidth(f, on: m))
@@ -102,7 +102,7 @@ package extension MangoServer {
                 let bw = ported ? 0 : borderWidth(c, on: m)
                 let shown = shownFrame(c, animating: animating).insetBy(dx: -bw, dy: -bw)
                 let h = CGFloat(config.groupBarHeight)
-                let radius = system.windowCornerRadius
+                let radius = system.windowCornerRadius   // not in mango: the port's side
                 let under = ported ? min(radius, shown.height) : 0
                 out.append(TabStrip(
                     frame: CGRect(x: shown.minX, y: shown.minY - h, width: shown.width, height: h + under),

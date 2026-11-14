@@ -40,7 +40,7 @@ Den 2. november var kernen 13.272 linjer.
 | `EventLoop.swift` | `addFd`: kald mig, når der kan læses | `wl_event_loop_add_fd` (IPC) |
 | `Screen.swift` | En skærm: ramme, arbejdsområde, skala, opdateringsfrekvens | `wlr_output` |
 | `InputState.swift` | Det, event-tap-tråden skal vide for at afgøre en tast eller et klik | – |
-| `Swipe.swift` | Et swipe, som libinput melder det | libinputs gesture-hændelser |
+| `Swipe.swift` | Et swipe-trin, som libinput melder det | libinputs gesture-hændelser |
 | `Decorations.swift` | Kant-, fane- og overview-beskrivelser, som porten tegner | mangos scene-noder |
 | `PortHooks.swift` | Udvidelsernes kroge, alle `nil` eller tomme uden udvidelser | – |
 | `ConfigPort.swift` | Portens nøgler, noter til `mango -p`, modifiernavne, tastkoder (xkb's keymap) | xkb og mangos egne tabeller |
@@ -48,7 +48,7 @@ Den 2. november var kernen 13.272 linjer.
 Porten kalder mangos handlere, som wlroots gør: `handleClientMap`, `handleClientUnmap`,
 `handleClientDestroy`, `handleClientActivationRequest`, `handleClientRequestMinimize`,
 `handleClientSetTitle`, `handleCursorMotion`, `pointerProcessButtonPress`,
-`handleKeyboardKey`, `handleCursorSwipeUpdate`/`End`, `handleOutputLayoutChange`.
+`handleKeyboardKey`, `handleCursorSwipeBegin`/`Update`/`End`, `handleOutputLayoutChange`.
 
 ## Porten
 

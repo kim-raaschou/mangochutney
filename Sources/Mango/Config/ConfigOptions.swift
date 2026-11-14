@@ -91,7 +91,7 @@ public enum ConfigOptions {
 
     /// Not in mango: asks whether apply stores a key.
     public static func hasSetter(_ key: String) -> Bool { setters[key] != nil || ConfigParser.port?.setter(key) != nil }
-    public static var setterKeys: Set<String> { Set(setters.keys).union(ConfigParser.port?.keys ?? []) }
+    public static var setterKeys: Set<String> { Set(setters.keys).union(ConfigParser.port?.keys ?? []) }   // not in mango: the port's side
 
     package typealias Setter = (inout Config, String) -> OptionResult
 
