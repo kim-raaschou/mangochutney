@@ -40,6 +40,7 @@ package enum ArrangeAnimation {
 @MainActor
 public final class MangoServer {
     public internal(set) var config = Config()
+    var tagmask: UInt32 = (1 << 9) - 1 /* default 9 tags; updated with config.tag_num */
     public var configURL: URL
     public internal(set) var configErrors: [ConfigError] = []
     var configFiles: [URL] = []
@@ -169,6 +170,7 @@ public final class MangoServer {
         configErrorStoreBegin()
         let parsed = ConfigParser.parseConfig(fileAt: configURL, emits: true)
         config = parsed.config
+        updateGlobalVar()   // not in mango: override_config's last step, as parse_config runs it
         configErrors = parsed.errors
         configFiles = parsed.sourcedFiles
         configErrorStoreEnd()
@@ -213,7 +215,7 @@ public final class MangoServer {
 
     func reapplyTagrule() {
         for m in monitors {
-            m.parseTagrule(config: config, clients: clientsAll)
+            parseTagrule(m)
         }
     }
 
@@ -263,14 +265,18 @@ public final class MangoServer {
     }
 
     func reapplyMaster() {
-        for i in 0..<Monitor.pertagSlots {
+        for i in 0..<PERTAG_SLOTS {
             for m in monitors {
-                m.pertag[i].settings.nmaster = config.defaultNmaster
-                m.pertag[i].settings.mfact = CGFloat(config.defaultMfact)
-                m.gaps = Gaps(ih: CGFloat(config.gappih), iv: CGFloat(config.gappiv),
-                              oh: CGFloat(config.gappoh), ov: CGFloat(config.gappov))
-                m.specialGaps = Gaps(ih: CGFloat(config.specialGappih), iv: CGFloat(config.specialGappiv),
-                                     oh: CGFloat(config.specialGappoh), ov: CGFloat(config.specialGappov))
+                m.pertag.nmasters[i] = Int32(config.defaultNmaster)
+                m.pertag.mfacts[i] = Float(config.defaultMfact)
+                m.gappih = Int32(config.gappih)
+                m.gappiv = Int32(config.gappiv)
+                m.gappoh = Int32(config.gappoh)
+                m.gappov = Int32(config.gappov)
+                m.specialGappih = Int32(config.specialGappih)
+                m.specialGappiv = Int32(config.specialGappiv)
+                m.specialGappoh = Int32(config.specialGappoh)
+                m.specialGappov = Int32(config.specialGappov)
             }
         }
     }
@@ -286,7 +292,7 @@ public final class MangoServer {
 
     func resetTag(_ oldTagNum: Int) {
         guard config.tagNum != oldTagNum else { return }
-        let tagmask = TagMask.mask(forTagNum: config.tagNum)
+        let tagmask = TAGMASK
         let last: UInt32 = 1 << UInt32(config.tagNum - 1)
         for c in clientsAll where c.tags & ~tagmask != 0 {
             c.tags = last
@@ -296,8 +302,8 @@ public final class MangoServer {
             m.tagset[0] &= tagmask
             m.tagset[1] &= tagmask
             if m.tagset[m.seltags] == 0 { m.tagset[m.seltags] = last }
-            if m.curtag > config.tagNum { m.curtag = config.tagNum }
-            if m.prevTag > config.tagNum { m.prevTag = config.tagNum }
+            if m.pertag.curtag > UInt32(config.tagNum) { m.pertag.curtag = UInt32(config.tagNum) }
+            if m.pertag.prevtag > UInt32(config.tagNum) { m.pertag.prevtag = UInt32(config.tagNum) }
         }
     }
 
@@ -310,7 +316,10 @@ public final class MangoServer {
                 existing.screen = s
                 newMonitors.append(existing)
             } else {
-                newMonitors.append(Monitor(screen: s, config: config))
+                let m = Monitor(screen: s, config: config)
+                // Applies the tag rule.
+                parseTagrule(m)
+                newMonitors.append(m)
             }
         }
         guard !newMonitors.isEmpty else { return }
@@ -361,21 +370,21 @@ public final class MangoServer {
 
     /// Not in mango: the VISIBLEON filter as a list.
     func visibleClients(_ m: Monitor) -> [Client] {
-        clients.filter { $0.isVisible(on: m) }
+        clients.filter { VISIBLEON($0, m) }
     }
 
     /// Not in mango: the VISIBLEON and ISTILED filter as a list.
     package func tiledClients(_ m: Monitor) -> [Client] {
         visibleClients(m).filter {
-            !$0.isunglobal && !$0.isfloating && !$0.isfullscreen && !$0.ismaximizescreen && !$0.scratchpadShown && !$0.isminimized
+            !$0.isunglobal && !$0.isfloating && !$0.isfullscreen && !$0.ismaximizescreen && !SCRATCHPAD_SHOWN($0) && !$0.isminimized
         }
     }
 
     /// Not in mango: the special tag's windows as a list.
     func specialClients(_ m: Monitor) -> [Client] {
-        guard m.tagset[m.seltags] & TagMask.special != 0 else { return [] }
+        guard m.tagset[m.seltags] & TAG0_MASK != 0 else { return [] }
         return clients.filter {
-            $0.mon === m && $0.tags & TagMask.special != 0 && !$0.isminimized
+            $0.mon === m && $0.tags & TAG0_MASK != 0 && !$0.isminimized
         }
     }
 
@@ -383,7 +392,7 @@ public final class MangoServer {
 
     package func clientFocusTop(_ m: Monitor) -> Client? {
         for id in focusStack {
-            if let c = clientByIdAll(id), !c.isunglobal, c.isVisible(on: m) { return c }
+            if let c = clientByIdAll(id), !c.isunglobal, VISIBLEON(c, m) { return c }
         }
         return nil
     }
@@ -422,12 +431,15 @@ public final class MangoServer {
         let visible = visibleClients(m)
         let tiled = tiledClients(m)
         let work = m.screen.workArea
-        let monGaps = isSpecialActive(m) ? m.specialGaps : m.gaps
+        // not in mango: the layout engine's gaps, from the monitor's
+        let monGaps = isSpecialActive(m)
+            ? Gaps(ih: CGFloat(m.specialGappih), iv: CGFloat(m.specialGappiv), oh: CGFloat(m.specialGappoh), ov: CGFloat(m.specialGappov))
+            : Gaps(ih: CGFloat(m.gappih), iv: CGFloat(m.gappiv), oh: CGFloat(m.gappoh), ov: CGFloat(m.gappov))
         let gaps = enableGaps ? monGaps : .zero
         let fakeTiled = visible.filter { !$0.isfloating && !$0.isminimized && !$0.isunglobal }
 
         // not in mango: pre_calculate_before_arrange's weights, here in arrange
-        let nmasters = m.current.settings.nmaster
+        let nmasters = Int(m.pertag.nmasters[getMonCurtag(m)])
         var totalMaster: CGFloat = 0, totalStack: CGFloat = 0, totalLeft: CGFloat = 0, totalRight: CGFloat = 0
         var masterNum = 0, stackNum = 0
         for (i, c) in fakeTiled.enumerated() {
@@ -474,7 +486,15 @@ public final class MangoServer {
                          gridColIdx: c.gridColIdx, gridRowIdx: c.gridRowIdx)
         }
         let kind = m.layout
-        var settings = m.current.settings
+        let curtag = getMonCurtag(m)
+        // not in mango: the layout engine's pertag settings and state, from the slot's
+        var settings = PertagSettings(nmaster: Int(m.pertag.nmasters[curtag]), mfact: CGFloat(m.pertag.mfacts[curtag]),
+                                      scrollerDefaultProportion: CGFloat(m.pertag.scrollerDefaultProportion[curtag]),
+                                      scrollerDefaultProportionSingle: CGFloat(m.pertag.scrollerDefaultProportionSingle[curtag]),
+                                      scrollerIgnoreProportionSingle: m.pertag.scrollerIgnoreProportionSingle[curtag])
+        let state = TagLayoutState()
+        state.scrollerState = m.pertag.scrollerState[curtag]
+        state.dwindleRoot = m.pertag.dwindleRoot[curtag]
         var input = LayoutInput(workArea: work, monitorFrame: m.screen.frame, gaps: gaps, clients: layoutClients,
                                 focusedID: m.sel, prevFocusedID: m.prevsel, pertag: settings,
                                 config: config, cursor: system.pointer)
@@ -482,10 +502,10 @@ public final class MangoServer {
         input.startDragWindow = startDragWindow
         if let p = m.prevsel.flatMap({ clientByIdAll($0) }) {
             input.prevFocusedScroll = (!p.isfloating && !p.isminimized && !p.isunglobal,
-                                       p.scrollerProportion ?? m.current.settings.scrollerDefaultProportion)
+                                       p.scrollerProportion ?? CGFloat(m.pertag.scrollerDefaultProportion[getMonCurtag(m)]))
         }
         input.fullscreenInView = Set(visible.filter { $0.isfullscreen || $0.ismaximizescreen }.map(\.id))
-        var result = LayoutEngine.arrange(kind, input: input, state: m.current.state)
+        var result = LayoutEngine.arrange(kind, input: input, state: state)
         for (id, p) in result.gridPlaces {
             guard let c = clientByIdAll(id) else { continue }
             c.gridColPer = p.colPer; c.gridRowPer = p.rowPer; c.gridColIdx = p.colIdx; c.gridRowIdx = p.rowIdx
@@ -504,7 +524,7 @@ public final class MangoServer {
         for c in visible where !c.isunglobal && dragTile?.client !== c {
             var target: CGRect?
             var park = false
-            if c.scratchpadShown {
+            if SCRATCHPAD_SHOWN(c) {
                 target = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
                 raise.append(c)
             } else if c.isfullscreen {
@@ -551,7 +571,7 @@ public final class MangoServer {
         system.resize(placements, anim, rising: Set(raise.map(\.id) + (m.sel.map { [$0] } ?? [])))
 
         for c in clientsAll where c.mon === m {
-            if !c.isVisible(on: m) && !specialKeepBgClient(m, c) { setArrangeHidden(m, c, anim) }
+            if !VISIBLEON(c, m) && !specialKeepBgClient(m, c) { setArrangeHidden(m, c, anim) }
         }
 
         let sel = m.sel.flatMap { clientByIdAll($0) }
@@ -575,13 +595,13 @@ public final class MangoServer {
             box.origin.y = w.minY + ((w.height - geom.height) / 2).rounded(.towardZero)
         }
         if offsetX != 0 {
-            let len = ((w.width - box.width - 2 * m.gaps.oh) / 2).rounded(.towardZero)
+            let len = ((w.width - box.width - 2 * CGFloat(m.gappoh)) / 2).rounded(.towardZero)
             box.origin.x += (len * CGFloat(offsetX) / 100).rounded(.towardZero)
             if box.minX < full.minX { box.origin.x = full.minX }
             if box.maxX > full.maxX { box.origin.x = full.maxX - box.width }
         }
         if offsetY != 0 {
-            let len = ((w.height - box.height - 2 * m.gaps.ov) / 2).rounded(.towardZero)
+            let len = ((w.height - box.height - 2 * CGFloat(m.gappov)) / 2).rounded(.towardZero)
             box.origin.y += (len * CGFloat(offsetY) / 100).rounded(.towardZero)
             if box.minY < full.minY { box.origin.y = full.minY }
             if box.maxY > full.maxY { box.origin.y = full.maxY - box.height }
@@ -597,14 +617,14 @@ public final class MangoServer {
 
     func specialKeepBgClient(_ m: Monitor, _ c: Client) -> Bool {
         guard isSpecialActive(m), !c.isminimized, c.mon === m else { return false }
-        return (m.prevTag > 0 && c.tags & (1 << UInt32(m.prevTag - 1)) != 0)
-            || c.tags & (m.tagset[m.seltags ^ 1] & ~TagMask.special) != 0
+        return (m.pertag.prevtag > 0 && c.tags & (1 << UInt32(m.pertag.prevtag - 1)) != 0)
+            || c.tags & (m.tagset[m.seltags ^ 1] & ~TAG0_MASK) != 0
     }
 
     func getMonitorActiveTagset(_ m: Monitor) -> UInt32 {
         guard isSpecialActive(m) else { return m.tagset[m.seltags] }
-        let prev = m.tagset[m.seltags ^ 1] & ~TagMask.special
-        return prev != 0 ? prev : (m.prevTag > 0 ? 1 << UInt32(m.prevTag - 1) : 1)
+        let prev = m.tagset[m.seltags ^ 1] & ~TAG0_MASK
+        return prev != 0 ? prev : (m.pertag.prevtag > 0 ? 1 << UInt32(m.pertag.prevtag - 1) : 1)
     }
 
     func toggleSpecialTagMon(_ m: Monitor) {
@@ -614,12 +634,12 @@ public final class MangoServer {
             clientViewOnMonitor(specialTagPreviousTagset(m), on: m, changeFocus: true)
         } else {
             specialTagPrepareTarget(m)
-            clientViewOnMonitor(TagMask.special, on: m)
+            clientViewOnMonitor(TAG0_MASK, on: m)
         }
     }
 
     package func isSpecialActive(_ m: Monitor) -> Bool {
-        m.tagset[m.seltags] & TagMask.special != 0 && !m.isoverview
+        m.tagset[m.seltags] & TAG0_MASK != 0 && !m.isoverview
     }
 
     package func specialUpdateDim(_ m: Monitor) {
@@ -665,7 +685,7 @@ public final class MangoServer {
         let isoverview = m.isoverview
         var hitNoBorder = false
         if !renderBorder { hitNoBorder = true }
-        if !isoverview && m.pertag[c.tags & TagMask.special != 0 ? 0 : (TagMask.getTagsFirstTagNum(c.tags) ?? 0)].noRenderBorder { hitNoBorder = true }
+        if !isoverview && m.pertag.noRenderBorder[getClientTagIdx(c)] { hitNoBorder = true }
         if config.noBorderWhenSingle {
             let shown = visibleClients(m)
             let visible = shown.filter { !$0.isunglobal }.count
@@ -714,7 +734,7 @@ public final class MangoServer {
     func clientDrawSplitBorder(_ c: Client, on m: Monitor) -> (side: BorderSpec.SplitSide, color: RGBA)? {
         guard config.dwindleManualSplit, m.layout == .dwindle, !c.isfloating, !c.isfullscreen,
               tiledClients(m).contains(where: { $0 === c }),
-              let horizontal = m.current.state.dwindleRoot.leafSplitHorizontal(for: c.id) else { return nil }
+              let horizontal = m.pertag.dwindleRoot[getMonCurtag(m)].leafSplitHorizontal(for: c.id) else { return nil }
         return (horizontal ? .right : .bottom, c.isurgent ? config.urgentcolor : config.splitcolor)
     }
 
@@ -896,7 +916,7 @@ public final class MangoServer {
             }
         }
 
-        if newtags == 0 && isSpecialActive(mon) { newtags = TagMask.special }
+        if newtags == 0 && isSpecialActive(mon) { newtags = TAG0_MASK }
 
         setSizePer(mon, c)
 
@@ -929,7 +949,7 @@ public final class MangoServer {
         }
 
         if let cm = c.mon, !c.isfloating {
-            for fc in clients where fc !== c && c.tags & fc.tags != 0 && fc.isVisible(on: cm)
+            for fc in clients where fc !== c && c.tags & fc.tags != 0 && VISIBLEON(fc, cm)
                 && (fc.isfullscreen || fc.ismaximizescreen) {
                 clearFullscreenFlag(fc)
                 arrange(cm)
@@ -970,9 +990,8 @@ public final class MangoServer {
     /// Not in mango: the port's per-tag layout state (scroller columns, dwindle tree) takes
     /// a new window next to the focused one before focus moves to it.
     package func layoutStateInsert(_ c: Client, on m: Monitor) {
-        let st = m.current.state
-        st.scrollerState.insert(c.id, afterFocused: m.sel)
-        st.dwindleRoot.dwindleInsertWithConfig(c.id, nextTo: m.sel, config: config, cursor: system.pointer)
+        m.pertag.scrollerState[getMonCurtag(m)].insert(c.id, afterFocused: m.sel)
+        m.pertag.dwindleRoot[getMonCurtag(m)].dwindleInsertWithConfig(c.id, nextTo: m.sel, config: config, cursor: system.pointer)
     }
 
     func clientAdaptGeometryToMonitor(_ c: Client, _ oldmon: Monitor) {
@@ -997,17 +1016,21 @@ public final class MangoServer {
         return true
     }
 
-    func monitorCopyTagLayout(_ target: Monitor, _ source: Monitor, _ tag: Int) {
-        guard tag < target.pertag.count, tag < source.pertag.count else { return }
+    func monitorCopyTagLayout(_ target: Monitor, _ source: Monitor, _ tag: UInt32) {
+        if tag >= PERTAG_SLOTS { return }
 
-        let dst = target.pertag[tag]
-        let src = source.pertag[tag]
+        let dst = target.pertag
+        let src = source.pertag
 
-        dst.settings = src.settings
-        dst.noHide = src.noHide
-        dst.noRenderBorder = src.noRenderBorder
-        dst.openAsFloating = src.openAsFloating
-        dst.layout = src.layout
+        dst.nmasters[tag] = src.nmasters[tag]
+        dst.mfacts[tag] = src.mfacts[tag]
+        dst.noHide[tag] = src.noHide[tag]
+        dst.noRenderBorder[tag] = src.noRenderBorder[tag]
+        dst.openAsFloating[tag] = src.openAsFloating[tag]
+        dst.scrollerDefaultProportion[tag] = src.scrollerDefaultProportion[tag]
+        dst.scrollerDefaultProportionSingle[tag] = src.scrollerDefaultProportionSingle[tag]
+        dst.scrollerIgnoreProportionSingle[tag] = src.scrollerIgnoreProportionSingle[tag]
+        dst.ltidxs[tag] = src.ltidxs[tag]
 
         /* Layout trees and scroller nodes are monitor-owned and rebuilt on the
          * target after the clients have moved. */
@@ -1030,18 +1053,21 @@ public final class MangoServer {
         if focus { clientFocus(clientFocusTop(selectedMonitor), true) }
     }
 
-/// Not in mango: the port's overview leaves the tags in view, so the overview backup is the tagset.
     package func clientResetMonTags(_ c: Client, _ mon: Monitor, _ newtags: UInt32) {
-        if newtags == 0 {
-            c.tags = mon.isoverview ? mon.ovbkCurrentTagset : mon.tagset[mon.seltags]
-        } else {
-            let masked = newtags & TagMask.special != 0 ? TagMask.special : normalizeTagMask(newtags) & ~TagMask.special
+        if newtags == 0 && !mon.isoverview {
+            c.tags = mon.tagset[mon.seltags]
+        } else if newtags == 0 && mon.isoverview {
+            c.tags = mon.ovbkCurrentTagset
+        } else if newtags != 0 {
+            let masked = (newtags & TAG0_MASK) != 0 ? TAG0_MASK : (newtags & TAGMASK)
             c.tags = masked != 0 ? masked : mon.tagset[mon.seltags]
+        } else {
+            c.tags = mon.tagset[mon.seltags]
         }
     }
 
     package func checkMatchTagFloatingRule(_ c: Client, _ mon: Monitor) {
-        if c.tags != 0 && !c.isfloating, let t = TagMask.getTagsFirstTagNum(c.tags), mon.pertag[t].openAsFloating {
+        if c.tags != 0 && !c.isfloating, mon.pertag.openAsFloating[getTagsFirstTagNum(c.tags)] {
             c.isfloating = true
         }
     }
@@ -1055,14 +1081,14 @@ public final class MangoServer {
 
     func clearFullscreenFlag(_ c: Client) {
         guard let m = c.mon else { return }
-        let layout = m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? m.getMonCurtag].layout
+        let layout = m.pertag.ltidxs[getClientTagIdx(c)]
         if !c.isfloating && (layout.isScroller || (layout == .monocle && config.monocleTabMode)) { return }
         if c.isfullscreen { clientSetFullscreen(c, false, rearrange: true) }
         if c.ismaximizescreen { clientSetMaximizeScreen(c, false, rearrange: true) }
     }
 
     func clearFullscreenAndMaximizedState(_ m: Monitor) {
-        for fc in clients where fc.isVisible(on: m) && (fc.isfullscreen || fc.ismaximizescreen) {
+        for fc in clients where VISIBLEON(fc, m) && (fc.isfullscreen || fc.ismaximizescreen) {
             clearFullscreenFlag(fc)
         }
     }
@@ -1094,7 +1120,7 @@ public final class MangoServer {
             c.isInScratchpad = false
             c.isnamedscratchpad = false
             setSizePer(m, c)
-            for fc in clients where fc !== c && fc.isVisible(on: m) && c.tags & fc.tags != 0
+            for fc in clients where fc !== c && VISIBLEON(fc, m) && c.tags & fc.tags != 0
                 && (fc.isfullscreen || fc.ismaximizescreen) && oldFloatingState {
                 clearFullscreenFlag(fc)
             }
@@ -1141,7 +1167,7 @@ public final class MangoServer {
     // scene layer a client belongs to; only clients actually tagged with tag 0
     // belong to the special layers
     public func clientTargetLayer(_ c: Client) -> Lyr {
-        let specialOverlay = c.tags & TagMask.special != 0
+        let specialOverlay = c.tags & TAG0_MASK != 0
 
         if c.isoverlay {
             return specialOverlay ? .specialOverlay : .overlay
@@ -1182,7 +1208,7 @@ public final class MangoServer {
 /// Not in mango: the port keeps the scroller's column order in the tag's state.
     func exitScrollerStack(_ c: Client) {
         guard let m = c.mon else { return }
-        m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? m.getMonCurtag].state.scrollerState.exitScrollerStack(c.id)
+        m.pertag.scrollerState[getClientTagIdx(c)].exitScrollerStack(c.id)
     }
 
     package func clientInsertTilingOrder(_ c: Client) {
@@ -1194,7 +1220,7 @@ public final class MangoServer {
             return
         } else if m.layout.isScroller && !scrollTiled.isEmpty {
             if let sel = m.sel.flatMap({ clientById($0) }), scrollTiled.contains(where: { $0 === sel }) {
-                at = m.current.state.scrollerState.column(of: sel.id).last.flatMap { clientById($0) } ?? sel
+                at = m.pertag.scrollerState[getMonCurtag(m)].column(of: sel.id).last.flatMap { clientById($0) } ?? sel
             } else {
                 at = centerTiledSelect(m, among: scrollTiled)
             }
@@ -1208,7 +1234,7 @@ public final class MangoServer {
         let offset = min(w.width / 20, w.height / 20).rounded(.towardZero)
         var x = tc.floatGeom.minX, y = tc.floatGeom.minY
         var xreverse: CGFloat = 1, yreverse: CGFloat = 1
-        for c in clients where c.isfloating && c !== tc && c.isVisible(on: m)
+        for c in clients where c.isfloating && c !== tc && VISIBLEON(c, m)
             && abs(x - c.floatGeom.minX) < offset && abs(y - c.floatGeom.minY) < offset {
             x = c.floatGeom.minX + offset * xreverse
             y = c.floatGeom.minY + offset * yreverse
@@ -1233,8 +1259,8 @@ public final class MangoServer {
         let id = c.id
         guard clientByIdAll(id) === c else { return }
         var stackNext: Client?, stackPrev: Client?
-        if let cm = c.mon, c.isVisible(on: cm) {
-            let col = cm.current.state.scrollerState.column(of: id)
+        if let cm = c.mon, VISIBLEON(c, cm) {
+            let col = cm.pertag.scrollerState[getMonCurtag(cm)].column(of: id)
             if let i = col.firstIndex(of: id) {
                 stackNext = i + 1 < col.count ? clientByIdAll(col[i + 1]) : nil
                 stackPrev = i > 0 ? clientByIdAll(col[i - 1]) : nil
@@ -1265,10 +1291,8 @@ public final class MangoServer {
         if dragTile?.client === c { dragTile = nil; system.showDropArea(nil, color: config.dropcolor) }
         system.cancelAnimation(id)   // not in mango: the port's side
         for m in monitors {
-            for p in m.pertag {
-                p.state.scrollerState.scrollerNodeRemove(id)
-                p.state.dwindleRoot.dwindleRemove(id, config: config)
-            }
+            for st in m.pertag.scrollerState { st.scrollerNodeRemove(id) }
+            for root in m.pertag.dwindleRoot { root.dwindleRemove(id, config: config) }
             if m.sel == id { m.sel = nil }
             if m.prevsel == id { m.prevsel = nil }
         }
@@ -1276,7 +1300,7 @@ public final class MangoServer {
         arrange(m, .move)
         if m === selectedMonitor {
             var next = stackNext ?? stackPrev ?? clientFocusTop(m)
-            if let n = next, !n.isVisible(on: m) { next = clientFocusTop(m) }
+            if let n = next, !VISIBLEON(n, m) { next = clientFocusTop(m) }
             if let next { clientFocus(next, true) } else if selectedMonitor.isoverview { toggleOverview() }
         }
         printstatus(.arrangge)
@@ -1289,7 +1313,7 @@ public final class MangoServer {
     package func handleClientActivationRequest(_ c: Client) {
         guard clientByIdAll(c.id) === c else { return }
         if config.focusOnActivate && !c.istagsilent && c.id != selectedMonitor.sel {
-            if c.tags & TagMask.special != 0, let m = c.mon {
+            if c.tags & TAG0_MASK != 0, let m = c.mon {
                 if isSpecialActive(m) {
                     clientFocus(c, true)
                 } else {

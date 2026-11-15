@@ -74,7 +74,7 @@ final class EngineMonitorChangeTests: MangoTestCase {
             tag_rule=id:1,monitor_name:Built-in,master_factor:0.3
             tag_rule=id:1,monitor_name:LG,master_factor:0.7
             """, baseDirectory: nil, fileName: "t").config.tagRules
-        for m in server.monitors { m.parseTagrule(config: server.config, clients: server.clientsAll) }
+        for m in server.monitors { server.parseTagrule(m) }
         XCTAssertEqual(a.masterMfactPer, 0.3, accuracy: 0.001)
         XCTAssertEqual(b.masterMfactPer, 0.7, accuracy: 0.001)
     }

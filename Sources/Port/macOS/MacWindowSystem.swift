@@ -192,7 +192,7 @@ class MacWindowSystem: WindowSystem {
         guard raise, let m = c.mon else { return false }
         let layer = server.clientTargetLayer(c)
         return !server.clientsAll.contains { d in
-            d !== c && d.mon === m && d.isVisible(on: m) && !d.parked
+            d !== c && d.mon === m && VISIBLEON(d, m) && !d.parked
                 && server.clientTargetLayer(d) > layer && d.frame.intersects(c.frame)
         }
     }

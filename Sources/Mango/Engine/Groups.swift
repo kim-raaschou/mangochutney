@@ -97,9 +97,9 @@ package extension MangoServer {
         focusStack.insert(c.id, at: focusStack.firstIndex(of: w.id) ?? 0)
         if let m = w.mon {
             let layout = m.layout
-            for p in m.pertag {
-                if layout == .dwindle { p.state.dwindleRoot.replace(w.id, with: c.id, config: config) }
-                if layout.isScroller { p.state.scrollerState.replace(w.id, with: c.id) }
+            for i in 0..<Int(PERTAG_SLOTS) {
+                if layout == .dwindle { m.pertag.dwindleRoot[i].replace(w.id, with: c.id, config: config) }
+                if layout.isScroller { m.pertag.scrollerState[i].replace(w.id, with: c.id) }
             }
         }
         w.jumpLabelNode?.setEnabled(false)

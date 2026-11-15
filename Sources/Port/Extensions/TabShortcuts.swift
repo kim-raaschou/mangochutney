@@ -2,7 +2,7 @@ import Mango
 extension MangoServer {
     var tabBarShortcutTabs: Int {
         guard config.chutneyTabBarShortcuts, let m = selectedMonitor else { return 0 }
-        if let s = m.sel.flatMap({ clientByIdAll($0) }), s.isVisible(on: m), s.isfullscreen || s.ismaximizescreen { return 0 }
+        if let s = m.sel.flatMap({ clientByIdAll($0) }), VISIBLEON(s, m), s.isfullscreen || s.ismaximizescreen { return 0 }
         return min(9, tabMembers(m).count)
     }
 

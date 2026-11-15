@@ -174,7 +174,7 @@ final class SwipeDriveTests: MangoTestCase {
 
     func testAPanInTheScrollerFocusesTheWindowItBrings() {
         let r = EngineRig()
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         r.map(1); r.map(2); r.map(3)
         r.server.clientFocus(r.server.clientByIdAll(2), true)
         r.server.arrange(r.monitor, .none)

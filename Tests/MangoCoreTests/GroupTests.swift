@@ -6,7 +6,7 @@ import XCTest
 final class GroupTests: MangoTestCase {
     func rig() -> EngineRig {
         let r = EngineRig()
-        r.monitor.current.layout = .tile
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
         for i in 0..<3 { r.window(CGWindowID(900_700 + i)) }
         r.server.arrange(r.monitor, .none)
         r.server.clientFocus(r.server.clientByIdAll(900_701)!, false)

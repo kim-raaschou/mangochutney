@@ -8,7 +8,7 @@ final class FitLayoutTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.chutneyOverlapWarning = true
         r.server.config.chutneyFitLayout = level
-        r.monitor.current.layout = layout
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = layout
         for id: CGWindowID in 1...windows { r.window(id) }
         for c in r.server.tiledClients(r.monitor) { r.server.setSizePer(r.monitor, c) }   // as mango maps a window
         for (id, size) in min { r.app.minSize[id] = size }
@@ -119,7 +119,7 @@ final class FitLayoutTests: MangoTestCase {
     func testTheScroller() {
         let r = EngineRig()
         r.server.config.chutneyFitLayout = 1
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         for id: CGWindowID in 1...3 { r.window(id) }
         for c in r.server.tiledClients(r.monitor) { r.server.setSizePer(r.monitor, c) }
         r.app.minSize[2] = CGSize(width: 1600, height: 0)
@@ -137,7 +137,7 @@ final class FitLayoutTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.chutneyFitLayout = 1
         r.server.config.monocleTabMode = false
-        r.monitor.current.layout = .monocle
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
         r.monitor.sel = 3
@@ -281,7 +281,7 @@ final class FitLayoutTests: MangoTestCase {
     func testInMonocleOnlyTheWindowShownCounts() {
         let r = EngineRig()
         r.server.config.monocleTabMode = false
-        r.monitor.current.layout = .monocle
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
         r.monitor.sel = 1

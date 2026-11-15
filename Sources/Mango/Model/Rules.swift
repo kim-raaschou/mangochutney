@@ -27,11 +27,6 @@ public enum TagMask {
         return out
     }
 
-    public static func getTagsFirstTagNum(_ mask: UInt32) -> Int? {
-        if mask == 0 { return nil }
-        if mask & special != 0 { return 0 }
-        return (mask & 0x7FFF_FFFF).trailingZeroBitCount + 1
-    }
 }
 
 /// Not in mango: `name` is matched against the display's localized name.

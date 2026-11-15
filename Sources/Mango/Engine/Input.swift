@@ -105,7 +105,7 @@ package extension MangoServer {
             return mon.ovCards.first { $0.value.contains(p) }.flatMap { clientByIdAll($0.key) }
         }
         let vis = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon)).filter { !$0.parked }
-        if let f = vis.first(where: { ($0.isfloating || $0.scratchpadShown) && clientGeom($0).contains(p) }) { return f }
+        if let f = vis.first(where: { ($0.isfloating || SCRATCHPAD_SHOWN($0)) && clientGeom($0).contains(p) }) { return f }
         if let s = mon.sel.flatMap({ clientByIdAll($0) }), vis.contains(where: { $0 === s }), clientGeom(s).contains(p) { return s }
         return vis.first { clientGeom($0).contains(p) }
     }
@@ -139,7 +139,7 @@ package extension MangoServer {
             }
             let c = bar == nil ? clientAtPoint(p) : nil
             // not in mango: not in overview, and not the focused one again (macOS has focused it with the click)
-            if let c, let cm = c.mon, c.isVisible(on: cm), !selectedMonitor.isoverview, selectedMonitor.sel != c.id {
+            if let c, let cm = c.mon, VISIBLEON(c, cm), !selectedMonitor.isoverview, selectedMonitor.sel != c.id {
                 clientFocus(c, true)
             }
             // In overview mode, left click jumps and right click closes windows.
@@ -205,7 +205,7 @@ package extension MangoServer {
         case .move:
             system.setCursor("grab")
         case .resize:
-            if c.isfloating || c.scratchpadShown {
+            if c.isfloating || SCRATCHPAD_SHOWN(c) {
                 var resizeEdge = edge
                 if resizeEdge.isEmpty {
                     let geom = clientGeom(c)
@@ -266,7 +266,7 @@ package extension MangoServer {
         selectedMonitor = target
         clientUpdateOldmonnameRecord(c, target)
         clientSetMonitor(c, target, 0, focus: true)
-        if !c.isVisible(on: target) { c.tags = target.tagset[target.seltags] }
+        if !VISIBLEON(c, target) { c.tags = target.tagset[target.seltags] }
         let sel = target.sel.flatMap { clientByIdAll($0) }
         target.prevsel = sel.map { !$0.isfloating && !$0.isminimized && !$0.ismaximizescreen && !$0.isfullscreen && !$0.isunglobal } == true ? sel?.id : nil
         target.sel = c.id
@@ -286,7 +286,7 @@ package extension MangoServer {
 
     func toggleHotarea(_ p: CGPoint) {
         guard let m = selectedMonitor, grab == nil else { return }
-        if config.hotareaDisableOnFullscreen, let f = focused, f.isfullscreen, f.isVisible(on: m) {
+        if config.hotareaDisableOnFullscreen, let f = focused, f.isfullscreen, VISIBLEON(f, m) {
             m.isInHotarea = false
             return
         }
@@ -310,7 +310,7 @@ package extension MangoServer {
 
     func pointerConfineRuleClient() -> Client? {
         guard let c = focused, c.confinePointer, let m = c.mon, !m.isoverview,
-              !c.isminimized, c.isVisible(on: m) else { return nil }
+              !c.isminimized, VISIBLEON(c, m) else { return nil }
         return c
     }
 
@@ -372,7 +372,7 @@ package extension MangoServer {
                 system.setFrame(c, f, size: false)
                 updateBorders(animating: [c.id: f])
             case .resize:
-                if c.isfloating || c.scratchpadShown {
+                if c.isfloating || SCRATCHPAD_SHOWN(c) {
                     c.iscustomsize = true
                     // not in mango: one resize per refresh interval stands for frame_serial (macOS gives no frame events)
                     if let m = c.mon, m.lastResizeTime == 0 || time &- m.lastResizeTime >= dragRefreshIntervalMs(m) {
@@ -466,7 +466,7 @@ package extension MangoServer {
         var shared: WlrEdges = []
 
         for o in clients {
-            guard o !== c, o.mon === c.mon, let om = o.mon, o.isVisible(on: om), Self.isTiled(o) else { continue }
+            guard o !== c, o.mon === c.mon, let om = o.mon, VISIBLEON(o, om), Self.isTiled(o) else { continue }
 
             let b = clientGeom(o)
             let voverlap = a.minY < b.minY + b.height && b.minY < a.minY + a.height
@@ -506,7 +506,7 @@ package extension MangoServer {
         /* A popup or any other child surface sitting on the border grab strip
          * must keep receiving its own input instead of resizing the parent. */
         if let surface, surface != c.id { return [] }
-        guard let m = c.mon, !m.isoverview, c.isVisible(on: m) else { return [] }
+        guard let m = c.mon, !m.isoverview, VISIBLEON(c, m) else { return [] }
 
         var t = clientResizeGrab(c)
         if t <= 0 { return [] }

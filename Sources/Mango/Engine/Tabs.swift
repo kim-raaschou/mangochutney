@@ -63,7 +63,7 @@ package extension MangoServer {
     }
 
     func clientCheckTabNodeVisible(_ c: Client, on m: Monitor) -> Bool {
-        clientWantsGroupBar(c) && !m.isoverview && !c.isfullscreen && !c.parked && c.isVisible(on: m)
+        clientWantsGroupBar(c) && !m.isoverview && !c.isfullscreen && !c.parked && VISIBLEON(c, m)
     }
 
     // not in mango: client_set_clip's client_draw_group_bar and client_draw_tabbar for every client at once

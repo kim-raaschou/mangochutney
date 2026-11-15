@@ -45,12 +45,12 @@ extension MangoServer {
         let monitorIndex = { (c: Client) in self.monitors.firstIndex { $0 === c.mon } ?? Int.max }
         return clientsAll
             .filter { c in
-                !c.isminimized && c.tags & TagMask.special == 0
+                !c.isminimized && c.tags & TAG0_MASK == 0
                     && (c.appid.lowercased() == key || c.appName.lowercased() == key)
             }
             .sorted { a, b in
-                let ka = (TagMask.getTagsFirstTagNum(a.tags) ?? Int.max, monitorIndex(a), position[a.id] ?? Int.max)
-                let kb = (TagMask.getTagsFirstTagNum(b.tags) ?? Int.max, monitorIndex(b), position[b.id] ?? Int.max)
+                let ka = (a.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(a.tags)), monitorIndex(a), position[a.id] ?? Int.max)
+                let kb = (b.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(b.tags)), monitorIndex(b), position[b.id] ?? Int.max)
                 return ka < kb
             }
     }

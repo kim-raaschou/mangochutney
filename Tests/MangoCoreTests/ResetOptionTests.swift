@@ -20,11 +20,12 @@ final class ResetOptionTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.defaultMfact = 0.55
         r.server.config.defaultNmaster = 1
-        for p in r.monitor.pertag { p.settings.mfact = 0.3; p.settings.nmaster = 3 }
+        let pt = r.monitor.pertag
+        for i in 0..<Int(PERTAG_SLOTS) { pt.mfacts[i] = 0.3; pt.nmasters[i] = 3 }
         r.server.resetOption()
-        for p in r.monitor.pertag {
-            XCTAssertEqual(p.settings.mfact, 0.55, accuracy: 0.0001)
-            XCTAssertEqual(p.settings.nmaster, 1)
+        for i in 0..<Int(PERTAG_SLOTS) {
+            XCTAssertEqual(pt.mfacts[i], 0.55, accuracy: 0.0001)
+            XCTAssertEqual(pt.nmasters[i], 1)
         }
     }
 
@@ -33,8 +34,8 @@ final class ResetOptionTests: MangoTestCase {
         r.server.config.gappih = 11
         r.server.config.specialGappov = 13
         r.server.resetOption()
-        XCTAssertEqual(r.monitor.gaps.ih, 11)
-        XCTAssertEqual(r.monitor.specialGaps.ov, 13)
+        XCTAssertEqual(r.monitor.gappih, 11)
+        XCTAssertEqual(r.monitor.specialGappov, 13)
     }
 
     func testEnvIsSetAsParsedWithDisplayLast() {
@@ -54,7 +55,7 @@ final class ResetOptionTests: MangoTestCase {
         rule.masterFactor = 0.7
         r.server.config.tagRules = [rule]
         r.server.resetOption()
-        XCTAssertEqual(r.monitor.pertag[2].settings.mfact, 0.7, accuracy: 0.0001)
-        XCTAssertEqual(r.monitor.pertag[1].settings.mfact, 0.55, accuracy: 0.0001)
+        XCTAssertEqual(r.monitor.pertag.mfacts[2], 0.7, accuracy: 0.0001)
+        XCTAssertEqual(r.monitor.pertag.mfacts[1], 0.55, accuracy: 0.0001)
     }
 }

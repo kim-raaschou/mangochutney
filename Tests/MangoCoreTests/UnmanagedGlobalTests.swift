@@ -21,7 +21,7 @@ final class UnmanagedGlobalTests: MangoTestCase {
 
         r.server.clientViewOnMonitor(1 << 1, on: r.monitor)
         r.settle()
-        XCTAssertTrue(u.isVisible(on: r.monitor), "on every tag")
+        XCTAssertTrue(VISIBLEON(u, r.monitor), "on every tag")
         XCTAssertEqual(u.tags, 1 << 1, "and reported on the tag in view, as in mango")
         XCTAssertFalse(u.parked)
         XCTAssertFalse(r.app.writes.contains { $0.id == pet })

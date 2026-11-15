@@ -73,12 +73,12 @@ final class ConfigParseFidelityTests: MangoTestCase {
         tag_rule=id:2,layout_name:scroller
         tag_rule=id:3,no_hide:-1
         """).config.tagRules
-        r.monitor.parseTagrule(config: r.server.config, clients: [])
-        XCTAssertFalse(r.monitor.pertag[2].noRenderBorder, "the later id:2 rule writes its default 0")
-        XCTAssertFalse(r.monitor.pertag[2].openAsFloating)
-        XCTAssertFalse(r.monitor.pertag[2].noHide)
-        XCTAssertTrue(r.monitor.pertag[1].noHide, "id:* is the last rule for tag 1")
-        XCTAssertFalse(r.monitor.pertag[3].noHide, "-1 clamps to 0")
+        r.server.parseTagrule(r.monitor)
+        XCTAssertFalse(r.monitor.pertag.noRenderBorder[2], "the later id:2 rule writes its default 0")
+        XCTAssertFalse(r.monitor.pertag.openAsFloating[2])
+        XCTAssertFalse(r.monitor.pertag.noHide[2])
+        XCTAssertTrue(r.monitor.pertag.noHide[1], "id:* is the last rule for tag 1")
+        XCTAssertFalse(r.monitor.pertag.noHide[3], "-1 clamps to 0")
     }
 
     func testAnEmptyAppIdOrTitleMatchesEveryWindow() {
@@ -98,11 +98,11 @@ final class ConfigParseFidelityTests: MangoTestCase {
         tag_rule=id:1,scroller_default_proportion:0,scroller_default_proportion_single:0
         tag_rule=id:2,scroller_default_proportion:0.5
         """).config.tagRules
-        r.monitor.parseTagrule(config: r.server.config, clients: [])
-        XCTAssertEqual(r.monitor.pertag[1].settings.scrollerDefaultProportion, CGFloat(r.server.config.scrollerDefaultProportion))
-        XCTAssertEqual(r.monitor.pertag[1].settings.scrollerDefaultProportionSingle,
-                       CGFloat(r.server.config.scrollerDefaultProportionSingle))
-        XCTAssertEqual(r.monitor.pertag[2].settings.scrollerDefaultProportion, 0.5)
+        r.server.parseTagrule(r.monitor)
+        XCTAssertEqual(r.monitor.pertag.scrollerDefaultProportion[1], Float(r.server.config.scrollerDefaultProportion))
+        XCTAssertEqual(r.monitor.pertag.scrollerDefaultProportionSingle[1],
+                       Float(r.server.config.scrollerDefaultProportionSingle))
+        XCTAssertEqual(r.monitor.pertag.scrollerDefaultProportion[2], 0.5)
     }
 
     func testAZeroRuleProportionLeavesAnEarlierOne() {

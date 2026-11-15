@@ -131,8 +131,8 @@ extension MacWindowSystem: AppWatcherDelegate {
             return
         }
         if c.groupParked { server.clientFocusGroupMember(c); return }
-        if c.nativeFullscreen, !c.isVisible(on: m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
-        if c.isVisible(on: m) {
+        if c.nativeFullscreen, !VISIBLEON(c, m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
+        if VISIBLEON(c, m) {
             if m.sel == id && server.selectedMonitor === m { seatFocus = c; restack(); return }
             macOSFocused = c.id
             server.clientFocus(c, false)

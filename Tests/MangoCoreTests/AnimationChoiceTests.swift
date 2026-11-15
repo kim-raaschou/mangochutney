@@ -49,7 +49,7 @@ final class AnimationChoiceTests: MangoTestCase {
     func testSlideBySpecialRule() {
         let (r, c) = rig()
         let m = r.screen.frame
-        r.monitor.current.layout = .tile
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
         let d = r.window(2)
         d.isPendingOpenAnimation = true
         r.server.config.newIsMaster = true
@@ -60,7 +60,7 @@ final class AnimationChoiceTests: MangoTestCase {
         XCTAssertEqual(r.server.clientAnimation(d, to: target, .move, current: now, shown: true).from.minX,
                        m.maxX, "the second window: from the right")
         d.isPendingOpenAnimation = true
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         XCTAssertEqual(r.server.clientAnimation(d, to: target, .move, current: now, shown: true).from.minY,
                        m.maxY, "scroller: from below")
         _ = c
@@ -148,7 +148,7 @@ final class AnimationChoiceTests: MangoTestCase {
         let (r, c) = rig()
         c.isPendingOpenAnimation = false
         let top = r.screen.frame.minY
-        c.tags = TagMask.special
+        c.tags = TAG0_MASK
         let a = r.server.clientAnimation(c, to: target, .tag(forward: true), current: now, shown: false)
         XCTAssertEqual(a.action, .tag)
         XCTAssertEqual(a.from, CGRect(x: target.minX, y: top - target.height, width: target.width, height: target.height))

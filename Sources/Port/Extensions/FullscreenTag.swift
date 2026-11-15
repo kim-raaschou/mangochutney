@@ -184,9 +184,9 @@ enum FullscreenTag {
         if m.tagset[m.seltags] != bit {
             if !isFullscreenView(m, server.config) { m.seltags ^= 1 }
             m.tagset[m.seltags] = bit
-            let before = m.curtag
-            m.curtag = bit.trailingZeroBitCount + 1
-            if before != m.curtag { m.prevTag = before }
+            let before = m.pertag.curtag
+            m.pertag.curtag = UInt32(bit.trailingZeroBitCount + 1)
+            if before != m.pertag.curtag { m.pertag.prevtag = before }
             server.arrange(m, .none)
         }
         server.clientFocus(c, true)

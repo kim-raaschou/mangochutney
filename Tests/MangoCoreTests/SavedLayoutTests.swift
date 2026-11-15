@@ -175,15 +175,15 @@ final class SavedLayoutTests: MangoTestCase {
         server.rebuildMonitors(screens: [Screen(displayID: 1, name: "Built-in", frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
                                             workArea: CGRect(x: 0, y: 37, width: 1728, height: 1080), scale: 2, isMain: true)])
         let m = server.monitors[0]
-        m.pertag[1].layout = .monocle
-        m.pertag[2].layout = .grid
-        m.pertag[2].configLayout = .deck
-        m.pertag[3].layout = .grid
-        m.pertag[3].configLayout = .deck
-        m.pertag[4].layout = .grid
-        m.pertag[4].configLayout = .deck
+        m.pertag.ltidxs[1] = .monocle
+        m.pertag.ltidxs[2] = .grid
+        m.pertag.configLtidxs[2] = .deck
+        m.pertag.ltidxs[3] = .grid
+        m.pertag.configLtidxs[3] = .deck
+        m.pertag.ltidxs[4] = .grid
+        m.pertag.configLtidxs[4] = .deck
         m.tagset[m.seltags ^ 1] = 1 << 4
-        m.prevTag = 5
+        m.pertag.prevtag = 5
         let saved = server.mac.memory.currentLayout(server)
         XCTAssertEqual(saved.tagLayouts?["1"]?[1], SavedLayout.TagLayout(layout: "monocle",
                                                                          configuredLayout: "tile"))
@@ -194,16 +194,16 @@ final class SavedLayoutTests: MangoTestCase {
         fresh.system = FakeWindowSystem(fresh)
         fresh.rebuildMonitors(screens: [server.monitors[0].screen])
         let f = fresh.monitors[0]
-        f.pertag[3].configLayout = .deck
-        f.pertag[4].configLayout = .scroller
-        f.pertag[4].layout = .scroller
+        f.pertag.configLtidxs[3] = .deck
+        f.pertag.configLtidxs[4] = .scroller
+        f.pertag.ltidxs[4] = .scroller
         fresh.mac.memory.layoutURL = url
         fresh.mac.memory.restore(fresh)
-        XCTAssertEqual(f.pertag[1].layout, .monocle)
-        XCTAssertEqual(f.pertag[2].layout, .tile, "its rule is gone: tile, as mango's reload")
-        XCTAssertEqual(f.pertag[3].layout, .grid, "its rule is unchanged: the layout in use stays")
-        XCTAssertEqual(f.pertag[4].layout, .scroller, "its rule changed: the rule's layout")
+        XCTAssertEqual(f.pertag.ltidxs[1], .monocle)
+        XCTAssertEqual(f.pertag.ltidxs[2], .tile, "its rule is gone: tile, as mango's reload")
+        XCTAssertEqual(f.pertag.ltidxs[3], .grid, "its rule is unchanged: the layout in use stays")
+        XCTAssertEqual(f.pertag.ltidxs[4], .scroller, "its rule changed: the rule's layout")
         XCTAssertEqual(f.tagset[f.seltags ^ 1], 1 << 4, "view goes back to the tags shown before")
-        XCTAssertEqual(f.prevTag, 5)
+        XCTAssertEqual(f.pertag.prevtag, 5)
     }
 }

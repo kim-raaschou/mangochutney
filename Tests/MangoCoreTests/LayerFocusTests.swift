@@ -20,7 +20,7 @@ final class LayerFocusTests: MangoTestCase {
         c.isoverlay = false
         c.isfullscreen = false
         c.isfloating = false
-        c.tags = TagMask.special
+        c.tags = TAG0_MASK
         XCTAssertEqual(s.clientTargetLayer(c), .specialMaximize)
         c.ismaximizescreen = false
         XCTAssertEqual(s.clientTargetLayer(c), .specialTile)
@@ -39,7 +39,7 @@ final class LayerFocusTests: MangoTestCase {
         c.isfullscreen = false
         c.ismaximizescreen = true
         XCTAssertEqual(s.clientTargetLayer(c), .maximize)
-        c.tags = TagMask.special
+        c.tags = TAG0_MASK
         XCTAssertEqual(s.clientTargetLayer(c), .specialMaximize)
         c.ismaximizescreen = false
         c.isfloating = true

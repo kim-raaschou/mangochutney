@@ -49,7 +49,7 @@ public enum MenuBarStatus {
             let bit: UInt32 = 1 << UInt32(i - 1)
             let active = m.tagset[m.seltags] & bit != 0
             let occupied = server.clientsAll.contains { $0.mon === m && $0.tags & bit != 0 && !$0.isminimized }
-            if active || occupied || m.pertag[i].noHide {
+            if active || occupied || m.pertag.noHide[i] {
                 tags.append(MenuBarTag(number: i, active: active, overlap: overlaps(server, m, tag: i)))
             }
         }

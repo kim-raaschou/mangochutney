@@ -140,13 +140,13 @@ extension MacWindowSystem {
         }
         let d = abs(actual.minX - c.frame.minX) + abs(actual.minY - c.frame.minY)
             + abs(actual.width - c.frame.width) + abs(actual.height - c.frame.height)
-        let offLayout = !c.isfloating && !c.scratchpadShown
+        let offLayout = !c.isfloating && !SCRATCHPAD_SHOWN(c)
             && c.geom.map { MangoServer.frameDistance(actual, $0) > 0.5 } == true
         guard d > 0.5 || offLayout else { return }
         if c.isfloating { userMoved(c, to: actual, resized: false, dragging: false); return }
         c.frame = actual
         let now = CACurrentMediaTime()
-        if !c.isfloating, !c.scratchpadShown, let target = c.geom, MangoServer.frameDistance(actual, target) > 0.5 {
+        if !c.isfloating, !SCRATCHPAD_SHOWN(c), let target = c.geom, MangoServer.frameDistance(actual, target) > 0.5 {
             let larger = actual.width > target.width + 0.5 || actual.height > target.height + 0.5
             let inward = larger && c.mon != nil ? Self.inwardOrigin(target, size: actual.size, in: layoutBounds(c.mon!)) : target.origin
             let atTile = abs(actual.minX - target.minX) <= 1 && abs(actual.minY - target.minY) <= 1

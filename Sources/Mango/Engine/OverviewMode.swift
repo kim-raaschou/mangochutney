@@ -8,13 +8,13 @@ package extension MangoServer {
     }
 
     func fixMonTagsetFromOverview(_ m: Monitor) {
-        let tagmask = TagMask.mask(forTagNum: config.tagNum)
+        let tagmask = TAGMASK
         if m.tagset[m.seltags] == m.ovbkPrevTagset & tagmask {
             m.tagset[m.seltags ^ 1] = m.ovbkCurrentTagset
-            m.prevTag = TagMask.getTagsFirstTagNum(m.ovbkCurrentTagset) ?? 0
+            m.pertag.prevtag = getTagsFirstTagNum(m.ovbkCurrentTagset)
         } else {
             m.tagset[m.seltags ^ 1] = m.ovbkPrevTagset
-            m.prevTag = TagMask.getTagsFirstTagNum(m.ovbkPrevTagset) ?? 0
+            m.pertag.prevtag = getTagsFirstTagNum(m.ovbkPrevTagset)
         }
     }
 
@@ -29,7 +29,7 @@ package extension MangoServer {
         var target: UInt32 = 0
         var visibleClientNumber = 0
         var currentTags: UInt32 = 0
-        let tagmask = TagMask.mask(forTagNum: config.tagNum)
+        let tagmask = TAGMASK
         defer { publishInputState() }   // not in mango: the event tap's snapshot
 
         m.isoverview = enter
@@ -46,7 +46,7 @@ package extension MangoServer {
             currentTags = m.tagset[m.seltags] & tagmask
             for c in clients where c.mon === m {
                 // not in mango: no unmanaged clients or X11 popups
-                if !c.isminimized && !c.isunglobal && c.tags & TagMask.special == 0
+                if !c.isminimized && !c.isunglobal && c.tags & TAG0_MASK == 0
                     && overviewClientOnCurrentTags(c, onlyCurrent, currentTags) {
                     visibleClientNumber += 1
                 }
@@ -72,7 +72,7 @@ package extension MangoServer {
         } else {
             target = m.ovbkCurrentTagset != 0
                 ? (m.ovbkCurrentTagset & tagmask)
-                : (m.prevTag != 0 ? 1 << UInt32(m.prevTag - 1) : 1)
+                : (m.pertag.prevtag != 0 ? 1 << UInt32(m.pertag.prevtag - 1) : 1)
             if target == 0 {
                 target = 1
             }
@@ -83,7 +83,7 @@ package extension MangoServer {
 
             for c in clients where c.mon === m {
                 // not in mango: every Client is a mapped window
-                if c.isunglobal || c.isminimized || c.tags & TagMask.special != 0
+                if c.isunglobal || c.isminimized || c.tags & TAG0_MASK != 0
                     || !overviewClientOnCurrentTags(c, onlyCurrent, currentTags) {
                     continue
                 }
@@ -96,7 +96,7 @@ package extension MangoServer {
 
             m.tagset[m.seltags] = target
             overviewCardsClose(m)   // not in mango: the port's pictures, overview_destroy_card
-            for c in clients where c.mon === m && !c.isunglobal && !c.isminimized && c.tags & TagMask.special == 0 {
+            for c in clients where c.mon === m && !c.isunglobal && !c.isminimized && c.tags & TAG0_MASK == 0 {
                 overviewRestore(c, target)
             }
         }
@@ -205,7 +205,7 @@ package extension MangoServer {
 
     /// Not in mango: the overview's items, VISIBLEON and not unglobal, with overview_backup_geom's size.
     func overviewItems(_ m: Monitor) -> [(id: ClientID, size: CGSize)] {
-        clients.filter { $0.mon === m && $0.isVisible(on: m) && !$0.isunglobal }.map { c in
+        clients.filter { $0.mon === m && VISIBLEON($0, m) && !$0.isunglobal }.map { c in
             let f = c.overviewBackupGeom ?? .zero
             return (c.id, f.width <= 0 || f.height <= 0 ? CGSize(width: 100, height: 100) : f.size)
         }
@@ -276,7 +276,7 @@ package extension MangoServer {
         var labelIdx = 0
 
         for c in clients {
-            if c.isVisible(on: m) && !c.isunglobal {   // not in mango: no X11 popups
+            if VISIBLEON(c, m) && !c.isunglobal {   // not in mango: no X11 popups
                 if labelIdx >= jumpLabelsLen {
                     break
                 }
@@ -407,7 +407,7 @@ package extension MangoServer {
     func wantRestoreFullscreen(_ targetClient: Client) -> Bool {
         for c in clients where c !== targetClient && c.tags == targetClient.tags && c.id == selectedMonitor.sel {
             guard let m = c.mon else { continue }
-            let layout = m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? 0].layout
+            let layout = m.pertag.ltidxs[getClientTagIdx(c)]
             if layout != .scroller && layout != .verticalScroller {
                 return false
             }
@@ -442,7 +442,7 @@ package extension MangoServer {
                 c.ismaximizescreen = false
                 clientSetFullscreen(c, false, rearrange: false)
             }
-        } else if target & c.tags & TagMask.mask(forTagNum: config.tagNum) == 0 {
+        } else if target & c.tags & TAGMASK == 0 {
             // not in mango: is_restoring_from_ov's resize; the geom is the backup, and the window is placed when shown
         }
     }

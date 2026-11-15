@@ -102,7 +102,7 @@ package extension MangoServer {
 
         for c in clients {
             if c.mon !== m { continue }
-            if c.isVisible(on: m) {
+            if VISIBLEON(c, m) {
                 visible += 1
                 if Self.isTiled(c) { tiled += 1 }
             }
@@ -153,7 +153,7 @@ package extension MangoServer {
             /* Scroller pages include maximized/fullscreen windows, which are
              * excluded by ISTILED; keep the drag strip consistent with scroller()
              * so a maximized/fullscreen page can be panned away like any other. */
-            if c.mon !== m || !c.isVisible(on: m) || !Self.isScrollTiled(c) { continue }
+            if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) { continue }
             guard let g = c.geom else { continue }   // not in mango: geom is optional
 
             var cx = Double(g.minX + g.width / 2)
@@ -177,7 +177,7 @@ package extension MangoServer {
         var shown: [ClientID: CGRect] = [:]
 
         for c in clients {
-            if c.mon !== m || !c.isVisible(on: m) || !Self.isScrollTiled(c) { continue }
+            if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) { continue }
             guard var box = c.geom else { continue }   // not in mango: geom is optional
 
             if horizontal { box.origin.x += CGFloat(offset.rounded()) } else { box.origin.y += CGFloat(offset.rounded()) }
@@ -202,7 +202,7 @@ package extension MangoServer {
         let monCenter = Double(horizontal ? w.width : w.height) / 2
 
         for c in clients {
-            if c.mon !== m || !c.isVisible(on: m) || !Self.isScrollTiled(c) { continue }
+            if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) { continue }
             guard let g = c.geom else { continue }   // not in mango: geom is optional
 
             let center = Double(horizontal ? g.minX + g.width / 2 : g.minY + g.height / 2)
@@ -240,7 +240,7 @@ package extension MangoServer {
         var bestDelta = 0.0
         var bestOffset = 0.0
         for c in clients {
-            if c.mon !== m || !c.isVisible(on: m) || !Self.isScrollTiled(c) || c === sel { continue }
+            if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) || c === sel { continue }
             guard let g = c.geom else { continue }   // not in mango: geom is optional
 
             let center = Double(horizontal ? g.minX + g.width / 2 : g.minY + g.height / 2)
@@ -499,7 +499,7 @@ package extension MangoServer {
                     let shift = CGFloat(offset.rounded())
                     if shift != 0 {
                         for c in clients {
-                            if c.mon !== m || !c.isVisible(on: m) || !Self.isScrollTiled(c) { continue }
+                            if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) { continue }
                             if swipeHorizontal { c.geom?.origin.x += shift } else { c.geom?.origin.y += shift }
                         }
                     }

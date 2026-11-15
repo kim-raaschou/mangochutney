@@ -123,7 +123,7 @@ package extension MangoServer {
                 ("index", .int(i)),
                 ("is_active", .bool(active & bit != 0)),
                 ("is_urgent", .bool(onTag.contains { $0.isurgent })),
-                ("layout", .string(m.pertag[i].layout.symbol)),
+                ("layout", .string(m.pertag.ltidxs[i].symbol)),
                 ("client_count", .int(onTag.count)),
             ])
         })
@@ -176,7 +176,7 @@ package extension MangoServer {
             ("is_swallowedby", .bool(false)),
             ("is_group", .bool(group)),
             ("is_group_focus", .bool(group && c.isGroupFocus)),
-            ("is_visible", .bool(c.mon.map { c.isVisible(on: $0) } ?? false)),
+            ("is_visible", .bool(c.mon.map { VISIBLEON(c, $0) } ?? false)),
             ("is_focused", .bool(c.mon === selectedMonitor && selectedMonitor.sel == c.id)),
             ("is_fullscreen", .bool(c.isfullscreen)),
             ("is_floating", .bool(c.isfloating)),
@@ -193,7 +193,7 @@ package extension MangoServer {
             ("y", .int(Int(f.minY))),
             ("width", .int(Int(f.width))),
             ("height", .int(Int(f.height))),
-            ("scroller_proportion", .double(Double(Float(c.scrollerProportion ?? c.mon?.current.settings.scrollerDefaultProportion ?? 0)))),
+            ("scroller_proportion", .double(Double(Float(c.scrollerProportion ?? c.mon.map { CGFloat($0.pertag.scrollerDefaultProportion[getMonCurtag($0)]) } ?? 0)))),
         ])
     }
 

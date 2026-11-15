@@ -21,7 +21,7 @@ final class WindowMemory {
         let snapshot = departed.orderSnapshot(leaving: c.id, order: order)
         departed.remember(c.id, DepartedWindow(
             tags: c.tags, displayID: c.mon?.screen.displayID, isfloating: Self.isfloating(c), isglobal: c.isglobal,
-            isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
+            isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: SCRATCHPAD_SHOWN(c),
             isnamedscratchpad: c.isnamedscratchpad, floatFrame: c.floatGeom,
             scrollerProportion: c.scrollerProportion, orderSnapshot: snapshot, at: CACurrentMediaTime(),
             bundleId: c.bundleId, homeDisplayID: c.oldmonname,
@@ -63,7 +63,7 @@ final class WindowMemory {
             // Port extension: chutney_fullscreen_tag saves a window on its own tags, not its F tag.
             SavedLayout.Window(id: c.id, bundleId: c.bundleId, tags: FullscreenTag.savedTags(server, c), displayID: c.mon?.screen.displayID,
                                homeDisplayID: c.oldmonname, isfloating: Self.isfloating(c), isglobal: c.isglobal,
-                               isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
+                               isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: SCRATCHPAD_SHOWN(c),
                                isnamedscratchpad: c.isnamedscratchpad, floatFrame: c.floatGeom,
                                scrollerProportion: c.scrollerProportion, orderSnapshot: nil,
                                iscustomsize: c.iscustomsize)
@@ -87,9 +87,9 @@ final class WindowMemory {
             let view = FullscreenTag.savedView(server, m)   // Port extension: chutney_fullscreen_tag
             tagsets[display] = view.now
             previousTagsets[display] = view.before
-            prevTags[display] = m.prevTag
-            tagLayouts[display] = m.pertag.map {
-                SavedLayout.TagLayout(layout: $0.layout.name, configuredLayout: $0.configLayout.name)
+            prevTags[display] = Int(m.pertag.prevtag)
+            tagLayouts[display] = zip(m.pertag.ltidxs, m.pertag.configLtidxs).map {
+                SavedLayout.TagLayout(layout: $0.name, configuredLayout: $1.name)
             }
         }
         var groups = departed.groups
@@ -129,17 +129,17 @@ final class WindowMemory {
         for g in saved.groups ?? [] { departed.rememberGroup(g) }
         for m in server.monitors {
             let display = String(m.screen.displayID)
-            if let t = saved.tagsets[display], t & ~TagMask.special != 0 {
+            if let t = saved.tagsets[display], t & ~TAG0_MASK != 0 {
                 m.tagset[m.seltags] = t
-                m.curtag = TagMask.getTagsFirstTagNum(t) ?? 1
+                m.pertag.curtag = t == 0 ? 1 : server.getTagsFirstTagNum(t)
             }
-            if let t = saved.previousTagsets?[display], t & ~TagMask.special != 0 {
+            if let t = saved.previousTagsets?[display], t & ~TAG0_MASK != 0 {
                 m.tagset[m.seltags ^ 1] = t
             }
-            if let t = saved.prevTags?[display], (1...31).contains(t) { m.prevTag = t }
-            for (p, t) in zip(m.pertag, saved.tagLayouts?[display] ?? []) {
-                if p.configLayout.name == (t.configuredLayout ?? LayoutKind.tile.name), let layout = LayoutKind(name: t.layout) {
-                    p.layout = layout
+            if let t = saved.prevTags?[display], (1...31).contains(t) { m.pertag.prevtag = UInt32(t) }
+            for (i, t) in (saved.tagLayouts?[display] ?? []).enumerated() where i < Int(PERTAG_SLOTS) {
+                if m.pertag.configLtidxs[i].name == (t.configuredLayout ?? LayoutKind.tile.name), let layout = LayoutKind(name: t.layout) {
+                    m.pertag.ltidxs[i] = layout
                 }
             }
         }

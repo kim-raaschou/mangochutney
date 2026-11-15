@@ -39,7 +39,7 @@ final class BorderInsideTheTileTests: MangoTestCase {
 
     func rig(_ n: Int, layout: LayoutKind = .tile) -> EngineRig {
         let r = EngineRig()
-        r.monitor.current.layout = layout
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = layout
         r.server.config.borderpx = 4
         for i in 0..<n { r.window(CGWindowID(900_500 + i)) }
         return r
@@ -91,7 +91,7 @@ final class BorderInsideTheTileTests: MangoTestCase {
         c.isfloating = true
         XCTAssertFalse(r.server.clientNoRadiusActive(c), "a floating window keeps its corners")
         c.isfloating = false
-        r.monitor.current.layout = .tile
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
         XCTAssertFalse(r.server.clientNoRadiusActive(c), "only in monocle")
     }
 

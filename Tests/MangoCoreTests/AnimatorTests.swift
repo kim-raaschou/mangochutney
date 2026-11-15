@@ -37,7 +37,7 @@ final class CoveredWindowTests: MangoTestCase {
     func rig(_ kind: LayoutKind = .monocle) -> EngineRig {
         let r = EngineRig()
         r.server.config.monocleTabMode = false
-        r.monitor.current.layout = kind
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = kind
         for i in 0..<3 { r.window(CGWindowID(900_400 + i)) }
         r.monitor.sel = 900_400
         r.server.arrange(r.monitor, .none)

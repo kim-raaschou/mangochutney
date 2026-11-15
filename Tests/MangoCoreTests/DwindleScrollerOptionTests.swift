@@ -6,7 +6,7 @@ import XCTest
 final class DwindleScrollerOptionTests: MangoTestCase {
     func dwindle(_ windows: Int) -> EngineRig {
         let r = EngineRig()
-        r.monitor.current.layout = .dwindle
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .dwindle
         for i in 0..<windows { r.window(CGWindowID(900_400 + i)) }
         r.server.arrange(r.monitor, .none)
         return r
@@ -50,10 +50,10 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let c = r.server.clientByIdAll(900_400)!
         XCTAssertNil(r.server.clientDrawSplitBorder(c, on: r.monitor), "only with dwindle_manual_split")
         r.server.config.dwindleManualSplit = true
-        let horizontal = r.monitor.current.state.dwindleRoot.leafSplitHorizontal(for: c.id)!
+        let horizontal = r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)].leafSplitHorizontal(for: c.id)!
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.side, horizontal ? .right : .bottom)
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.color, r.server.config.splitcolor)
-        r.monitor.current.state.dwindleRoot.dwindleSetSplitDirection(c.id, horizontal: nil)
+        r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)].dwindleSetSplitDirection(c.id, horizontal: nil)
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.side, horizontal ? .bottom : .right)
         c.isurgent = true
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.color, r.server.config.urgentcolor)
@@ -63,7 +63,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
 
     func scroller() -> EngineRig {
         let r = EngineRig()
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         r.server.config.sloppyfocus = true
         let w = r.screen.frame
         r.window(900_410, frame: CGRect(x: 100, y: 100, width: 600, height: 800))
@@ -129,7 +129,7 @@ final class TiledDragStaysFiniteTests: MangoTestCase {
             for count in [1, 2, 3, 4] {
                 let r = EngineRig()
                 r.server.renderBorder = true
-                r.monitor.current.layout = kind
+                r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = kind
                 for i in 0..<count { r.window(900_600 + CGWindowID(i)) }
                 r.server.arrange(r.monitor, .none)
                 for c in r.server.clientsAll {

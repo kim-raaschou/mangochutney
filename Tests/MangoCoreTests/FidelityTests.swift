@@ -83,7 +83,7 @@ final class FidelityTests: MangoTestCase {
 
     func testATagSwitchScrollsTheFocusedWindowIntoView() {
         let r = EngineRig()
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1), _ = r.map(2), _ = r.map(3), d = r.map(4)
         r.server.clientFocus(d, true)
         r.server.clientSwitchView(1 << 1)
@@ -98,9 +98,9 @@ final class FidelityTests: MangoTestCase {
 
     func testUnmapFocusesTheStackNeighbour() {
         let r = EngineRig()
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1), _ = r.map(2), c = r.map(3)
-        let st = r.monitor.current.state.scrollerState
+        let st = r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)]
         _ = st.scrollerApplyStack(c.id, direction: .left, vertical: false, clientOrder: r.server.clients.map(\.id))
         let col = st.column(of: c.id)
         guard col.count >= 2, let i = col.firstIndex(of: c.id), i + 1 < col.count || i > 0 else {
@@ -136,19 +136,19 @@ final class FidelityTests: MangoTestCase {
 
     func testSetProportion() {
         let r = EngineRig()
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         r.server.config.scrollerIgnoreProportionSingle = false
         let a = r.map(1)
         _ = r.server.dispatch(Dispatch(name: "set_proportion", args: ["0.5"]), target: a)
-        XCTAssertEqual(a.scrollerProportion, 0.9, "one window: refused")
+        XCTAssertEqual(a.scrollerProportion ?? 0, CGFloat(Float(0.9)), "one window: refused")
         let b = r.map(2)
-        let st = r.monitor.current.state.scrollerState
+        let st = r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)]
         st.scrollerApplyStack(b.id, direction: .left, vertical: false, clientOrder: r.server.clients.map(\.id))
         let head = st.column(of: b.id).first!
         let other = head == a.id ? b : a
         _ = r.server.dispatch(Dispatch(name: "set_proportion", args: ["0.5"]), target: other)
         XCTAssertEqual(r.server.clientByIdAll(head)?.scrollerProportion, 0.5)
-        XCTAssertEqual(other.scrollerProportion, 0.9, "only the head")
+        XCTAssertEqual(other.scrollerProportion ?? 0, CGFloat(Float(0.9)), "only the head")
     }
 
     func testToggleScratchpadOneAtATime() {
@@ -158,7 +158,7 @@ final class FidelityTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: b)
         XCTAssertEqual(r.server.clients.first?.id, 2, "the last minimized first")
-        func shown() -> [ClientID] { r.server.clients.filter { $0.scratchpadShown }.map(\.id) }
+        func shown() -> [ClientID] { r.server.clients.filter { SCRATCHPAD_SHOWN($0) }.map(\.id) }
         _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
         XCTAssertEqual(shown(), [1], "one, not the whole pool: the oldest")
         _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
@@ -199,9 +199,9 @@ final class FidelityTests: MangoTestCase {
 
     func testDwindleKeepsAFullscreenWindowsPlace() {
         let r = EngineRig()
-        r.monitor.current.layout = .dwindle
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .dwindle
         let a = r.map(1), _ = r.map(2), _ = r.map(3)
-        let tree = r.monitor.current.state.dwindleRoot
+        let tree = r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)]
         let before = tree.clientOrder
         a.isfullscreen = true
         r.server.arrange(r.monitor)
@@ -214,7 +214,7 @@ final class FidelityTests: MangoTestCase {
     func testTabMembersAndChainFocus() {
         let r = EngineRig()
         r.server.config.monocleTabMode = true
-        r.monitor.current.layout = .monocle
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         let a = r.window(1), b = r.window(2), c = r.window(3, floating: true)
         r.server.arrange(r.monitor)
         a.isfullscreen = true
@@ -315,18 +315,20 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         _ = r.server.dispatch(Dispatch(name: "view", args: ["3"]))
         XCTAssertEqual(r.server.getTagsFirstTag(0), 1 << 2, "no tags: the current tag")
-        XCTAssertEqual(r.server.getTagsFirstTag(TagMask.special | 1 << 4), TagMask.special)
+        XCTAssertEqual(r.server.getTagsFirstTag(TAG0_MASK | 1 << 4), TAG0_MASK)
         XCTAssertEqual(r.server.getTagsFirstTag(1 << 4 | 1 << 6), 1 << 4)
     }
 
     func testTagRuleFlagsSurviveAReload() {
         let r = EngineRig()
         let with = ConfigParser.parse(text: "tag_rule=id:2,open_as_floating:1", baseDirectory: nil, fileName: "t").config
-        r.monitor.parseTagrule(config: with, clients: [])
-        XCTAssertTrue(r.monitor.pertag[2].openAsFloating)
+        r.server.config = with
+        r.server.parseTagrule(r.monitor)
+        XCTAssertTrue(r.monitor.pertag.openAsFloating[2])
         let without = ConfigParser.parse(text: "", baseDirectory: nil, fileName: "t").config
-        r.monitor.parseTagrule(config: without, clients: [])
-        XCTAssertTrue(r.monitor.pertag[2].openAsFloating, "as mango: left as it was")
+        r.server.config = without
+        r.server.parseTagrule(r.monitor)
+        XCTAssertTrue(r.monitor.pertag.openAsFloating[2], "as mango: left as it was")
     }
 
     func testOvercircleFocusesEachStep() {
@@ -361,7 +363,7 @@ final class FidelityTests: MangoTestCase {
 
     func testGridShares() {
         let r = EngineRig()
-        r.monitor.current.layout = .grid
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .grid
         for id in 1...4 { r.map(CGWindowID(id)) }
         r.server.arrange(r.monitor)
         let first = r.server.clients[0], second = r.server.clients[1]
@@ -376,7 +378,7 @@ final class FidelityTests: MangoTestCase {
 
     func testAGridDragMovesTheEdgeItGrabs() throws {
         let r = EngineRig()
-        r.monitor.current.layout = .grid
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .grid
         for id in 1...6 { r.map(CGWindowID(id)) }
         r.server.arrange(r.monitor)
         let tiled = r.server.tiledClients(r.monitor)
@@ -399,11 +401,11 @@ final class FidelityTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
         XCTAssertTrue(a.isInScratchpad)
         XCTAssertTrue(a.isminimized)
-        XCTAssertFalse(a.scratchpadShown)
+        XCTAssertFalse(SCRATCHPAD_SHOWN(a))
         _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad"))
         XCTAssertTrue(a.isInScratchpad)
         XCTAssertFalse(a.isminimized, "shown: not minimized")
-        XCTAssertTrue(a.scratchpadShown)
+        XCTAssertTrue(SCRATCHPAD_SHOWN(a))
         let data = r.server.buildClientJson(a).serialized.data(using: .utf8)!
         let info = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
         XCTAssertEqual(info["is_minimized"] as? Bool, false)
@@ -415,10 +417,10 @@ final class FidelityTests: MangoTestCase {
         let m = r.monitor
         let a = r.map(1)
         _ = r.server.dispatch(Dispatch(name: "toggle_special_tag"))
-        XCTAssertEqual(m.tagset[m.seltags], TagMask.special, "the special tag alone")
+        XCTAssertEqual(m.tagset[m.seltags], TAG0_MASK, "the special tag alone")
         XCTAssertFalse(a.parked, "the window of the tag before stays")
         let s = r.map(2)
-        XCTAssertEqual(s.tags, TagMask.special, "a new window opens on the special tag")
+        XCTAssertEqual(s.tags, TAG0_MASK, "a new window opens on the special tag")
         r.server.mac.windowDestroyed(id: s.id)
         XCTAssertEqual(m.tagset[m.seltags], 1, "the last special window gone: back to tag 1")
         _ = r.server.dispatch(Dispatch(name: "toggle_special_tag"))
@@ -427,9 +429,9 @@ final class FidelityTests: MangoTestCase {
     }
 
     func testFirstTagNumWithTheSpecialTag() {
-        XCTAssertEqual(TagMask.getTagsFirstTagNum(TagMask.special | 1 << 3), 0)
-        XCTAssertEqual(TagMask.getTagsFirstTagNum(1 << 3 | 1 << 5), 4)
-        XCTAssertNil(TagMask.getTagsFirstTagNum(0))
+        XCTAssertEqual(EngineRig().server.getTagsFirstTagNum(TAG0_MASK | 1 << 3), 0)
+        XCTAssertEqual(EngineRig().server.getTagsFirstTagNum(1 << 3 | 1 << 5), 4)
+        XCTAssertEqual(EngineRig().server.getTagsFirstTagNum(0), 0)
     }
 
     func testNewFloatingWindowsAreCentred() {
@@ -489,13 +491,13 @@ final class FidelityTests: MangoTestCase {
 
     func testOpenAsFloatingIsTheWindowsTags() {
         let r = EngineRig()
-        r.monitor.pertag[3].openAsFloating = true
+        r.monitor.pertag.openAsFloating[3] = true
         rules(r, "window_rule=is_tag_silent:1,tags:3,title:^t2$")
         let a = r.map(1)
         let b = r.map(2)
         XCTAssertFalse(a.isfloating)
         XCTAssertTrue(b.isfloating, "tag 3 opens windows floating")
-        r.monitor.pertag[1].openAsFloating = true
+        r.monitor.pertag.openAsFloating[1] = true
         rules(r, "window_rule=is_tag_silent:1,tags:2,title:^t3$")
         XCTAssertFalse(r.map(3).isfloating, "the tag in view does not decide")
     }
@@ -518,7 +520,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         XCTAssertTrue(a.isInScratchpad && !a.isminimized && a.isfloating, "shown")
         let b = r.map(2)
-        XCTAssertTrue(b.scratchpadShown)
+        XCTAssertTrue(SCRATCHPAD_SHOWN(b))
         XCTAssertTrue(a.isInScratchpad && a.isminimized, "single_scratchpad hides the other")
     }
 
@@ -663,7 +665,7 @@ final class FidelityTests: MangoTestCase {
         d(r, "minimized", [], a)
         r.server.clientActive(a)
         XCTAssertFalse(a.isminimized)
-        XCTAssertTrue(a.scratchpadShown, "shown in the scratchpad, not taken out")
+        XCTAssertTrue(SCRATCHPAD_SHOWN(a), "shown in the scratchpad, not taken out")
         XCTAssertTrue(r.server.focused === a)
         b.tags = 1 << 1
         r.monitor.tagset[r.monitor.seltags] = 0b11
@@ -691,12 +693,12 @@ final class FidelityTests: MangoTestCase {
         r.server.toggleSpecialTagMon(side)
 
         r.server.config.specialTagCrossMonitor = true
-        r.monitor.pertag[0].layout = .grid
+        r.monitor.pertag.ltidxs[0] = .grid
         r.server.toggleSpecialTagMon(side)
         XCTAssertTrue(a.mon === side, "on: the special tag's windows come along")
         XCTAssertTrue(r.server.isSpecialActive(side))
         XCTAssertFalse(r.server.isSpecialActive(r.monitor), "the other monitor goes back to its tags")
-        XCTAssertEqual(side.pertag[0].layout, .grid, "with the special tag's layout")
+        XCTAssertEqual(side.pertag.ltidxs[0], .grid, "with the special tag's layout")
     }
 
     func testTagmonViewsTheWindowsFirstTagOnTheTarget() {
@@ -715,10 +717,10 @@ final class FidelityTests: MangoTestCase {
     func testTagmonOntoTheSpecialTag() {
         let r = EngineRig()
         let side = twoMonitors(r)
-        side.tagset[side.seltags] = TagMask.special
+        side.tagset[side.seltags] = TAG0_MASK
         let a = r.map(1)
         d(r, "tagmon", ["right"], a)
-        XCTAssertEqual(a.tags, TagMask.special)
+        XCTAssertEqual(a.tags, TAG0_MASK)
     }
 
     func testTagmonOnItsOwnMonitorViewsItsTags() {
@@ -829,7 +831,7 @@ final class FidelityTests: MangoTestCase {
     func testScrollerSmartGapsCountColumns() {
         let r = EngineRig()
         r.server.config.smartgaps = true
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1)
         let b = r.map(2)
         d(r, "scroller_stack", ["left"], b)
@@ -837,7 +839,7 @@ final class FidelityTests: MangoTestCase {
         let w = r.monitor.screen.workArea
         let top = [a, b].compactMap(\.geom).min { $0.minY < $1.minY }!
         let bottom = [a, b].compactMap(\.geom).max { $0.minY < $1.minY }!
-        XCTAssertEqual(r.monitor.current.state.scrollerState.column(of: a.id).count, 2)
+        XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].column(of: a.id).count, 2)
         XCTAssertEqual(top.minY, w.minY, "no outer gap")
         XCTAssertEqual(bottom.minY - top.maxY, CGFloat(r.server.config.gappiv), "the stack gap stays")
     }
@@ -845,14 +847,14 @@ final class FidelityTests: MangoTestCase {
     func testGridIgnoresSmartGaps() {
         let r = EngineRig()
         r.server.config.smartgaps = true
-        r.monitor.current.layout = .grid
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .grid
         let a = r.map(1)
         r.server.arrange(r.monitor, .none)
         XCTAssertGreaterThan(a.geom!.minX, r.monitor.screen.workArea.minX)
     }
 
     private func tileOf4(_ r: EngineRig, _ layout: LayoutKind = .tile) -> [Client] {
-        r.monitor.current.layout = layout
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = layout
         for id in 1...4 { r.map(CGWindowID(id)) }
         r.server.arrange(r.monitor, .none)
         return r.server.tiledClients(r.monitor)
@@ -884,7 +886,7 @@ final class FidelityTests: MangoTestCase {
 
     func testResizewinChangesAScrollerStackShare() {
         let r = EngineRig()
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1)
         let b = r.map(2)
         d(r, "scroller_stack", ["left"], b)
@@ -899,11 +901,11 @@ final class FidelityTests: MangoTestCase {
     func testResizewinLeavesALoneColumnsProportion() {
         let r = EngineRig()
         r.server.config.scrollerIgnoreProportionSingle = false
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1)
         r.server.arrange(r.monitor, .none)
         d(r, "resizewin", ["+100", "0"], a)
-        XCTAssertEqual(a.scrollerProportion, 0.9, "the tag's default, as set_size_per copied it")
+        XCTAssertEqual(a.scrollerProportion ?? 0, CGFloat(Float(0.9)), "the tag's default (a float), as set_size_per copied it")
     }
 
     func testTagEndsFullscreenOnTheTargetTag() {
@@ -926,7 +928,7 @@ final class FidelityTests: MangoTestCase {
         d(r, "toggletag", [], a)
         XCTAssertEqual(a.tags, 1, "the current tag alone")
         d(r, "toggleview", ["0"])
-        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags] & TagMask.special, 0)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags] & TAG0_MASK, 0)
     }
 
     func testTagtorightIsAPlainShift() {
@@ -942,11 +944,11 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         b.tags = 1 << 1
-        r.monitor.pertag[2].settings.nmaster = 3
+        r.monitor.pertag.nmasters[2] = 3
         d(r, "view_insert", ["next"])
         XCTAssertEqual(a.tags, 1)
         XCTAssertEqual(b.tags, 1 << 2, "tag 2 moved to 3")
-        XCTAssertEqual(r.monitor.pertag[3].settings.nmaster, 3, "with its state")
+        XCTAssertEqual(r.monitor.pertag.nmasters[3], 3, "with its state")
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
     }
 
@@ -1044,7 +1046,7 @@ final class FidelityTests: MangoTestCase {
 
     func testMonocleInTheOverviewGoesByTheCards() throws {
         let r = EngineRig()
-        r.monitor.current.layout = .monocle
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         for id in 1...4 { r.map(CGWindowID(id)) }
         r.server.arrange(r.monitor)
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
@@ -1128,14 +1130,15 @@ final class FidelityTests: MangoTestCase {
         XCTAssertEqual(a.floatGeom.size, CGSize(width: 40, height: 40))
     }
 
+    // a mango bug, docs/afvigelser.md §6: mango adds to the normal gaps and writes them as the special ones
     func testIncgapsOnTheSpecialTagChangesTheSpecialGaps() {
         let r = EngineRig()
         r.map(1)
-        let normal = r.monitor.gaps
-        r.monitor.tagset[r.monitor.seltags] = TagMask.special
+        let normal = r.monitor.gappoh, special = r.monitor.specialGappoh
+        r.monitor.tagset[r.monitor.seltags] = TAG0_MASK
         d(r, "incgaps", ["5"])
-        XCTAssertEqual(r.monitor.gaps, normal)
-        XCTAssertEqual(r.monitor.specialGaps.oh, normal.oh + 5)
+        XCTAssertEqual(r.monitor.gappoh, normal)
+        XCTAssertEqual(r.monitor.specialGappoh, special + 5)
     }
 
     func testSpawnOnEmptyTakesTheCommandThenTheTags() {
@@ -1149,7 +1152,7 @@ final class FidelityTests: MangoTestCase {
     func testSwitchProportionPresetGoesForwardInTheConfigsOrder() {
         let r = EngineRig()
         r.server.config.scrollerProportionPreset = [0.8, 0.5, 1.0]
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1)
         r.map(2)
         a.scrollerProportion = 0.8
@@ -1279,6 +1282,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         a.tags = 1 << 7
         r.server.config.tagNum = 5
+        r.server.updateGlobalVar()
         r.server.resetTag(9)
         XCTAssertEqual(a.tags, 1 << 4)
     }
@@ -1287,15 +1291,15 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.tagRules = ConfigParser.parse(text: "tag_rule=id:2,layout_name:scroller", baseDirectory: nil,
                                                       fileName: "t").config.tagRules
-        r.monitor.parseTagrule(config: r.server.config, clients: [])
-        XCTAssertEqual(r.monitor.pertag[2].layout, .scroller)
+        r.server.parseTagrule(r.monitor)
+        XCTAssertEqual(r.monitor.pertag.ltidxs[2], .scroller)
         r.server.config.tagRules = []
-        r.monitor.parseTagrule(config: r.server.config, clients: [])
-        XCTAssertEqual(r.monitor.pertag[2].layout, .tile)
+        r.server.parseTagrule(r.monitor)
+        XCTAssertEqual(r.monitor.pertag.ltidxs[2], .tile)
     }
 
     func testParseTagMaskAsMango() {
-        XCTAssertEqual(TagMask.parseTagMask("1|0"), TagMask.special)
+        XCTAssertEqual(TagMask.parseTagMask("1|0"), TAG0_MASK)
         XCTAssertEqual(TagMask.parseTagMask("32"), 32)
         XCTAssertEqual(TagMask.parseTagMask("1|abc"), 1)
         XCTAssertEqual(TagMask.parseTagMask("00"), 0)
@@ -1374,10 +1378,10 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.map(1)
         r.server.config.exec = ["foo"]
-        r.monitor.current.settings.nmaster = 3
+        r.monitor.pertag.nmasters[getMonCurtag(r.monitor)] = 3
         d(r, "setoption", ["gap_outer_horizontal", "24"])
-        XCTAssertEqual(r.monitor.gaps.oh, 24)
-        XCTAssertEqual(r.monitor.current.settings.nmaster, r.server.config.defaultNmaster)
+        XCTAssertEqual(r.monitor.gappoh, 24)
+        XCTAssertEqual(Int(r.monitor.pertag.nmasters[getMonCurtag(r.monitor)]), r.server.config.defaultNmaster)
         XCTAssertEqual((r.server.system as! FakeWindowSystem).spawned, ["foo"])
     }
 
@@ -1443,19 +1447,19 @@ final class FidelityTests: MangoTestCase {
 
     func testScrollerStackHasNoRemainderForTheLast() {
         let r = EngineRig()
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1), b = r.map(2), c = r.map(3)
         d(r, "scroller_stack", ["left"], b)
         d(r, "scroller_stack", ["left"], c)
         r.server.arrange(r.monitor, .none)
         let hs = [a, b, c].map { $0.geom!.height }
-        XCTAssertEqual(r.monitor.current.state.scrollerState.column(of: a.id).count, 3)
+        XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].column(of: a.id).count, 3)
         XCTAssertLessThanOrEqual(hs.max()! - hs.min()!, 0.5, "\(hs)")
     }
 
     func testAWindowTiledAgainGoesBackToItsPlaceInTheScroller() {
         let r = EngineRig()
-        r.monitor.current.layout = .scroller
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1), b = r.map(2), c = r.map(3)
         r.server.clients = [a, b, c]
         r.server.arrange(r.monitor, .none)
@@ -1463,7 +1467,7 @@ final class FidelityTests: MangoTestCase {
         r.server.clientFocus(c, true)
         d(r, "togglefloating", [], b)
         let ids = [a, b, c].map(\.id)
-        XCTAssertEqual(r.monitor.current.state.scrollerState.columns(for: ids), [[a.id], [b.id], [c.id]])
+        XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].columns(for: ids), [[a.id], [b.id], [c.id]])
     }
 
     func testDwindleNewcomersSplitTheFocusedLeaf() {
@@ -1527,7 +1531,7 @@ final class FidelityTests: MangoTestCase {
         d(r, "setlayout", ["monocle"], a)
         d(r, "incnmaster", ["1"], a)
         XCTAssertEqual(r.monitor.layout, .monocle)
-        XCTAssertEqual(r.monitor.current.settings.nmaster, 2)
+        XCTAssertEqual(r.monitor.pertag.nmasters[getMonCurtag(r.monitor)], 2)
         XCTAssertNotEqual(side.layout, .monocle)
     }
 
@@ -1584,14 +1588,14 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1), _ = r.map(2)
         d(r, "minimized", [], a)
         d(r, "toggle_scratchpad")
-        XCTAssertTrue(a.scratchpadShown)
-        XCTAssertTrue(a.isVisible(on: r.monitor))
+        XCTAssertTrue(SCRATCHPAD_SHOWN(a))
+        XCTAssertTrue(VISIBLEON(a, r.monitor))
         d(r, "view", ["2"])
-        XCTAssertTrue(a.scratchpadShown, "still shown, on tag 1")
-        XCTAssertFalse(a.isVisible(on: r.monitor), "not on tag 2")
+        XCTAssertTrue(SCRATCHPAD_SHOWN(a), "still shown, on tag 1")
+        XCTAssertFalse(VISIBLEON(a, r.monitor), "not on tag 2")
         d(r, "toggle_scratchpad")
         XCTAssertEqual(a.tags, 1 << 1, "moved to the tag in view")
-        XCTAssertTrue(a.isVisible(on: r.monitor))
+        XCTAssertTrue(VISIBLEON(a, r.monitor))
     }
 
     func testToggleviewKeepsTheCurrentTagsLayout() {
@@ -1599,14 +1603,14 @@ final class FidelityTests: MangoTestCase {
         _ = r.map(1)
         d(r, "view", ["2"])
         d(r, "setlayout", ["scroller"])
-        XCTAssertEqual(r.monitor.curtag, 2)
+        XCTAssertEqual(r.monitor.pertag.curtag, 2)
         d(r, "toggleview", ["1"])
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 0b11)
-        XCTAssertEqual(r.monitor.curtag, 2, "toggle_view leaves curtag")
+        XCTAssertEqual(r.monitor.pertag.curtag, 2, "toggle_view leaves curtag")
         XCTAssertEqual(r.monitor.layout, .scroller, "tag 2's layout, not tag 1's")
         d(r, "view", ["1"])
-        XCTAssertEqual(r.monitor.curtag, 1)
-        XCTAssertEqual(r.monitor.prevTag, 2)
+        XCTAssertEqual(r.monitor.pertag.curtag, 1)
+        XCTAssertEqual(r.monitor.pertag.prevtag, 2)
     }
 
     func testUnmapEndsTheGrab() {
@@ -1634,8 +1638,8 @@ final class FidelityTests: MangoTestCase {
         d(r, "view", ["1"])
         d(r, "toggleview", ["2"])
         d(r, "view", ["2"])
-        XCTAssertEqual(r.monitor.curtag, 2)
-        XCTAssertEqual(r.monitor.prevTag, 1)
+        XCTAssertEqual(r.monitor.pertag.curtag, 2)
+        XCTAssertEqual(r.monitor.pertag.prevtag, 1)
     }
 
     func testLayoutNamesAreCaseSensitive() {

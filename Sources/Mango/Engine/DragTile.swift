@@ -57,7 +57,7 @@ package extension MangoServer {
         if let g = groupBarTargetAt(at: p, except: c) { return (g, .none, g.frame) }
         guard let t = findClosestTiledClient(to: p, except: c), let m = t.mon else { return nil }
         let tiled = tiledClients(m)
-        let ismaster = (tiled.firstIndex { $0 === t } ?? .max) < m.current.settings.nmaster
+        let ismaster = (tiled.firstIndex { $0 === t } ?? .max) < m.pertag.nmasters[getMonCurtag(m)]
         let (direction, area) = DropArea.clientSetDropArea(layout: m.layout, target: t.geom ?? t.frame, at: p,
                                                  ismaster: ismaster, tiled: tiled.count,
                                                  dwindleSimpleSplit: config.dwindleDropSimpleSplit,
@@ -120,10 +120,10 @@ package extension MangoServer {
                 case .scroller, .verticalScroller:
                     let vertical = m.layout == .verticalScroller
                     let along: Bool = vertical ? (direction == .left || direction == .right) : (direction == .up || direction == .down)
-                    m.current.state.scrollerState.scrollerDropTile(c.id, onto: t.id, intoStack: along,
+                    m.pertag.scrollerState[getMonCurtag(m)].scrollerDropTile(c.id, onto: t.id, intoStack: along,
                                                   before: direction == .left || direction == .up)
                 case .dwindle:
-                    m.current.state.dwindleRoot.drop(c.id, nextTo: t.id, asFirst: direction == .left || direction == .up,
+                    m.pertag.dwindleRoot[getMonCurtag(m)].drop(c.id, nextTo: t.id, asFirst: direction == .left || direction == .up,
                                                  splitH: direction == .left || direction == .right,
                                                  lock: !config.dwindleDropSimpleSplit, config: config)
                 case .rightTile:

@@ -30,13 +30,13 @@ public final class Client {
     public var isInScratchpad = false
     public var oldtags: UInt32 = 0
     public var isminimized = false
-    public var scratchpadShown: Bool { isInScratchpad && !isminimized }
     public var isnamedscratchpad = false
     public var iscustomsize = false
     public var iscustompos = false
     public var isopensilent = false
     public var istagsilent = false
     public var isurgent = false
+    public var iskilling = false
 
     // not in mango: the display ID, not the output's name (two displays can share a name).
     public var oldmonname: CGDirectDisplayID?
@@ -132,144 +132,282 @@ public final class Client {
     }
 }
 
+/// not in mango: C's fixed per-tag arrays (PERTAG_SLOTS), indexed by mango's uint32_t tag.
+public struct PertagSlots<Element>: Sequence {
+    var a: [Element]
+    init(_ value: @autoclosure () -> Element) { a = (0..<Int(PERTAG_SLOTS)).map { _ in value() } }
+    public subscript(i: UInt32) -> Element {
+        get { a[Int(i)] }
+        set { a[Int(i)] = newValue }
+    }
+    public subscript(i: Int) -> Element {
+        get { a[i] }
+        set { a[i] = newValue }
+    }
+    public func makeIterator() -> IndexingIterator<[Element]> { a.makeIterator() }
+}
+
+public let tag_num_MAX: UInt32 = 31
+public let PERTAG_SLOTS: UInt32 = tag_num_MAX + 1
+
 @MainActor
 public final class Pertag {
-    public var layout: LayoutKind
-    public var settings: PertagSettings
-    public let state = TagLayoutState()
-    public var noRenderBorder = false
-    public var openAsFloating = false
-    public var noHide = false
-    public var configLayout: LayoutKind = .tile
-
-    init(layout: LayoutKind, settings: PertagSettings) {
-        self.layout = layout
-        self.settings = settings
-    }
+    public var curtag: UInt32 = 0, prevtag: UInt32 = 0
+    public var nmasters = PertagSlots<Int32>(0)
+    public var mfacts = PertagSlots<Float>(0)
+    public var noHide = PertagSlots<Bool>(false)
+    public var noRenderBorder = PertagSlots<Bool>(false)
+    public var openAsFloating = PertagSlots<Bool>(false)
+    public var scrollerDefaultProportion = PertagSlots<Float>(0)
+    public var scrollerDefaultProportionSingle = PertagSlots<Float>(0)
+    public var scrollerIgnoreProportionSingle = PertagSlots<Bool>(false)
+    public var dwindleRoot = PertagSlots<DwindleTree>(DwindleTree())
+    public var configLtidxs = PertagSlots<LayoutKind>(.tile)
+    public var ltidxs = PertagSlots<LayoutKind>(.tile)
+    public var scrollerState = PertagSlots<ScrollerState>(ScrollerState())
 }
 
 @MainActor
 public final class Monitor {
     public var screen: Screen
-    public var tagset: [UInt32] = [1, 1]
     public var seltags = 0
-    static let pertagSlots = 31 + 1   // PERTAG_SLOTS (tag_num_MAX + 1)
-    public var pertag: [Pertag] = []
-    public var sel: ClientID?
+    public var tagset: [UInt32] = [1, 1]
     var lastResizeTime: UInt32 = 0   // not in mango: last_resize_frame, as the time of that frame
-    public var prevsel: ClientID?
-    public var gaps: Gaps
-    public var specialGaps: Gaps
-    public var curtag = 1
-    public var prevTag = 1
-    public var carouselAnimDir = 0
-    public var isInHotarea = false
-    public var specialEmptyView = false
-    public var hideClients: UInt32 = 0
+
+    public var gappih: Int32 /* horizontal gap between windows */
+    public var gappiv: Int32 /* vertical gap between windows */
+    public var gappoh: Int32 /* horizontal outer gaps */
+    public var gappov: Int32 /* vertical outer gaps */
+    // special workspace gaps, per monitor
+    public var specialGappih: Int32
+    public var specialGappiv: Int32
+    public var specialGappoh: Int32
+    public var specialGappov: Int32
+    public let pertag = Pertag()
     public var ovbkCurrentTagset: UInt32 = 0
     public var ovbkPrevTagset: UInt32 = 0
-    package var titleMessageBar: MangoBarDecoration?
-    public var isJumpMode = false
+    public var sel: ClientID?
+    public var prevsel: ClientID?
     public var isoverview = false
-    public var ovTabLayout = false
-    public var ovNormalMode = false
+    public var isJumpMode = false
+    public var isInHotarea = false
+    public var ovNormalMode = false /* Uses the normal grid layout when entering via the
+                                       hot area. */
+    public var ovTabLayout = false  /* Uses the centered tab layout when entering via
+                                       overcircle. */
+    public var specialEmptyView = false // user intentionally opened the empty special view
+    public var hideClients: UInt32 = 0
+    package var titleMessageBar: MangoBarDecoration?
+    public var carouselAnimDir = 0
     // not in mango: the cards, where client_tile_resize puts the clients in overview (the port's windows stay under its pictures)
     package var ovCards: [ClientID: CGRect] = [:]
     // not in mango: the port shows pictures of the windows (screen capture granted)
     package var ovThumbnails = false
 
-    public var getMonCurtag: Int {
-        // special workspace uses slot 0; all-tags is an ordinary multi-tag view
-        // and follows its first tag
-        // not in mango: no isoverview test; the overview's tagset never holds the special tag.
-        if tagset[seltags] & TagMask.special != 0 { return 0 }
-        return curtag != 0 ? curtag : 1
-    }
-
-    public var current: Pertag { pertag[getMonCurtag] }
-    public var layout: LayoutKind { current.layout }
+    // not in mango: the layout of the tag in view, m->pertag->ltidxs[get_mon_curtag(m)]
+    public var layout: LayoutKind { pertag.ltidxs[getMonCurtag(self)] }
 
     init(screen: Screen, config: Config) {
         self.screen = screen
-        gaps = Gaps(ih: CGFloat(config.gappih), iv: CGFloat(config.gappiv),
-                    oh: CGFloat(config.gappoh), ov: CGFloat(config.gappov))
-        specialGaps = Gaps(ih: CGFloat(config.specialGappih), iv: CGFloat(config.specialGappiv),
-                           oh: CGFloat(config.specialGappoh), ov: CGFloat(config.specialGappov))
-        pertag = (0..<Monitor.pertagSlots).map { _ in
-            Pertag(layout: .tile, settings: PertagSettings(
-                nmaster: config.defaultNmaster,
-                mfact: CGFloat(config.defaultMfact),
-                scrollerDefaultProportion: CGFloat(config.scrollerDefaultProportion),
-                scrollerDefaultProportionSingle: CGFloat(config.scrollerDefaultProportionSingle),
-                scrollerIgnoreProportionSingle: config.scrollerIgnoreProportionSingle))
+        gappih = Int32(config.gappih)
+        gappiv = Int32(config.gappiv)
+        gappoh = Int32(config.gappoh)
+        gappov = Int32(config.gappov)
+        specialGappih = Int32(config.specialGappih)
+        specialGappiv = Int32(config.specialGappiv)
+        specialGappoh = Int32(config.specialGappoh)
+        specialGappov = Int32(config.specialGappov)
+        pertag.curtag = 1
+        pertag.prevtag = 1
+        for i in 0...config.tagNum {
+            pertag.nmasters[i] = Int32(config.defaultNmaster)
+            pertag.mfacts[i] = Float(config.defaultMfact)
+            pertag.ltidxs[i] = .tile
         }
-        parseTagrule(config: config, clients: [])
+    }
+}
+
+@MainActor public func isSpecialActive(_ m: Monitor?) -> Bool {
+    guard let m else { return false }
+    return !m.isoverview && (m.tagset[m.seltags] & TagMask.special) != 0
+}
+
+@MainActor public func getMonCurtag(_ m: Monitor?) -> UInt32 {
+    guard let m else { return 0 }
+    // special workspace uses slot 0; all-tags is an ordinary multi-tag view
+    // and follows its first tag
+    if isSpecialActive(m) { return 0 }
+    return m.pertag.curtag != 0 ? m.pertag.curtag : 1
+}
+
+package extension MangoServer {
+    // Reset a pertag slot to defaults.
+    func tagSlotSetDefaults(_ m: Monitor, _ tag: UInt32) {
+        m.pertag.nmasters[tag] = Int32(config.defaultNmaster)
+        m.pertag.mfacts[tag] = Float(config.defaultMfact)
+        m.pertag.configLtidxs[tag] = .tile
+        m.pertag.scrollerDefaultProportion[tag] = Float(config.scrollerDefaultProportion)
+        m.pertag.scrollerDefaultProportionSingle[tag] = Float(config.scrollerDefaultProportionSingle)
+        m.pertag.scrollerIgnoreProportionSingle[tag] = config.scrollerIgnoreProportionSingle
     }
 
-    func tagGatherResetSlot(_ tag: Int, config: Config) {
-        let p = Pertag(layout: .tile, settings: PertagSettings(
-            nmaster: config.defaultNmaster,
-            mfact: CGFloat(config.defaultMfact),
-            scrollerDefaultProportion: CGFloat(config.scrollerDefaultProportion),
-            scrollerDefaultProportionSingle: CGFloat(config.scrollerDefaultProportionSingle),
-            scrollerIgnoreProportionSingle: config.scrollerIgnoreProportionSingle))
-        var ruleLayout: LayoutKind?
-        for r in config.tagRules {
-            if let id = r.id, id != tag { continue }
-            guard r.tagRuleMatchesMonitor(screen) else { continue }
-            if let ln = r.layoutName, let k = LayoutKind(name: ln) { ruleLayout = k }
-            if let v = r.masterCount { p.settings.nmaster = v }
-            if let v = r.masterFactor { p.settings.mfact = CGFloat(v) }
-            if r.scrollerDefaultProportion > 0 { p.settings.scrollerDefaultProportion = CGFloat(r.scrollerDefaultProportion) }
-            if r.scrollerDefaultProportionSingle > 0 { p.settings.scrollerDefaultProportionSingle = CGFloat(r.scrollerDefaultProportionSingle) }
-            if let v = r.scrollerIgnoreProportionSingle { p.settings.scrollerIgnoreProportionSingle = v }
-            p.noRenderBorder = r.noRenderBorder
-            p.openAsFloating = r.openAsFloating
-            p.noHide = r.noHide
+    // Apply one tag rule to a slot (caller checks coverage).
+    func tagRuleApplyToSlot(_ m: Monitor, _ tr: ConfigTagRule, _ tag: UInt32) {
+        for layout in LayoutKind.allCases {
+            if let ln = tr.layoutName, layout.name == ln { m.pertag.configLtidxs[tag] = layout }
         }
-        p.configLayout = ruleLayout ?? .tile
-        p.layout = p.configLayout
-        pertag[tag] = p
+
+        m.pertag.noHide[tag] = tr.noHide
+        if let v = tr.masterCount, v >= 1 { m.pertag.nmasters[tag] = Int32(v) }
+        if let v = tr.masterFactor, v > 0 { m.pertag.mfacts[tag] = Float(v) }
+        m.pertag.noRenderBorder[tag] = tr.noRenderBorder
+        m.pertag.openAsFloating[tag] = tr.openAsFloating
+        if tr.scrollerDefaultProportion > 0 {
+            m.pertag.scrollerDefaultProportion[tag] = Float(tr.scrollerDefaultProportion)
+        }
+        if tr.scrollerDefaultProportionSingle > 0 {
+            m.pertag.scrollerDefaultProportionSingle[tag] = Float(tr.scrollerDefaultProportionSingle)
+        }
+        if let v = tr.scrollerIgnoreProportionSingle { m.pertag.scrollerIgnoreProportionSingle[tag] = v }
     }
 
-    func tagGatherMovePertag(dst: Int, src: Int, config: Config) {
-        pertag[dst] = pertag[src]
-        tagGatherResetSlot(src, config: config)
-    }
+    func parseTagrule(_ m: Monitor) {
+        let prevConfigLtidxs = m.pertag.configLtidxs
 
-    func parseTagrule(config: Config, clients: [Client]) {
-        for (i, p) in pertag.enumerated() {
-            p.settings.nmaster = config.defaultNmaster
-            p.settings.mfact = CGFloat(config.defaultMfact)
-            p.settings.scrollerDefaultProportion = CGFloat(config.scrollerDefaultProportion)
-            p.settings.scrollerDefaultProportionSingle = CGFloat(config.scrollerDefaultProportionSingle)
-            p.settings.scrollerIgnoreProportionSingle = config.scrollerIgnoreProportionSingle
-            var ruleLayout: LayoutKind?
-            for r in config.tagRules {
-                if let id = r.id, id != i { continue }
-                guard r.tagRuleMatchesMonitor(screen) else { continue }
-                if let ln = r.layoutName, let k = LayoutKind(name: ln) { ruleLayout = k }
-                if let v = r.masterCount { p.settings.nmaster = v }
-                if let v = r.masterFactor { p.settings.mfact = CGFloat(v) }
-                if r.scrollerDefaultProportion > 0 { p.settings.scrollerDefaultProportion = CGFloat(r.scrollerDefaultProportion) }
-                if r.scrollerDefaultProportionSingle > 0 { p.settings.scrollerDefaultProportionSingle = CGFloat(r.scrollerDefaultProportionSingle) }
-                if let v = r.scrollerIgnoreProportionSingle { p.settings.scrollerIgnoreProportionSingle = v }
-                p.noRenderBorder = r.noRenderBorder
-                p.openAsFloating = r.openAsFloating
-                p.noHide = r.noHide
+        // Set defaults for every tag.
+        for i in 0...UInt32(config.tagNum) { tagSlotSetDefaults(m, i) }
+
+        for tr in config.tagRules {
+            if tr.tagRuleMatchesMonitor(m.screen) && (tr.id == nil || tr.id! <= config.tagNum) {
+                let tagIdStart = tr.id ?? 0
+                let tagIdEnd = tr.id ?? config.tagNum
+
+                for ti in tagIdStart...tagIdEnd { tagRuleApplyToSlot(m, tr, UInt32(ti)) }
             }
-            let prevConfigLayout = p.configLayout
-            p.configLayout = ruleLayout ?? .tile
-            if prevConfigLayout != p.configLayout { p.layout = p.configLayout }
         }
-        let tagmask = TagMask.mask(forTagNum: config.tagNum)
-        for i in 1...max(1, min(config.tagNum, pertag.count - 1)) {
-            for c in clients where c.tags & (1 << UInt32(i - 1)) & tagmask != 0
-                && !c.isfloating && !c.isminimized && !c.ismaximizescreen && !c.isfullscreen && !c.isunglobal {
+
+        for i in 0...config.tagNum where prevConfigLtidxs[i] != m.pertag.configLtidxs[i] {
+            m.pertag.ltidxs[i] = m.pertag.configLtidxs[i]
+        }
+
+        for i in 1...UInt32(config.tagNum) {
+            for c in clientsAll where (c.tags & (1 << (i - 1)) & TAGMASK) != 0 && ISTILED(c) {
                 // not in mango: this monitor's windows only; mango's gives every window the last monitor's mfact (a mango bug, docs/afvigelser.md §6).
-                guard c.mon === self else { continue }
-                if pertag[i].settings.mfact > 0 { c.masterMfactPer = pertag[i].settings.mfact }
+                guard c.mon === m else { continue }
+                if m.pertag.mfacts[i] > 0 { c.masterMfactPer = CGFloat(m.pertag.mfacts[i]) }
             }
         }
+    }
+
+    func tagGatherResetSlot(_ m: Monitor, _ tag: UInt32) {
+        tagSlotSetDefaults(m, tag)
+        m.pertag.noHide[tag] = false
+        m.pertag.noRenderBorder[tag] = false
+        m.pertag.openAsFloating[tag] = false
+        m.pertag.dwindleRoot[tag] = DwindleTree()
+        m.pertag.scrollerState[tag] = ScrollerState()
+
+        for tr in config.tagRules {
+            if tr.tagRuleMatchesMonitor(m.screen) && (tr.id == nil || tr.id == Int(tag)) {
+                tagRuleApplyToSlot(m, tr, tag)
+            }
+        }
+        m.pertag.ltidxs[tag] = m.pertag.configLtidxs[tag]
+    }
+
+    // move pertag state from src to dst, then reset src.
+    func tagGatherMovePertag(_ m: Monitor, _ dst: UInt32, _ src: UInt32) {
+        m.pertag.nmasters[dst] = m.pertag.nmasters[src]
+        m.pertag.mfacts[dst] = m.pertag.mfacts[src]
+        m.pertag.noHide[dst] = m.pertag.noHide[src]
+        m.pertag.noRenderBorder[dst] = m.pertag.noRenderBorder[src]
+        m.pertag.openAsFloating[dst] = m.pertag.openAsFloating[src]
+        m.pertag.scrollerDefaultProportion[dst] = m.pertag.scrollerDefaultProportion[src]
+        m.pertag.scrollerDefaultProportionSingle[dst] = m.pertag.scrollerDefaultProportionSingle[src]
+        m.pertag.scrollerIgnoreProportionSingle[dst] = m.pertag.scrollerIgnoreProportionSingle[src]
+        m.pertag.dwindleRoot[dst] = m.pertag.dwindleRoot[src]
+        m.pertag.configLtidxs[dst] = m.pertag.configLtidxs[src]
+        m.pertag.ltidxs[dst] = m.pertag.ltidxs[src]
+        m.pertag.scrollerState[dst] = m.pertag.scrollerState[src]
+        tagGatherResetSlot(m, src)
+    }
+}
+
+public let TAG0_MASK: UInt32 = 1 << 31
+
+extension MangoServer {
+    var TAGMASK: UInt32 { tagmask }
+
+    func updateGlobalVar() {
+        tagmask = (UInt32(1) << UInt32(config.tagNum)) - 1
+    }
+}
+
+@MainActor public func ISTILED(_ a: Client?) -> Bool {
+    guard let a else { return false }
+    return !a.isfloating && !a.isminimized && !a.iskilling && !a.ismaximizescreen && !a.isfullscreen && !a.isunglobal
+}
+
+@MainActor public func ISNORMAL(_ a: Client?) -> Bool {
+    guard let a else { return false }
+    return !a.isminimized && !a.iskilling && !a.isunglobal
+}
+
+@MainActor public func ISSCROLLTILED(_ a: Client?) -> Bool {
+    guard let a else { return false }
+    return !a.isfloating && !a.isminimized && !a.iskilling && !a.isunglobal
+}
+
+@MainActor public func ISFAKETILED(_ a: Client?) -> Bool {
+    guard let a else { return false }
+    return !a.isfloating && !a.isminimized && !a.iskilling && !a.isunglobal
+}
+
+@MainActor public func VISIBLEON(_ c: Client?, _ m: Monitor?) -> Bool {
+    guard let c, let m else { return false }
+    // not in mango: groupParked stands for client_park's c->mon = NULL
+    return c.mon === m && !c.groupParked && !c.isminimized
+        && ((c.tags & m.tagset[m.seltags]) != 0 || c.isglobal || c.isunglobal)
+}
+
+@MainActor public func TAGMATCH(_ c: Client?, _ m: Monitor?) -> Bool {
+    guard let c, let m else { return false }
+    return c.mon === m && !c.isminimized && (c.tags & m.tagset[m.seltags]) != 0
+}
+
+@MainActor public func SCRATCHPAD_SHOWN(_ c: Client?) -> Bool {
+    guard let c else { return false }
+    return c.isInScratchpad && !c.isminimized
+}
+
+@MainActor public func ISFULLSCREEN(_ a: Client) -> Bool {
+    a.isfullscreen || a.ismaximizescreen || a.overviewIsmaximizescreenbak || a.overviewIsfullscreenbak
+}
+
+package extension MangoServer {
+    func getTagsFirstTagNum(_ sourceTags: UInt32) -> UInt32 {
+        var i: UInt32 = 0, tag: UInt32 = 0
+
+        if sourceTags == 0 { return 0 }
+
+        if sourceTags & TAG0_MASK != 0 { return 0 }
+
+        while tag & 1 == 0 && sourceTags != 0 && i < UInt32(config.tagNum) {
+            tag = sourceTags >> i
+            i += 1
+        }
+
+        if i == 1 {
+            return 1
+        } else if i >= UInt32(config.tagNum) {
+            return UInt32(config.tagNum)
+        } else {
+            return i
+        }
+    }
+
+    func getClientTagIdx(_ c: Client?) -> UInt32 {
+        guard let c, c.tags & TAG0_MASK == 0 else { return 0 }
+        return getTagsFirstTagNum(c.tags)
     }
 }

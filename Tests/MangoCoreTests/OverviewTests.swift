@@ -20,7 +20,7 @@ final class OverviewTests: MangoTestCase {
     func testOnlyCurrentTakesAGlobalClientAndNotTheSpecialTag() {
         let r = EngineRig()
         let a = r.window(1), g = r.window(2, tags: 1 << 1), off = r.window(3, tags: 1 << 2)
-        let s = r.window(4, tags: TagMask.special)
+        let s = r.window(4, tags: TAG0_MASK)
         g.isglobal = true
         r.server.arrange(r.monitor)
         d(r, "toggleoverview", ["1"])
@@ -42,7 +42,7 @@ final class OverviewTests: MangoTestCase {
         let m = r.monitor
         XCTAssertEqual(m.tagset[m.seltags], TagMask.mask(forTagNum: r.server.config.tagNum))
         XCTAssertEqual(m.tagset[m.seltags ^ 1], 1 << 1, "ovbk_prev_tagset")
-        XCTAssertEqual(m.prevTag, 2)
+        XCTAssertEqual(m.pertag.prevtag, 2)
     }
 
     func testLeavingGoesToTheChosenClientsTag() {

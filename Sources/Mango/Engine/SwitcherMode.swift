@@ -44,7 +44,7 @@ package extension MangoServer {
         let tiles = switcherOrder.filter { c in
             guard switcherClientEligible(c) else { return false }
             switch scope {
-            case .currentTag: return c.mon === m && c.isVisible(on: m)
+            case .currentTag: return c.mon === m && VISIBLEON(c, m)
             case .allTags: return c.mon === m
             case .allMonitors: return Int32(bitPattern: c.tags) > 0
             }
@@ -76,7 +76,7 @@ package extension MangoServer {
     func switcherCommitClient(_ c: Client?) {
         switcherClose()
         guard let c, switcherClientEligible(c), let cm = c.mon else { return }
-        if !c.isVisible(on: cm) { clientViewOnMonitor(getTagsFirstTag(c.tags), on: cm) }
+        if !VISIBLEON(c, cm) { clientViewOnMonitor(getTagsFirstTag(c.tags), on: cm) }
         clientFocus(c, true)
     }
 

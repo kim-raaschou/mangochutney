@@ -73,9 +73,9 @@ final class EngineTagNavigationTests: MangoTestCase {
     }
 
     func testNothingFromTheSpecialTag() {
-        let r = rig(view: TagMask.special)
+        let r = rig(view: TAG0_MASK)
         go(r, "viewtoright")
-        XCTAssertEqual(view(r), TagMask.special)
+        XCTAssertEqual(view(r), TAG0_MASK)
     }
 }
 
@@ -83,7 +83,7 @@ final class EngineTagNavigationTests: MangoTestCase {
 final class TagToCurrentTagTests: MangoTestCase {
     func testTaggingOntoTheTagInViewPlacesTheWindow() {
         let r = EngineRig()
-        let c = r.window(900_950, tags: TagMask.special)
+        let c = r.window(900_950, tags: TAG0_MASK)
         r.window(900_951)
         r.server.arrange(r.monitor, .none)
         XCTAssertTrue(c.parked, "on the special tag, out of view")

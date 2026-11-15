@@ -41,7 +41,7 @@ package extension MangoServer {
             a.durationMs = config.animationDurationTag
             a.curve = config.animationCurveTag
             if clientGestureDriven(c) || c.id != c.mon?.sel { a.from = setOverviewEnterAnimation(c, target, current: current) }
-        } else if c.scratchpadShown && c.scratchpadTagin {
+        } else if SCRATCHPAD_SHOWN(c) && c.scratchpadTagin {
             c.scratchpadTagin = false
             a.action = .tag
             a.durationMs = config.animationDurationTag
@@ -55,7 +55,7 @@ package extension MangoServer {
             a.curve = config.animationCurveOpen
             a.from = setClientOpenAnimation(c, target)
         } else if !shown {
-            if case .tag = anim, c.tags & TagMask.special != 0 {
+            if case .tag = anim, c.tags & TAG0_MASK != 0 {
                 a.action = .tag
                 a.durationMs = config.animationDurationTag
                 a.curve = config.animationCurveTag
@@ -141,7 +141,7 @@ package extension MangoServer {
     func setArrangeHidden(_ m: Monitor, _ c: Client, _ anim: ArrangeAnimation) {
         if c.tagouting { return }
         let animates = !c.isPendingOpenAnimation && !c.parked && clientAnimationsEnabled(c) && grab?.client !== c
-        let special = c.tags & TagMask.special != 0
+        let special = c.tags & TAG0_MASK != 0
         if !special && c.isInScratchpad && c.isminimized {
             if animates {
                 let g = c.geom ?? c.frame
@@ -164,7 +164,7 @@ package extension MangoServer {
             } else { system.hide(c) }
             return
         }
-        let prev = m.prevTag, cur = m.curtag
+        let prev = m.pertag.prevtag, cur = m.pertag.curtag
         if prev != 0, cur != 0, c.tags & (1 << UInt32(prev - 1)) != 0, animates {
             let forward: Bool
             if case .tag(let f) = anim { forward = f } else { forward = m.carouselAnimDir != 0 ? m.carouselAnimDir > 0 : cur > prev }

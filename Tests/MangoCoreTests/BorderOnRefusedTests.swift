@@ -10,7 +10,7 @@ final class BorderOnRefusedTests: MangoTestCase {
         r.server.config.borderpx = 4
         r.server.renderBorder = true
         r.server.drawsOverlays = true
-        r.monitor.current.layout = layout
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = layout
         for id: CGWindowID in 1...3 { r.window(id) }
         for (id, size) in min { r.app.minSize[id] = size }
         r.server.arrange(r.monitor, .none)

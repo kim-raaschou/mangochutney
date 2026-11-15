@@ -294,10 +294,10 @@ final class ScratchpadPlaceTests: MangoTestCase {
         let r = rig()
         r.server.config.focusOnActivate = true
         let c = r.server.clientByIdAll(2)!
-        XCTAssertFalse(c.scratchpadShown)
+        XCTAssertFalse(SCRATCHPAD_SHOWN(c))
         r.server.handleClientActivationRequest(c)
         XCTAssertTrue(c.isInScratchpad, "still in the scratchpad")
-        XCTAssertTrue(c.scratchpadShown, "and shown")
+        XCTAssertTrue(SCRATCHPAD_SHOWN(c), "and shown")
         XCTAssertEqual(r.server.focused?.id, 2)
     }
 

@@ -26,7 +26,7 @@ final class DragTileTests: MangoTestCase {
 
     func rig(_ layout: LayoutKind = .tile) -> EngineRig {
         let r = EngineRig()
-        r.monitor.current.layout = layout
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = layout
         for i in 0..<3 { r.window(CGWindowID(900_500 + i)) }
         r.server.arrange(r.monitor, .none)
         return r
@@ -68,7 +68,7 @@ final class DragTileTests: MangoTestCase {
         let f = frame(r, 900_500)
         r.server.clientBeginDragFloat(r.server.clientByIdAll(900_502)!, at: CGPoint(x: 1, y: 1))
         r.server.dropDraggedTile(at: CGPoint(x: f.midX, y: f.maxY - 5))
-        XCTAssertEqual(r.monitor.current.state.scrollerState.column(of: 900_500), [900_500, 900_502], "nearest edge the bottom: below it, in its stack")
+        XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].column(of: 900_500), [900_500, 900_502], "nearest edge the bottom: below it, in its stack")
     }
 
     func testAPickedUpTileShrinksAroundThePointer() {

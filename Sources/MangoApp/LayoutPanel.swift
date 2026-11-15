@@ -61,8 +61,8 @@ final class LayoutPanelModel: ObservableObject {
         border = Double(server.config.borderpx)
         animations = server.config.animations
         config = server.config
-        mfact = Double(m.current.settings.mfact)
-        nmaster = Double(m.current.settings.nmaster)
+        mfact = Double(m.pertag.mfacts[getMonCurtag(m)])
+        nmaster = Double(m.pertag.nmasters[getMonCurtag(m)])
     }
 
     private func send(_ name: String, _ args: String...) {
@@ -88,7 +88,7 @@ final class LayoutPanelModel: ObservableObject {
         option(key, String(max(0, px)))
     }
 
-    func tagField(_ field: String) -> String { "tag_rule id:\(server?.selectedMonitor?.curtag ?? 0) \(field)" }
+    func tagField(_ field: String) -> String { "tag_rule id:\(server?.selectedMonitor?.pertag.curtag ?? 0) \(field)" }
 
     var accent: Color { PortAccent.color(config) }
     private var menuURL: URL? { server.flatMap { MenuSave.url($0.config, configURL: $0.configURL) } }
@@ -100,8 +100,8 @@ final class LayoutPanelModel: ObservableObject {
     }
 
     private func saveTag(_ field: String, _ value: String) {
-        guard let url = menuURL, let m = server?.selectedMonitor, m.curtag > 0 else { return }
-        MenuSave.setTagRule(tag: m.curtag, field, value, in: url)
+        guard let url = menuURL, let m = server?.selectedMonitor, m.pertag.curtag > 0 else { return }
+        MenuSave.setTagRule(tag: Int(m.pertag.curtag), field, value, in: url)
         refresh()
     }
 
@@ -115,13 +115,13 @@ final class LayoutPanelModel: ObservableObject {
         option("border_px", String(px))
     }
     func setMfact(_ v: Double) {
-        guard abs(v - Double(server?.selectedMonitor?.current.settings.mfact ?? 0)) > 0.001 else { return }
+        guard abs(v - Double(server?.selectedMonitor.map { $0.pertag.mfacts[getMonCurtag($0)] } ?? 0)) > 0.001 else { return }
         send("setmfact", String(format: "%.2f", 1 + v))
         saveTag("master_factor", String(format: "%.2f", v))
     }
     func setNmaster(_ v: Double) {
         guard let m = server?.selectedMonitor else { return }
-        let d = Int(v.rounded()) - m.current.settings.nmaster
+        let d = Int(v.rounded()) - Int(m.pertag.nmasters[getMonCurtag(m)])
         if d != 0 {
             send("incnmaster", String(d))
             saveTag("master_count", String(Int(v.rounded())))

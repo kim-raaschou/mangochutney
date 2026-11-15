@@ -7,7 +7,7 @@ import AppKit
 final class TabStripTests: MangoTestCase {
     func rig(_ kind: LayoutKind, windows: Int) -> EngineRig {
         let r = EngineRig()
-        r.monitor.current.layout = kind
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = kind
         for i in 0..<windows { r.window(CGWindowID(900_100 + i)) }
         return r
     }
@@ -87,7 +87,7 @@ final class TabStripTests: MangoTestCase {
         XCTAssertEqual(r.monitor.sel, 900_101)
         r.server.tabFocusMember(number: 4)
         XCTAssertEqual(r.monitor.sel, 900_101, "no fourth tab")
-        r.monitor.current.layout = .tile
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
         XCTAssertEqual(r.server.tabBarShortcutTabs, 0, "no tab bar")
     }
 
@@ -149,7 +149,7 @@ final class TabStripTests: MangoTestCase {
         r.server.tabRefreshBars()
         XCTAssertTrue(fake.tabStrips.isEmpty, "no strip over a fullscreen window")
         r.server.clientByIdAll(900_101)!.isfullscreen = false
-        r.monitor.current.layout = .tile
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
         r.server.tabRefreshBars()
         XCTAssertTrue(fake.tabStrips.isEmpty)
     }

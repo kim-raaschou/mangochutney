@@ -77,7 +77,18 @@ Hos os:
   `ismaximizescreen`, `isglobal`, `isunglobal`, `isminimized`, `isoverlay`, `oldtags`,
   `isnamedscratchpad`, `iscustomsize`, `iscustompos`, `isopensilent`, `istagsilent`, `isurgent`,
   `ismaster`, `isleftstack`, `oldScrollerPproportion` …).
-- Næste: `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
+- Trin 1, anden del: `Pertag` har mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
+  `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
+  `dwindleRoot`, `scrollerState`) med mangos typer (`UInt32`, `Int32`, `Float`); `Monitor` har
+  `gappih`…`specialGappov`; `get_mon_curtag`, `is_special_active`, `get_tags_first_tag(_num)`,
+  `get_client_tag_idx`, `parse_tagrule`, `tag_slot_set_defaults`, `tag_rule_apply_to_slot`,
+  `tag_gather_*`, `view_insert_shift_tags`, `client_view_on_monitor`, `get_tag_status`, `setgaps`,
+  `reapply_master`, `monitor_copy_tag_layout` og `client_reset_mon_tags` er mangos; `TAGMASK`
+  (`server.tagmask`, `update_global_var`), `TAG0_MASK` og makroerne `ISTILED`, `ISNORMAL`,
+  `ISSCROLLTILED`, `ISFAKETILED`, `VISIBLEON`, `TAGMATCH`, `SCRATCHPAD_SHOWN`, `ISFULLSCREEN`.
+- Tilbage af trin 1: mangos retningskonstanter (`UP`…`ALLDIR`) i stedet for `Direction`, `m`/`w`
+  på `Monitor`. Tages med trin 3–4, hvor layoutet skrives om.
+- (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter
   (`UP`…`ALLDIR`, `TAGMASK`, `TAG0_MASK`) og makroer (`VISIBLEON`, `ISTILED`, …).
