@@ -111,7 +111,7 @@ package extension MangoServer {
     }
 
     func isSpecialAnimationRule(_ c: Client) -> Direction? {
-        guard let m = c.mon, !c.isFloating else { return nil }
+        guard let m = c.mon, !c.isfloating else { return nil }
         let layout = m.layout
         let visibleTilingClients = tiledClients(m).count
         let horizontalStack = layout == .tile || layout == .deck
@@ -142,7 +142,7 @@ package extension MangoServer {
         if c.tagouting { return }
         let animates = !c.isPendingOpenAnimation && !c.parked && clientAnimationsEnabled(c) && grab?.client !== c
         let special = c.tags & TagMask.special != 0
-        if !special && c.isInScratchpad && c.isMinimized {
+        if !special && c.isInScratchpad && c.isminimized {
             if animates {
                 let g = c.geom ?? c.frame
                 c.tagouting = true

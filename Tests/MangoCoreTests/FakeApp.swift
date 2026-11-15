@@ -186,6 +186,8 @@ final class FakeWindowSystem: MacWindowSystem {
     }
     var keyboardOptions: String?
     override func setKeyboardOptions(_ options: String) { keyboardOptions = options }
+    var fakeInputDevices: [InputDevice] = []
+    override var inputDevices: [InputDevice] { fakeInputDevices }
     var spawned: [String] = [], shelled: [String] = []
     override func spawn(_ command: String) { spawned.append(command) }
     override func spawnShell(_ command: String) { spawned.append(command); shelled.append(command) }
@@ -219,9 +221,9 @@ final class EngineRig {
     func window(_ id: CGWindowID, tags: UInt32 = 1, floating: Bool = false,
                 frame: CGRect = CGRect(x: 100, y: 100, width: 800, height: 600)) -> Client {
         let w = DiscoveredWindow(id: id, pid: getpid(), element: app.element(for: id), bundleId: "test", appName: "Test",
-                                 title: "t\(id)", subrole: "AXStandardWindow", isDialog: false, frame: frame, isMinimized: false, isFullscreen: false, isAppHidden: false)
+                                 title: "t\(id)", subrole: "AXStandardWindow", isDialog: false, frame: frame, isminimized: false, isfullscreen: false, isAppHidden: false)
         let c = Client(window: w, monitor: monitor, tags: tags)
-        c.isFloating = floating
+        c.isfloating = floating
         c.isPendingOpenAnimation = false
         app.frames[id] = frame
         server.clients.append(c)
@@ -234,8 +236,8 @@ final class EngineRig {
         app.frames[id] = frame
         server.mac.windowDiscovered(DiscoveredWindow(
             id: id, pid: getpid(), element: app.element(for: id), bundleId: "test", appName: "Test", title: "t\(id)",
-            subrole: "AXStandardWindow", isDialog: false, frame: frame, isMinimized: false,
-            isFullscreen: false, isAppHidden: false))
+            subrole: "AXStandardWindow", isDialog: false, frame: frame, isminimized: false,
+            isfullscreen: false, isAppHidden: false))
         return server.clientByIdAll(id)!
     }
 

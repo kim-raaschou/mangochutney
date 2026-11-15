@@ -9,16 +9,16 @@ struct SavedLayout: Codable, Equatable {
         var tags: UInt32
         var displayID: CGDirectDisplayID?
         var homeDisplayID: CGDirectDisplayID?
-        var isFloating: Bool
-        var isGlobal: Bool
-        var isOverlay: Bool
-        var isMinimized: Bool
+        var isfloating: Bool
+        var isglobal: Bool
+        var isoverlay: Bool
+        var isminimized: Bool
         var isScratchpad: Bool
-        var isNamedScratchpad: Bool
+        var isnamedscratchpad: Bool
         var floatFrame: CGRect
         var scrollerProportion: CGFloat?
         var orderSnapshot: [CGWindowID]?
-        var isCustomSize: Bool? = nil
+        var iscustomsize: Bool? = nil
     }
 
     struct TagLayout: Codable, Equatable {
@@ -67,12 +67,12 @@ struct SavedLayout: Codable, Equatable {
     func departed(at now: CFTimeInterval) -> [(CGWindowID, DepartedWindow)] {
         windows.map { w in
             (w.id, DepartedWindow(
-                tags: w.tags, displayID: w.displayID, isFloating: w.isFloating, isGlobal: w.isGlobal,
-                isOverlay: w.isOverlay, isMinimized: w.isMinimized, isScratchpad: w.isScratchpad,
-                isNamedScratchpad: w.isNamedScratchpad, floatFrame: w.floatFrame,
+                tags: w.tags, displayID: w.displayID, isfloating: w.isfloating, isglobal: w.isglobal,
+                isoverlay: w.isoverlay, isminimized: w.isminimized, isScratchpad: w.isScratchpad,
+                isnamedscratchpad: w.isnamedscratchpad, floatFrame: w.floatFrame,
                 scrollerProportion: w.scrollerProportion, orderSnapshot: w.orderSnapshot ?? order, at: now,
                 bundleId: w.bundleId, homeDisplayID: w.homeDisplayID, fromSavedLayout: true,
-                isCustomSize: w.isCustomSize ?? false))
+                iscustomsize: w.iscustomsize ?? false))
         }
     }
 }

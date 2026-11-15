@@ -15,61 +15,79 @@ package extension ParserState {
         var pairs: [String] = []
     }
 
-    mutating func parseTomlStream(_ text: String, fileName file: String) {
+    @discardableResult
+    mutating func parseTomlStream(_ text: String, fileName file: String) -> Bool {
         var section = TOMLSection()
         var stmt = ""
         var stmtLine = 0
         var lineNumber = 0
+        var parseCorrect = true
         let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
         for raw in normalized.split(separator: "\n", omittingEmptySubsequences: false) {
             lineNumber += 1
-            let line = Self.removeTomlComment(String(raw)).trimmingCharacters(in: .whitespaces)
+            let line = ConfigParser.trimWhitespace(Self.removeTomlComment(String(raw)))
             if line.isEmpty { continue }
             if stmt.isEmpty { stmtLine = lineNumber } else { stmt += " " }
             stmt += line
             guard Self.tomlStatementComplete(stmt) else { continue }
-            tomlProcessStatement(stmt, line: stmtLine, file: file, section: &section)
+            if !tomlProcessStatement(stmt, line: stmtLine, file: file, section: &section) { parseCorrect = false }
             stmt = ""
         }
-        if !stmt.isEmpty { tomlProcessStatement(stmt, line: stmtLine, file: file, section: &section) }
-        tomlSectionFlush(&section, file: file)
+        if !stmt.isEmpty, !tomlProcessStatement(stmt, line: stmtLine, file: file, section: &section) {
+            parseCorrect = false
+        }
+        if !tomlSectionFlush(&section, file: file) { parseCorrect = false }
+        return parseCorrect
     }
 
-    private mutating func tomlProcessStatement(_ stmt: String, line: Int, file: String, section: inout TOMLSection) {
+    // not in mango: each report_config_line_error here is recordConfigLineError, after the messages it follows
+    private mutating func tomlProcessStatement(_ stmt: String, line: Int, file: String, section: inout TOMLSection) -> Bool {
         if stmt.hasPrefix("[") {
-            tomlSectionFlush(&section, file: file)
+            let ok = tomlSectionFlush(&section, file: file)
             var name = Substring(stmt)
             while name.first == "[" { name = name.dropFirst() }
             while name.last == "]" { name = name.dropLast() }
-            tomlSectionBegin(&section, name: name.trimmingCharacters(in: .whitespaces), line: line, file: file)
-            return
+            var begun = true
+            withLineErrors(file, line) { state in
+                begun = state.tomlSectionBegin(&section, name: ConfigParser.trimWhitespace(name), line: line)
+                return begun
+            }
+            return ok && begun
         }
-        if section.skip { return }
+        if section.skip { return true }
         guard let eq = stmt.firstIndex(of: "=") else {
-            recordConfigLineError(file, line, "Invalid toml line format: \(mangoHighlight(stmt))")
-            return
+            withLineErrors(file, line) { state in
+                state.lineErrors.append("Invalid toml line format: \(mangoHighlight(stmt))")
+                return false
+            }
+            return false
         }
-        var key = stmt[..<eq].trimmingCharacters(in: .whitespaces)
+        var key = ConfigParser.trimWhitespace(stmt[..<eq])
         if key.count >= 2, let f = key.first, f == "\"" || f == "'", key.last == f {
             key = String(key.dropFirst().dropLast())
         }
-        let value = stmt[stmt.index(after: eq)...].trimmingCharacters(in: .whitespaces)
-        if section.active {
-            tomlSectionLeaf(&section, key: key, raw: value, line: line, file: file)
-        } else {
-            tomlApplyValue(key, raw: value, line: line, file: file)
+        let value = String(stmt[stmt.index(after: eq)...].drop { $0.isWhitespace })
+        var ok = true
+        withLineErrors(file, line) { state in
+            if section.active {
+                ok = state.tomlSectionLeaf(&section, key: key, raw: value, line: line, file: file)
+                return ok || section.kind == .rule
+            }
+            ok = state.tomlApplyValue(key, raw: value, line: line, file: file)
+            return ok
         }
+        return ok
     }
 
-    private mutating func tomlSectionBegin(_ section: inout TOMLSection, name: String, line: Int, file: String) {
+    private mutating func tomlSectionBegin(_ section: inout TOMLSection, name: String, line: Int) -> Bool {
         section = TOMLSection()
         section.line = line
         section.active = true
 
         switch name {
-        case "global", "rule": section.kind = .global; return
-        case "env": section.kind = .env; return
-        case "var": section.kind = .vars; return
+        case "global", "rule": section.kind = .global; return true
+        case "env": section.kind = .env; return true
+        case "var": section.kind = .vars; return true
         default: break
         }
 
@@ -83,91 +101,108 @@ package extension ParserState {
                 break
             }
         }
-        if base == nil {
+        guard let base else {
             let type = name.hasPrefix("rule.") ? String(name.dropFirst(5)) : name
             guard Self.tomlRuleTypes.contains(type) else {
                 section.skip = true
-                recordConfigLineError(file, line, name.hasPrefix("rule.") ? "Unknown toml rule type: \(mangoHighlight(type))" : "Unknown toml section: \(mangoHighlight(name))")
-                return
+                lineErrors.append(name.hasPrefix("rule.") ? "Unknown toml rule type: \(mangoHighlight(type))" : "Unknown toml section: \(mangoHighlight(name))")
+                return false
             }
             section.kind = .rule
             section.name = type
-            return
+            return true
         }
 
-        guard let base else { return }
         section.kind = .bind
         section.bindType = base
-        let parts = suffix.split(separator: ".").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let parts = suffix.split(separator: ".").map { ConfigParser.trimWhitespace($0) }.filter { !$0.isEmpty }
         guard let mode = parts.first else {
             section.skip = true
-            recordConfigLineError(file, line, "Bind keymode is required, e.g. \(mangoHighlight("[\(base).default]"))")
-            return
+            lineErrors.append("Bind keymode is required, e.g. \(mangoHighlight("[\(base).default]"))")
+            return false
         }
         var letters = ""
         for flag in parts.dropFirst() {
             guard let l = Self.tomlBindFlags[flag] else {
                 section.skip = true
-                recordConfigLineError(file, line, "Unknown bind flag: \(mangoHighlight(flag))")
-                return
+                lineErrors.append("Unknown bind flag: \(mangoHighlight(flag))")
+                return false
             }
             letters.append(l)
         }
         section.keyword = base + letters
         section.savedKeyMode = keyMode
-        keyMode = mode
+        keyMode = String(decoding: mode.utf8.prefix(27), as: UTF8.self)
+        return true
     }
 
-    private mutating func tomlSectionLeaf(_ section: inout TOMLSection, key: String, raw: String, line: Int, file: String) {
+    private mutating func tomlSectionLeaf(_ section: inout TOMLSection, key: String, raw: String, line: Int, file: String) -> Bool {
         switch section.kind {
         case .env:
             let value = Self.tomlScalar(raw, mapBool: false)
-            if value.isEmpty { return }
-            applyOptionExpanded("env", "\(key),\(value)", file: file, line: line)
+            if value.isEmpty { return true }
+            return applyOptionExpanded("env", "\(key),\(value)", file: file, line: line)
         case .vars:
-            applyOptionExpanded("var", "\(key),\(Self.tomlScalar(raw, mapBool: false))", file: file, line: line)
+            return applyOptionExpanded("var", "\(key),\(Self.tomlScalar(raw, mapBool: false))", file: file, line: line)
         case .rule:
             let value = Self.tomlScalar(raw, mapBool: true)
-            if value.isEmpty { return }
+            if value.isEmpty { return true }
             section.pairs.append("\(key):\(ConfigParser.expandConfigVariables(value, vars: vars))")
+            return true
         case .bind:
             let combo = ConfigParser.expandConfigVariables(key, vars: vars)
-            guard let prefix = Self.tomlBindPrefix(base: section.bindType, combo: combo) else {
-                recordConfigLineError(file, line, "")   // mango: toml_bind_prefix fails without a message of its own
-                return
+            guard let prefix = Self.tomlBindPrefix(base: section.bindType, combo: combo) else { return false }
+            if raw.hasPrefix("[") {
+                return Self.tomlForeachArrayElement(raw) { elem in
+                    let action = Self.tomlScalar(elem, mapBool: true)
+                    if action.isEmpty { return true }
+                    return applyOptionExpanded(section.keyword, prefix + action, file: file, line: line)
+                }
             }
-            let actions = raw.hasPrefix("[") ? Self.tomlForeachArrayElement(raw) : [raw]
-            for a in actions {
-                let action = Self.tomlScalar(a, mapBool: true)
-                if action.isEmpty { continue }
-                applyOptionExpanded(section.keyword, prefix + action, file: file, line: line)
-            }
+            let action = Self.tomlScalar(raw, mapBool: true)
+            if action.isEmpty { return true }
+            return applyOptionExpanded(section.keyword, prefix + action, file: file, line: line)
         case .global, .none:
-            tomlApplyValue(key, raw: raw, line: line, file: file)
+            return tomlApplyValue(key, raw: raw, line: line, file: file)
         }
     }
 
-    private mutating func tomlApplyValue(_ key: String, raw: String, line: Int, file: String) {
+    private mutating func tomlApplyValue(_ key: String, raw: String, line: Int, file: String) -> Bool {
         guard raw.hasPrefix("[") else {
             let value = Self.tomlScalar(raw, mapBool: true)
-            if !value.isEmpty { applyOptionExpanded(key, value, file: file, line: line) }
-            return
+            if value.isEmpty { return true }
+            return applyOptionExpanded(key, value, file: file, line: line)
         }
-        let elements = Self.tomlForeachArrayElement(raw).map { Self.tomlScalar($0, mapBool: true) }.filter { !$0.isEmpty }
         if Self.tomlKeyJoinsArray(key) {
-            applyOptionExpanded(key, elements.joined(separator: ","), file: file, line: line)
-        } else {
-            for v in elements { applyOptionExpanded(key, v, file: file, line: line) }
+            var joined: [String] = []
+            _ = Self.tomlForeachArrayElement(raw) { elem in
+                let value = Self.tomlScalar(elem, mapBool: true)
+                if !value.isEmpty { joined.append(value) }
+                return true
+            }
+            return applyOptionExpanded(key, joined.joined(separator: ","), file: file, line: line)
+        }
+        return Self.tomlForeachArrayElement(raw) { elem in
+            let value = Self.tomlScalar(elem, mapBool: true)
+            if value.isEmpty { return true }
+            return applyOptionExpanded(key, value, file: file, line: line)
         }
     }
 
-    private mutating func tomlSectionFlush(_ section: inout TOMLSection, file: String) {
-        guard section.active else { return }
+    private mutating func tomlSectionFlush(_ section: inout TOMLSection, file: String) -> Bool {
+        guard section.active else { return true }
+        var ok = true
         if section.kind == .rule && !section.pairs.isEmpty {
-            parseOption(key: section.name, value: section.pairs.joined(separator: ","), file: file, line: section.line)
+            withLineErrors(file, section.line) { state in
+                ok = state.parseOption(key: section.name, value: section.pairs.joined(separator: ","), file: file, line: section.line)
+                return ok
+            }
         }
+        // not in mango: a section skipped for a bad flag or a missing keymode leaves the keymode as
+        // it was; mango sets it to "" and no later binding fires (a mango bug, docs/afvigelser.md §6)
         if section.kind == .bind && !section.skip { keyMode = section.savedKeyMode }
         section = TOMLSection()
+        return ok
     }
 
     static let tomlRuleTypes: Set<String> = [
@@ -200,7 +235,7 @@ package extension ParserState {
     }
 
     static func tomlScalar(_ raw: String, mapBool: Bool) -> String {
-        let s = raw.trimmingCharacters(in: .whitespaces)
+        let s = ConfigParser.trimWhitespace(raw)
         if s.count >= 2, s.first == "\"", s.last == "\"" {
             var out = ""
             var chars = Array(s.dropFirst().dropLast())[...]
@@ -224,10 +259,10 @@ package extension ParserState {
         return s
     }
 
-    static func tomlForeachArrayElement(_ raw: String) -> [String] {
-        var s = Substring(raw.trimmingCharacters(in: .whitespaces))
+    /// mango toml_foreach_array_element (toml_parse.c): stops at the first element `fn` fails
+    static func tomlForeachArrayElement(_ raw: String, _ fn: (String) -> Bool) -> Bool {
+        var s = Substring(ConfigParser.trimWhitespace(raw))
         if s.first == "[" { s = s.dropFirst() }
-        var out: [String] = []
         var elem = ""
         var depth = 0
         var quote: Character?
@@ -235,6 +270,8 @@ package extension ParserState {
         for c in s {
             if let q = quote {
                 elem.append(c)
+                // not in mango: an escaped quote does not end the string; mango's does, and splits
+                // the string at its next comma (a mango bug, docs/afvigelser.md §6)
                 if q == "\"" && escaped { escaped = false; continue }
                 if q == "\"" && c == "\\" { escaped = true; continue }
                 if c == q { quote = nil }
@@ -248,18 +285,18 @@ package extension ParserState {
                 depth += 1
                 elem.append(c)
             case "]":
-                if depth == 0 { out.append(elem); return out }
+                if depth == 0 { return fn(elem) }
                 depth -= 1
                 elem.append(c)
             case "," where depth == 0:
-                out.append(elem)
+                if !fn(elem) { return false }
                 elem = ""
             default:
                 elem.append(c)
             }
         }
-        if !elem.isEmpty { out.append(elem) }
-        return out
+        if !elem.isEmpty { return fn(elem) }
+        return true
     }
 
     static func tomlStatementComplete(_ stmt: String) -> Bool {
@@ -283,7 +320,7 @@ package extension ParserState {
     }
 
     static func tomlBindPrefix(base: String, combo: String) -> String? {
-        let segs = combo.split(separator: "+").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        let segs = combo.split(separator: "+").map { ConfigParser.trimWhitespace($0) }.filter { !$0.isEmpty }
         guard let last = segs.last else { return nil }
         switch base {
         case "switchbind":

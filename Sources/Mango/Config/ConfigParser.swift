@@ -1,5 +1,6 @@
 import Foundation
 
+// not in mango: a String as a Result's error
 extension String: @retroactive Error {}
 
 // not in mango: an error kept as well as printed, for mango -p and the tests
@@ -61,6 +62,7 @@ public struct ParsedConfig {
 public enum ConfigParser {
     static let maxValueBytes = 255
 
+    // not in mango: parse_config's choice of the user's file (load.c), without its SYSCONFDIR fallback
     public static func defaultConfigURL() -> URL {
         let dir = URL(fileURLWithPath: ConfigOptions.homeDirectory(), isDirectory: true)
             .appendingPathComponent(".config", isDirectory: true)
@@ -77,11 +79,26 @@ public enum ConfigParser {
         var state = ParserState(baseDirectory: url.deletingLastPathComponent())
         state.emits = emits
         state.parseConfigFile(url.standardizedFileURL, mustExist: true, from: nil, text: text)
+        state.recordConfigLineError(text?.name ?? url.standardizedFileURL.path, 0, failed: false)
         state.config.overrideConfig()
         state.checkKeyBindingConflicts()
         var parsed = ParsedConfig(config: state.config, errors: state.errors, sourcedFiles: state.sourcedFiles)
         parsed.notes = state.notes
         return parsed
+    }
+
+    /// mango parse_option (option_defs.c), for a caller without a file (setoption)
+    // not in mango: `baseDirectory`, where a relative source path is read from
+    @discardableResult
+    public static func parseOption(_ config: inout Config, _ key: String, _ value: String, _ lineNumber: Int,
+                                   baseDirectory: URL) -> Bool {
+        var state = ParserState(baseDirectory: baseDirectory)
+        state.emits = true
+        state.config = config
+        let ok = state.parseOption(key: key, value: value, file: "", line: lineNumber)
+        state.recordConfigLineError("", lineNumber, failed: false)
+        config = state.config
+        return ok
     }
 
     /// Not in mango: parsing config text without a file.
@@ -127,7 +144,12 @@ public enum ConfigParser {
 
     static func stripQuotes(_ s: String) -> String {
         guard s.count >= 2, let f = s.first, let l = s.last, f == l, f == "\"" || f == "'" else { return s }
-        return String(s.dropFirst().dropLast()).trimmingCharacters(in: .whitespaces)
+        return trimWhitespace(s.dropFirst().dropLast())
+    }
+
+    /// mango trim_whitespace (value_parse.c)
+    static func trimWhitespace(_ s: some StringProtocol) -> String {
+        s.trimmingCharacters(in: CharacterSet(charactersIn: " \t\n\r\u{0B}\u{0C}"))
     }
 
     static func isValidVarName(_ name: String) -> Bool {
@@ -168,24 +190,31 @@ public enum ConfigParser {
     }
 }
 
+// not in mango: a binding's file_index and line_number, kept beside it
 package struct BindingLocation {
     var file: String
     var line: Int
 }
 
+// not in mango: the state of one parse (mango's globals for it), and what the port and mango -p keep of it
 package struct ParserState {
     var config = Config()
     var errors: [ConfigError] = []
     var notes: [ConfigNote] = []
     var sourcedFiles: [URL] = []
     var emits = false
-    var vars: [String: String] = [:]
+    var vars: [String: String] {
+        get { config.vars }
+        set { config.vars = newValue }
+    }
     var keyMode: String {
         get { config.keymode }
         set { config.keymode = newValue }
     }
     let baseDirectory: URL
     var includeStack: [String] = []
+    // not in mango: mango_error's messages for the line being parsed, kept until the line is done
+    var lineErrors: [String] = []
 
     var keyLocs: [BindingLocation] = []
     var mouseLocs: [BindingLocation] = []
@@ -196,7 +225,8 @@ package struct ParserState {
         self.baseDirectory = baseDirectory
     }
 
-    // not in mango: the mouse, axis and gesture checks (check_*_binding_conflicts) here too
+    // not in mango: check_key_binding_conflicts, and the mouse, axis and gesture checks
+    // (check_simple_binding_conflicts) here too
     mutating func checkKeyBindingConflicts() {
         func report(_ kind: String, _ mode: String, _ a: BindingLocation, _ b: BindingLocation) {
             let e = ConfigError(file: b.file, line: b.line,
@@ -210,24 +240,34 @@ package struct ParserState {
         func modeOf(_ a: String, _ b: String) -> String? {
             a == "common" || b == "common" ? "common" : (a == b ? a : nil)
         }
+        // not in mango: wlroots' modifier bits, which compare_keybind_by_key_only sorts by
+        func wlrMod(_ m: Modifiers) -> Int {
+            (m.contains(.shift) ? 1 : 0) | (m.contains(.ctrl) ? 4 : 0) | (m.contains(.alt) ? 8 : 0)
+                | (m.contains(.hyper) ? 32 : 0) | (m.contains(.superKey) ? 64 : 0) | (m.contains(.fn) ? 256 : 0)
+        }
         let keys = config.keyBindings
-        for i in keys.indices {
-            let b = keys[i]
-            guard let code = b.keyCodes.first else { continue }
-            let isSym = b.flags.contains(.keysym)
-            for j in keys[..<i].indices {
-                let other = keys[j]
-                guard other.mods == b.mods && other.keyCodes.first == code && other.flags.contains(.keysym) == isSym,
-                      let mode = modeOf(other.mode, b.mode),
-                      !(other.flags.contains(.allowConflict) && b.flags.contains(.allowConflict)) else { continue }
-                report("Key binding", mode, keyLocs[j], keyLocs[i])
+        func sortKey(_ i: Int) -> (Int, Int, Int) {
+            (wlrMod(keys[i].mods), keys[i].flags.contains(.keysym) ? 1 : 0, Int(keys[i].keyCodes.first ?? 0))
+        }
+        let sorted = keys.indices.filter { !keys[$0].keyCodes.isEmpty }.sorted { sortKey($0) < sortKey($1) }
+        var i = 0
+        while i < sorted.count {
+            var j = i
+            while j < sorted.count && sortKey(sorted[j]) == sortKey(sorted[i]) { j += 1 }
+            for a in i..<j {
+                for b in (a + 1)..<max(a + 1, j) {
+                    let ka = keys[sorted[a]], kb = keys[sorted[b]]
+                    guard let mode = modeOf(ka.mode, kb.mode),
+                          !(ka.flags.contains(.allowConflict) && kb.flags.contains(.allowConflict)) else { continue }
+                    report("Key binding", mode, keyLocs[sorted[a]], keyLocs[sorted[b]])
+                }
             }
+            i = j
         }
         let mice = config.mouseBindings
         for i in mice.indices {
-            let b = mice[i]
-            for j in mice[..<i].indices where mice[j].mods == b.mods && mice[j].button == b.button {
-                if let mode = modeOf(mice[j].mode, b.mode) { report("mousebind", mode, mouseLocs[j], mouseLocs[i]) }
+            for j in mice.indices where j > i && mice[i].mods == mice[j].mods && mice[i].button == mice[j].button {
+                if let mode = modeOf(mice[i].mode, mice[j].mode) { report("mousebind", mode, mouseLocs[i], mouseLocs[j]) }
             }
         }
         // not in mango: ALLDIR is a nil direction that is not isUndir, UNDIR a nil one that is
@@ -236,18 +276,19 @@ package struct ParserState {
         }
         let axes = config.axisBindings
         for i in axes.indices {
-            let b = axes[i]
-            for j in axes[..<i].indices where axes[j].mods == b.mods
-                && sameDir(axes[j].direction, axes[j].isUndir, b.direction, b.isUndir) {
-                if let mode = modeOf(axes[j].mode, b.mode) { report("axisbind", mode, axisLocs[j], axisLocs[i]) }
+            for j in axes.indices where j > i && axes[i].mods == axes[j].mods
+                && sameDir(axes[i].direction, axes[i].isUndir, axes[j].direction, axes[j].isUndir) {
+                if let mode = modeOf(axes[i].mode, axes[j].mode) { report("axisbind", mode, axisLocs[i], axisLocs[j]) }
             }
         }
         let gestures = config.gestureBindings
         for i in gestures.indices {
-            let b = gestures[i]
-            for j in gestures[..<i].indices where gestures[j].mods == b.mods && gestures[j].fingers == b.fingers
-                && sameDir(gestures[j].direction, gestures[j].isUndir, b.direction, b.isUndir) {
-                if let mode = modeOf(gestures[j].mode, b.mode) { report("gesturebind", mode, gestureLocs[j], gestureLocs[i]) }
+            for j in gestures.indices where j > i && gestures[i].mods == gestures[j].mods
+                && gestures[i].fingers == gestures[j].fingers
+                && sameDir(gestures[i].direction, gestures[i].isUndir, gestures[j].direction, gestures[j].isUndir) {
+                if let mode = modeOf(gestures[i].mode, gestures[j].mode) {
+                    report("gesturebind", mode, gestureLocs[i], gestureLocs[j])
+                }
             }
         }
     }
@@ -262,10 +303,26 @@ package struct ParserState {
         if let (kind, why) = ConfigParser.port?.dispatcherNote(d.name) { note(file, line, kind, d.name, why) }
     }
 
-    mutating func recordConfigLineError(_ file: String, _ line: Int, _ message: String) {
-        let e = ConfigError(file: file, line: line, message: message)
-        errors.append(e)
-        if emits { e.emit() }
+    // not in mango: keeps the line's mango_error messages as ConfigErrors, the last followed by
+    // report_config_line_error when the line failed
+    mutating func recordConfigLineError(_ file: String, _ line: Int, failed: Bool) {
+        var messages = lineErrors
+        lineErrors = []
+        if failed && messages.isEmpty { messages = [""] }
+        for (i, m) in messages.enumerated() {
+            let e = ConfigError(file: file, line: line, message: m, reportsLine: failed && i == messages.count - 1)
+            errors.append(e)
+            if emits { e.emit() }
+        }
+    }
+
+    // not in mango: a line parsed with its own messages, which are kept when it is done
+    mutating func withLineErrors(_ file: String, _ line: Int, _ parse: (inout ParserState) -> Bool) {
+        let outer = lineErrors
+        lineErrors = []
+        let ok = parse(&self)
+        recordConfigLineError(file, line, failed: !ok)
+        lineErrors = outer
     }
 
     func resolveConfigPath(_ path: String) -> URL {
@@ -280,19 +337,17 @@ package struct ParserState {
         return baseDirectory.appendingPathComponent(path).standardizedFileURL
     }
 
-    // not in mango: `from`, the source line for the errors; `text`, the file's text given instead of read
-    mutating func parseConfigFile(_ url: URL, mustExist: Bool, from: (String, Int, String)?,
-                                  text given: (String, name: String)? = nil) {
-        let path = given?.name ?? url.path
-        if given == nil && !sourcedFiles.contains(url) { sourcedFiles.append(url) }
-
-        let reportFile = from?.0 ?? path
-        let reportLine = from?.1 ?? 0
+    // not in mango: `from`, the source line's text for the message; `text`, the file's text given instead of read
+    @discardableResult
+    mutating func parseConfigFile(_ url: URL?, mustExist: Bool, from: String?,
+                                  text given: (String, name: String)? = nil) -> Bool {
+        let path = given?.name ?? url?.path ?? ""
+        if given == nil, let url, !sourcedFiles.contains(url) { sourcedFiles.append(url) }
 
         // not in mango: a file that sources itself is reported, not read for ever (a mango bug, docs/afvigelser.md §6).
         if includeStack.contains(path) {
-            recordConfigLineError(reportFile, reportLine, "Recursive source of \(path) ignored")
-            return
+            lineErrors.append("Recursive source of \(path) ignored")
+            return false
         }
 
         let text: String
@@ -300,25 +355,28 @@ package struct ParserState {
             text = given.0
         } else {
             var isDir: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: path, isDirectory: &isDir), !isDir.boolValue,
-                  let data = FileManager.default.contents(atPath: path) else {
-                if mustExist {
-                    recordConfigLineError(reportFile, reportLine, "Failed to open config file: \(mangoHighlight(from?.2 ?? path))")
-                }
-                return
+            guard !path.isEmpty, FileManager.default.fileExists(atPath: path, isDirectory: &isDir) else {
+                if mustExist { lineErrors.append("Failed to open config file: \(mangoHighlight(from ?? path))") }
+                return !mustExist
             }
-            text = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
+            // a directory opens and reads as nothing
+            text = isDir.boolValue ? "" : FileManager.default.contents(atPath: path)
+                .map { String(data: $0, encoding: .utf8) ?? String(decoding: $0, as: UTF8.self) } ?? ""
         }
 
         includeStack.append(path)
+        let ok: Bool
         switch ConfigParser.detectConfigFormat(fileName: path, text: text) {
-        case .conf: parseConfStream(text, fileName: path)
-        case .toml: parseTomlStream(text, fileName: path)
+        case .conf: ok = parseConfStream(text, fileName: path)
+        case .toml: ok = parseTomlStream(text, fileName: path)
         }
         includeStack.removeLast()
+        return ok
     }
 
-    mutating func parseConfStream(_ text: String, fileName: String) {
+    @discardableResult
+    mutating func parseConfStream(_ text: String, fileName: String) -> Bool {
+        var parseCorrect = true
         var lineNumber = 0
 // not in mango: Swift reads "\r\n" as one Character, so CRLF is normalised first.
         let normalized = text.replacingOccurrences(of: "\r\n", with: "\n")
@@ -326,148 +384,128 @@ package struct ParserState {
             lineNumber += 1
             let raw = String(rawSub)
             if raw.isEmpty || raw.hasPrefix("#") { continue }
-            parseConfigLine(raw, file: fileName, line: lineNumber)
+            withLineErrors(fileName, lineNumber) { state in
+                let ok = state.parseConfigLine(raw, file: fileName, line: lineNumber)
+                if !ok { parseCorrect = false }
+                return ok
+            }
         }
+        return parseCorrect
     }
 
-    mutating func parseConfigLine(_ raw: String, file: String, line: Int) {
-        let processed = ConfigParser.removeComment(raw)
+    mutating func parseConfigLine(_ line: String, file: String, line lineNumber: Int) -> Bool {
+        let processed = ConfigParser.removeComment(line)
         guard let eq = processed.firstIndex(of: "="), eq != processed.startIndex,
               processed.index(after: eq) != processed.endIndex else {
-            recordConfigLineError(file, line, "Invalid line format: \(mangoHighlight(raw + "\n"))")
-            return
+            lineErrors.append("Invalid line format: \(mangoHighlight(line + "\n"))")
+            return false
         }
-        let key = processed[..<eq].trimmingCharacters(in: .whitespaces)
-        var value = processed[processed.index(after: eq)...].trimmingCharacters(in: .whitespaces)
-        guard !key.isEmpty else {
-            recordConfigLineError(file, line, "Invalid line format: \(mangoHighlight(raw + "\n"))")
-            return
+        if processed[processed.index(after: eq)...].utf8.count > ConfigParser.maxValueBytes {
+            lineErrors.append("Configuration value exceeds \(ConfigParser.maxValueBytes) bytes: \(mangoHighlight(line + "\n"))")
+            return false
         }
-        if value.utf8.count > ConfigParser.maxValueBytes {
-            recordConfigLineError(file, line, "Configuration value exceeds \(ConfigParser.maxValueBytes) bytes: \(mangoHighlight(raw + "\n"))")
-            return
-        }
-        value = ConfigParser.stripQuotes(value)
-        applyOptionExpanded(key, value, file: file, line: line)
+        let key = ConfigParser.trimWhitespace(processed[..<eq])
+        let value = ConfigParser.stripQuotes(ConfigParser.trimWhitespace(processed[processed.index(after: eq)...]))
+        return applyOptionExpanded(key, value, file: file, line: lineNumber)
     }
 
-    mutating func applyOptionExpanded(_ key: String, _ value: String, file: String, line: Int) {
+    mutating func applyOptionExpanded(_ key: String, _ value: String, file: String, line: Int) -> Bool {
         parseOption(key: key, value: ConfigParser.expandConfigVariables(value, vars: vars), file: file, line: line)
     }
 
-    // not in mango: parse_option for a file's line, with the line for its errors and notes (ConfigOptions.parseOption the rest)
-    mutating func parseOption(key: String, value: String, file: String, line: Int) {
-        switch key {
-        case "key_mode":
-            keyMode = value.isEmpty ? "default" : value
-            return
-
-        case "var":
+    /// mango parse_option (option_defs.c)
+    // not in mango: the file and line for the port's notes; the options are ConfigOptions.parseOption's
+    mutating func parseOption(key: String, value: String, file: String, line: Int) -> Bool {
+        if key == "key_mode" {
+            keyMode = String(decoding: value.utf8.prefix(27), as: UTF8.self)
+            return true
+        }
+        if key == "var" {
             guard let comma = value.firstIndex(of: ",") else {
-                recordConfigLineError(file, line, "Invalid variable format (expected \u{1B}[1mname,value\u{1B}[0m): \(mangoHighlight(value))")
-                return
+                lineErrors.append("Invalid variable format (expected \u{1B}[1mname,value\u{1B}[0m): \(mangoHighlight(value))")
+                return false
             }
-            let name = value[..<comma].trimmingCharacters(in: .whitespaces)
-            let v = value[value.index(after: comma)...].trimmingCharacters(in: .whitespaces)
+            let name = ConfigParser.trimWhitespace(value[..<comma])
+            let v = ConfigParser.trimWhitespace(value[value.index(after: comma)...])
             guard ConfigParser.isValidVarName(name) else {
-                recordConfigLineError(file, line, "Invalid variable name (allowed: [A-Za-z_][A-Za-z0-9_]*): \(mangoHighlight(name))")
-                return
+                lineErrors.append("Invalid variable name (allowed: [A-Za-z_][A-Za-z0-9_]*): \(mangoHighlight(name))")
+                return false
             }
             vars[name] = v
-            return
-
-        case "source", "source_optional":
-            guard !value.isEmpty else {
-                recordConfigLineError(file, line, "Missing path for \(key)")
-                return
-            }
-            parseConfigFile(resolveConfigPath(value), mustExist: key == "source", from: (file, line, value))
-            return
-
-        case "mousebind":
-            switch BindingParser.parseMouseBinding(value: value, mode: keyMode) {
-            case .failure(let msg): recordConfigLineError(file, line, msg)
-            case .success(let b):
-                let loc = BindingLocation(file: file, line: line)
-                config.mouseBindings.append(b); mouseLocs.append(loc)
-                noteDispatch(b.dispatch, file, line)
-            }
-            return
-
-        case "axisbind":
-            switch BindingParser.parseAxisBinding(value: value, mode: keyMode) {
-            case .failure(let msg): recordConfigLineError(file, line, msg)
-            case .success(let b):
-                let loc = BindingLocation(file: file, line: line)
-                config.axisBindings.append(b); axisLocs.append(loc)
-                noteDispatch(b.dispatch, file, line)
-            }
-            return
-
-        case "gesturebind":
-            switch BindingParser.parseGestureBinding(value: value, mode: keyMode) {
-            case .failure(let msg): recordConfigLineError(file, line, msg)
-            case .success(let b):
-                let loc = BindingLocation(file: file, line: line)
-                config.gestureBindings.append(b); gestureLocs.append(loc)
-                noteDispatch(b.dispatch, file, line)
-            }
-            return
-
-        case "switchbind":
-            note(file, line, .noEffect, key, ConfigParser.port?.optionNote(key, applied: false)?.1 ?? "")   // not in mango: the port's side
-            return
-
-        case "window_rule", "window_rule_once":
-            let (rule, problems, keep) = RuleParser.parseWindowRuleChecked(value, once: key == "window_rule_once")
-            if keep { config.windowRules.append(rule) }
-            for p in problems { recordConfigLineError(file, line, p) }
+            return true
+        }
+        if key == "window_rule" || key == "window_rule_once" {
+            let (rule, ok) = RuleParser.parseWindowRule(value, once: key == "window_rule_once", errors: &lineErrors)
+            if let rule { config.windowRules.append(rule) }
             for (field, _) in RuleParser.tokens(value) {
                 if let (kind, n) = ConfigParser.port?.windowRuleNote(field) { note(file, line, kind, "window_rule \(field)", n) }   // not in mango: the port's side
             }
-            return
-
-        case "tag_rule":
-            let (rule, problems) = RuleParser.parseTagRuleLenient(value)
-            config.tagRules.append(rule)
-            for p in problems { recordConfigLineError(file, line, p) }
-            return
-
-        default:
-            break
+            return ok
         }
-
+        if key == "tag_rule" {
+            let (rule, ok) = RuleParser.parseTagRule(value, errors: &lineErrors)
+            config.tagRules.append(rule)
+            return ok
+        }
         if BindingParser.isKeyBindKeyword(key) {
-            switch BindingParser.parseKeyBinding(keyword: key, value: value, mode: keyMode) {
-            case .failure(let msg):
-                recordConfigLineError(file, line, msg)
-            case .success(let b):
-                guard !b.keyCodes.isEmpty else { return }
-                let loc = BindingLocation(file: file, line: line)
-                config.keyBindings.append(b); keyLocs.append(loc)
-                noteDispatch(b.dispatch, file, line)
+            guard let b = BindingParser.parseKeyBinding(keyword: key, value: value, mode: keyMode, errors: &lineErrors) else {
+                return false
             }
-            return
+            guard !b.keyCodes.isEmpty else { return true }
+            config.keyBindings.append(b); keyLocs.append(BindingLocation(file: file, line: line))
+            noteDispatch(b.dispatch, file, line)
+            return true
+        }
+        if key.hasPrefix("mousebind") {
+            guard let b = BindingParser.parseMouseBinding(value: value, mode: keyMode, errors: &lineErrors) else { return false }
+            config.mouseBindings.append(b); mouseLocs.append(BindingLocation(file: file, line: line))
+            noteDispatch(b.dispatch, file, line)
+            return true
+        }
+        if key.hasPrefix("axisbind") {
+            guard let b = BindingParser.parseAxisBinding(value: value, mode: keyMode, errors: &lineErrors) else { return false }
+            config.axisBindings.append(b); axisLocs.append(BindingLocation(file: file, line: line))
+            noteDispatch(b.dispatch, file, line)
+            return true
+        }
+        if key.hasPrefix("switchbind") {
+            note(file, line, .noEffect, key, ConfigParser.port?.optionNote(key, applied: false)?.1 ?? "")   // not in mango: the port's side
+            return true
+        }
+        if key.hasPrefix("gesturebind") {
+            guard let b = BindingParser.parseGestureBinding(value: value, mode: keyMode, errors: &lineErrors) else { return false }
+            config.gestureBindings.append(b); gestureLocs.append(BindingLocation(file: file, line: line))
+            noteDispatch(b.dispatch, file, line)
+            return true
+        }
+        if key.hasPrefix("source") {
+            parseConfigFile(value.isEmpty ? nil : resolveConfigPath(value), mustExist: !key.hasPrefix("source_optional"), from: value)
+            return true
         }
 
         switch ConfigOptions.parseOption(key: key, value: value, to: &config) {
         case .applied:
             if let (kind, n) = ConfigParser.port?.optionNote(key, applied: true) { note(file, line, kind, key, n) }   // not in mango: the port's side
+            return true
         case .ignored:
             if let (kind, n) = ConfigParser.port?.optionNote(key, applied: false) { note(file, line, kind, key, n) }   // not in mango: the port's side
-        case .unknown: recordConfigLineError(file, line, "Unknown keyword: \(mangoHighlight(key))")
-        case .invalid(let msg): recordConfigLineError(file, line, msg)
+            return true
+        case .unknown:
+            lineErrors.append("Unknown keyword: \(mangoHighlight(key))")
+            return false
+        case .invalid(let msg, let earlier):
+            lineErrors += earlier + [msg]
+            return false
         }
     }
-
-    /// Not in mango: file:line text for conflict messages.
 }
 
 public enum BindingParser {
-/// Not in mango: parse_option's binding branches, apart for its two callers.
+/// Not in mango: parse_option's binding branches, apart for its two callers; `errors`, where
+/// mango_error prints, and nil where mango returns false.
     public static func isKeyBindKeyword(_ keyword: String) -> Bool {
         guard keyword.hasPrefix("bind") else { return false }
-        return keyword.dropFirst(4).allSatisfy { "slrpc".contains($0) }
+        return keyword.dropFirst(4).allSatisfy { "s|lrpc".contains($0) }
     }
 
     public static func parseBindFlags(forKeyword keyword: String) -> KeyBindingFlags {
@@ -485,78 +523,83 @@ public enum BindingParser {
         return f
     }
 
-    public static func parseKeyBinding(keyword: String, value: String, mode: String) -> Result<KeyBinding, String> {
-        guard isKeyBindKeyword(keyword) else { return .failure("Unknown keyword: \(mangoHighlight(keyword))") }
+    static func parseKeyBinding(keyword: String, value: String, mode: String, errors: inout [String]) -> KeyBinding? {
+        guard sscanfCount(value) >= 3 else {
+            errors.append("Invalid bind format: \(mangoHighlight(value))")
+            return nil
+        }
         let fields = splitFields(value)
-        guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
-            return .failure("Invalid bind format: \(mangoHighlight(value))")
-        }
-        guard let mods = Modifiers.parse(fields[0]) else {
-            return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
-        }
         let keyName = fields[1]
         let codes = ConfigParser.port?.keyCodes(keyName) ?? []   // the boundary: xkb's keymap is the port's
-        if codes.isEmpty && !keyName.lowercased().hasPrefix("xf86") {
-            return .failure("Unknown key: \(mangoHighlight(keyName))")
-        }
-        let dispatch: Dispatch
+        let keyKnown = !codes.isEmpty || keyName.lowercased().hasPrefix("xf86")
+        if !keyKnown { errors.append("Unknown key: \(mangoHighlight(keyName))") }
+        let mods = Modifiers.parse(fields[0]) { errors.append($0) }
+        var dispatch: Dispatch?
         switch parseFuncName(Array(fields[2...])) {
         case .success(let d): dispatch = d
-        case .failure(let msg): return .failure(msg)
+        case .failure(let msg): errors.append(msg)
         }
-        return .success(KeyBinding(mode: mode, mods: mods, keyName: keyName, keyCodes: codes,
-                                   flags: parseBindFlags(forKeyword: keyword), dispatch: dispatch))
+        guard let mods, let dispatch, keyKnown else { return nil }
+        return KeyBinding(mode: mode, mods: mods, keyName: keyName, keyCodes: codes,
+                          flags: parseBindFlags(forKeyword: keyword), dispatch: dispatch)
     }
 
-    public static func parseMouseBinding(value: String, mode: String) -> Result<MouseBinding, String> {
+    static func parseMouseBinding(value: String, mode: String, errors: inout [String]) -> MouseBinding? {
+        guard sscanfCount(value) >= 3 else {
+            errors.append("Invalid mousebind format: \(mangoHighlight(value))")
+            return nil
+        }
         let fields = splitFields(value)
-        guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
-            return .failure("Invalid mousebind format: \(mangoHighlight(value))")
+        let mods = Modifiers.parse(fields[0]) { errors.append($0) }
+        let button = parseButton(fields[1]) { errors.append($0) }
+        var dispatch: Dispatch?
+        switch parseFuncName(Array(fields[2...]), in: "mousebind") {
+        case .success(let d): dispatch = d
+        case .failure(let msg): errors.append(msg)
         }
-        guard let mods = Modifiers.parse(fields[0]) else {
-            return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
-        }
-        guard let button = parseButton(fields[1]) else {
-            return .failure("Unknown button: \(mangoHighlight(fields[1]))")
-        }
-        return parseFuncName(Array(fields[2...]), in: "mousebind").map {
-            MouseBinding(mode: mode, mods: mods, button: button, dispatch: $0)
-        }
+        guard let mods, let button, let dispatch else { return nil }
+        return MouseBinding(mode: mode, mods: mods, button: button, dispatch: dispatch)
     }
 
-    public static func parseAxisBinding(value: String, mode: String) -> Result<AxisBinding, String> {
+    static func parseAxisBinding(value: String, mode: String, errors: inout [String]) -> AxisBinding? {
+        guard sscanfCount(value) >= 3 else {
+            errors.append("Invalid axisbind format: \(mangoHighlight(value))")
+            return nil
+        }
         let fields = splitFields(value)
-        guard fields.count >= 3, !fields[0].isEmpty, !fields[1].isEmpty, !fields[2].isEmpty else {
-            return .failure("Invalid axisbind format: \(mangoHighlight(value))")
-        }
-        guard let mods = Modifiers.parse(fields[0]) else {
-            return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
-        }
+        let mods = Modifiers.parse(fields[0]) { errors.append($0) }
         let dir = Direction(mangoName: fields[1])
         let undir = dir == nil && fields[1].lowercased() != "alldir"
-        return parseFuncName(Array(fields[2...]), in: "axisbind").map {
-            var b = AxisBinding(mode: mode, mods: mods, direction: dir, dispatch: $0)
-            b.isUndir = undir
-            return b
+        var dispatch: Dispatch?
+        switch parseFuncName(Array(fields[2...]), in: "axisbind") {
+        case .success(let d): dispatch = d
+        case .failure(let msg): errors.append(msg)
         }
+        guard let mods, let dispatch else { return nil }
+        var b = AxisBinding(mode: mode, mods: mods, direction: dir, dispatch: dispatch)
+        b.isUndir = undir
+        return b
     }
 
-    public static func parseGestureBinding(value: String, mode: String) -> Result<GestureBinding, String> {
+    static func parseGestureBinding(value: String, mode: String, errors: inout [String]) -> GestureBinding? {
+        guard sscanfCount(value) >= 4 else {
+            errors.append("Invalid gesturebind format: \(mangoHighlight(value))")
+            return nil
+        }
         let fields = splitFields(value)
-        guard fields.count >= 4, fields[0...3].allSatisfy({ !$0.isEmpty }) else {
-            return .failure("Invalid gesturebind format: \(mangoHighlight(value))")
-        }
-        guard let mods = Modifiers.parse(fields[0]) else {
-            return .failure("Unknown modifier: \(mangoHighlight(fields[0]))")
-        }
+        let mods = Modifiers.parse(fields[0]) { errors.append($0) }
         let dir = Direction(mangoName: fields[1])
         let undir = dir == nil && fields[1].lowercased() != "alldir"
         let fingers = ValueParse.atoi(fields[2])
-        return parseFuncName(Array(fields[3...]), in: "axisbind").map {
-            var b = GestureBinding(mode: mode, mods: mods, direction: dir, fingers: fingers, dispatch: $0)
-            b.isUndir = undir
-            return b
+        var dispatch: Dispatch?
+        switch parseFuncName(Array(fields[3...]), in: "axisbind") {
+        case .success(let d): dispatch = d
+        case .failure(let msg): errors.append(msg)
         }
+        guard let mods, let dispatch else { return nil }
+        var b = GestureBinding(mode: mode, mods: mods, direction: dir, fingers: fingers, dispatch: dispatch)
+        b.isUndir = undir
+        return b
     }
 
     // not in mango: `kind`, the keyword its "Unknown dispatch in …" names
@@ -601,7 +644,11 @@ public enum BindingParser {
 
     /// Not in mango: comma split standing for sscanf fields.
     static func splitFields(_ value: String) -> [String] {
-        value.split(separator: ",", omittingEmptySubsequences: false)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
+        value.split(separator: ",", omittingEmptySubsequences: false).map { ConfigParser.trimWhitespace($0) }
+    }
+
+    /// Not in mango: sscanf's count for "%255[^,],%255[^,],…": the fields before the first empty one.
+    static func sscanfCount(_ value: String) -> Int {
+        value.split(separator: ",", omittingEmptySubsequences: false).prefix { !$0.isEmpty }.count
     }
 }

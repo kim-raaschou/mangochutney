@@ -10,13 +10,28 @@ public struct Modifiers: OptionSet, Hashable, Sendable {
     public static let fn = Modifiers(rawValue: 1 << 4)
     public static let hyper = Modifiers(rawValue: 1 << 5)
 
-    public static func parse(_ s: String) -> Modifiers? {
+    /// mango parse_mod (binding_parse.c)
+    // not in mango: `error`, mango_error's message given to the caller
+    public static func parse(_ s: String, error: (String) -> Void = { _ in }) -> Modifiers? {
+        guard !s.isEmpty else { return nil }
         var result: Modifiers = []
         var matched = false
-        for raw in s.split(separator: "+") {
-            let tok = raw.trimmingCharacters(in: .whitespaces).lowercased()
+        for raw in s.lowercased().split(separator: "+") {
+            let tok = ConfigParser.trimWhitespace(raw)
+            if tok.isEmpty { continue }
+            if tok.hasPrefix("code:") {
+                if let (code, rest) = ValueParse.strtol(tok.dropFirst(5)), rest.isEmpty || rest.first == " " {
+                    switch code {
+                    case 133, 134: result.insert(.superKey); matched = true
+                    case 37, 105: result.insert(.ctrl); matched = true
+                    case 50, 62: result.insert(.shift); matched = true
+                    case 64, 108: result.insert(.alt); matched = true
+                    default: error("unknown modifier keycode: \(mangoHighlight(tok))")
+                    }
+                }
+                continue
+            }
             switch tok {
-            case "": continue
             case "none": matched = true
             case "super", "super_l", "super_r": result.insert(.superKey); matched = true
             case "ctrl", "ctrl_l", "ctrl_r": result.insert(.ctrl); matched = true
@@ -24,32 +39,14 @@ public struct Modifiers: OptionSet, Hashable, Sendable {
             case "alt", "alt_l", "alt_r": result.insert(.alt); matched = true
             case "hyper", "hyper_l", "hyper_r": result.insert(.hyper); matched = true
             default:
-                if tok.hasPrefix("code:"), let code = Int(tok.dropFirst(5)) {
-                    switch code {
-                    case 133, 134: result.insert(.superKey); matched = true
-                    case 37, 105: result.insert(.ctrl); matched = true
-                    case 50, 62: result.insert(.shift); matched = true
-                    case 64, 108: result.insert(.alt); matched = true
-                    default: break
-                    }
-                } else if let m = ConfigParser.port?.modifier(tok) {   // the port's names: not in mango
+                if let m = ConfigParser.port?.modifier(tok) {   // the port's names: not in mango
                     result.formUnion(m)
                     matched = true
                 }
             }
         }
+        if !matched { error("Unknown modifier: \(mangoHighlight(s))") }
         return matched ? result : nil
-    }
-
-    public var mangoDescription: String {
-        var parts: [String] = []
-        if contains(.superKey) { parts.append("SUPER") }
-        if contains(.ctrl) { parts.append("CTRL") }
-        if contains(.alt) { parts.append("ALT") }
-        if contains(.shift) { parts.append("SHIFT") }
-        if contains(.fn) { parts.append("FN") }
-        if contains(.hyper) { parts.append("HYPER") }
-        return parts.isEmpty ? "NONE" : parts.joined(separator: "+")
     }
 }
 
@@ -106,6 +103,7 @@ public struct MultiKeycode: Equatable, Sendable {
     }
 }
 
+// not in mango: the bind keyword's letters (parse_bind_flags) as one set
 public struct KeyBindingFlags: OptionSet, Hashable, Sendable {
     public let rawValue: UInt8
     public init(rawValue: UInt8) { self.rawValue = rawValue }
@@ -135,6 +133,7 @@ public enum MouseButton: Hashable, Sendable {
     case left, right, middle, side, extra, forward, back, task
     case code(Int)
 
+    // not in mango: the button as macOS numbers it (CGEvent's mouse button number)
     public var cgButtonNumber: Int {
         switch self {
         case .left: return 0
@@ -181,20 +180,15 @@ public struct GestureBinding: Equatable, Hashable, Sendable {
     }
 }
 
-// not in mango: the button as MouseButton, nil where mango returns 0
-public func parseButton(_ str: String) -> MouseButton? {
-    switch str.lowercased() {
-    case "btn_left": return .left
-    case "btn_right": return .right
-    case "btn_middle": return .middle
-    case "btn_side": return .side
-    case "btn_extra": return .extra
-    case "btn_forward": return .forward
-    case "btn_back": return .back
-    case "btn_task": return .task
-    default:
-        let s = str.lowercased()
-        guard s.hasPrefix("code:"), let n = Int(s.dropFirst(5)) else { return nil }
+// not in mango: the button as MouseButton, nil where mango returns UINT32_MAX; `error`,
+// mango_error's message given to the caller
+public func parseButton(_ str: String, error: (String) -> Void = { _ in }) -> MouseButton? {
+    let s = str.lowercased()
+    if s.hasPrefix("code:") {
+        guard let (n, rest) = ValueParse.strtoul(s.dropFirst(5)), rest.isEmpty, n <= UInt64(UInt32.max) else {
+            error("Invalid code format: \(mangoHighlight(str))")
+            return nil
+        }
         switch n {
         case 272: return .left
         case 273: return .right
@@ -204,7 +198,20 @@ public func parseButton(_ str: String) -> MouseButton? {
         case 277: return .forward
         case 278: return .back
         case 279: return .task
-        default: return .code(n)
+        default: return .code(Int(n))
         }
+    }
+    switch s {
+    case "btn_left": return .left
+    case "btn_right": return .right
+    case "btn_middle": return .middle
+    case "btn_side": return .side
+    case "btn_extra": return .extra
+    case "btn_forward": return .forward
+    case "btn_back": return .back
+    case "btn_task": return .task
+    default:
+        error("Unknown button: \(mangoHighlight(str))")
+        return nil
     }
 }

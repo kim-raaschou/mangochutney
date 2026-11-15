@@ -92,7 +92,8 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertGreaterThan(fields.count, 40)
         var unknown: [String] = []
         for f in fields {
-            let (_, errors) = RuleParser.parseWindowRuleLenient("\(f):1,app_id:x", once: false)
+            var errors: [String] = []
+            _ = RuleParser.parseWindowRule("\(f):1,app_id:x", once: false, errors: &errors)
             if errors.contains(where: { $0.hasPrefix("Unknown window rule option") }) { unknown.append(f) }
         }
         XCTAssertEqual(unknown, [])
@@ -101,7 +102,8 @@ final class MangoCoverageTests: MangoTestCase {
     func testEveryTagRuleFieldIsKnown() {
         var unknown: [String] = []
         for f in Self.list("tag_rule") {
-            let (_, errors) = RuleParser.parseTagRuleLenient("id:1,\(f):1")
+            var errors: [String] = []
+            _ = RuleParser.parseTagRule("id:1,\(f):1", errors: &errors)
             if errors.contains(where: { $0.hasPrefix("Unknown tag rule option") }) { unknown.append(f) }
         }
         XCTAssertEqual(unknown, [])
@@ -187,8 +189,8 @@ final class MangoCoverageTests: MangoTestCase {
         let engine = Self.engineSources
         let re = try NSRegularExpression(pattern: #"case "([a-z_]+)": \w+ \{ rule\.(\w+) ="#)
         var unreadButNotListed: [String] = [], listedButRead: [String] = []
-        let start = parser.range(of: "parseWindowRuleLenient")!.lowerBound
-        let end = parser.range(of: "parseTagRuleLenient")!.lowerBound
+        let start = parser.range(of: "func parseWindowRule(")!.lowerBound
+        let end = parser.range(of: "func parseTagRule(")!.lowerBound
         let body = String(parser[start..<end])
         for m in re.matches(in: body, range: NSRange(body.startIndex..., in: body)) {
             let field = String(body[Range(m.range(at: 1), in: body)!])

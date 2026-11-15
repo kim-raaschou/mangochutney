@@ -34,7 +34,7 @@ package extension MangoServer {
     }
 
     func switcherClientEligible(_ c: Client) -> Bool {
-        c.mon != nil && !c.isMinimized && !c.isUnglobal
+        c.mon != nil && !c.isminimized && !c.isunglobal
     }
 
     var switcherOrder: [Client] { focusStack.compactMap { clientByIdAll($0) } }

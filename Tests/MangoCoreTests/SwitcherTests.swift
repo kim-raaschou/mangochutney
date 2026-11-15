@@ -50,7 +50,7 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertEqual(r.server.switcherState?.scope, .currentTag, "another scope opens it again")
         XCTAssertEqual(r.server.switcherState?.tiles.count, 2)
         r.server.clientByIdAll(900_200)!.isInScratchpad = true
-        r.server.clientByIdAll(900_200)!.isMinimized = true
+        r.server.clientByIdAll(900_200)!.isminimized = true
         r.server.switcherClose()
         open(r, "all_next")
         XCTAssertEqual(r.server.switcherState?.tiles, [900_201, 900_202], "minimized windows are left out")

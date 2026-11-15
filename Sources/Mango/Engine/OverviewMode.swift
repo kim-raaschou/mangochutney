@@ -19,7 +19,7 @@ package extension MangoServer {
     }
 
     func overviewClientOnCurrentTags(_ c: Client, _ onlyCurrent: Bool, _ currentTags: UInt32) -> Bool {
-        !onlyCurrent || c.isGlobal || c.tags & currentTags != 0
+        !onlyCurrent || c.isglobal || c.tags & currentTags != 0
     }
 
     /* Enter or leave overview mode on the selected monitor. */
@@ -46,7 +46,7 @@ package extension MangoServer {
             currentTags = m.tagset[m.seltags] & tagmask
             for c in clients where c.mon === m {
                 // not in mango: no unmanaged clients or X11 popups
-                if !c.isMinimized && !c.isUnglobal && c.tags & TagMask.special == 0
+                if !c.isminimized && !c.isunglobal && c.tags & TagMask.special == 0
                     && overviewClientOnCurrentTags(c, onlyCurrent, currentTags) {
                     visibleClientNumber += 1
                 }
@@ -83,7 +83,7 @@ package extension MangoServer {
 
             for c in clients where c.mon === m {
                 // not in mango: every Client is a mapped window
-                if c.isUnglobal || c.isMinimized || c.tags & TagMask.special != 0
+                if c.isunglobal || c.isminimized || c.tags & TagMask.special != 0
                     || !overviewClientOnCurrentTags(c, onlyCurrent, currentTags) {
                     continue
                 }
@@ -96,7 +96,7 @@ package extension MangoServer {
 
             m.tagset[m.seltags] = target
             overviewCardsClose(m)   // not in mango: the port's pictures, overview_destroy_card
-            for c in clients where c.mon === m && !c.isUnglobal && !c.isMinimized && c.tags & TagMask.special == 0 {
+            for c in clients where c.mon === m && !c.isunglobal && !c.isminimized && c.tags & TagMask.special == 0 {
                 overviewRestore(c, target)
             }
         }
@@ -111,7 +111,7 @@ package extension MangoServer {
             overviewCardSurfaceAdd(m)
         }
         fixMonTagsetFromOverview(m)
-        printstatus()   // not in mango: refresh_monitors_workspaces_status is ext-workspace's
+        printstatus(.arrangge)   // not in mango: refresh_monitors_workspaces_status is ext-workspace's
 
         if !enter, let sel, sel.tags & target != 0 {
             clientFocus(sel, true)
@@ -205,7 +205,7 @@ package extension MangoServer {
 
     /// Not in mango: the overview's items, VISIBLEON and not unglobal, with overview_backup_geom's size.
     func overviewItems(_ m: Monitor) -> [(id: ClientID, size: CGSize)] {
-        clients.filter { $0.mon === m && $0.isVisible(on: m) && !$0.isUnglobal }.map { c in
+        clients.filter { $0.mon === m && $0.isVisible(on: m) && !$0.isunglobal }.map { c in
             let f = c.overviewBackupGeom ?? .zero
             return (c.id, f.width <= 0 || f.height <= 0 ? CGSize(width: 100, height: 100) : f.size)
         }
@@ -276,7 +276,7 @@ package extension MangoServer {
         var labelIdx = 0
 
         for c in clients {
-            if c.isVisible(on: m) && !c.isUnglobal {   // not in mango: no X11 popups
+            if c.isVisible(on: m) && !c.isunglobal {   // not in mango: no X11 popups
                 if labelIdx >= jumpLabelsLen {
                     break
                 }
@@ -388,18 +388,18 @@ package extension MangoServer {
 
     // Saves the window old state when switching from the normal view to overview.
     func overviewBackup(_ c: Client) {
-        c.overviewIsFloatingBak = c.isFloating
-        c.overviewIsFullscreenBak = c.isFullscreen
-        c.overviewIsMaximizeScreenBak = c.isMaximizeScreen
+        c.overviewIsfloatingbak = c.isfloating
+        c.overviewIsfullscreenbak = c.isfullscreen
+        c.overviewIsmaximizescreenbak = c.ismaximizescreen
         c.tagouting = false   // not in mango: no tagining or tagouted
-        c.overviewBackupGeom = c.isFloating ? c.floatGeom : (c.geom ?? c.frame)   // not in mango: our geom is without the border, a floating one's is floatGeom
-        if c.isFloating {
-            c.isFloating = false
+        c.overviewBackupGeom = c.isfloating ? c.floatGeom : (c.geom ?? c.frame)   // not in mango: our geom is without the border, a floating one's is floatGeom
+        if c.isfloating {
+            c.isfloating = false
         }
 
-        if c.isFullscreen || c.isMaximizeScreen {
-            c.isFullscreen = false // Clears the window fullscreen flag.
-            c.isMaximizeScreen = false
+        if c.isfullscreen || c.ismaximizescreen {
+            c.isfullscreen = false // Clears the window fullscreen flag.
+            c.ismaximizescreen = false
         }
     }
 
@@ -421,25 +421,25 @@ package extension MangoServer {
         // not in mango: a client mapped in overview has no backup and keeps its state (a mango bug, docs/afvigelser.md §6)
         guard let b = c.overviewBackupGeom else { return }
 
-        c.isFloating = c.overviewIsFloatingBak
-        c.isFullscreen = c.overviewIsFullscreenBak
-        c.isMaximizeScreen = c.overviewIsMaximizeScreenBak
-        c.overviewIsFloatingBak = false
-        c.overviewIsFullscreenBak = false
-        c.overviewIsMaximizeScreenBak = false
-        if !c.isFloating { c.geom = b }   // not in mango: a floating one's backup is its floatGeom
+        c.isfloating = c.overviewIsfloatingbak
+        c.isfullscreen = c.overviewIsfullscreenbak
+        c.ismaximizescreen = c.overviewIsmaximizescreenbak
+        c.overviewIsfloatingbak = false
+        c.overviewIsfullscreenbak = false
+        c.overviewIsmaximizescreenbak = false
+        if !c.isfloating { c.geom = b }   // not in mango: a floating one's backup is its floatGeom
         c.overviewBackupGeom = nil
 
-        if c.isFloating {
+        if c.isfloating {
             // not in mango: arrange places a floating client at its floatGeom
-        } else if c.isFullscreen || c.isMaximizeScreen {
-            if wantRestoreFullscreen(c) && c.isMaximizeScreen {
+        } else if c.isfullscreen || c.ismaximizescreen {
+            if wantRestoreFullscreen(c) && c.ismaximizescreen {
                 clientSetMaximizeScreen(c, true, rearrange: false)
-            } else if wantRestoreFullscreen(c) && c.isFullscreen {
+            } else if wantRestoreFullscreen(c) && c.isfullscreen {
                 clientSetFullscreen(c, true, rearrange: false)
             } else {
-                c.isFullscreen = false
-                c.isMaximizeScreen = false
+                c.isfullscreen = false
+                c.ismaximizescreen = false
                 clientSetFullscreen(c, false, rearrange: false)
             }
         } else if target & c.tags & TagMask.mask(forTagNum: config.tagNum) == 0 {

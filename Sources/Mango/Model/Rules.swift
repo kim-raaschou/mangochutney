@@ -71,21 +71,22 @@ public struct MonitorSpec: Equatable, Hashable, Sendable {
     }
 }
 
-/// Not in mango: `app_id` is matched against the bundle id and the app's name.
-public struct WindowRule: Equatable, Sendable {
+/// Not in mango: `app_id` is matched against the bundle id and the app's name; a nil field is
+/// mango's -1 (unset).
+public struct ConfigWinRule: Equatable, Sendable {
     public var appId: String?
     public var title: String?
     public var once = false
     public var isOnceApplied = false
 
-    public var isFloating: Bool?
-    public var isFullscreen: Bool?
-    public var isFakeFullscreen: Bool?
-    public var isGlobal: Bool?
-    public var isOverlay: Bool?
-    public var isOpenSilent: Bool?
-    public var isTagSilent: Bool?
-    public var isNamedScratchpad: Bool?
+    public var isfloating: Bool?
+    public var isfullscreen: Bool?
+    public var isfakefullscreen: Bool?
+    public var isglobal: Bool?
+    public var isoverlay: Bool?
+    public var isopensilent: Bool?
+    public var istagsilent: Bool?
+    public var isnamedscratchpad: Bool?
     public var isUnmanagedGlobal: Bool?
     public var isTerm: Bool?
     public var noSwallow: Bool?
@@ -140,20 +141,20 @@ public struct WindowRule: Equatable, Sendable {
     }
 }
 
-public struct TagRule: Equatable, Sendable {
+public struct ConfigTagRule: Equatable, Sendable {
     public var id: Int?
     public var layoutName: String?
     public var monitorName: String?
     public var monitorMake: String?
     public var monitorModel: String?
     public var monitorSerial: String?
-    public var noRenderBorder: Bool?
-    public var openAsFloating: Bool?
-    public var noHide: Bool?
+    public var noRenderBorder = false
+    public var openAsFloating = false
+    public var noHide = false
     public var masterCount: Int?
     public var masterFactor: Double?
-    public var scrollerDefaultProportion: Double?
-    public var scrollerDefaultProportionSingle: Double?
+    public var scrollerDefaultProportion = 0.0
+    public var scrollerDefaultProportionSingle = 0.0
     public var scrollerIgnoreProportionSingle: Bool?
 
     public init() {}

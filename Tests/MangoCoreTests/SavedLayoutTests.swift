@@ -15,9 +15,9 @@ final class SavedLayoutTests: MangoTestCase {
     }
 
     func window(_ id: CGWindowID, tags: UInt32, bundle: String = "com.example", snapshot: [CGWindowID]? = nil) -> SavedLayout.Window {
-        SavedLayout.Window(id: id, bundleId: bundle, tags: tags, displayID: 1, homeDisplayID: 2, isFloating: true,
-                           isGlobal: false, isOverlay: false, isMinimized: false, isScratchpad: false,
-                           isNamedScratchpad: false, floatFrame: CGRect(x: 10, y: 20, width: 300, height: 200),
+        SavedLayout.Window(id: id, bundleId: bundle, tags: tags, displayID: 1, homeDisplayID: 2, isfloating: true,
+                           isglobal: false, isoverlay: false, isminimized: false, isScratchpad: false,
+                           isnamedscratchpad: false, floatFrame: CGRect(x: 10, y: 20, width: 300, height: 200),
                            scrollerProportion: 0.5, orderSnapshot: snapshot)
     }
 
@@ -92,7 +92,7 @@ final class SavedLayoutTests: MangoTestCase {
         let server = try savingServer(url)
         var told = 0
         server.onStatusChange = { told += 1 }
-        server.printstatus()
+        server.printstatus(.arrangge)
         server.mac.memory.queue.sync {}
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "saved, with no hook in mango's printstatus")
         XCTAssertEqual(told, 1, "and the app is told after")
@@ -122,7 +122,7 @@ final class SavedLayoutTests: MangoTestCase {
         server.mac.windowDiscovered(DiscoveredWindow(id: 77, pid: getpid(), element: AXUIElementCreateApplication(getpid()),
                                              bundleId: bundle, appName: "Test", title: "t", subrole: "AXStandardWindow",
                                              isDialog: false, frame: CGRect(x: 0, y: 0, width: 400, height: 300),
-                                             isMinimized: false, isFullscreen: false, isAppHidden: false))
+                                             isminimized: false, isfullscreen: false, isAppHidden: false))
         return server.clientByIdAll(77)
     }
 
@@ -130,7 +130,7 @@ final class SavedLayoutTests: MangoTestCase {
     func testASavedWindowGetsItsTagAndFloatingBack() {
         let c = discover("com.example", savedAs: "com.example")
         XCTAssertEqual(c?.tags, 1 << 8)
-        XCTAssertEqual(c?.isFloating, true)
+        XCTAssertEqual(c?.isfloating, true)
         XCTAssertEqual(c?.floatGeom, CGRect(x: 10, y: 20, width: 300, height: 200))
         XCTAssertEqual(c?.oldmonname, 2)
     }

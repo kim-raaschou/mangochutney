@@ -4,8 +4,8 @@ import XCTest
 
 final class EngineDepartedTests: MangoTestCase {
     func departed(tags: UInt32 = 1 << 2, at: CFTimeInterval) -> DepartedWindow {
-        DepartedWindow(tags: tags, displayID: 1, isFloating: true, isGlobal: false, isOverlay: false,
-                       isMinimized: false, isScratchpad: false, isNamedScratchpad: false,
+        DepartedWindow(tags: tags, displayID: 1, isfloating: true, isglobal: false, isoverlay: false,
+                       isminimized: false, isScratchpad: false, isnamedscratchpad: false,
                        floatFrame: CGRect(x: 10, y: 20, width: 300, height: 200),
                        scrollerProportion: nil, orderSnapshot: [7, 8, 9], at: at)
     }

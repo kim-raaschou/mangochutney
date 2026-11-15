@@ -153,11 +153,11 @@ public final class HotkeysPalette {
         var c = HotkeysContext()
         if let f = server.focused {
             c.hasFocused = true
-            c.floating = f.isFloating
-            c.fullscreen = f.isFullscreen
-            c.maximized = f.isMaximizeScreen
-            c.global = f.isGlobal
-            c.overlay = f.isOverlay
+            c.floating = f.isfloating
+            c.fullscreen = f.isfullscreen
+            c.maximized = f.ismaximizescreen
+            c.global = f.isglobal
+            c.overlay = f.isoverlay
         }
         if let m = server.selectedMonitor {
             c.layout = m.layout.name
@@ -165,7 +165,7 @@ public final class HotkeysPalette {
             c.viewedTags = Set((1...32).filter { viewed & (1 << UInt32($0 - 1)) != 0 })
         }
         c.monitorCount = server.monitors.count
-        c.minimizedCount = server.clients.filter(\.isMinimized).count
+        c.minimizedCount = server.clients.filter(\.isminimized).count
         c.overview = server.selectedMonitor?.isoverview ?? false
         c.gaps = server.enableGaps
         for r in server.shortcutRows where r.dispatch == "chutney_launch_or_focus" {
@@ -183,7 +183,7 @@ public final class HotkeysPalette {
         let focused = server.focused?.id
         let all = server.clients.map { c -> HotkeysWindow in
             let tags = c.tags & 0x7FFF_FFFF
-            let tag: Int? = c.isMinimized ? nil : (tags == 0 ? 0 : tags.trailingZeroBitCount + 1)
+            let tag: Int? = c.isminimized ? nil : (tags == 0 ? 0 : tags.trailingZeroBitCount + 1)
             return HotkeysWindow(id: c.id, app: c.appName, bundleID: c.bundleId, title: c.title, tag: tag,
                                  focused: c.id == focused,
                                  appPath: NSRunningApplication(processIdentifier: c.pid)?.bundleURL?.path)

@@ -31,7 +31,7 @@ final class AnimationChoiceTests: MangoTestCase {
     func testSlideFromTheNearestEdge() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = true
-        c.isFloating = true
+        c.isfloating = true
         let m = r.screen.frame
         let nearLeft = CGRect(x: 10, y: 400, width: 300, height: 200)
         XCTAssertEqual(r.server.clientAnimation(c, to: nearLeft, .move, current: now, shown: true).from,
@@ -164,7 +164,7 @@ final class AnimationChoiceTests: MangoTestCase {
         let (r, c) = rig()
         r.server.arrange(r.monitor, .none)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: c)
-        XCTAssertTrue(c.isInScratchpad && c.isMinimized)
+        XCTAssertTrue(c.isInScratchpad && c.isminimized)
         XCTAssertTrue(c.tagouting, "sliding out")
         XCTAssertFalse(c.parked)
     }

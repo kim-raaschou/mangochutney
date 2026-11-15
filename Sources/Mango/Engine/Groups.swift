@@ -71,8 +71,8 @@ package extension MangoServer {
     }
 
     func clientReplace(_ c: Client, _ w: Client, isGroupChangeMember: Bool) {
-        c.isFloating = w.isFloating
-        c.isUrgent = w.isUrgent
+        c.isfloating = w.isfloating
+        c.isurgent = w.isurgent
         c.tags = w.tags
         c.geom = w.geom
         c.floatGeom = w.floatGeom
@@ -83,13 +83,13 @@ package extension MangoServer {
         c.scrollerStackWeight = w.scrollerStackWeight
         c.masterMfactPer = w.masterMfactPer
         c.scrollerProportion = w.scrollerProportion
-        c.isGlobal = w.isGlobal
+        c.isglobal = w.isglobal
         c.overviewBackupGeom = w.overviewBackupGeom
-        c.isFullscreen = w.isFullscreen
-        c.isMaximizeScreen = w.isMaximizeScreen
+        c.isfullscreen = w.isfullscreen
+        c.ismaximizescreen = w.ismaximizescreen
         c.isInScratchpad = w.isInScratchpad
-        c.isFloatingBeforeScratchpad = w.isFloatingBeforeScratchpad
-        c.isMinimized = w.isMinimized
+        c.isfloatingBeforeScratchpad = w.isfloatingBeforeScratchpad
+        c.isminimized = w.isminimized
         c.groupParked = false
         if !isGroupChangeMember { clientGroupReplace(w, c) }
         clientUnpark(c, after: w)

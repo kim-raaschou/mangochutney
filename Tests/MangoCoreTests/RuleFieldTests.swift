@@ -22,7 +22,7 @@ final class RuleFieldTests: MangoTestCase {
 
     func testTheRuleSetsIt() {
         let r = EngineRig()
-        var rule = WindowRule()
+        var rule = ConfigWinRule()
         rule.appId = "test"
         rule.noForceCenter = true
         r.server.config.windowRules = [rule]
@@ -49,7 +49,7 @@ final class RuleFieldTests: MangoTestCase {
 
     func otherApp(_ r: EngineRig, _ id: CGWindowID, pid: pid_t, bundleId: String) -> Client {
         let w = DiscoveredWindow(id: id, pid: pid, element: r.app.element(for: id), bundleId: bundleId, appName: "OBS",
-                                 title: "OBS", subrole: "AXStandardWindow", isDialog: false, frame: float, isMinimized: false, isFullscreen: false, isAppHidden: false)
+                                 title: "OBS", subrole: "AXStandardWindow", isDialog: false, frame: float, isminimized: false, isfullscreen: false, isAppHidden: false)
         let c = Client(window: w, monitor: r.monitor, tags: 1)
         c.isPendingOpenAnimation = false
         r.app.frames[id] = float
@@ -59,7 +59,7 @@ final class RuleFieldTests: MangoTestCase {
 
     func testAGlobalKeyGoesToItsWindowsAppNotTheFocusedOne() {
         let r = EngineRig()
-        var rule = WindowRule()
+        var rule = ConfigWinRule()
         rule.appId = "com.obsproject.Studio"
         rule.globalKeyBinding = "ctrl+alt-o"
         r.server.config.windowRules = [rule]
@@ -90,7 +90,7 @@ final class RuleFieldTests: MangoTestCase {
 
     func testABindingWinsOverAGlobalKey() {
         let r = EngineRig()
-        var rule = WindowRule()
+        var rule = ConfigWinRule()
         rule.appId = "com.obsproject.Studio"
         rule.globalKeyBinding = "ctrl+alt-o"
         r.server.config.windowRules = [rule]

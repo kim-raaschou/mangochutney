@@ -107,8 +107,6 @@ public enum IPCJSON {
         ("id", .null), ("title", .null), ("appid", .null),
     ])
 
-/// not in mango: no libinput on macOS; always empty.
-    public static let allDevices: JSONValue = .object([("devices", .array([]))])
 /// not in mango: no layer-shell on macOS; always empty.
     public static let allLayers: JSONValue = .object([("layers", .array([]))])
     public static let nullDevice: JSONValue = .object([("name", .null), ("type", .null)])
@@ -124,7 +122,7 @@ package extension MangoServer {
             return .object([
                 ("index", .int(i)),
                 ("is_active", .bool(active & bit != 0)),
-                ("is_urgent", .bool(onTag.contains { $0.isUrgent })),
+                ("is_urgent", .bool(onTag.contains { $0.isurgent })),
                 ("layout", .string(m.pertag[i].layout.symbol)),
                 ("client_count", .int(onTag.count)),
             ])
@@ -162,7 +160,8 @@ package extension MangoServer {
     }
 
     func buildClientJson(_ c: Client) -> JSONValue {
-        let f = c.geom ?? c.frame
+        let bw = borderWidth(c, on: c.mon ?? selectedMonitor)
+        let f = (c.geom ?? c.frame).insetBy(dx: -bw, dy: -bw)
         let group = c.isGroupMember
         return .object([
             ("id", .int(Int(c.id))),
@@ -179,17 +178,17 @@ package extension MangoServer {
             ("is_group_focus", .bool(group && c.isGroupFocus)),
             ("is_visible", .bool(c.mon.map { c.isVisible(on: $0) } ?? false)),
             ("is_focused", .bool(c.mon === selectedMonitor && selectedMonitor.sel == c.id)),
-            ("is_fullscreen", .bool(c.isFullscreen)),
-            ("is_floating", .bool(c.isFloating)),
-            ("is_maximized", .bool(c.isMaximizeScreen)),
-            ("is_global", .bool(c.isGlobal)),
-            ("is_unglobal", .bool(c.isUnglobal)),
-            ("is_overlay", .bool(c.isOverlay)),
-            ("is_fakefullscreen", .bool(c.isFakeFullscreen)),
-            ("is_minimized", .bool(c.isMinimized)),
-            ("is_urgent", .bool(c.isUrgent)),
+            ("is_fullscreen", .bool(c.isfullscreen)),
+            ("is_floating", .bool(c.isfloating)),
+            ("is_maximized", .bool(c.ismaximizescreen)),
+            ("is_global", .bool(c.isglobal)),
+            ("is_unglobal", .bool(c.isunglobal)),
+            ("is_overlay", .bool(c.isoverlay)),
+            ("is_fakefullscreen", .bool(c.isfakefullscreen)),
+            ("is_minimized", .bool(c.isminimized)),
+            ("is_urgent", .bool(c.isurgent)),
             ("is_scratchpad", .bool(c.isInScratchpad)),
-            ("is_namedscratchpad", .bool(c.isNamedScratchpad)),
+            ("is_namedscratchpad", .bool(c.isnamedscratchpad)),
             ("x", .int(Int(f.minX))),
             ("y", .int(Int(f.minY))),
             ("width", .int(Int(f.width))),
@@ -243,7 +242,7 @@ package extension MangoServer {
             ("layout_symbol", .string(m.layout.symbol)),
             ("last_open_surface", .string("")), // not in mango: set by layer-shell maps, which macOS does not have
             ("tag_num", .int(config.tagNum)),
-            ("hide_clients", .int(m.isoverview ? 1 : 0)),
+            ("hide_clients", .int(Int(m.hideClients))),
             ("tags", buildTagsJson(m)),
             ("active_tags", monitorActiveTags(m)),
             ("active_client", monitorActiveClient(m)),
@@ -254,20 +253,18 @@ package extension MangoServer {
 
     func monitorByName(_ name: String) -> Monitor? { monitors.first { $0.screen.name == name } }
 
-    func ipcFocusingClient() -> Client? { focused ?? selectedMonitor.sel.flatMap { clientByIdAll($0) } }
-
     // not in mango: the watcher's line, which mango's ipc_notify_* functions build each
     func watchPayload(_ w: IPCWatch) -> JSONValue? {
-        switch w.kind {
+        switch w.type {
         case .monitor:
             return w.monitorName.flatMap(monitorByName).map(buildMonitorJson)
         case .lastOpenSurface:
             let m = w.monitorName.map(monitorByName) ?? selectedMonitor
             return m.map { .object([("monitor", .string($0.screen.name)), ("last_open_surface", .string(""))]) }
         case .focusingClient:
-            return ipcFocusingClient().map(buildClientJson) ?? IPCJSON.nullClientRef
+            return focused.map(buildClientJson) ?? IPCJSON.nullClientRef
         case .client:
-            return clientByIdAll(w.clientID).map(buildClientJson)
+            return clientById(w.clientID).map(buildClientJson)
         case .tags:
             return w.monitorName.flatMap(monitorByName).map(buildMonitorTagsResponse)
         case .allMonitors:
@@ -276,12 +273,26 @@ package extension MangoServer {
             return buildAllTagsResponse()
         case .allClients:
             return .object([("clients", buildAllClientsArray())])
-        case .allDevices:
-            return IPCJSON.nullDevice
         case .keymode:
             return .object([("keymode", .string(keyMode))])
-        case .keyboardLayout:
+        case .kbLayout:
             return .object([("layout", .string(system.ipcGetLayoutStr()))])
+        default:
+            return nil
+        }
+    }
+
+    // not in mango: handle_watch_command's initial state, apart
+    func watchInitialPayload(_ w: IPCWatch) -> JSONValue? {
+        switch w.type {
+        case .client:
+            return clientByIdAll(w.clientID).map(buildClientJson)
+        case .allClients:
+            return .object([("clients", .array(clients.map(buildClientJson)))])
+        case .device:
+            return IPCJSON.nullDevice
+        default:
+            return watchPayload(w)
         }
     }
 }

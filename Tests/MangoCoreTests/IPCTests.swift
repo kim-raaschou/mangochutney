@@ -70,8 +70,8 @@ final class IPCTests: MangoTestCase {
         rig.app.frames[id] = frame
         rig.server.mac.windowDiscovered(DiscoveredWindow(
             id: id, pid: getpid(), element: rig.app.element(for: id), bundleId: app, appName: app, title: title,
-            subrole: "AXStandardWindow", isDialog: false, frame: frame, isMinimized: false,
-            isFullscreen: false, isAppHidden: false))
+            subrole: "AXStandardWindow", isDialog: false, frame: frame, isminimized: false,
+            isfullscreen: false, isAppHidden: false))
         return rig.server.clientByIdAll(id)!
     }
 
@@ -96,8 +96,9 @@ final class IPCTests: MangoTestCase {
             rig.server.clientFocus(c1, true)
             (rig.server.system as! FakeWindowSystem).fakePointer = CGPoint(x: 12.5, y: 40)
             let path = "/tmp/mango-test-\(getpid())-\(Int.random(in: 0..<100000)).sock"
-            server = IPCServer(server: rig.server, loop: MainEventLoop(), socketPath: path, version: "0.0-test")
+            server = IPCServer(server: rig.server, loop: MainEventLoop(), socketPath: path)
             try server.ipcInit()
+            rig.server.ipc = server
         }
     }
 
@@ -138,12 +139,12 @@ final class IPCTests: MangoTestCase {
     }
 
     func testSecondServerOnLiveSocketFails() {
-        let other = IPCServer(server: rig.server, loop: MainEventLoop(), socketPath: server.socketPath, version: "x")
+        let other = IPCServer(server: rig.server, loop: MainEventLoop(), socketPath: server.socketPath)
         XCTAssertThrowsError(try other.ipcInit())
     }
 
     func testGetVersion() throws {
-        XCTAssertEqual(query("get version"), #"{"version":"0.0-test"}"#)
+        XCTAssertEqual(query("get version"), #"{"version":"0.18.5(21f80a9)"}"#)
     }
 
     func testGetAllTags() throws {
@@ -218,8 +219,8 @@ final class IPCTests: MangoTestCase {
 
     func testDispatchWithTargetClient() throws {
         XCTAssertEqual(query("dispatch togglefloating client,2"), #"{"success":true}"#)
-        XCTAssertTrue(rig.server.clientByIdAll(2)!.isFloating, "the target, not the focused window")
-        XCTAssertFalse(rig.server.clientByIdAll(1)!.isFloating)
+        XCTAssertTrue(rig.server.clientByIdAll(2)!.isfloating, "the target, not the focused window")
+        XCTAssertFalse(rig.server.clientByIdAll(1)!.isfloating)
         XCTAssertEqual(query("dispatch killclient client,99"), #"{"error":"no client found"}"#)
         XCTAssertEqual(query("dispatch frobnicate,1"), #"{"error":"unknown function"}"#)
     }
@@ -264,15 +265,15 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(try object(lines.value.first)["active_tags"] as? [Int], [1])
         XCTAssertEqual(server.watcherCount, 1)
 
-        server.notifyChanged()
+        server.notifyChanged(.arrangge)
         rig.server.clientViewOnMonitor(1 << 2, on: hdmi)
-        server.notifyChanged()
+        server.notifyChanged(.arrangge)
         let spin = expectation(description: "spin")
         DispatchQueue.main.async { spin.fulfill() }
         wait(for: [spin], timeout: 5)
 
         rig.server.clientViewOnMonitor(1 << 1, on: dp1)
-        server.notifyChanged()
+        server.notifyChanged(.arrangge)
         wait(for: [second], timeout: 10)
         XCTAssertEqual(lines.value.count, 2)
         let obj = try object(lines.value.last)
@@ -320,7 +321,7 @@ final class IPCTests: MangoTestCase {
         if case .dispatch(let d, _) = IPCRequest.parse("dispatch,view,2\n") {
             XCTAssertEqual(d, Dispatch(name: "view", args: ["2"]))
         } else { XCTFail("dispatch,view should parse as dispatch") }
-        XCTAssertEqual(IPCRequest.parse("watch client 5"), .watch(IPCWatch(kind: .client, clientID: 5)))
+        XCTAssertEqual(IPCRequest.parse("watch client 5"), .watch(IPCWatch(type: .client, clientID: 5)))
         XCTAssertEqual(IPCRequest.parse("get,tags,DP-1"), .get("get tags DP-1"))
     }
 
@@ -330,5 +331,137 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(JSONValue.formatNumber(0.1), "0.1")
         XCTAssertEqual(JSONValue.formatNumber(-0.0), "0")
         XCTAssertEqual(JSONValue.escaped("a\"b\\c\n\u{1}"), #""a\"b\\c\n\u0001""#)
+    }
+
+    /// A watcher and its first line.
+    func watch(_ cmd: String) -> (RawIPCClient, String?) {
+        let c = RawIPCClient(path: server.socketPath)!
+        c.send(cmd)
+        return (c, lines(c, upTo: 1).first)
+    }
+
+    /// The lines a watcher gets while the main thread runs, up to `upTo` or until it is quiet.
+    func lines(_ c: RawIPCClient, upTo max: Int = .max, quiet: Double = 0.3) -> [String] {
+        var tv = timeval(tv_sec: 0, tv_usec: Int32(quiet * 1_000_000))
+        setsockopt(c.fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
+        let got = Box<[String]>([])
+        let done = expectation(description: "lines")
+        DispatchQueue.global().async {
+            while got.value.count < max, let l = c.readLine() { got.value.append(l) }
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 10)
+        return got.value
+    }
+
+    // mango handle_print_status: each notify only for the types printstatus was given.
+    func testPrintstatusReachesOnlyItsTypes() throws {
+        let (monitor, _) = watch("watch monitor DP-1")
+        let (keymode, _) = watch("watch keymode")
+        let (all, _) = watch("watch all-monitors")
+        let (focusing, first) = watch("watch focusing-client")
+        XCTAssertEqual(try object(first)["id"] as? Int, 1)
+
+        // set_key_mode: printstatus(IPC_WATCH_KEYMODE) reaches keymode and all-monitors, not monitor.
+        XCTAssertNil(rig.server.dispatch(Dispatch(name: "setkeymode", args: ["resize"])))
+        XCTAssertEqual(lines(keymode), [#"{"keymode":"resize"}"#])
+        XCTAssertEqual(lines(all).count, 1)
+        XCTAssertEqual(lines(monitor), [], "the monitor line carries keymode, but IPC_WATCH_KEYMODE is not IPC_WATCH_MONITOR")
+
+        // pointer_process_motion: a new selected monitor is IPC_WATCH_MONITOR | IPC_WATCH_ALL_MONITORS.
+        rig.server.selectedMonitor = hdmi
+        rig.server.printstatus([.monitor, .allMonitors])
+        XCTAssertEqual(lines(all).count, 1)
+        XCTAssertEqual(lines(focusing), [], "focusing-client waits for IPC_WATCH_FOCUSING_CLIENT")
+
+        rig.server.printstatus(.arrangge)
+        XCTAssertEqual(try object(lines(focusing).first)["id"] as? Int, 3)
+    }
+
+    // mango handle_watch_command lists server.clients for all-clients' first line and finds a
+    // parked member for client <id>; ipc_notify_client walks server.clients, without parked members.
+    func testParkedGroupMembersInWatchesAsMango() throws {
+        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, into: rig.server.clientByIdAll(1)!)
+        let parked = try XCTUnwrap([1, 2].compactMap { rig.server.clientByIdAll($0) }.first { $0.groupParked })
+
+        let (allClients, first) = watch("watch all-clients")
+        let ids = try XCTUnwrap(object(first)["clients"] as? [[String: Any]]).compactMap { $0["id"] as? Int }
+        XCTAssertEqual(ids.count, 2)
+        XCTAssertFalse(ids.contains(Int(parked.id)), "the first line has no parked member")
+
+        let (client, firstOfClient) = watch("watch client \(parked.id)")
+        XCTAssertEqual(try object(firstOfClient)["id"] as? Int, Int(parked.id), "the first line finds it")
+
+        parked.title = "renamed"
+        rig.server.printstatus(.arrangge)
+        XCTAssertEqual(lines(client), [], "no line for a parked member")
+        let later = try XCTUnwrap(object(lines(allClients).first)["clients"] as? [[String: Any]])
+        XCTAssertEqual(later.count, 3, "build_all_clients_array has the parked member")
+    }
+
+    // mango pre_calculate_before_arrange: hide_clients counts the minimized clients.
+    func testHideClientsCountsTheMinimized() throws {
+        XCTAssertEqual(try object(query("get monitor DP-1"))["hide_clients"] as? Int, 0)
+        rig.server.setMinimized(rig.server.clientByIdAll(3)!)
+        rig.server.arrangeAll(.none)
+        XCTAssertEqual(try object(query("get monitor DP-1"))["hide_clients"] as? Int, 1, "any monitor's")
+        XCTAssertEqual(try object(query("get monitor HDMI-A-1"))["hide_clients"] as? Int, 1)
+    }
+
+    // mango build_client_json: x, y, width and height are c->geom, with the border.
+    func testClientGeometryHasTheBorder() throws {
+        rig.server.config.borderpx = 4
+        rig.server.config.noBorderWhenSingle = false
+        let c = rig.server.clientByIdAll(1)!
+        rig.server.renderBorder = true
+        let bw = rig.server.borderWidth(c, on: dp1)
+        XCTAssertGreaterThan(bw, 0)
+        let g = try XCTUnwrap(c.geom)
+        let obj = try object(query("get client 1"))
+        XCTAssertEqual(obj["x"] as? Int, Int(g.minX - bw))
+        XCTAssertEqual(obj["y"] as? Int, Int(g.minY - bw))
+        XCTAssertEqual(obj["width"] as? Int, Int(g.width + 2 * bw))
+        XCTAssertEqual(obj["height"] as? Int, Int(g.height + 2 * bw))
+    }
+
+    // mango handle_command: client,<id> ends at a comma or the end; strtol's id is cast to int.
+    func testDispatchClientFieldAsMango() {
+        func p(_ s: String) -> (Dispatch, ClientID?) { IPCRequest.parseDispatch(s) }
+        XCTAssertNil(p("client,4 killclient").1)
+        XCTAssertEqual(p("client,4 killclient").0.name, "client")
+        XCTAssertEqual(query("dispatch client,1 killclient"), #"{"error":"unknown function"}"#)
+        XCTAssertEqual(p("client,4294967297,killclient").1, 1, "(int)strtol")
+        XCTAssertNil(p("client,2147483648,killclient").1)
+        XCTAssertEqual(p("client,2147483648,killclient").0.name, "killclient", "the field is taken all the same")
+    }
+
+    // mango handle_command: no \r stripped; the command cut at 1023 bytes.
+    func testCommandLineAsMango() {
+        XCTAssertEqual(query("get version\r"), #"{"error":"unknown command"}"#)
+        guard case .get(let cmd) = IPCRequest.parse("get monitor " + String(repeating: "a", count: 2000)) else {
+            return XCTFail("a get")
+        }
+        XCTAssertEqual(cmd.utf8.count, 1023)
+    }
+
+    // mango handle_watch_command: the target name is kept in char[64]; the first line uses the whole name.
+    func testWatchTargetKeeps63Bytes() {
+        let long = String(repeating: "m", count: 70)
+        XCTAssertEqual(IPCWatch(type: .monitor, monitorName: long).target.monitorName, String(repeating: "m", count: 63))
+        XCTAssertEqual(IPCWatch(type: .monitor, monitorName: "DP-1").target.monitorName, "DP-1")
+    }
+
+    // mango handle_command get all-devices: one entry per device group, its types in order, no rule matched.
+    func testGetAllDevicesByGroup() {
+        (rig.server.system as! FakeWindowSystem).fakeInputDevices = [
+            InputDevice(name: "Board", type: .keyboard, vendor: 1452, product: 5, deviceGroup: 7),
+            InputDevice(name: "Board", type: .pointer, vendor: 1452, product: 5, deviceGroup: 7, tapFingerCount: 3),
+            InputDevice(name: "Mouse", type: .pointer, vendor: 1133, product: 49271, deviceGroup: 9),
+            InputDevice(name: "Board", type: .keyboard, vendor: 1452, product: 5, deviceGroup: 7),
+        ]
+        XCTAssertEqual(query("get all-devices"),
+                       #"{"devices":[{"name":"Board","types":["keyboard","trackpad"],"vendor":1452,"product":5,"identifier":"1452:5:Board","interfaces":3,"matched":false},"#
+                       + #"{"name":"Mouse","types":["pointer"],"vendor":1133,"product":49271,"identifier":"1133:49271:Mouse","interfaces":1,"matched":false}]}"#)
+        XCTAssertEqual(watch("watch all-devices").1, #"{"name":null,"type":null}"#)
     }
 }

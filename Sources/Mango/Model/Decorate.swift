@@ -1,5 +1,6 @@
 import Foundation
 
+// not in mango: a nil field is one the config does not set
 public struct DecorateStyle: Equatable, Sendable {
     public var fontDesc: String?
     public var fgColor: RGBA?
@@ -28,6 +29,7 @@ public struct DecorateStyle: Equatable, Sendable {
         self.paddingY = paddingY
     }
 
+    // not in mango: set_value_default's values for each bar, as styles
     public static let mangoGroupBar = DecorateStyle(
         fontDesc: "monospace Bold 13", fg: "0xc0caf5ff", bg: "0x1d2021ff", focusFg: "0x9ece6aff", focusBg: "0x3c3836ff",
         border: "0x3b4261ff", borderWidth: 4, cornerRadius: 5, paddingX: 0, paddingY: 0)
@@ -46,7 +48,8 @@ public struct DecorateStyle: Equatable, Sendable {
         fontDesc: "monospace Bold 16", fg: "0xc4939dff", bg: "0x323232ff", focusFg: "0xeda6b4ff", focusBg: "0x4e453cff",
         border: "0x8baa9bff", borderWidth: 4, cornerRadius: 5, paddingX: 10, paddingY: 10)
 
-    public func setValueDefault(from d: DecorateStyle) -> DecorateStyle {
+    // not in mango: the fields the config sets, the others from d
+    public func filled(from d: DecorateStyle) -> DecorateStyle {
         var s = self
         s.fontDesc = fontDesc ?? d.fontDesc
         s.fgColor = fgColor ?? d.fgColor

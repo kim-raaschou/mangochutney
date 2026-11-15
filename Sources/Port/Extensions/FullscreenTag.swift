@@ -57,7 +57,7 @@ enum FullscreenTag {
     }
 
     /// mango keeps a global window on every view's tags (arrange): the F tag's rule is not for it.
-    static func isGlobal(_ c: Client) -> Bool { c.isGlobal || c.isUnglobal }
+    static func isglobal(_ c: Client) -> Bool { c.isglobal || c.isunglobal }
 
     /// The window on F tag `bit` of `m`.
     static func window(_ server: MangoServer, on m: Monitor, _ bit: UInt32) -> Client? {
@@ -98,13 +98,13 @@ enum FullscreenTag {
         wlrLog(.info, "chutney_fullscreen_tag: \(c.appName) window \(c.id) is in macOS fullscreen, on \(name(bit, server.config))")
         if discovered && !mac.windowOnScreen(c.id) {
             server.arrange(m, .none)
-            server.printstatus()
+            server.printstatus(.arrangge)
         } else {
             view(server, m, bit)
         }
         // mango's fullscreen, as a Wayland app's request (handle_client_request_fullscreen) gives it; by mango's
         // togglefullscreen, which also takes it out of a scratchpad.
-        if !c.isFullscreen { _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false) }
+        if !c.isfullscreen { _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false) }
         return true
     }
 
@@ -113,7 +113,7 @@ enum FullscreenTag {
         c.scheduledFullscreen = false
         c.fullscreenPending = false
         // Out of mango's fullscreen too, while macOS still places it (as in enter).
-        if c.isFullscreen { _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false) }
+        if c.isfullscreen { _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false) }
         c.nativeFullscreen = false
         server.mac.forgetPlacement(c)
         guard let home = server.mac.fullscreenTag.homes.removeValue(forKey: c.id) else { return }
@@ -127,14 +127,14 @@ enum FullscreenTag {
             server.clientFocus(c, true)
         } else {
             server.arrange(m, .none)
-            server.printstatus()
+            server.printstatus(.arrangge)
         }
     }
 
     /// The window leaves mango while in fullscreen (closed, hidden, its app quit): it is remembered on its
     /// own tags; its F tag goes when mango next says what it shows.
     static func unmapped(_ server: MangoServer, _ c: Client) {
-        if c.nativeFullscreen || c.scheduledFullscreen { c.isFullscreen = false }
+        if c.nativeFullscreen || c.scheduledFullscreen { c.isfullscreen = false }
         c.scheduledFullscreen = false
         c.fullscreenPending = false
         guard c.nativeFullscreen else { return }
@@ -167,7 +167,7 @@ enum FullscreenTag {
     static func notTaken(_ server: MangoServer, _ c: Client) {
         c.scheduledFullscreen = false
         c.fullscreenPending = false
-        if c.isFullscreen {
+        if c.isfullscreen {
             _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false)
         } else if let m = c.mon {
             server.arrange(m)
@@ -190,7 +190,7 @@ enum FullscreenTag {
             server.arrange(m, .none)
         }
         server.clientFocus(c, true)
-        server.printstatus()
+        server.printstatus(.arrangge)
         return true
     }
 
@@ -230,7 +230,7 @@ enum FullscreenTag {
         var changed: [Monitor] = []
         var follow: [(Monitor, UInt32)] = []
         for (id, home) in mac.fullscreenTag.homes {
-            guard let c = server.clientByIdAll(id), !isGlobal(c), c.tags != home.bit else { continue }
+            guard let c = server.clientByIdAll(id), !isglobal(c), c.tags != home.bit else { continue }
             // mango's tag replaces its tags, toggletag toggles them (with the F bit kept): its own tags.
             let own = c.tags & ~f
             let tags = c.tags & home.bit != 0 ? home.tags ^ own : own
@@ -241,7 +241,7 @@ enum FullscreenTag {
             // mango's tag follows the window to its tags: it is on its F tag still.
             if server.focused === c, m.tagset[m.seltags] & home.bit == 0 { follow.append((m, home.bit)) }
         }
-        for c in server.clientsAll where !c.nativeFullscreen && !isGlobal(c) && c.tags & f != 0 {
+        for c in server.clientsAll where !c.nativeFullscreen && !isglobal(c) && c.tags & f != 0 {
             let own = c.tags & ~f
             c.tags = own != 0 ? own : (c.mon.map { desktopView($0, server.config) } ?? 1)
             if let m = c.mon { changed.append(m) }
@@ -265,7 +265,7 @@ enum FullscreenTag {
         }
         if !changed.isEmpty {
             for m in server.monitors where changed.contains(where: { $0 === m }) { server.arrange(m, .none) }
-            server.printstatus()
+            server.printstatus(.arrangge)
             return
         }
         for m in server.monitors where !m.isoverview {

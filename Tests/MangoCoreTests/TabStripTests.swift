@@ -122,7 +122,7 @@ final class TabStripTests: MangoTestCase {
         let r = rig(.monocle, windows: 3)
         r.server.config.chutneyTabBarShortcuts = true
         r.monitor.sel = 900_100
-        r.server.clientByIdAll(900_100)!.isFullscreen = true
+        r.server.clientByIdAll(900_100)!.isfullscreen = true
         XCTAssertEqual(r.server.tabBarShortcutTabs, 0)
         r.server.tabFocusMember(number: 2)
         XCTAssertEqual(r.monitor.sel, 900_100)
@@ -145,10 +145,10 @@ final class TabStripTests: MangoTestCase {
         r.monitor.sel = 900_101
         r.server.tabRefreshBars()
         XCTAssertEqual(fake.tabStrips.first?.segments.first(where: \.focused)?.id, 900_101)
-        r.server.clientByIdAll(900_101)!.isFullscreen = true
+        r.server.clientByIdAll(900_101)!.isfullscreen = true
         r.server.tabRefreshBars()
         XCTAssertTrue(fake.tabStrips.isEmpty, "no strip over a fullscreen window")
-        r.server.clientByIdAll(900_101)!.isFullscreen = false
+        r.server.clientByIdAll(900_101)!.isfullscreen = false
         r.monitor.current.layout = .tile
         r.server.tabRefreshBars()
         XCTAssertTrue(fake.tabStrips.isEmpty)

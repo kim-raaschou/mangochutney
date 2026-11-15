@@ -66,12 +66,12 @@ final class BorderRadiusTests: MangoTestCase {
         XCTAssertEqual(MacOSAppearance.borders(fake.borderSpecs, r.server.config).first { $0.id == c.id }?.radius,
                        BorderGeometry.cornerRadius, "the port the window's own corners")
         r.server.config.chutneyMacOSAppearance = false
-        c.isFullscreen = true
+        c.isfullscreen = true
         XCTAssertEqual(radius(), 0, "mango: none in fullscreen")
-        c.isFullscreen = false
+        c.isfullscreen = false
         r.server.config.noRadiusWhenSingle = true
         XCTAssertEqual(radius(), 6, "two tiled windows")
-        r.server.clientByIdAll(900_901)!.isFloating = true
+        r.server.clientByIdAll(900_901)!.isfloating = true
         XCTAssertEqual(radius(), 0, "no_radius_when_single")
     }
 }

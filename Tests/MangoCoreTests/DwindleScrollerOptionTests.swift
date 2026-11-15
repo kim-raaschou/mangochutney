@@ -55,9 +55,9 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.color, r.server.config.splitcolor)
         r.monitor.current.state.dwindleRoot.dwindleSetSplitDirection(c.id, horizontal: nil)
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.side, horizontal ? .bottom : .right)
-        c.isUrgent = true
+        c.isurgent = true
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.color, r.server.config.urgentcolor)
-        c.isFloating = true
+        c.isfloating = true
         XCTAssertNil(r.server.clientDrawSplitBorder(c, on: r.monitor), "tiled windows only")
     }
 

@@ -8,7 +8,7 @@ final class DragTileTests: MangoTestCase {
 
     func area(_ layout: LayoutKind, _ p: CGPoint, master: Bool = false, tiled: Int = 3,
               simple: Bool = true) -> (DropDirection, CGRect) {
-        DropArea.clientSetDropArea(layout: layout, target: tile, at: p, isMaster: master, tiled: tiled,
+        DropArea.clientSetDropArea(layout: layout, target: tile, at: p, ismaster: master, tiled: tiled,
                          dwindleSimpleSplit: simple, dwindleSplitRatio: 0.5)
     }
 
@@ -38,7 +38,7 @@ final class DragTileTests: MangoTestCase {
         let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
         let f = frame(r, id)
         r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
-        XCTAssertTrue(r.server.clientByIdAll(id)!.isFloating, "it floats while it is dragged")
+        XCTAssertTrue(r.server.clientByIdAll(id)!.isfloating, "it floats while it is dragged")
         r.server.pointerProcessMotion(p, time: 0)
         r.server.buttonReleased(at: p)
     }
@@ -49,7 +49,7 @@ final class DragTileTests: MangoTestCase {
         let r = rig()
         let lower = frame(r, 900_502)
         drag(r, 900_501, to: CGPoint(x: lower.midX, y: lower.maxY - 10))
-        XCTAssertFalse(r.server.clientByIdAll(900_501)!.isFloating)
+        XCTAssertFalse(r.server.clientByIdAll(900_501)!.isfloating)
         XCTAssertEqual(tiledOrder(r), [900_500, 900_502, 900_501], "below the lower half: after it")
     }
 
@@ -83,7 +83,7 @@ final class DragTileTests: MangoTestCase {
         let r = rig()
         r.server.config.dragTileToTile = false
         drag(r, 900_501, to: CGPoint(x: 300, y: 300))
-        XCTAssertTrue(r.server.clientByIdAll(900_501)!.isFloating)
+        XCTAssertTrue(r.server.clientByIdAll(900_501)!.isfloating)
     }
 
     func testTheFloatingPlaceComesBack() {

@@ -375,7 +375,7 @@ final class ConfigParserTests: MangoTestCase {
         mousebind=SUPER,btn_left,moveresize,curmove
         mousebind=SUPER,btn_left,moveresize,curresize
         """)
-        XCTAssertEqual(parsed.errors.map(\.line), [2, 6, 13, 15], parsed.errors.map(\.description).joined(separator: "\n"))
+        XCTAssertEqual(parsed.errors.map(\.line), [2, 13, 6, 15], "mango sorts by modifier and key (a, x, c here)\n" + parsed.errors.map(\.description).joined(separator: "\n"))
         XCTAssertTrue(parsed.errors[0].message.hasPrefix("Key binding conflict in keymode default:\n  File \""),
                       parsed.errors[0].message)
         XCTAssertTrue(parsed.errors[0].message.contains("test.conf\", line 1\n"))
@@ -399,7 +399,7 @@ final class ConfigParserTests: MangoTestCase {
         gesturebind=none,alldir,3,toggleoverview
         gesturebind=none,sideways,3,quit
         """)
-        XCTAssertEqual(parsed.errors.map(\.line), [2, 5, 8, 8, 9, 9], parsed.errors.map(\.description).joined(separator: "\n"))
+        XCTAssertEqual(parsed.errors.map(\.line), [2, 5, 8, 9, 8, 9], "by the first binding of each pair\n" + parsed.errors.map(\.description).joined(separator: "\n"))
         XCTAssertTrue(parsed.errors[0].message.hasPrefix("axisbind conflict in keymode default:"))
         XCTAssertTrue(parsed.errors[2].message.hasPrefix("gesturebind conflict in keymode default:"))
     }
@@ -432,7 +432,7 @@ final class ConfigParserTests: MangoTestCase {
         let r = parsed.config.windowRules
         XCTAssertEqual(r.count, 4, "rules with bad options are kept, like mango")
         XCTAssertEqual(r[0].appId, "com.apple.systempreferences")
-        XCTAssertEqual(r[0].isFloating, true)
+        XCTAssertEqual(r[0].isfloating, true)
         XCTAssertEqual(r[0].width, 800)
         XCTAssertEqual(r[0].height, 0.5)
         XCTAssertEqual(r[0].offsetX, -20)
@@ -449,27 +449,31 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.errors.map(\.line), [4])
         XCTAssertEqual(parsed.errors.first?.message.plain, "Unknown window rule option:bogus_option", "mango's text, no space")
 
-        guard case .failure = RuleParser.parseWindowRule("app_id:y,bogus:1", once: false) else {
-            return XCTFail("expected failure")
-        }
-        XCTAssertEqual(try RuleParser.parseWindowRule("app_id:z", once: true).get().once, true)
+        var errors: [String] = []
+        let (kept, ok) = RuleParser.parseWindowRule("app_id:y,bogus:1", once: false, errors: &errors)
+        XCTAssertFalse(ok)
+        XCTAssertEqual(kept?.appId, "y", "mango counts a rule with an unknown field")
+        XCTAssertEqual(RuleParser.parseWindowRule("app_id:z", once: true, errors: &errors).0?.once, true)
     }
 
     func testTagRule() throws {
-        let r = try RuleParser.parseTagRule("id:3,layout_name:scroller,master_count:200,master_factor:0.6,monitor_name:DELL.*,no_hide:1").get()
+        var errors: [String] = []
+        func tagRule(_ v: String) -> ConfigTagRule { RuleParser.parseTagRule(v, errors: &errors).0 }
+        let r = tagRule("id:3,layout_name:scroller,master_count:200,master_factor:0.6,monitor_name:DELL.*,no_hide:1")
         XCTAssertEqual(r.id, 3)
         XCTAssertEqual(r.layoutName, "scroller")
         XCTAssertEqual(r.masterCount, 99)
         XCTAssertEqual(r.masterFactor, 0.6)
         XCTAssertEqual(r.monitorName, "DELL.*")
         XCTAssertEqual(r.noHide, true)
-        XCTAssertNil(r.openAsFloating)
+        XCTAssertEqual(r.openAsFloating, false)
 
-        let all = try RuleParser.parseTagRule("id:*,layout_name:monocle").get()
+        let all = tagRule("id:*,layout_name:monocle")
         XCTAssertNil(all.id)
-        XCTAssertEqual(try RuleParser.parseTagRule("layout_name:grid").get().id, 0)
+        XCTAssertEqual(tagRule("layout_name:grid").id, 0)
 
-        XCTAssertEqual(try RuleParser.parseTagRule("id:1,layout_name:spiral").get().layoutName, "spiral")
+        XCTAssertEqual(tagRule("id:1,layout_name:spiral").layoutName, "spiral")
+        XCTAssertEqual(errors, [])
     }
 
     func testUnknownKeyword() {
@@ -539,9 +543,10 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(c.scrollerProportionPreset, [0.3, 0.6, 1])
         XCTAssertEqual(ConfigOptions.parseOption(key: "chutney_hyper_modifier", value: "ctrl+alt", to: &c), .applied)
         XCTAssertEqual(c.chutneyHyperModifier, "ctrl+alt")
-        XCTAssertEqual(ConfigOptions.parseOption(key: "window_rule", value: "app_id:foo,is_floating:1", to: &c), .applied)
+        let base = URL(fileURLWithPath: NSTemporaryDirectory())
+        XCTAssertTrue(ConfigParser.parseOption(&c, "window_rule", "app_id:foo,is_floating:1", 0, baseDirectory: base))
         XCTAssertEqual(c.windowRules.last?.appId, "foo")
-        XCTAssertEqual(ConfigOptions.parseOption(key: "bind", value: "SUPER,a,quit", to: &c), .applied)
+        XCTAssertTrue(ConfigParser.parseOption(&c, "bind", "SUPER,a,quit", 0, baseDirectory: base))
         XCTAssertEqual(c.keyBindings.last?.mode, "default")
 
         XCTAssertEqual(ConfigOptions.parseOption(key: "blur", value: "1", to: &c), .ignored)

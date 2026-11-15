@@ -158,7 +158,7 @@ final class LayoutTests: MangoTestCase {
 
     func testFullscreenAndMaximized() {
         var input = makeInput([1, 2, 3])
-        input.clients[1].isFullscreen = true
+        input.clients[1].isfullscreen = true
         input.clients[2].isMaximized = true
         let r = TileLayouts.tile(input)
         XCTAssertEqual(r.frames[2], monitor)
@@ -368,7 +368,7 @@ final class LayoutTests: MangoTestCase {
     func testScrollerFullscreenColumn() {
         let s = ScrollerState()
         var input = makeInput([1, 2], focused: 1)
-        input.clients[0].isFullscreen = true
+        input.clients[0].isfullscreen = true
         let r = s.arrange(input, vertical: false)
         XCTAssertEqual(r.frames[1], monitor)
         XCTAssertGreaterThanOrEqual(r.frames[2]!.minX, monitor.maxX)

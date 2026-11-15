@@ -1,48 +1,96 @@
 import Foundation
 import Darwin
 
-public struct IPCWatch: Equatable, Sendable {
-    public enum Kind: Equatable, Sendable {
-        case monitor, focusingClient, client, tags, allMonitors, allTags, allClients,
-             allDevices, keymode, keyboardLayout, lastOpenSurface
+func ipcDeviceTypeStr(_ dev: InputDevice?) -> String {
+    guard let dev else { return "unknown" }
+
+    switch dev.type {
+    case .keyboard:
+        return "keyboard"
+    case .pointer:
+        return dev.tapFingerCount > 0
+            ? "trackpad"
+            : "pointer"
+    case .touch:
+        return "touch"
+    case .switchDevice:
+        return "switch"
+    case .tablet:
+        return "tablet"
+    case .tabletPad:
+        return "pad"
     }
-    public var kind: Kind
+}
+
+/// mango enum ipc_watch_type (ipc/ipc.h)
+public struct IPCWatchType: OptionSet, Hashable, Sendable {
+    public let rawValue: UInt32
+    public init(rawValue: UInt32) { self.rawValue = rawValue }
+
+    public static let monitor = IPCWatchType(rawValue: 1 << 0)
+    public static let client = IPCWatchType(rawValue: 1 << 1)
+    public static let tags = IPCWatchType(rawValue: 1 << 2)
+    public static let allMonitors = IPCWatchType(rawValue: 1 << 3)
+    public static let allTags = IPCWatchType(rawValue: 1 << 4)
+    public static let allClients = IPCWatchType(rawValue: 1 << 5)
+    public static let keymode = IPCWatchType(rawValue: 1 << 6)
+    public static let kbLayout = IPCWatchType(rawValue: 1 << 7)
+    public static let lastOpenSurface = IPCWatchType(rawValue: 1 << 8)
+    public static let focusingClient = IPCWatchType(rawValue: 1 << 9)
+    public static let device = IPCWatchType(rawValue: 1 << 10)
+
+    /// IPC_WATCH_ARRANGGE
+    public static let arrangge: IPCWatchType = [.monitor, .client, .tags, .allMonitors, .allTags, .allClients,
+                                                .lastOpenSurface, .focusingClient]
+}
+
+public struct IPCWatch: Equatable, Sendable {
+    public var type: IPCWatchType
     public var monitorName: String?
     public var clientID: ClientID = 0
 
-    public init(kind: Kind, monitorName: String? = nil, clientID: ClientID = 0) {
-        self.kind = kind; self.monitorName = monitorName; self.clientID = clientID
+    public init(type: IPCWatchType, monitorName: String? = nil, clientID: ClientID = 0) {
+        self.type = type; self.monitorName = monitorName; self.clientID = clientID
     }
 
     // not in mango: handle_watch_command's parsing, apart
     public static func parse(_ cmd: String) -> IPCWatch? {
         if cmd.hasPrefix("watch monitor ") {
-            return IPCWatch(kind: .monitor, monitorName: String(cmd.dropFirst(14)))
+            return IPCWatch(type: .monitor, monitorName: String(cmd.dropFirst(14)))
         } else if cmd == "watch focusing-client" {
-            return IPCWatch(kind: .focusingClient)
+            return IPCWatch(type: .focusingClient)
         } else if cmd.hasPrefix("watch client ") {
-            return IPCWatch(kind: .client, clientID: IPCRequest.clientID(atoi: cmd.dropFirst(13)))
+            return IPCWatch(type: .client, clientID: IPCRequest.clientID(atoi: cmd.dropFirst(13)))
         } else if cmd.hasPrefix("watch tags ") {
-            return IPCWatch(kind: .tags, monitorName: String(cmd.dropFirst(11)))
+            return IPCWatch(type: .tags, monitorName: String(cmd.dropFirst(11)))
         } else if cmd == "watch all-monitors" {
-            return IPCWatch(kind: .allMonitors)
+            return IPCWatch(type: .allMonitors)
         } else if cmd == "watch all-tags" {
-            return IPCWatch(kind: .allTags)
+            return IPCWatch(type: .allTags)
         } else if cmd == "watch all-clients" {
-            return IPCWatch(kind: .allClients)
+            return IPCWatch(type: .allClients)
         } else if cmd == "watch all-devices" {
-            return IPCWatch(kind: .allDevices)
+            return IPCWatch(type: .device)
         } else if cmd == "watch keymode" {
-            return IPCWatch(kind: .keymode)
+            return IPCWatch(type: .keymode)
         } else if cmd == "watch keyboardlayout" {
-            return IPCWatch(kind: .keyboardLayout)
+            return IPCWatch(type: .kbLayout)
         } else if cmd == "watch last_open_surface" {
-            return IPCWatch(kind: .lastOpenSurface, monitorName: nil)
+            return IPCWatch(type: .lastOpenSurface, monitorName: nil)
         } else if cmd.hasPrefix("watch last_open_surface ") {
             let arg = String(cmd.dropFirst(24))
-            return IPCWatch(kind: .lastOpenSurface, monitorName: arg.isEmpty ? nil : arg)
+            return IPCWatch(type: .lastOpenSurface, monitorName: arg.isEmpty ? nil : arg)
         }
         return nil
+    }
+
+    // not in mango: wc->target, the name kept in its char[64]
+    var target: IPCWatch {
+        var t = self
+        if let name = monitorName, name.utf8.count > 63 {
+            t.monitorName = String(decoding: name.utf8.prefix(63), as: UTF8.self)
+        }
+        return t
     }
 }
 
@@ -56,10 +104,9 @@ public enum IPCRequest: Equatable, Sendable {
     public static func parse(_ rawLine: String) -> IPCRequest {
         var raw = rawLine
         if raw.hasSuffix("\n") { raw.removeLast() }
-        if raw.hasSuffix("\r") { raw.removeLast() }
 
         if let w = IPCWatch.parse(raw) { return .watch(w) }
-        let cmd = String(raw.map { $0 == "," ? " " : $0 })
+        let cmd = String(decoding: raw.utf8.prefix(1023).map { $0 == 44 ? 32 : $0 }, as: UTF8.self)
         if cmd.hasPrefix("dispatch ") {
             let (d, target) = parseDispatch(String(raw.dropFirst(9)))
             return .dispatch(d, target: target)
@@ -89,10 +136,6 @@ public enum IPCRequest: Equatable, Sendable {
         ClientID(truncatingIfNeeded: Int32(truncatingIfNeeded: cAtoi(s)))
     }
 
-    static let commandTakingDispatchers: Set<String> = [
-        "spawn", "spawn_shell", "spawn_on_empty", "toggle_named_scratchpad",
-    ]
-
     // not in mango: handle_command's dispatch parsing, apart
     public static func parseDispatch(_ remainder: String) -> (Dispatch, ClientID?) {
         let bytes = Array(remainder.utf8)
@@ -117,16 +160,15 @@ public enum IPCRequest: Equatable, Sendable {
                 if j < bytes.count && (bytes[j] == 43 || bytes[j] == 45) { negative = bytes[j] == 45; j += 1 }
                 let digitsStart = j
                 var id = 0
-                var overflow = false
                 while j < bytes.count && bytes[j] >= 48 && bytes[j] <= 57 {
                     let (m, o1) = id.multipliedReportingOverflow(by: 10)
                     let (a, o2) = m.addingReportingOverflow(Int(bytes[j] - 48))
-                    if o1 || o2 { overflow = true } else { id = a }
+                    id = o1 || o2 ? Int.max : a
                     j += 1
                 }
-                if j > digitsStart && !negative && !overflow && id > 0
-                    && (j == bytes.count || bytes[j] == comma || bytes[j] == space || bytes[j] == tab) {
-                    clientID = id
+                if negative { id = -id }
+                if id > 0 && j > digitsStart && (j == bytes.count || bytes[j] == comma) {
+                    clientID = Int(Int32(truncatingIfNeeded: id))
                     i = j
                     if i < bytes.count && bytes[i] == comma { i += 1 }
                     continue
@@ -235,26 +277,23 @@ public final class IPCServer {
     }
 
     public let socketPath: String
-    public let version: String
     private weak var server: MangoServer?
     // not in mango: the event loop (wl_event_loop), the port's
     private let loop: EventLoop
     private var ipcSocketFd: Int32 = -1
     private var ipcEventSource: EventSource?
     private var ipcWatchClients: [IPCWatchClient] = []
-    private var notifyScheduled = false
+    private var pendingType: IPCWatchType = []
 
-    public init(server: MangoServer, loop: EventLoop, socketPath: String = IPCServer.defaultSocketPath(),
-                version: String) {
+    public init(server: MangoServer, loop: EventLoop, socketPath: String = IPCServer.defaultSocketPath()) {
         self.server = server
         self.loop = loop
         self.socketPath = socketPath
-        self.version = version
     }
 
-    public var isRunning: Bool { ipcSocketFd >= 0 }
+    public var isRunning: Bool { ipcSocketFd >= 0 }   // not in mango: whether ipc_init made the socket
 
-    public var watcherCount: Int { ipcWatchClients.count }
+    public var watcherCount: Int { ipcWatchClients.count }   // not in mango: for the tests
 
     public func ipcInit() throws {
         if ipcSocketFd >= 0 { return }
@@ -357,7 +396,6 @@ public final class IPCServer {
     func ipcHandleClientData(_ client: IPCClientState) {
         var chunk = [UInt8](repeating: 0, count: 4096)
         let n = recv(client.fd, &chunk, chunk.count, 0)
-        if n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) { return }
         if n <= 0 { cleanup(); return }
         client.buf.append(contentsOf: chunk[0..<n])
         guard let nl = client.buf.firstIndex(of: 10) else {
@@ -380,13 +418,13 @@ public final class IPCServer {
 
     func handleWatchCommand(_ fd: Int32, _ cmd: String, _ client: IPCClientState) -> Bool {
         guard case .watch(let watch) = IPCRequest.parse(cmd) else { return false }
-        let wc = IPCWatchClient(fd: fd, watch: watch)
+        let wc = IPCWatchClient(fd: fd, watch: watch.target)
         client.source?.remove()
         client.source = nil
         wc.source = loop.addFd(fd) { [weak self, wc] in self?.ipcWatchDataHandler(wc) }
         ipcWatchClients.append(wc)
-        // not in mango: the watcher's first line at once, from the snapshot
-        if let line = server?.watchPayload(watch)?.serialized {
+        /* Pushes the initial state. */
+        if let line = server?.watchInitialPayload(watch)?.serialized {
             wc.lastPayload = line
             ipcNotifyJsonToFd(wc, line)
         }
@@ -396,7 +434,7 @@ public final class IPCServer {
     func ipcWatchDataHandler(_ wc: IPCWatchClient) {
         var buf = [UInt8](repeating: 0, count: 64)
         let n = recv(wc.fd, &buf, buf.count, 0)
-        if n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+        if n == 0 || (n < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
             ipcRemoveWatchClient(wc)
         }
     }
@@ -419,17 +457,60 @@ public final class IPCServer {
         if n < 0 { ipcRemoveWatchClient(wc) }
     }
 
-    // not in mango: printstatus's part for the watchers, run after the events waiting (handle_print_status)
-    public func notifyChanged() {
-        guard isRunning, !notifyScheduled, !ipcWatchClients.isEmpty else { return }
-        notifyScheduled = true
-        Task { @MainActor [weak self] in self?.handlePrintStatus() }
+    // not in mango: printstatus's signal, run once after the events waiting, with their types together
+    public func notifyChanged(_ type: IPCWatchType) {
+        guard isRunning, !ipcWatchClients.isEmpty else { return }
+        let scheduled = !pendingType.isEmpty
+        pendingType.formUnion(type)
+        guard !scheduled else { return }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let type = pendingType
+            pendingType = []
+            handlePrintStatus(type)
+        }
     }
 
-    private func handlePrintStatus() {
-        notifyScheduled = false
-        guard isRunning, !ipcWatchClients.isEmpty, let server else { return }
-        for wc in ipcWatchClients {
+    func handlePrintStatus(_ type: IPCWatchType) {
+        guard isRunning, let server else { return }
+        if type.contains(.keymode) {
+            ipcNotify(.keymode, server)
+        }
+        if type.contains(.kbLayout) {
+            ipcNotify(.kbLayout, server)
+        }
+        if type.contains(.focusingClient) {
+            ipcNotify(.focusingClient, server)
+        }
+        if type.contains(.allTags) {
+            ipcNotify(.allTags, server)
+        }
+        if type.contains(.allClients) {
+            ipcNotify(.allClients, server)
+        }
+        if !type.isDisjoint(with: [.allMonitors, .keymode, .kbLayout, .focusingClient, .tags]) {
+            ipcNotify(.allMonitors, server)
+        }
+
+        if type.contains(.client) {
+            ipcNotify(.client, server)
+        }
+
+        if type.contains(.monitor) {
+            ipcNotify(.monitor, server)
+        }
+        if type.contains(.tags) {
+            ipcNotify(.tags, server)
+        }
+
+        if type.contains(.lastOpenSurface) {
+            ipcNotify(.lastOpenSurface, server)
+        }
+    }
+
+    /// mango ipc_notify_monitor, ipc_notify_client, … (ipc/ipc.c)
+    private func ipcNotify(_ type: IPCWatchType, _ server: MangoServer) {
+        for wc in ipcWatchClients where wc.watch.type == type {
             guard let line = server.watchPayload(wc.watch)?.serialized, line != wc.lastPayload else { continue }
             wc.lastPayload = line
             ipcNotifyJsonToFd(wc, line)
@@ -438,7 +519,7 @@ public final class IPCServer {
 
     func handleCommand(_ fd: Int32, _ cmd: String) {
         guard let server else {
-            sendStaticJson(fd, IPCJSON.error("compositor unavailable").serialized)
+            sendStaticJson(fd, IPCJSON.error("compositor unavailable").serialized)   // not in mango: the weak server gone
             return
         }
         switch IPCRequest.parse(cmd) {
@@ -465,7 +546,7 @@ public final class IPCServer {
 
         func reply(_ cmd: String, _ server: MangoServer) -> JSONValue {
             if cmd == "get version" {
-                return .object([("version", .string(version))])
+                return .object([("version", .string(VERSION))])
             } else if cmd == "get cursorpos" {
                 let p = server.system.pointer
                 return .object([("x", .double(Double(p.x))), ("y", .double(Double(p.y))),
@@ -482,7 +563,7 @@ public final class IPCServer {
                 guard let m = server.monitorByName(String(cmd.dropFirst(12))) else { return IPCJSON.monitorNotFound }
                 return server.buildMonitorJson(m)
             } else if cmd == "get focusing-client" {
-                guard let c = server.ipcFocusingClient() else { return IPCJSON.noFocusedClient }
+                guard let c = server.focused else { return IPCJSON.noFocusedClient }
                 return server.buildClientJson(c)
             } else if cmd.hasPrefix("get client ") {
                 let id = IPCRequest.clientID(atoi: cmd.dropFirst(11))
@@ -514,7 +595,7 @@ public final class IPCServer {
                     ("monitor", .string(m.screen.name)),
                     ("tag_index", .int(index)),
                     ("is_active", .bool(server.getMonitorActiveTagset(m) & bit != 0)),
-                    ("is_urgent", .bool(onTag.contains { $0.isUrgent })),
+                    ("is_urgent", .bool(onTag.contains { $0.isurgent })),
                     ("client_count", .int(onTag.count)),
                     ("focused_client", .bool(top.map { $0.mon === m && $0.tags & bit != 0 } ?? false)),
                 ])
@@ -523,7 +604,42 @@ public final class IPCServer {
             } else if cmd == "get all-monitors" {
                 return .object([("monitors", .array(server.monitors.map(server.buildMonitorJson)))])
             } else if cmd == "get all-devices" {
-                return IPCJSON.allDevices
+                /* Aggregates and lists entries by physical device (libinput device
+                 * group). */
+                struct IPCDevGroup {
+                    var group: UInt64
+                    var name: String
+                    var types: [String] = []
+                    var vendor: Int32, product: Int32
+                    var count = 0
+                }
+                var groups: [IPCDevGroup] = []
+                for dev in server.system.inputDevices {
+                    let grp = dev.deviceGroup
+                    var gi = groups.firstIndex { $0.group == grp } ?? -1
+                    if gi < 0 {
+                        gi = groups.count
+                        groups.append(IPCDevGroup(group: grp, name: dev.name, vendor: dev.vendor, product: dev.product))
+                    }
+                    groups[gi].count += 1
+
+                    let type = ipcDeviceTypeStr(dev)
+                    if !groups[gi].types.contains(type) && groups[gi].types.count < 8 {
+                        groups[gi].types.append(type)
+                    }
+                }
+
+                return .object([("devices", .array(groups.map { g in
+                    .object([
+                        ("name", .string(g.name)),
+                        ("types", .array(g.types.map { .string($0) })),
+                        ("vendor", .int(Int(g.vendor))),
+                        ("product", .int(Int(g.product))),
+                        ("identifier", .string("\(g.vendor):\(g.product):\(g.name)")),
+                        ("interfaces", .int(g.count)),
+                        ("matched", .bool(false)),   // not in mango: device_rule has no effect on macOS
+                    ])
+                }))])
             } else if cmd == "get all-layers" {
                 return IPCJSON.allLayers
             } else if cmd == "get all-tags" {

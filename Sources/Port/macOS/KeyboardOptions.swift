@@ -173,3 +173,17 @@ package enum KeyboardOptions {
         user.filter { u in !mango.contains { $0.src == u.src } } + mango
     }
 }
+
+extension Modifiers {
+    /// The modifiers as a config writes them, for the port's messages.
+    package var mangoDescription: String {
+        var parts: [String] = []
+        if contains(.superKey) { parts.append("SUPER") }
+        if contains(.ctrl) { parts.append("CTRL") }
+        if contains(.alt) { parts.append("ALT") }
+        if contains(.shift) { parts.append("SHIFT") }
+        if contains(.fn) { parts.append("FN") }
+        if contains(.hyper) { parts.append("HYPER") }
+        return parts.isEmpty ? "NONE" : parts.joined(separator: "+")
+    }
+}

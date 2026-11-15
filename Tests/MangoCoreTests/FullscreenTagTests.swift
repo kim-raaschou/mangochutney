@@ -26,7 +26,7 @@ final class FullscreenTagTests: MangoTestCase {
 
     func fullscreen(_ r: EngineRig, _ id: ClientID, _ on: Bool) {
         let c = r.server.clientByIdAll(id)!
-        r.server.mac.windowGeometryChanged(id: id, frame: c.frame, resized: true, isFullscreen: on)
+        r.server.mac.windowGeometryChanged(id: id, frame: c.frame, resized: true, isfullscreen: on)
         r.settle(1)
     }
 
@@ -34,7 +34,7 @@ final class FullscreenTagTests: MangoTestCase {
         r.server.mac.windowDiscovered(DiscoveredWindow(
             id: id, pid: getpid(), element: r.app.element(for: id), bundleId: "test", appName: "Test", title: "t\(id)",
             subrole: "AXStandardWindow", isDialog: false, frame: CGRect(x: 100, y: 100, width: 800, height: 600),
-            isMinimized: false, isFullscreen: fullscreen, isAppHidden: hidden))
+            isminimized: false, isfullscreen: fullscreen, isAppHidden: hidden))
     }
 
     // MARK: in and out
@@ -98,7 +98,7 @@ final class FullscreenTagTests: MangoTestCase {
     func testANotAnsweringAppChangesNothing() {
         let r = rig()
         fullscreen(r, 2, true)
-        r.server.mac.windowGeometryChanged(id: 2, frame: .zero, resized: true, isFullscreen: nil)
+        r.server.mac.windowGeometryChanged(id: 2, frame: .zero, resized: true, isfullscreen: nil)
         XCTAssertEqual(r.server.clientByIdAll(2)?.tags, f1)
         XCTAssertEqual(viewed(r), f1)
     }
@@ -338,14 +338,14 @@ final class FullscreenTagTests: MangoTestCase {
     func testAGlobalWindowInFullscreenDoesNotLoop() {
         let r = rig()
         fullscreen(r, 2, true)
-        r.server.clientByIdAll(2)!.isGlobal = true
+        r.server.clientByIdAll(2)!.isglobal = true
         _ = r.server.dispatch(Dispatch(name: "view", args: ["1"]))
         XCTAssertEqual(viewed(r), 1, "mango keeps it on every view; the F tag's rule leaves it")
     }
 
     func testAnUnmanagedGlobalWindowBesideAnFTagDoesNotLoop() {
         let r = rig()
-        r.server.clientByIdAll(1)!.isUnglobal = true
+        r.server.clientByIdAll(1)!.isunglobal = true
         fullscreen(r, 2, true)
         XCTAssertEqual(viewed(r), f1)
     }
@@ -388,7 +388,7 @@ final class FullscreenTagTests: MangoTestCase {
     func testOffNoTagIsFolded() {
         let r = rig(on: false)
         r.server.clientByIdAll(1)!.tags = f1
-        r.server.printstatus()
+        r.server.printstatus(.arrangge)
         XCTAssertEqual(r.server.clientByIdAll(1)?.tags, f1, "without the key the extension changes nothing")
     }
 
@@ -408,7 +408,7 @@ final class FullscreenTagTests: MangoTestCase {
         fullscreen(r, 2, true)
         XCTAssertNil(c.refusedSize)
         let frame = r.app.frames[2]
-        r.server.mac.windowGeometryChanged(id: 2, frame: r.monitor.screen.frame, resized: true, isFullscreen: true)
+        r.server.mac.windowGeometryChanged(id: 2, frame: r.monitor.screen.frame, resized: true, isfullscreen: true)
         r.settle(1)
         XCTAssertEqual(r.app.frames[2], frame, "macOS moving it is not the user moving it")
     }

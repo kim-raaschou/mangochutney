@@ -9,20 +9,20 @@ final class LayerFocusTests: MangoTestCase {
         let c = r.window(1)
         let s = r.server
         XCTAssertEqual(s.clientTargetLayer(c), .tile)
-        c.isMaximizeScreen = true
+        c.ismaximizescreen = true
         XCTAssertEqual(s.clientTargetLayer(c), .maximize)
-        c.isFloating = true
+        c.isfloating = true
         XCTAssertEqual(s.clientTargetLayer(c), .float, "floating before maximized")
-        c.isFullscreen = true
+        c.isfullscreen = true
         XCTAssertEqual(s.clientTargetLayer(c), .fullscreen)
-        c.isOverlay = true
+        c.isoverlay = true
         XCTAssertEqual(s.clientTargetLayer(c), .overlay)
-        c.isOverlay = false
-        c.isFullscreen = false
-        c.isFloating = false
+        c.isoverlay = false
+        c.isfullscreen = false
+        c.isfloating = false
         c.tags = TagMask.special
         XCTAssertEqual(s.clientTargetLayer(c), .specialMaximize)
-        c.isMaximizeScreen = false
+        c.ismaximizescreen = false
         XCTAssertEqual(s.clientTargetLayer(c), .specialTile)
     }
 
@@ -31,18 +31,18 @@ final class LayerFocusTests: MangoTestCase {
         r.server.config.floatFullToTop = true
         let c = r.window(1)
         let s = r.server
-        c.isFloating = true
+        c.isfloating = true
         XCTAssertEqual(s.clientTargetLayer(c), .top)
-        c.isFloating = false
-        c.isFullscreen = true
+        c.isfloating = false
+        c.isfullscreen = true
         XCTAssertEqual(s.clientTargetLayer(c), .top)
-        c.isFullscreen = false
-        c.isMaximizeScreen = true
+        c.isfullscreen = false
+        c.ismaximizescreen = true
         XCTAssertEqual(s.clientTargetLayer(c), .maximize)
         c.tags = TagMask.special
         XCTAssertEqual(s.clientTargetLayer(c), .specialMaximize)
-        c.isMaximizeScreen = false
-        c.isFloating = true
+        c.ismaximizescreen = false
+        c.isfloating = true
         XCTAssertEqual(s.clientTargetLayer(c), .top)
     }
 

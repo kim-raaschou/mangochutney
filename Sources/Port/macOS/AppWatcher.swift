@@ -13,8 +13,8 @@ public struct DiscoveredWindow {
     public var subrole: String
     public var isDialog: Bool
     public var frame: CGRect
-    public var isMinimized: Bool
-    public var isFullscreen: Bool
+    public var isminimized: Bool
+    public var isfullscreen: Bool
     public var isAppHidden: Bool
     public var isInitial: Bool = false
 }
@@ -23,7 +23,7 @@ public struct DiscoveredWindow {
 public protocol AppWatcherDelegate: AnyObject {
     func windowDiscovered(_ w: DiscoveredWindow)
     func windowDestroyed(id: CGWindowID)
-    func windowGeometryChanged(id: CGWindowID, frame: CGRect, resized: Bool, isFullscreen: Bool?)
+    func windowGeometryChanged(id: CGWindowID, frame: CGRect, resized: Bool, isfullscreen: Bool?)
     func windowMinimized(id: CGWindowID, minimized: Bool)
     func windowTitleChanged(id: CGWindowID, title: String)
     func windowFocused(id: CGWindowID)
@@ -262,7 +262,7 @@ public final class AppWorker: @unchecked Sendable {
         guard type != .popup else { return nil }
         return DiscoveredWindow(id: id, pid: pid, element: el, bundleId: bundleId, appName: name,
                                 title: el.title, subrole: el.subrole ?? "", isDialog: type == .dialog,
-                                frame: frame, isMinimized: el.isMinimized, isFullscreen: el.isFullscreen,
+                                frame: frame, isminimized: el.isminimized, isfullscreen: el.isfullscreen,
                                 isAppHidden: nsApp.isHidden)
     }
 
@@ -509,7 +509,7 @@ public final class AppWatcher {
             delegate?.windowDestroyed(id: id)
         case .geometry(let id, let frame, let resized, let fs):
             guard owners[id] != nil else { return }
-            delegate?.windowGeometryChanged(id: id, frame: frame, resized: resized, isFullscreen: fs)
+            delegate?.windowGeometryChanged(id: id, frame: frame, resized: resized, isfullscreen: fs)
         case .minimized(let id, let m):
             delegate?.windowMinimized(id: id, minimized: m)
         case .title(let id, let t):

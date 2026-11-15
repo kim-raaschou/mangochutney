@@ -32,7 +32,7 @@ package enum LayoutSupport {
         for c in input.clients {
             var r = frames[c.id] ?? IRect(w.x + g.oh, w.y + g.ov, w.w - 2 * g.oh, w.h - 2 * g.ov)
             if applyFullscreen {
-                if c.isFullscreen {
+                if c.isfullscreen {
                     r = IRect(input.monitorFrame)
                 } else if c.isMaximized {
                     r = IRect(w.x + g.oh, w.y + g.ov, w.w - 2 * g.oh, w.h - 2 * g.ov)
@@ -42,7 +42,7 @@ package enum LayoutSupport {
         }
         var hid = hidden.intersection(Set(input.clients.map(\.id)))
         if applyFullscreen {
-            for c in input.clients where (c.isFullscreen || c.isMaximized) && c.id == input.focusedID {
+            for c in input.clients where (c.isfullscreen || c.isMaximized) && c.id == input.focusedID {
                 hid.remove(c.id)
             }
         }

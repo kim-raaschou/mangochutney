@@ -190,8 +190,13 @@ final class TOMLConfigTests: MangoTestCase {
 
     func testArraysAndContinuedStatements() {
         typealias S = ParserState
-        XCTAssertEqual(S.tomlForeachArrayElement(#"["a, b", 'c', [1, 2], 3]"#), [#""a, b""#, " 'c'", " [1, 2]", " 3"])
-        XCTAssertEqual(S.tomlForeachArrayElement("[1, 2,]"), ["1", " 2", ""])
+        func elements(_ raw: String) -> [String] {
+            var out: [String] = []
+            _ = S.tomlForeachArrayElement(raw) { out.append($0); return true }
+            return out
+        }
+        XCTAssertEqual(elements(#"["a, b", 'c', [1, 2], 3]"#), [#""a, b""#, " 'c'", " [1, 2]", " 3"])
+        XCTAssertEqual(elements("[1, 2,]"), ["1", " 2", ""])
         XCTAssertFalse(S.tomlStatementComplete("source = ["))
         XCTAssertFalse(S.tomlStatementComplete(#"x = "a ]"#))
         XCTAssertTrue(S.tomlStatementComplete(#"x = "a ] b""#))

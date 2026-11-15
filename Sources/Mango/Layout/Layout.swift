@@ -74,7 +74,7 @@ public struct Gaps: Equatable, Sendable {
 public struct LayoutClient: Equatable, Sendable {
     public var id: ClientID
     public var currentFrame: CGRect
-    public var isFullscreen: Bool
+    public var isfullscreen: Bool
     public var isMaximized: Bool
     public var scrollerProportion: CGFloat?
     public var scrollerProportionSingle: CGFloat?
@@ -87,12 +87,12 @@ public struct LayoutClient: Equatable, Sendable {
     public var gridColIdx: Int
     public var gridRowIdx: Int
 
-    public init(id: ClientID, currentFrame: CGRect, isFullscreen: Bool = false, isMaximized: Bool = false,
+    public init(id: ClientID, currentFrame: CGRect, isfullscreen: Bool = false, isMaximized: Bool = false,
                 scrollerProportion: CGFloat? = nil, scrollerProportionSingle: CGFloat? = nil,
                 masterInnerPer: CGFloat = 0, stackInnerPer: CGFloat = 0, scrollerStackWeight: CGFloat = 0,
                 masterMfactPer: CGFloat = 0, gridColPer: CGFloat = 1, gridRowPer: CGFloat = 1,
                 gridColIdx: Int = 0, gridRowIdx: Int = 0) {
-        self.id = id; self.currentFrame = currentFrame; self.isFullscreen = isFullscreen
+        self.id = id; self.currentFrame = currentFrame; self.isfullscreen = isfullscreen
         self.isMaximized = isMaximized; self.scrollerProportion = scrollerProportion
         self.scrollerProportionSingle = scrollerProportionSingle
         self.masterInnerPer = masterInnerPer; self.stackInnerPer = stackInnerPer
@@ -231,7 +231,7 @@ public enum LayoutEngine {
         case .verticalFair: return GridLayouts.verticalFair(input)
         case .dwindle:
             var tiled = input
-            tiled.clients = input.clients.filter { !$0.isFullscreen && !$0.isMaximized }
+            tiled.clients = input.clients.filter { !$0.isfullscreen && !$0.isMaximized }
             return state.dwindleRoot.dwindleCore(tiled)
         case .scroller: return state.scrollerState.arrange(input, vertical: false)
         case .verticalScroller: return state.scrollerState.arrange(input, vertical: true)

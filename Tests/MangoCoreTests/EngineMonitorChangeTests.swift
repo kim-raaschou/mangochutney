@@ -13,10 +13,10 @@ final class EngineMonitorChangeTests: MangoTestCase {
     func client(_ server: MangoServer, id: CGWindowID, on m: Monitor, tags: UInt32, floating: Bool, frame: CGRect) -> Client {
         let w = DiscoveredWindow(id: id, pid: getpid(), element: AXUIElementCreateApplication(getpid()), bundleId: "test",
                                  appName: "Test", title: "t", subrole: "AXStandardWindow", isDialog: false,
-                                 frame: frame, isMinimized: false, isFullscreen: false,
+                                 frame: frame, isminimized: false, isfullscreen: false,
                                  isAppHidden: false)
         let c = Client(window: w, monitor: m, tags: tags)
-        c.isFloating = floating
+        c.isfloating = floating
         server.clients.append(c)
         return c
     }
@@ -82,7 +82,7 @@ final class EngineMonitorChangeTests: MangoTestCase {
     func testTagRuleMatchesMakeModelSerial() {
         var benq = external
         benq.make = "BNQ"; benq.model = "BenQ RD280U"; benq.serial = "J7R0095701Q"
-        func rule(_ s: String) -> TagRule {
+        func rule(_ s: String) -> ConfigTagRule {
             ConfigParser.parse(text: "tag_rule=id:1,\(s),master_factor:0.7", baseDirectory: nil, fileName: "t").config.tagRules[0]
         }
         XCTAssertTrue(rule("monitor_make:BNQ").tagRuleMatchesMonitor(benq))

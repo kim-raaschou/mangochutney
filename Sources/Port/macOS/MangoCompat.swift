@@ -90,15 +90,15 @@ public enum MangoCompat {
     public static let optionsWithoutEffect: [String: NoEffect] = {
         let closeAnim = NoEffect.impossible("the window is already gone when macOS reports it closed")
         let fade = NoEffect.impossible("another app's window opacity can only be changed with SIP off")
-        let corners = NoEffect.impossible("macOS draws window corners; the border follows them")
         var t: [String: NoEffect] = [
             "animation_fade_in": fade, "animation_fade_out": fade,
             "fade_in_begin_opacity": fade, "fade_out_begin_opacity": fade,
             "focused_opacity": fade, "unfocused_opacity": fade,
             "animation_type_close": closeAnim, "animation_duration_close": closeAnim, "animation_curve_close": closeAnim,
         ]
-        t["animation_duration_focus"] = fade
-        t["animation_curve_focus"] = fade
+        // mango's focus animation fades the border colour (possible here) and the opacity (SIP off)
+        t["animation_duration_focus"] = .notImplemented
+        t["animation_curve_focus"] = .notImplemented
         t["zoom_end_ratio"] = closeAnim
         return t
     }()

@@ -6,8 +6,8 @@ extension MacWindowSystem: AppWatcherDelegate {
         guard server.clientByIdAll(w.id) == nil else { return }
         let c = Client(window: w, monitor: server.selectedMonitor, tags: 0)
         var reasons: Set<AwayReason> = []
-        if w.isMinimized { reasons.insert(.minimized) }
-        if w.isFullscreen { reasons.insert(.fullscreen) }
+        if w.isminimized { reasons.insert(.minimized) }
+        if w.isfullscreen { reasons.insert(.fullscreen) }
         if w.isAppHidden { reasons.insert(.hidden) }
         // Port extension: chutney_fullscreen_tag. In fullscreen it is mapped onto its F tag; with another
         // reason, when it is back from that.
@@ -40,9 +40,9 @@ extension MacWindowSystem: AppWatcherDelegate {
         server.selectedMonitor = server.monitorAtPoint(c.frame.center) ?? selected
         let (mon, tags) = server.clientSetRules(c, mapped: false)
         server.selectedMonitor = selected
-        if !c.isCustomPos {
+        if !c.iscustompos {
             c.floatGeom = frame
-            if c.isFloating, !mon.screen.frame.intersects(frame) {
+            if c.isfloating, !mon.screen.frame.intersects(frame) {
                 let w = mon.screen.workArea
                 c.floatGeom = CGRect(x: w.midX - frame.width / 2, y: w.midY - frame.height / 2, width: frame.width, height: frame.height)
             }
@@ -51,7 +51,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.mon = mon
         server.clientResetMonTags(c, mon, tags)
         server.checkMatchTagFloatingRule(c, mon)
-        wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.mac.isFloatType)")
+        wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isfloating) dialog=\(c.mac.isFloatType)")
         scheduleInitialSettle()
     }
 
@@ -68,25 +68,25 @@ extension MacWindowSystem: AppWatcherDelegate {
         } else {
             c.oldmonname = d.displayID
         }
-        c.isFloating = d.isFloating
-        c.isGlobal = d.isGlobal
-        c.isOverlay = d.isOverlay
-        c.isInScratchpad = d.isMinimized
-        c.isMinimized = d.isMinimized && !d.isScratchpad
-        c.isNamedScratchpad = d.isNamedScratchpad
+        c.isfloating = d.isfloating
+        c.isglobal = d.isglobal
+        c.isoverlay = d.isoverlay
+        c.isInScratchpad = d.isminimized
+        c.isminimized = d.isminimized && !d.isScratchpad
+        c.isnamedscratchpad = d.isnamedscratchpad
         c.floatGeom = d.floatFrame
         c.scrollerProportion = d.scrollerProportion
-        c.isCustomSize = d.isCustomSize
+        c.iscustomsize = d.iscustomsize
         c.isPendingOpenAnimation = false
         server.layoutStateInsert(c, on: mon)
         c.mon = mon
         c.tags = d.tags
         wlrLog(.info, "\(c.appName): window \(c.id) is back; restored its tag and place")
         memory.returned(server, c)
-        wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isFloating) dialog=\(c.mac.isFloatType) (returned)")
+        wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isfloating) dialog=\(c.mac.isFloatType) (returned)")
         if initial { scheduleInitialSettle(); return }
         if let cm = c.mon { server.arrange(cm, .move) }
-        server.printstatus()
+        server.printstatus(.arrangge)
     }
 
     private func scheduleInitialSettle() {
@@ -100,7 +100,7 @@ extension MacWindowSystem: AppWatcherDelegate {
                 if self.server.focused == nil, let c = self.server.clientFocusTop(self.server.selectedMonitor) {
                     self.server.clientFocus(c, true)
                 }
-                self.server.printstatus()
+                self.server.printstatus(.arrangge)
                 if self.server.clients.count != self.loggedWindowCount {
                     self.loggedWindowCount = self.server.clients.count
                     wlrLog(.info, "managing \(self.server.clients.count) window(s)")
@@ -139,7 +139,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             macOSFocused = nil
             return
         }
-        if c.isMinimized { return }
+        if c.isminimized { return }
         server.handleClientActivationRequest(c)
     }
 
@@ -216,7 +216,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.frame = f
         c.parked = false
         server.arrange(m, .none)
-        server.printstatus()
+        server.printstatus(.arrangge)
     }
 
     func appResponding(pid: pid_t, responding: Bool) {
@@ -239,8 +239,8 @@ extension MacWindowSystem: AppWatcherDelegate {
         return Hider.isParked(f, in: screen) || !f.intersects(screen)
     }
 
-    func windowGeometryChanged(id: CGWindowID, frame: CGRect, resized: Bool, isFullscreen: Bool?) {
-        if let fs = isFullscreen, windowFullscreenRead(id, fs) { return }
+    func windowGeometryChanged(id: CGWindowID, frame: CGRect, resized: Bool, isfullscreen: Bool?) {
+        if let fs = isfullscreen, windowFullscreenRead(id, fs) { return }
         guard let c = server.clientByIdAll(id) else { return }
         moved(c, to: frame, resized: resized)
     }

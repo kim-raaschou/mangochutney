@@ -1,0 +1,39 @@
+# F-anim-draw verified
+
+Paths: mango = `~/sources/mango/src/…`; ours = `Sources/…`.
+Every row below was re-read on both sides (mango 0.18.5, our tree at da81bb9).
+
+| finding (short) | mango file:line | ours file:line | verdict | kind | size | note |
+|---|---|---|---|---|---|---|
+| set_client_corner_location: per-corner zeroing at the monitor edge | animation/client.c:86-117 | Mango/Engine/MangoServer.swift:701 (one radius) | PARTLY | edge | S | The scenario is wrong: mango returns all four corners for `client_is_ignore_output_clip(c)` (client.c:92-93), which is true for every client that is not ISSCROLLTILED and not tag-animating (client.c:58-62) — so a `tile` window keeps all corners; and the test is `x + border_radius <= m.x`, i.e. the window must extend at least `border_radius` past the edge, so a flush window keeps round corners too. Real only for scroller columns (or tag-sliding windows) that stand ≥ radius off-screen, where mango clips the border at the edge and squares that side; ours draws the whole rounded border unclipped (the clipping itself is the `client_draw_border` port row), visible only on a neighbouring monitor. |
+| resize: (a) OVERVIEW curve; (b) scratchpad_switching_mon; (c) `.none` arrange | animation/client.c:1563-1565, 1652-1653; common.c:91-113 (no OVERVIEW branch → `baked_points_move`); manage/client.c:3779-3806; bind.c:771-808 (`move_window` → `resize`, animated) | Mango/Engine/Animation.swift:39-45, Dispatch.swift:1828-1842, `arrange(…, .none)` callers (Dispatch.swift:159, 301, 363, 847, 1339; Tabs.swift:219; FloatingSnap.swift:42) + Port/macOS/Placement.swift:7 | CONFIRMED | behaviour | M | (a) ours `animationCurveTag` where mango uses the move curve (duration `_tag` in both); seen without Screen Recording. (b) mango sets `animainit_geom = geom` for a floating scratchpad pulled to the selected monitor (`scratchpad_cross_monitor`), so it appears in place; ours `arrange(selectedMonitor)` (.move) slides it from the old monitor. (c) `movewin`, `resizewin`, `toggleoverlay`, `comboview` with tag_combo, tab-bar focus, floating snap: mango animates the move (MOVE action, `resize`), ours `.none` → no animation. (d) size hints/swallow listed. |
+| client_start_focus_animation & co. (5 functions) missing: border colour fade | animation/client.c:1682-1757, step at 1842; callers manage/client.c:2990-2993, 3021, 3068 | — (MangoCompat.swift:100-101 lists `animation_duration_focus`/`_curve_focus` as opacity-only) | CONFIRMED | behaviour | M | With `animations=1` and `animation_duration_focus>0` (mango default 0, option_defs.c:2396) mango interpolates border (and dim) colour over the focus duration with `animation_curve_focus`; ours switches at once. The compat reason (SIP/opacity) covers only the opacity part. |
+| mango_bar_decoration_set_close_hover missing | draw/text-node.c:1047-1053; input/pointer.c:1275-1292 | — (no hover tracking in Port/macOS or core) | CONFIRMED | behaviour | S | Group-bar close button has no hover colour (`close_hover_color = c + (1-c)·0.4`). Unlisted. |
+| set_tagin_animation: start without MAX/MIN, cross axis from target | animation/tag.c:10-52 | Animation.swift:196-202 | CONFIRMED | edge | S | Forward start differs only when `geom.x < m.x`; back only when the window's right edge is past `m.x+m.width` (scroller). Cross axis: mango keeps `animation.current` (the geom it had when hidden), so a window whose tile changed while hidden comes in diagonally; ours straight. |
+| set_arrange_visible: (1) no prevtag/curtag test; (2) reversed tagout gets MOVE; (3) special re-slide | animation/tag.c:55-127; resize action choice client.c:1563-1578; set_pending_state client.c:1489-1490 | Animation.swift:33-75 | CONFIRMED | behaviour | M | (1) From the special tag (`curtag` 0) `view 4` (a tag that was not the kept background): `prevtag` becomes 0, mango shows tag 4 in place, ours slides it in. (2) A tagout in flight reversed by viewing back: mango `tagining` → TAG duration/curve from `current`; ours shown → `.move` (move duration/curve). (3) Special-tag clients slide from above on every `want_animation` arrange in mango, also when already shown (tagining forces `should_animate`; callers: bind.c:573, 2462, foreign-toplevel.c:51, manage/client.c:3140); ours only when parked. (3) is a mango quirk, rare. |
+| overcircle_title_bar_geometry under the card | draw/title_message_bar.c:48-73 | Mango/Engine/TitleMessageBar.swift:30 | CONFIRMED | name | S | Listed §5 ("I overcircle ligger den under klientens kort"). No action. |
+| switcher_remove_client: re-layout from scratch | switcher/switcher.c:321-353 (keeps `tile_h`, `tile->cw`) | Mango/Engine/SwitcherMode.swift:88-99; Mango/Layout/SwitcherLayout.swift:15-36 | CONFIRMED | behaviour | S | Ours recomputes `tile_h` for the new count (larger for fewer tiles) and `cw` from current frames. 2 tiles open, one window closes: mango keeps the tile size, ours grows it. Unlisted. |
+| switcher_commit_client: `changefocus` not true | switcher/switcher.c:361-369 (`client_view_on_monitor(…, true, tc->mon, true)`) | SwitcherMode.swift:76-80 (no `changeFocus`, so `m === selectedMonitor`, Dispatch.swift:625) | CONFIRMED | behaviour | S | `all_next` to a hidden client on another monitor: mango first focuses that monitor's top client, then `tc`, so the focus stack (and the next mod+Tab's second tile) has that top client second; ours keeps the previously focused window second. |
+| switcher(): overview guard moved before cycle | switcher/switcher.c:493-509 (overview tested only in `switcher_open`, :420-423) | SwitcherMode.swift:23 | CONFIRMED | edge | S | Reachable: mango keeps the switcher open while mod is held (keyboard.c:734-744), so a bind entering overview with the switcher open leaves it open; the next mod+Tab cycles in mango (scope change: closes, open refuses), ours does nothing and the switcher stays. |
+
+### Not in mango (F)
+
+| ours | verdict | note |
+|---|---|---|
+| Animation.swift:3,7,13 `AnimationAction`, `TagoutAnimation`, `ClientAnimation` (unmarked) | CONFIRMED | |
+| Animation.swift:32 `clientAnimation` (marked) | CONFIRMED | |
+| Animation.swift:179 `setArrangeVisible` (unmarked) | CONFIRMED | only the "above the monitor" start rect; mango's set_arrange_visible logic is in `clientAnimation`. Misleading name |
+| Tabs.swift:57 `mangoBarDecorationApplyConfig` (unmarked) | CONFIRMED | mango's (text-node.c:1095) copies style into a node and redraws; ours merges set keys over defaults |
+| Tabs.swift:61 `topBars` (unmarked) | CONFIRMED | |
+| Tabs.swift:70 `tabRefreshBars`, `animationCurrent`, `clipBar`, `barSegments` (marked) | CONFIRMED | |
+| MangoServer.swift:677,683,717 `borderWidth`, `updateBorders`, `shownFrame` (marked) | CONFIRMED | |
+| MangoServer.swift:720 `clientDrawFrame` (unmarked) | CONFIRMED | mango name, batch redraw for the animator |
+| Mango/Model/Geometry.swift:101 `BezierCurve.extremes` (unmarked) | CONFIRMED | only caller Port/macOS/Animator.swift:88; port helper in the core |
+| OverviewMode.swift `overlayCards`, `overviewCardsShow`, `overviewCardsClose`, `overviewItems`, `overviewTileResize` (marked); `overviewCardSurfaceAdd` (body marked) | CONFIRMED | |
+| SwitcherMode.swift:40 `switcherOrder` (unmarked) | CONFIRMED | |
+| SwitcherMode.swift:102 `drawSwitcher` (marked) | CONFIRMED | |
+| SwitcherLayout.swift:15 `switcherLayout` (no `/// mango` line) | CONFIRMED | merges switcher_open's tile_h loop, switcher_tile_create's cw and switcher_layout; cause of the switcher_remove_client row |
+
+### Extra (seen while verifying, not in the earlier pass)
+
+- `set_arrange_hidden` (tag.c:211-228) slides special-tag clients out on any `want_animation` arrange that hides them; ours (Animation.swift:160-169) only on a `.tag` arrange. No reachable case found (special clients become hidden only through a view, and in overview mango skips it too), so latent.

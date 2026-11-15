@@ -61,6 +61,8 @@ package protocol WindowSystem: AnyObject {
     var screens: [Screen] { get }
     func setKeyboardOptions(_ options: String)
     func ipcGetLayoutStr() -> String
+    /// server.input_devices.
+    var inputDevices: [InputDevice] { get }
     var mouseButtons: Int { get }
     func startInput()
     func watchGestures(_ on: Bool)

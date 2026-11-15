@@ -1,88 +1,55 @@
 import Foundation
 
+// not in mango: parse_option's result, with a case for the options macOS cannot honour
 public enum OptionResult: Equatable {
     case applied
 /// Not in mango: mango's options that do nothing on macOS (blur, shadows, libinput, ...).
     case ignored
     case unknown
-    case invalid(String)
+    /// parse_option's false after mango_error's messages: `earlier` ones, then this one.
+    case invalid(String, earlier: [String] = [])
 }
 
 public enum ConfigOptions {
-    public static func parseOption(key rawKey: String, value rawValue: String, to config: inout Config) -> OptionResult {
-        let key = rawKey.trimmingCharacters(in: .whitespaces)
-        let value = rawValue.trimmingCharacters(in: .whitespaces)
-
+    // not in mango: parse_option's options and its env and exec branches; the keywords that
+    // build rules and bindings, and var and source, are ParserState.parseOption's
+    public static func parseOption(key: String, value: String, to config: inout Config) -> OptionResult {
         if let setter = setters[key] ?? ConfigParser.port?.setter(key) { return setter(&config, value) }   // the port's keys: not in mango
 
         switch key {
-        case "env":
-            guard let comma = value.firstIndex(of: ",") else {
-                return .invalid("Invalid bind format: \(mangoHighlight(value))")
-            }
-            let name = value[..<comma].trimmingCharacters(in: .whitespaces)
-            var v = value[value.index(after: comma)...].trimmingCharacters(in: .whitespaces)
-            guard !name.isEmpty, !value[value.index(after: comma)...].isEmpty else {
-                return .invalid("Invalid bind format: \(mangoHighlight(value))")
-            }
-            if v.contains("~/") {
-                v = v.replacingOccurrences(of: "~/", with: homeDirectory() + "/")
-            }
-            config.envVars.append((name, v))
-            return .applied
-        case "exec":
-            config.exec.append(value)
-            return .applied
-        case "exec_once":
-            config.execOnce.append(value)
-            return .applied
-        case "window_rule", "window_rule_once":
-            switch RuleParser.parseWindowRule(value, once: key == "window_rule_once") {
-            case .success(let rule): config.windowRules.append(rule); return .applied
-            case .failure(let msg): return .invalid(msg)
-            }
-        case "tag_rule":
-            switch RuleParser.parseTagRule(value) {
-            case .success(let rule): config.tagRules.append(rule); return .applied
-            case .failure(let msg): return .invalid(msg)
-            }
-        case "mousebind":
-            switch BindingParser.parseMouseBinding(value: value, mode: config.keymode) {
-            case .success(let b): config.mouseBindings.append(b); return .applied
-            case .failure(let msg): return .invalid(msg)
-            }
-        case "axisbind":
-            switch BindingParser.parseAxisBinding(value: value, mode: config.keymode) {
-            case .success(let b): config.axisBindings.append(b); return .applied
-            case .failure(let msg): return .invalid(msg)
-            }
-        case "gesturebind":
-            switch BindingParser.parseGestureBinding(value: value, mode: config.keymode) {
-            case .success(let b): config.gestureBindings.append(b); return .applied
-            case .failure(let msg): return .invalid(msg)
-            }
-        case "key_mode":
-            config.keymode = value.isEmpty ? "default" : value
-            return .applied
-        case "switchbind", "layer_rule", "monitor_rule", "device_rule":
+        case "layer_rule", "monitor_rule", "device_rule":
             return .ignored
         default:
             break
         }
 
-        if BindingParser.isKeyBindKeyword(key) {
-            switch BindingParser.parseKeyBinding(keyword: key, value: value, mode: config.keymode) {
-            case .success(let b):
-                if !b.keyCodes.isEmpty { config.keyBindings.append(b) }
-                return .applied
-            case .failure(let msg): return .invalid(msg)
+        if key.hasPrefix("env") {
+            guard let comma = value.firstIndex(of: ","), comma != value.startIndex,
+                  value.index(after: comma) != value.endIndex else {
+                return .invalid("Invalid bind format: \(mangoHighlight(value))")
             }
+            let name = ConfigParser.trimWhitespace(value[..<comma])
+            var v = ConfigParser.trimWhitespace(value[value.index(after: comma)...])
+            if v.contains("~/") {
+                v = v.replacingOccurrences(of: "~/", with: homeDirectory() + "/")
+            }
+            config.envVars.append((name, v))
+            return .applied
+        }
+        if key == "exec" {
+            config.exec.append(value)
+            return .applied
+        }
+        if key.hasPrefix("exec_once") {
+            config.execOnce.append(value)
+            return .applied
         }
 
         if isIgnored(key) { return .ignored }
         return .unknown
     }
 
+    // not in mango: the keys parse_option knows, for the tests
     public static var knownKeys: [String] { setters.keys.sorted() }
 
     public static func isIgnored(_ key: String) -> Bool {
@@ -134,6 +101,7 @@ public enum ConfigOptions {
         t["edge_scroller_focus_allow_speed"] = double(\.edgeScrollerFocusAllowSpeed)
         t["scroller_proportion_preset"] = { config, value in
             let floatCount = value.filter { $0 == "," }.count + 1
+            config.scrollerProportionPreset = []
             var out: [Double] = []
             for token in value.split(separator: ",").map(String.init) where out.count < floatCount {
                 guard let d = ValueParse.scanDouble(token) else {
@@ -155,12 +123,18 @@ public enum ConfigOptions {
         t["center_when_single_stack"] = bool(\.centerWhenSingleStack)
         t["tag_num"] = int(\.tagNum)
         t["tag_gather"] = bool(\.tagGather)
-        t["tag_carousel"] = bool(\.tagCarousel)
+        t["tag_carousel"] = unclampedBool(\.tagCarousel)
         t["view_current_to_back"] = bool(\.viewCurrentToBack)
         t["circle_layout"] = { config, value in
-            config.circleLayout = value.split(separator: ",").map { tok in
+            let stringCount = value.filter { $0 == "," }.count + 1
+            config.circleLayout = []
+            let tokens = value.split(separator: ",")
+            if tokens.count != stringCount {
+                return .invalid("Invalid circle_layout format: \(mangoHighlight(value))")
+            }
+            config.circleLayout = tokens.map { tok in
                 String(tok).trimmingCharacters(in: CharacterSet(charactersIn: " ").inverted.intersection(.controlCharacters))
-            }.filter { !$0.isEmpty }
+            }
             return .applied
         }
         t["dwindle_vertical_split"] = int(\.dwindleVsplit)
@@ -171,12 +145,12 @@ public enum ConfigOptions {
         t["dwindle_manual_split"] = bool(\.dwindleManualSplit)
         t["dwindle_drop_simple_split"] = bool(\.dwindleDropSimpleSplit)
         t["dwindle_split_ratio"] = double(\.dwindleSplitRatio)
-        t["monocle_tab_mode"] = bool(\.monocleTabMode)
+        t["monocle_tab_mode"] = unclampedBool(\.monocleTabMode)
         t["monocle_no_border"] = bool(\.monocleNoBorder)
         t["monocle_no_gap"] = bool(\.monocleNoGap)
         t["monocle_no_radius"] = bool(\.monocleNoRadius)
         t["special_tag_cross_monitor"] = bool(\.specialTagCrossMonitor)
-        t["deck_tab_mode"] = bool(\.deckTabMode)
+        t["deck_tab_mode"] = unclampedBool(\.deckTabMode)
         t["tab_bar_height"] = int(\.tabBarHeight, 0...500)
         t["group_bar_height"] = int(\.groupBarHeight, 0...500)
         t["always_show_group_bar"] = bool(\.alwaysShowGroupBar)
@@ -265,17 +239,25 @@ public enum ConfigOptions {
     }()
 
 /// Not in mango: parse_option's strcmp chain is a table here; these make its entries.
+    // not in mango: override_config's CLAMP_INT(x, 0, 1) as the value is stored (a Bool here)
     package static func bool(_ kp: WritableKeyPath<Config, Bool>) -> Setter {
         { config, value in
-            guard let b = ValueParse.bool(value) else { return .invalid("Invalid boolean value: \(value)") }
-            config[keyPath: kp] = b
+            config[keyPath: kp] = ValueParse.atoi(value) > 0
+            return .applied
+        }
+    }
+
+    // not in mango: the int read as true or false, for the keys override_config does not clamp
+    package static func unclampedBool(_ kp: WritableKeyPath<Config, Bool>) -> Setter {
+        { config, value in
+            config[keyPath: kp] = ValueParse.atoi(value) != 0
             return .applied
         }
     }
 
     package static func int(_ kp: WritableKeyPath<Config, Int>, _ range: ClosedRange<Int>? = nil) -> Setter {
         { config, value in
-            guard let n = ValueParse.int(value) else { return .invalid("Invalid integer value: \(value)") }
+            let n = ValueParse.atoi(value)
             config[keyPath: kp] = range.map { min(max(n, $0.lowerBound), $0.upperBound) } ?? n
             return .applied
         }
@@ -283,7 +265,7 @@ public enum ConfigOptions {
 
     package static func double(_ kp: WritableKeyPath<Config, Double>, _ range: ClosedRange<Double>? = nil) -> Setter {
         { config, value in
-            guard let d = ValueParse.double(value) else { return .invalid("Invalid number: \(value)") }
+            let d = ValueParse.atof(value)
             config[keyPath: kp] = range.map { min(max(d, $0.lowerBound), $0.upperBound) } ?? d
             return .applied
         }
@@ -324,7 +306,7 @@ public enum ConfigOptions {
 
     static func optionalInt(_ kp: WritableKeyPath<Config, Int?>, _ range: ClosedRange<Int>) -> Setter {
         { config, value in
-            guard let n = ValueParse.int(value) else { return .invalid("Invalid integer value: \(value)") }
+            let n = ValueParse.atoi(value)
             config[keyPath: kp] = min(max(n, range.lowerBound), range.upperBound)
             return .applied
         }
@@ -332,10 +314,12 @@ public enum ConfigOptions {
 
     static func curve(_ kp: WritableKeyPath<Config, BezierCurve>, _ name: String) -> Setter {
         { config, value in
-            guard let v = parseDoubleArray(value, 4), v.count == 4 else {
-                return .invalid("Failed to parse \(name): \(mangoHighlight(value))")
-            }
+            var v: [Double] = []
+            let (num, error) = parseDoubleArray(value, &v, 4)
             config[keyPath: kp] = BezierCurve(x1: v[0], y1: v[1], x2: v[2], y2: v[3])
+            if num != 4 {
+                return .invalid("Failed to parse \(name): \(mangoHighlight(value))", earlier: error.map { [$0] } ?? [])
+            }
             return .applied
         }
     }
@@ -354,9 +338,8 @@ public enum ConfigOptions {
     }
 }
 
+// not in mango: libc's atoi, atof, strtol, strtoul and sscanf's %f, which mango's parsing calls
 package enum ValueParse {
-    static func int(_ s: String) -> Int? { atoi(s) }
-
     static func atoi(_ s: String) -> Int {
         var it = s.unicodeScalars.drop { " \t\n\r\u{0B}\u{0C}".unicodeScalars.contains($0) }
         var negative = false
@@ -372,8 +355,6 @@ package enum ValueParse {
         return negative ? -n : n
     }
 
-    static func double(_ s: String) -> Double? { atof(s) }
-
     static func atof(_ s: String) -> Double {
         let t = String(s.unicodeScalars.drop { " \t\n\r\u{0B}\u{0C}".unicodeScalars.contains($0) })
         guard let r = t.range(of: #"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?"#, options: .regularExpression),
@@ -387,5 +368,37 @@ package enum ValueParse {
         return atof(t)
     }
 
-    static func bool(_ s: String) -> Bool? { atoi(s) != 0 }
+    /// strtol: the number and the text after it, nil where no digit is read (endptr == str).
+    static func strtol(_ s: Substring, base: Int = 10) -> (Int, Substring)? {
+        guard let (v, negative, rest) = digits(s, base: base) else { return nil }
+        let max = UInt64(Int64.max)
+        if negative { return (v > max ? Int(Int64.min) : -Int(v), rest) }
+        return (Int(min(v, max)), rest)
+    }
+
+    /// strtoul: as strtol, a minus sign wrapping the number round.
+    static func strtoul(_ s: Substring) -> (UInt64, Substring)? {
+        guard let (v, negative, rest) = digits(s, base: 10) else { return nil }
+        return (negative && v != UInt64.max ? 0 &- v : v, rest)
+    }
+
+    private static func digits(_ s: Substring, base: Int) -> (UInt64, Bool, Substring)? {
+        var it = s.drop { " \t\n\r\u{0B}\u{0C}".contains($0) }
+        var negative = false
+        if let f = it.first, f == "+" || f == "-" { negative = f == "-"; it = it.dropFirst() }
+        if base == 16, it.hasPrefix("0x") || it.hasPrefix("0X"),
+           it.dropFirst(2).first?.hexDigitValue != nil {
+            it = it.dropFirst(2)
+        }
+        var v: UInt64 = 0
+        var read = false
+        while let c = it.first, let d = c.hexDigitValue, d < base, c.isASCII {
+            let (m, o1) = v.multipliedReportingOverflow(by: UInt64(base))
+            let (r, o2) = m.addingReportingOverflow(UInt64(d))
+            v = o1 || o2 ? UInt64.max : r
+            read = true
+            it = it.dropFirst()
+        }
+        return read ? (v, negative, it) : nil
+    }
 }

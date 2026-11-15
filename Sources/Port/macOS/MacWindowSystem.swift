@@ -337,7 +337,8 @@ class MacWindowSystem: WindowSystem {
     }
 
     func nagSpawn(_ argv: [String], input: String) {
-        nagDisplay.spawn(argv, input: input, macOS: server.config.chutneyMacOSAppearance)
+        nagDisplay.spawn(argv, input: input, selected: server.selectedMonitor?.screen.displayID,
+                         macOS: server.config.chutneyMacOSAppearance)   // Port extension: not in mango (chutney_macos_appearance)
     }
 
     func nagKill() {
@@ -364,6 +365,8 @@ class MacWindowSystem: WindowSystem {
     var mouseButtons: Int { Int(NSEvent.pressedMouseButtons) }
 
     func ipcGetLayoutStr() -> String { KeyNames.currentLayoutName() }
+
+    var inputDevices: [InputDevice] { InputDevices.all() }
 
     var keyMappings: [KeyboardOptions.Mapping] = []
     var userKeyMappings: [KeyboardOptions.Mapping]?
@@ -452,14 +455,14 @@ class MacWindowSystem: WindowSystem {
         }
         for c in server.clientsAll {
             guard let m = c.mon, c.parked || Hider.isParked(c.frame, in: m.screen.frame) else { continue }
-            let f = c.isFloating ? c.floatGeom : (c.geom ?? c.floatGeom)
+            let f = c.isfloating ? c.floatGeom : (c.geom ?? c.floatGeom)
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         for (c, _) in away.values {
             guard let m = c.mon ?? server.monitors.first else { continue }
             let real = windowServerFrame(c.id) ?? c.frame
             guard c.parked || Hider.isParked(real, in: m.screen.frame) else { continue }
-            let f = c.isFloating ? c.floatGeom : (c.geom ?? c.floatGeom)
+            let f = c.isfloating ? c.floatGeom : (c.geom ?? c.floatGeom)
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         restoreAppSettings(restore)
@@ -540,7 +543,7 @@ class MacWindowSystem: WindowSystem {
         }
         let dnc = DistributedNotificationCenter.default(), ws = NSWorkspace.shared.notificationCenter
         let layoutChanged: @Sendable (Notification) -> Void = { [weak server] _ in
-            MainActor.assumeIsolated { server?.printstatus() }
+            MainActor.assumeIsolated { server?.printstatus(.kbLayout) }
         }
         observers = [
             dnc.addObserver(forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: .main, using: close),

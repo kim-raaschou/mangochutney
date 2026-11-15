@@ -33,7 +33,7 @@ extension MacWindowSystem {
         guard let q = writer(for: c.pid), let m = c.mon else { return }
         c.geom = tile.rounded()
         var target = tile.rounded()
-        if let rs = c.refusedSize, !c.isFloating, rs.width > target.width + 0.5 || rs.height > target.height + 0.5 {
+        if let rs = c.refusedSize, !c.isfloating, rs.width > target.width + 0.5 || rs.height > target.height + 0.5 {
             let size = CGSize(width: max(rs.width, target.width), height: max(rs.height, target.height))
             target.origin = Self.inwardOrigin(target, size: size, in: layoutBounds(m))
         }
@@ -140,13 +140,13 @@ extension MacWindowSystem {
         }
         let d = abs(actual.minX - c.frame.minX) + abs(actual.minY - c.frame.minY)
             + abs(actual.width - c.frame.width) + abs(actual.height - c.frame.height)
-        let offLayout = !c.isFloating && !c.scratchpadShown
+        let offLayout = !c.isfloating && !c.scratchpadShown
             && c.geom.map { MangoServer.frameDistance(actual, $0) > 0.5 } == true
         guard d > 0.5 || offLayout else { return }
-        if c.isFloating { userMoved(c, to: actual, resized: false, dragging: false); return }
+        if c.isfloating { userMoved(c, to: actual, resized: false, dragging: false); return }
         c.frame = actual
         let now = CACurrentMediaTime()
-        if !c.isFloating, !c.scratchpadShown, let target = c.geom, MangoServer.frameDistance(actual, target) > 0.5 {
+        if !c.isfloating, !c.scratchpadShown, let target = c.geom, MangoServer.frameDistance(actual, target) > 0.5 {
             let larger = actual.width > target.width + 0.5 || actual.height > target.height + 0.5
             let inward = larger && c.mon != nil ? Self.inwardOrigin(target, size: actual.size, in: layoutBounds(c.mon!)) : target.origin
             let atTile = abs(actual.minX - target.minX) <= 1 && abs(actual.minY - target.minY) <= 1

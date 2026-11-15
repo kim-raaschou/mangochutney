@@ -11,10 +11,10 @@ final class SmallOptionTests: MangoTestCase {
         r.server.clientFocus(c, false)
         let f = r.monitor.screen.frame
         let corner = CGPoint(x: f.minX + 2, y: f.maxY - 2), away = CGPoint(x: f.midX, y: f.midY)
-        c.isFullscreen = true
+        c.isfullscreen = true
         r.server.toggleHotarea(corner)
         XCTAssertFalse(r.server.anyOverview, "under a fullscreen window: quiet")
-        c.isFullscreen = false
+        c.isfullscreen = false
         r.server.toggleHotarea(corner)
         XCTAssertTrue(r.server.anyOverview, "entering the corner opens it")
         r.server.toggleHotarea(corner)

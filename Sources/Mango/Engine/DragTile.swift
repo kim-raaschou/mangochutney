@@ -7,7 +7,7 @@ package struct DragTile {
 
 package extension MangoServer {
     func clientBeginDragFloat(_ c: Client, at p: CGPoint) {
-        guard dragTile == nil, !c.isFloating, let m = c.mon,
+        guard dragTile == nil, !c.isfloating, let m = c.mon,
               tiledClients(m).contains(where: { $0 === c }) else { return }
         dragTile = DragTile(client: c, floatBackup: c.floatGeom)
         setSizePer(m, c)
@@ -24,7 +24,7 @@ package extension MangoServer {
             }
         }
         c.floatGeom = c.frame
-        c.isFloating = true
+        c.isfloating = true
         arrange(m, .move)
     }
 
@@ -57,9 +57,9 @@ package extension MangoServer {
         if let g = groupBarTargetAt(at: p, except: c) { return (g, .none, g.frame) }
         guard let t = findClosestTiledClient(to: p, except: c), let m = t.mon else { return nil }
         let tiled = tiledClients(m)
-        let isMaster = (tiled.firstIndex { $0 === t } ?? .max) < m.current.settings.nmaster
+        let ismaster = (tiled.firstIndex { $0 === t } ?? .max) < m.current.settings.nmaster
         let (direction, area) = DropArea.clientSetDropArea(layout: m.layout, target: t.geom ?? t.frame, at: p,
-                                                 isMaster: isMaster, tiled: tiled.count,
+                                                 ismaster: ismaster, tiled: tiled.count,
                                                  dwindleSimpleSplit: config.dwindleDropSimpleSplit,
                                                  dwindleSplitRatio: config.dwindleSplitRatio)
         return (t, direction, area)
@@ -85,7 +85,7 @@ package extension MangoServer {
         system.showDropArea(nil, color: config.dropcolor)
         let c = d.client
         c.floatGeom = c.frame
-        c.isCustomSize = true
+        c.iscustomsize = true
     }
 
     func pointerPlaceDragTile(at p: CGPoint) {
@@ -95,14 +95,14 @@ package extension MangoServer {
         let c = d.client
         guard clientByIdAll(c.id) === c else { return }
         if let g = groupBarTargetAt(at: p, except: c) {
-            c.isFloating = false
+            c.isfloating = false
             c.floatGeom = d.floatBackup
             clientGroupJoin(c, into: g)
-            printstatus()
+            printstatus(.arrangge)
             return
         }
         let drop = dropTarget(at: p, except: c)
-        c.isFloating = false
+        c.isfloating = false
         c.floatGeom = d.floatBackup
         // Dropped on another monitor: it joins it (client_set_monitor). The grab's end has
         // done it already; a drag by the app itself (not in mango) has not.
@@ -135,6 +135,6 @@ package extension MangoServer {
         }
         if m.sel != c.id { m.prevsel = m.sel; m.sel = c.id }
         arrange(m, .move)
-        printstatus()
+        printstatus(.arrangge)
     }
 }

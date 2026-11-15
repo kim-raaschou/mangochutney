@@ -169,7 +169,7 @@ final class EngineWriteTests: MangoTestCase {
         let inView = CGRect(x: 12, y: 45, width: 800, height: 600)
         r.app.frames[2] = inView
         hidden.ignoreMovesUntil = 0
-        r.server.mac.windowGeometryChanged(id: 2, frame: inView, resized: false, isFullscreen: nil)
+        r.server.mac.windowGeometryChanged(id: 2, frame: inView, resized: false, isfullscreen: nil)
         r.settle()
         XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame))
         XCTAssertTrue(hidden.parked)
@@ -196,7 +196,7 @@ final class EngineWriteTests: MangoTestCase {
         let writes = r.app.writes.count
         let moved = target.offsetBy(dx: 40, dy: 30)
         r.app.frames[1] = moved
-        r.server.mac.windowGeometryChanged(id: 1, frame: moved, resized: false, isFullscreen: nil)
+        r.server.mac.windowGeometryChanged(id: 1, frame: moved, resized: false, isfullscreen: nil)
         XCTAssertEqual(a.frame, moved, "recorded at once, so the border follows")
         XCTAssertEqual(r.app.writes.count, writes, "not reacted to inside the write's own window")
         r.settle(1.0)
@@ -304,10 +304,10 @@ final class ScratchpadPlaceTests: MangoTestCase {
     func testRestoringAMinimizedWindowForgetsItsPlace() {
         let r = rig()
         let c = r.server.clientByIdAll(2)!
-        c.isCustomSize = true
+        c.iscustomsize = true
         _ = r.server.dispatch(Dispatch(name: "restore_minimized", args: []))
         XCTAssertFalse(c.isInScratchpad)
-        XCTAssertFalse(c.isCustomSize, "as mango, for whichever window it restores")
+        XCTAssertFalse(c.iscustomsize, "as mango, for whichever window it restores")
     }
 
     func testAScratchpadTakenOutIsSizedAnew() {
@@ -316,7 +316,7 @@ final class ScratchpadPlaceTests: MangoTestCase {
         let c = r.server.clientByIdAll(2)!
         _ = r.server.dispatch(Dispatch(name: "movewin", args: ["-100", "-50"]), target: c)
         _ = r.server.dispatch(Dispatch(name: "restore_minimized", args: []), target: c)
-        XCTAssertFalse(c.isCustomSize, "out of the scratchpad")
+        XCTAssertFalse(c.iscustomsize, "out of the scratchpad")
         r.server.clientFocus(c, true)
         _ = r.server.dispatch(Dispatch(name: "minimized", args: []))
         toggle(r)

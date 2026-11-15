@@ -227,7 +227,7 @@ public final class ScrollerState {
             }
         }
         func horizontalScrollAdjustFullandmax(_ c: LayoutClient, _ r: inout IRect) {
-            if c.isFullscreen {
+            if c.isfullscreen {
                 r.h = mon.h; r.w = mon.w; r.y = mon.y
             } else if c.isMaximized {
                 r.h = m.h - 2 * g.ov; r.w = m.w - 2 * g.oh; r.y = m.y + g.ov
@@ -237,7 +237,7 @@ public final class ScrollerState {
         }
 
         let head0 = heads[0][0]
-        if nHeads == 1 && !pt.scrollerIgnoreProportionSingle && !head0.isFullscreen && !head0.isMaximized {
+        if nHeads == 1 && !pt.scrollerIgnoreProportionSingle && !head0.isfullscreen && !head0.isMaximized {
             let single = Float(head0.scrollerProportionSingle ?? pt.scrollerDefaultProportionSingle)
             var r = IRect(0, 0, 0, m.h - 2 * g.ov)
             r.w = Int(Float(m.w - 2 * g.oh) * single)
@@ -257,7 +257,7 @@ public final class ScrollerState {
         let root = heads[fi][0]
         var rootGeom = IRect(root.currentFrame)
         if let req = centerRequest, heads[fi].contains(where: { $0.id == req }),
-           !root.isFullscreen, !root.isMaximized {
+           !root.isfullscreen, !root.isMaximized {
             rootGeom.x = m.x + (m.w - rootGeom.w) / 2
         }
 
@@ -302,7 +302,7 @@ public final class ScrollerState {
 
         var t = IRect(0, 0, width(of: prop(fi)), 0)
         horizontalScrollAdjustFullandmax(root, &t)
-        if root.isFullscreen {
+        if root.isfullscreen {
             t.x = mon.x
         } else if root.isMaximized {
             t.x = m.x + g.oh

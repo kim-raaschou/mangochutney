@@ -148,6 +148,7 @@ public struct Config: Sendable {
     /// them (ConfigPort); the port reads them as fields of its own (Port/Extensions/PortConfig.swift).
     package var port: [String: String] = [:]
 
+    public var vars: [String: String] = [:]
     public var envVars: [(String, String)] = []
     public var exec: [String] = []
     public var execOnce: [String] = []
@@ -156,8 +157,8 @@ public struct Config: Sendable {
     public var mouseBindings: [MouseBinding] = []
     public var axisBindings: [AxisBinding] = []
     public var gestureBindings: [GestureBinding] = []
-    public var windowRules: [WindowRule] = []
-    public var tagRules: [TagRule] = []
+    public var windowRules: [ConfigWinRule] = []
+    public var tagRules: [ConfigTagRule] = []
     public var keymode = "default"
 
     public mutating func overrideConfig() {

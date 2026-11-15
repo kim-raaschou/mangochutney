@@ -88,9 +88,9 @@ final class BorderInsideTheTileTests: MangoTestCase {
         XCTAssertFalse(r.server.clientNoRadiusActive(c), "off: mango's default")
         r.server.config.monocleNoRadius = true
         XCTAssertTrue(r.server.clientNoRadiusActive(c))
-        c.isFloating = true
+        c.isfloating = true
         XCTAssertFalse(r.server.clientNoRadiusActive(c), "a floating window keeps its corners")
-        c.isFloating = false
+        c.isfloating = false
         r.monitor.current.layout = .tile
         XCTAssertFalse(r.server.clientNoRadiusActive(c), "only in monocle")
     }

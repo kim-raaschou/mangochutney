@@ -36,13 +36,13 @@ extension MacWindowSystem {
                 if !resized { server.clientBeginDragFloat(c, at: pointer) }
             }
             if resized { userDrag?.resized = true }
-            if c.isFloating { c.floatGeom = actual; c.isCustomSize = true }
+            if c.isfloating { c.floatGeom = actual; c.iscustomsize = true }
             c.frame = actual
             server.updateBorders(animating: [c.id: actual])
             if server.dragTile?.client === c { server.updateDragTile(at: pointer) }
             return
         }
-        if c.isFloating {
+        if c.isfloating {
             c.floatGeom = actual
             c.frame = actual
             server.updateBorders()
@@ -73,13 +73,13 @@ extension MacWindowSystem {
             if !server.config.dragTileToTile {
                 if let cm = c.mon { server.arrange(cm, .none) }
                 server.applyWindowSnap(c)
-                server.printstatus()
+                server.printstatus(.arrangge)
             }
             return
         }
-        if c.isFloating {
+        if c.isfloating {
             c.floatGeom = actual
-            c.isCustomSize = true
+            c.iscustomsize = true
             c.frame = actual
             if let target = server.monitorAtPoint(actual.center), target !== m {
                 server.clientSetMonitor(c, target, 0, focus: true)
@@ -98,6 +98,6 @@ extension MacWindowSystem {
         }
         c.frame = actual
         server.arrange(m, .move)
-        server.printstatus()
+        server.printstatus(.arrangge)
     }
 }

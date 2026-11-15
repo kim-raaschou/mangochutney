@@ -54,9 +54,9 @@ final class BorderResizeTests: MangoTestCase {
 
     func testNoStripInTheOverviewOrFullscreen() {
         let (r, a, _) = sideBySide()
-        a.isFullscreen = true
+        a.isfullscreen = true
         XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.id, 496, 400), [])
-        a.isFullscreen = false
+        a.isfullscreen = false
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
         XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.id, 496, 400), [])
     }
@@ -200,9 +200,9 @@ final class BorderResizeTests: MangoTestCase {
     func testTheSavedLayoutKeepsFloatingInTheOverview() {
         let (r, c) = floating()
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
-        XCTAssertFalse(c.isFloating)
+        XCTAssertFalse(c.isfloating)
         let saved = r.server.mac.memory.currentLayout(r.server).windows.first { $0.id == c.id }
-        XCTAssertEqual(saved?.isFloating, true)
+        XCTAssertEqual(saved?.isfloating, true)
     }
 
     func testTheTapTakesTheLeftPressOnTheStrip() {

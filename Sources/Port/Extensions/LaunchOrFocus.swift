@@ -45,7 +45,7 @@ extension MangoServer {
         let monitorIndex = { (c: Client) in self.monitors.firstIndex { $0 === c.mon } ?? Int.max }
         return clientsAll
             .filter { c in
-                !c.isMinimized && c.tags & TagMask.special == 0
+                !c.isminimized && c.tags & TagMask.special == 0
                     && (c.appid.lowercased() == key || c.appName.lowercased() == key)
             }
             .sorted { a, b in

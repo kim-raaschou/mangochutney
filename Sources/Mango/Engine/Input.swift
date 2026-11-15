@@ -105,7 +105,7 @@ package extension MangoServer {
             return mon.ovCards.first { $0.value.contains(p) }.flatMap { clientByIdAll($0.key) }
         }
         let vis = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon)).filter { !$0.parked }
-        if let f = vis.first(where: { ($0.isFloating || $0.scratchpadShown) && clientGeom($0).contains(p) }) { return f }
+        if let f = vis.first(where: { ($0.isfloating || $0.scratchpadShown) && clientGeom($0).contains(p) }) { return f }
         if let s = mon.sel.flatMap({ clientByIdAll($0) }), vis.contains(where: { $0 === s }), clientGeom(s).contains(p) { return s }
         return vis.first { clientGeom($0).contains(p) }
     }
@@ -148,7 +148,7 @@ package extension MangoServer {
             if let bar, !bar.isTab, button == 0, let tc = clientByIdAll(bar.client) {
                 if bar.onClose { pendingKillClient(tc); return true }
                 clientHandleDecorateClick(tc, isTab: false)
-                if !tc.isFullscreen && !tc.isMaximizeScreen { groupBarDrag = (tc, p) }
+                if !tc.isfullscreen && !tc.ismaximizescreen { groupBarDrag = (tc, p) }
                 return true
             }
             if let bar, bar.isTab, button == 1, config.monocleRightButtonClose, let tc = clientByIdAll(bar.client) {
@@ -178,10 +178,10 @@ package extension MangoServer {
             startDragWindow = false
             dragTile = nil
             system.showDropArea(nil, color: config.dropcolor)
-            g.client.isFloating = false
+            g.client.isfloating = false
             g.client.floatGeom = d.floatBackup
             clientGroupJoin(g.client, into: target)
-            printstatus()
+            printstatus(.arrangge)
             return true
         }
         if let g = grab {
@@ -194,9 +194,9 @@ package extension MangoServer {
     @discardableResult
     func pointerBeginMoveResize(_ c: Client?, _ mode: Grab.Mode, at p: CGPoint, edge: WlrEdges = []) -> Bool {
         guard grab == nil else { return false }
-        guard let c, !c.isFullscreen, !c.isMaximizeScreen else { return false }
+        guard let c, !c.isfullscreen, !c.ismaximizescreen else { return false }
         system.cancelAnimation(c.id)   // not in mango: the port's side
-        if mode == .move && !c.isFloating { clientBeginDragFloat(c, at: p) }
+        if mode == .move && !c.isfloating { clientBeginDragFloat(c, at: p) }
         let start = c.frame
         var g = Grab(client: c, mode: mode, startMouse: p, startFrame: start)
         g.isBorderResize = !edge.isEmpty
@@ -205,7 +205,7 @@ package extension MangoServer {
         case .move:
             system.setCursor("grab")
         case .resize:
-            if c.isFloating || c.scratchpadShown {
+            if c.isfloating || c.scratchpadShown {
                 var resizeEdge = edge
                 if resizeEdge.isEmpty {
                     let geom = clientGeom(c)
@@ -268,7 +268,7 @@ package extension MangoServer {
         clientSetMonitor(c, target, 0, focus: true)
         if !c.isVisible(on: target) { c.tags = target.tagset[target.seltags] }
         let sel = target.sel.flatMap { clientByIdAll($0) }
-        target.prevsel = sel.map { !$0.isFloating && !$0.isMinimized && !$0.isMaximizeScreen && !$0.isFullscreen && !$0.isUnglobal } == true ? sel?.id : nil
+        target.prevsel = sel.map { !$0.isfloating && !$0.isminimized && !$0.ismaximizescreen && !$0.isfullscreen && !$0.isunglobal } == true ? sel?.id : nil
         target.sel = c.id
         grab = nil
         // not in mango: of pointer_process_motion(0, …) only its resize cursor
@@ -277,16 +277,16 @@ package extension MangoServer {
         startDragWindow = false
         if dragTile?.client === c {
             dropDraggedTile(at: p)
-            if config.dragTileToTile { printstatus(); return }
+            if config.dragTileToTile { printstatus(.arrangge); return }
         }
         arrange(target, g.mode == .resize ? .none : .move)
         if !borderResize || moved { applyWindowSnap(c) }
-        printstatus()
+        printstatus(.arrangge)
     }
 
     func toggleHotarea(_ p: CGPoint) {
         guard let m = selectedMonitor, grab == nil else { return }
-        if config.hotareaDisableOnFullscreen, let f = focused, f.isFullscreen, f.isVisible(on: m) {
+        if config.hotareaDisableOnFullscreen, let f = focused, f.isfullscreen, f.isVisible(on: m) {
             m.isInHotarea = false
             return
         }
@@ -310,7 +310,7 @@ package extension MangoServer {
 
     func pointerConfineRuleClient() -> Client? {
         guard let c = focused, c.confinePointer, let m = c.mon, !m.isoverview,
-              !c.isMinimized, c.isVisible(on: m) else { return nil }
+              !c.isminimized, c.isVisible(on: m) else { return nil }
         return c
     }
 
@@ -342,7 +342,7 @@ package extension MangoServer {
             pointerCursorActivity()
             if config.sloppyfocus, let m = monitorAtPoint(p), m !== selectedMonitor {
                 selectedMonitor = m
-                printstatus()
+                printstatus([.monitor, .allMonitors])
             }
         }
         if let d = groupBarDrag {
@@ -365,15 +365,15 @@ package extension MangoServer {
             switch g.mode {
             case .move:
                 let f = g.startFrame.offsetBy(dx: p.x - g.startMouse.x, dy: p.y - g.startMouse.y)
-                c.isCustomSize = true
+                c.iscustomsize = true
                 c.floatGeom = f
                 updateDragTile(at: p)
                 c.frame = f
                 system.setFrame(c, f, size: false)
                 updateBorders(animating: [c.id: f])
             case .resize:
-                if c.isFloating || c.scratchpadShown {
-                    c.isCustomSize = true
+                if c.isfloating || c.scratchpadShown {
+                    c.iscustomsize = true
                     // not in mango: one resize per refresh interval stands for frame_serial (macOS gives no frame events)
                     if let m = c.mon, m.lastResizeTime == 0 || time &- m.lastResizeTime >= dragRefreshIntervalMs(m) {
                         m.lastResizeTime = time
@@ -395,7 +395,7 @@ package extension MangoServer {
         guard config.sloppyfocus, system.mouseButtons == 0 else { return p }
         guard let m = monitorAtPoint(p), let c = clientAtPoint(p, on: m) else { return p }
         let inside = m.screen.frame.contains(c.frame)
-        let scrollTiled = !c.isFloating && !c.isMinimized && !c.isUnglobal
+        let scrollTiled = !c.isfloating && !c.isminimized && !c.isunglobal
         if inside || !scrollTiled { scrollerFocusLock = false }
         if scrollerFocusLock && !inside { return p }
         let offEdge = scrollTiled && m.layout.isScroller && !inside
@@ -492,17 +492,17 @@ package extension MangoServer {
 
     /// mango ISTILED (client.h).
     static func isTiled(_ c: Client) -> Bool {
-        !c.isFloating && !c.isMinimized && !c.isMaximizeScreen && !c.isFullscreen && !c.isUnglobal
+        !c.isfloating && !c.isminimized && !c.ismaximizescreen && !c.isfullscreen && !c.isunglobal
     }
 
     /// mango ISSCROLLTILED (client.h).
     static func isScrollTiled(_ c: Client) -> Bool {
-        !c.isFloating && !c.isMinimized && !c.isUnglobal
+        !c.isfloating && !c.isminimized && !c.isunglobal
     }
 
     func clientResizeEdgeAt(_ c: Client, _ surface: ClientID?, _ x: CGFloat, _ y: CGFloat) -> WlrEdges {
         if c.parked { return [] }   // not in mango: c->scene->node.enabled is the port's parked
-        if c.isFullscreen || c.isMaximizeScreen || c.overviewIsMaximizeScreenBak || c.overviewIsFullscreenBak { return [] }
+        if c.isfullscreen || c.ismaximizescreen || c.overviewIsmaximizescreenbak || c.overviewIsfullscreenbak { return [] }
         /* A popup or any other child surface sitting on the border grab strip
          * must keep receiving its own input instead of resizing the parent. */
         if let surface, surface != c.id { return [] }
@@ -523,7 +523,7 @@ package extension MangoServer {
         if y < g.minY + t { edge.insert(.top) }
         if y >= g.minY + g.height - t { edge.insert(.bottom) }
 
-        if !edge.isEmpty && !c.isFloating {
+        if !edge.isEmpty && !c.isfloating {
             if !Self.isTiled(c) { return [] }
             edge = tiledSharedEdges(c, edge)
         }
@@ -545,7 +545,7 @@ package extension MangoServer {
             edge = clientResizeEdgeAt(c, surface(), p.x, p.y)
         }
 
-        let floating = !edge.isEmpty && c?.isFloating == true
+        let floating = !edge.isEmpty && c?.isfloating == true
         let changed = edge != hoverResizeEdge || floating != hoverResizeFloating
         let previous = hoverResizeEdge
         if changed {

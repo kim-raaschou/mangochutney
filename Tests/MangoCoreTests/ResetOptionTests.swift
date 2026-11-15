@@ -49,7 +49,7 @@ final class ResetOptionTests: MangoTestCase {
     func testTheTagRulesAreReappliedAfterTheMasterReset() {
         let r = EngineRig()
         r.server.config.defaultMfact = 0.55
-        var rule = TagRule()
+        var rule = ConfigTagRule()
         rule.id = 2
         rule.masterFactor = 0.7
         r.server.config.tagRules = [rule]

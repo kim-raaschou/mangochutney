@@ -4,7 +4,7 @@ import CoreGraphics
 public enum DropDirection: Sendable { case none, left, right, up, down }
 
 public enum DropArea {
-    public static func clientSetDropArea(layout: LayoutKind, target: CGRect, at p: CGPoint, isMaster: Bool, tiled: Int,
+    public static func clientSetDropArea(layout: LayoutKind, target: CGRect, at p: CGPoint, ismaster: Bool, tiled: Int,
                                dwindleSimpleSplit: Bool, dwindleSplitRatio: Double) -> (DropDirection, CGRect) {
         let w = Int(target.width), h = Int(target.height)
         let x0 = Int(target.minX), y0 = Int(target.minY)
@@ -24,13 +24,13 @@ public enum DropArea {
             let a = Int(Float(h) * ratio)
             return relY < Double(h) * 0.5 ? (.up, box(0, 0, w, a)) : (.down, box(0, a, w, h - a))
         case .tile, .deck, .centerTile, .rightTile:
-            if isMaster {
+            if ismaster {
                 if tiled == 1 { return relX < Double(w) * 0.5 ? leftHalf : rightHalf }
                 return whole
             }
             return relY < Double(h) * 0.5 ? topHalf : bottomHalf
         case .verticalTile, .verticalDeck:
-            if isMaster {
+            if ismaster {
                 if tiled == 1 { return relY < Double(h) * 0.5 ? topHalf : bottomHalf }
                 return whole
             }

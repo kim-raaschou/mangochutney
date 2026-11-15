@@ -21,7 +21,7 @@ final class OverviewTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1), g = r.window(2, tags: 1 << 1), off = r.window(3, tags: 1 << 2)
         let s = r.window(4, tags: TagMask.special)
-        g.isGlobal = true
+        g.isglobal = true
         r.server.arrange(r.monitor)
         d(r, "toggleoverview", ["1"])
         XCTAssertTrue(r.monitor.isoverview)
@@ -78,7 +78,7 @@ final class OverviewTests: MangoTestCase {
         let dialog = r.window(2, floating: true, frame: CGRect(x: 300, y: 300, width: 400, height: 300))
         r.server.arrange(r.monitor)
         d(r, "toggleoverview")
-        XCTAssertTrue(dialog.isFloating)
+        XCTAssertTrue(dialog.isfloating)
         XCTAssertEqual(dialog.floatGeom.size, CGSize(width: 400, height: 300))
     }
 

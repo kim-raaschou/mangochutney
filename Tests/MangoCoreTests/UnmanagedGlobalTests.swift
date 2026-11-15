@@ -12,7 +12,7 @@ final class UnmanagedGlobalTests: MangoTestCase {
         r.window(b)
         let petFrame = CGRect(x: 1500, y: 900, width: 120, height: 90)
         let u = r.window(pet, frame: petFrame)
-        u.isUnglobal = true
+        u.isunglobal = true
         r.server.arrange(r.monitor, .none)
         r.settle()
         XCTAssertEqual(r.server.tiledClients(r.monitor).map(\.id), [a, b], "not a tile")
@@ -31,7 +31,7 @@ final class UnmanagedGlobalTests: MangoTestCase {
         let r = EngineRig()
         let w = r.window(a)
         let u = r.window(pet)
-        u.isUnglobal = true
+        u.isunglobal = true
         XCTAssertTrue(r.server.clientFocusTop(r.monitor) === w)
     }
 
@@ -63,11 +63,11 @@ final class UnmanagedGlobalTests: MangoTestCase {
     func testFullscreenAndHiddenAreAwayUntilBothAreOver() {
         let r = EngineRig()
         let c = r.map(a)
-        r.server.mac.windowGeometryChanged(id: a, frame: c.frame, resized: false, isFullscreen: true)
+        r.server.mac.windowGeometryChanged(id: a, frame: c.frame, resized: false, isfullscreen: true)
         XCTAssertNil(r.server.clientByIdAll(a))
         r.server.mac.appHidden(pid: c.pid, hidden: true)
         XCTAssertEqual(r.server.mac.away[a]?.reasons, [.fullscreen, .hidden])
-        r.server.mac.windowGeometryChanged(id: a, frame: c.frame, resized: false, isFullscreen: false)
+        r.server.mac.windowGeometryChanged(id: a, frame: c.frame, resized: false, isfullscreen: false)
         XCTAssertNil(r.server.clientByIdAll(a), "still hidden")
         r.server.mac.appHidden(pid: c.pid, hidden: false)
         XCTAssertTrue(r.server.clientByIdAll(a) === c)
@@ -78,7 +78,7 @@ final class UnmanagedGlobalTests: MangoTestCase {
         r.server.mac.windowDiscovered(DiscoveredWindow(
             id: a, pid: getpid(), element: r.app.element(for: a), bundleId: "test", appName: "Test", title: "t",
             subrole: "AXStandardWindow", isDialog: false, frame: CGRect(x: 100, y: 100, width: 800, height: 600),
-            isMinimized: true, isFullscreen: false, isAppHidden: false))
+            isminimized: true, isfullscreen: false, isAppHidden: false))
         XCTAssertNil(r.server.clientByIdAll(a))
         r.server.mac.windowMinimized(id: a, minimized: false)
         XCTAssertNotNil(r.server.clientByIdAll(a))

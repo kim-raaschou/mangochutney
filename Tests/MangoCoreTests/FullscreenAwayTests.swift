@@ -18,7 +18,7 @@ final class FullscreenAwayTests: MangoTestCase {
 
     func geometry(_ r: EngineRig, _ id: ClientID, fullscreen: Bool?, frame: CGRect? = nil) {
         let f = frame ?? r.server.clientByIdAll(id)?.frame ?? r.server.mac.away[id]?.client.frame ?? .zero
-        r.server.mac.windowGeometryChanged(id: id, frame: f, resized: true, isFullscreen: fullscreen)
+        r.server.mac.windowGeometryChanged(id: id, frame: f, resized: true, isfullscreen: fullscreen)
     }
 
     func testComingBackFromFullscreenTakesItsPlaceAndTheAppsFocus() {

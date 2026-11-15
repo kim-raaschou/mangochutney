@@ -20,12 +20,12 @@ final class WindowMemory {
     func leaving(_ server: MangoServer, _ c: Client, group: [ClientID], groupFocus: ClientID?, order: [ClientID]) {
         let snapshot = departed.orderSnapshot(leaving: c.id, order: order)
         departed.remember(c.id, DepartedWindow(
-            tags: c.tags, displayID: c.mon?.screen.displayID, isFloating: Self.isFloating(c), isGlobal: c.isGlobal,
-            isOverlay: c.isOverlay, isMinimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
-            isNamedScratchpad: c.isNamedScratchpad, floatFrame: c.floatGeom,
+            tags: c.tags, displayID: c.mon?.screen.displayID, isfloating: Self.isfloating(c), isglobal: c.isglobal,
+            isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
+            isnamedscratchpad: c.isnamedscratchpad, floatFrame: c.floatGeom,
             scrollerProportion: c.scrollerProportion, orderSnapshot: snapshot, at: CACurrentMediaTime(),
             bundleId: c.bundleId, homeDisplayID: c.oldmonname,
-            isCustomSize: c.isCustomSize))
+            iscustomsize: c.iscustomsize))
         departed.rememberGroup(DepartedGroup(members: group, focus: groupFocus))
     }
 
@@ -54,28 +54,28 @@ final class WindowMemory {
         if let m = focus.mon { server.arrange(m) }
     }
 
-    static func isFloating(_ c: Client) -> Bool {
-        c.overviewBackupGeom != nil ? c.overviewIsFloatingBak : c.isFloating
+    static func isfloating(_ c: Client) -> Bool {
+        c.overviewBackupGeom != nil ? c.overviewIsfloatingbak : c.isfloating
     }
 
     func currentLayout(_ server: MangoServer) -> SavedLayout {
         var windows: [SavedLayout.Window] = server.clientsAll.map { c in
             // Port extension: chutney_fullscreen_tag saves a window on its own tags, not its F tag.
             SavedLayout.Window(id: c.id, bundleId: c.bundleId, tags: FullscreenTag.savedTags(server, c), displayID: c.mon?.screen.displayID,
-                               homeDisplayID: c.oldmonname, isFloating: Self.isFloating(c), isGlobal: c.isGlobal,
-                               isOverlay: c.isOverlay, isMinimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
-                               isNamedScratchpad: c.isNamedScratchpad, floatFrame: c.floatGeom,
+                               homeDisplayID: c.oldmonname, isfloating: Self.isfloating(c), isglobal: c.isglobal,
+                               isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: c.scratchpadShown,
+                               isnamedscratchpad: c.isnamedscratchpad, floatFrame: c.floatGeom,
                                scrollerProportion: c.scrollerProportion, orderSnapshot: nil,
-                               isCustomSize: c.isCustomSize)
+                               iscustomsize: c.iscustomsize)
         }
         for (id, d) in departed.entries where server.clientByIdAll(id) == nil {
             windows.append(SavedLayout.Window(id: id, bundleId: d.bundleId, tags: d.tags, displayID: d.displayID,
-                                              homeDisplayID: d.homeDisplayID, isFloating: d.isFloating,
-                                              isGlobal: d.isGlobal, isOverlay: d.isOverlay, isMinimized: d.isMinimized,
-                                              isScratchpad: d.isScratchpad, isNamedScratchpad: d.isNamedScratchpad,
+                                              homeDisplayID: d.homeDisplayID, isfloating: d.isfloating,
+                                              isglobal: d.isglobal, isoverlay: d.isoverlay, isminimized: d.isminimized,
+                                              isScratchpad: d.isScratchpad, isnamedscratchpad: d.isnamedscratchpad,
                                               floatFrame: d.floatFrame,
                                               scrollerProportion: d.scrollerProportion, orderSnapshot: d.orderSnapshot,
-                                              isCustomSize: d.isCustomSize))
+                                              iscustomsize: d.iscustomsize))
         }
         windows.sort { $0.id < $1.id }
         var tagsets: [String: UInt32] = [:]

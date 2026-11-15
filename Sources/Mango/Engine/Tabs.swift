@@ -12,14 +12,14 @@ package extension MangoServer {
     func tabLayoutActive(_ m: Monitor) -> Bool { !m.isoverview && tabLayoutEnabled(m) }
 
     func tabStateOk(_ c: Client) -> Bool {
-        guard c.mon != nil, !c.isMinimized else { return false }
-        return !c.isFloating && !c.isUnglobal && !c.isInScratchpad
+        guard c.mon != nil, !c.isminimized else { return false }
+        return !c.isfloating && !c.isunglobal && !c.isInScratchpad
     }
 
     func tabIsStackCandidate(_ m: Monitor, _ target: Client) -> Bool {
         if m.layout == .monocle { return true }
         if m.layout != .deck && m.layout != .verticalDeck { return false }
-        return !target.isMaster
+        return !target.ismaster
     }
 
     // not in mango: the tab chain of the tags in view, as tab_member_kept keeps it (mango links it per window)
@@ -55,7 +55,7 @@ package extension MangoServer {
     }
 
     func mangoBarDecorationApplyConfig(_ set: DecorateStyle, mango: DecorateStyle) -> DecorateStyle {
-        set.setValueDefault(from: mango)
+        set.filled(from: mango)
     }
 
     func topBars(_ c: Client, tabMember: Bool) -> CGFloat {
@@ -63,7 +63,7 @@ package extension MangoServer {
     }
 
     func clientCheckTabNodeVisible(_ c: Client, on m: Monitor) -> Bool {
-        clientWantsGroupBar(c) && !m.isoverview && !c.isFullscreen && !c.parked && c.isVisible(on: m)
+        clientWantsGroupBar(c) && !m.isoverview && !c.isfullscreen && !c.parked && c.isVisible(on: m)
     }
 
     // not in mango: client_set_clip's client_draw_group_bar and client_draw_tabbar for every client at once
@@ -142,7 +142,7 @@ package extension MangoServer {
     func clientDrawTabbar(_ c: Client, _ offsets: CGRect, animating: [ClientID: CGRect]) -> TabStrip? {
         guard let m = c.mon, c.isTabFocus else { return nil }
         let members = tabMembers(m)
-        guard tabLayoutActive(m), !c.isFullscreen, !c.isMaximizeScreen else { return nil }
+        guard tabLayoutActive(m), !c.isfullscreen, !c.ismaximizescreen else { return nil }
         let count = members.count
         if count < 2 { return nil }
         var anchor = animationCurrent(c, animating: animating)

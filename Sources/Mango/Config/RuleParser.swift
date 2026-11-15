@@ -1,56 +1,38 @@
 import Foundation
 
+// not in mango: parse_option's window_rule and tag_rule branches, apart from it; `errors`, where
+// mango_error prints
 public enum RuleParser {
-/// Not in mango: parse_option's window_rule and tag_rule branches, apart for its two callers.
-    public static func parseWindowRule(_ value: String, once: Bool) -> Result<WindowRule, String> {
-        let (rule, errors) = parseWindowRuleLenient(value, once: once)
-        if let first = errors.first { return .failure(first) }
-        return .success(rule)
-    }
-
-    public static func parseTagRule(_ value: String) -> Result<TagRule, String> {
-        let (rule, errors) = parseTagRuleLenient(value)
-        if let first = errors.first { return .failure(first) }
-        return .success(rule)
-    }
-
-    static func parseWindowRuleLenient(_ value: String, once: Bool) -> (WindowRule, [String]) {
-        let (rule, errors, _) = parseWindowRuleChecked(value, once: once)
-        return (rule, errors)
-    }
-
-    static func parseWindowRuleChecked(_ value: String, once: Bool) -> (WindowRule, [String], keep: Bool) {
-        var keep = true
-        var rule = WindowRule()
+    /// The rule (nil where mango does not count it) and parse_option's result.
+    static func parseWindowRule(_ value: String, once: Bool, errors: inout [String]) -> (ConfigWinRule?, Bool) {
+        var rule = ConfigWinRule()
         rule.once = once
-        var errors: [String] = []
+        var parseError = false
 
         for (key, val) in tokens(value) {
-            func flag(_ apply: (Bool) -> Void) {
-                if let n = ValueParse.int(val) { apply(n != 0) } else { errors.append("Invalid value for window rule option \(key): \(val)") }
+            // not in mango: nil for a negative value, mango's unset -1
+            func flag(_ apply: (Bool?) -> Void) {
+                let n = ValueParse.atoi(val)
+                apply(n >= 0 ? n != 0 : nil)
             }
-            func number(_ apply: (Double) -> Void) {
-                if let d = ValueParse.double(val) { apply(d) } else { errors.append("Invalid value for window rule option \(key): \(val)") }
-            }
-            func integer(_ apply: (Int) -> Void) {
-                if let n = ValueParse.int(val) { apply(n) } else { errors.append("Invalid value for window rule option \(key): \(val)") }
-            }
+            func number(_ apply: (Double) -> Void) { apply(ValueParse.atof(val)) }
+            func integer(_ apply: (Int) -> Void) { apply(ValueParse.atoi(val)) }
             func anim(_ apply: (AnimationType) -> Void) {
                 guard !val.isEmpty else { return }
                 apply(animationTypeFromString(val))
             }
 
             switch key {
-            case "app_id": rule.appId = val.isEmpty ? nil : val
-            case "title": rule.title = val.isEmpty ? nil : val
-            case "is_floating": flag { rule.isFloating = $0 }
-            case "is_fullscreen": flag { rule.isFullscreen = $0 }
-            case "is_fake_fullscreen": flag { rule.isFakeFullscreen = $0 }
-            case "is_global": flag { rule.isGlobal = $0 }
-            case "is_overlay": flag { rule.isOverlay = $0 }
-            case "is_open_silent": flag { rule.isOpenSilent = $0 }
-            case "is_tag_silent": flag { rule.isTagSilent = $0 }
-            case "is_named_scratchpad": flag { rule.isNamedScratchpad = $0 }
+            case "app_id": rule.appId = val
+            case "title": rule.title = val
+            case "is_floating": flag { rule.isfloating = $0 }
+            case "is_fullscreen": flag { rule.isfullscreen = $0 }
+            case "is_fake_fullscreen": flag { rule.isfakefullscreen = $0 }
+            case "is_global": flag { rule.isglobal = $0 }
+            case "is_overlay": flag { rule.isoverlay = $0 }
+            case "is_open_silent": flag { rule.isopensilent = $0 }
+            case "is_tag_silent": flag { rule.istagsilent = $0 }
+            case "is_named_scratchpad": flag { rule.isnamedscratchpad = $0 }
             case "is_unmanaged_global": flag { rule.isUnmanagedGlobal = $0 }
             case "is_term": flag { rule.isTerm = $0 }
             case "no_swallow": flag { rule.noSwallow = $0 }
@@ -84,80 +66,70 @@ public enum RuleParser {
             case "ignore_minimize": flag { rule.ignoreMinimize = $0 }
             case "force_tiled_state": flag { rule.forceTiledState = $0 }
             case "global_key_binding":
-                guard let dash = val.firstIndex(of: "-"), dash != val.startIndex else {
+                guard let dash = val.firstIndex(of: "-"), dash != val.startIndex,
+                      let keyStart = val[val.index(after: dash)...].firstIndex(where: { !$0.isWhitespace }) else {
                     errors.append("Invalid globalkeybinding: \(mangoHighlight(val))")
-                    keep = false
-                    continue
+                    return (nil, false)
                 }
-                let modStr = String(val[..<dash]).trimmingCharacters(in: .whitespaces)
-                let keyStr = String(val[val.index(after: dash)...]).trimmingCharacters(in: .whitespaces)
-                if Modifiers.parse(modStr) == nil {
-                    errors.append("Unknown modifier: \(mangoHighlight(modStr))")
-                    keep = false
-                } else if keyStr.isEmpty || (ConfigParser.port?.keyCodes(keyStr) ?? []).isEmpty {   // the boundary: xkb's keymap
-                    errors.append("Unknown key: \(mangoHighlight(keyStr))")
-                    keep = false
-                } else {
-                    rule.globalKeyBinding = val
-                }
+                let modStr = ConfigParser.trimWhitespace(val[..<dash])
+                let keyStr = String(val[keyStart...].prefix { !$0.isWhitespace })
+                let mods = Modifiers.parse(modStr) { errors.append($0) }
+                let keyKnown = !(ConfigParser.port?.keyCodes(keyStr) ?? []).isEmpty   // the boundary: xkb's keymap
+                if !keyKnown { errors.append("Unknown key: \(mangoHighlight(keyStr))") }
+                if mods == nil || !keyKnown { return (nil, false) }
+                rule.globalKeyBinding = val
             default:
                 if !(ConfigParser.port?.knowsWindowRuleField(key) ?? false) {   // the port's: not in mango
                     errors.append("Unknown window rule option:\(mangoHighlight(key))")
+                    parseError = true
                 }
             }
         }
-        return (rule, errors, keep)
+        return (rule, !parseError)
     }
 
-    static func parseTagRuleLenient(_ value: String) -> (TagRule, [String]) {
-        var rule = TagRule()
+    /// The rule, which mango always counts, and parse_option's result.
+    static func parseTagRule(_ value: String, errors: inout [String]) -> (ConfigTagRule, Bool) {
+        var rule = ConfigTagRule()
         rule.id = 0
-        var errors: [String] = []
+        var parseError = false
 
         func clampI(_ v: Int, _ lo: Int, _ hi: Int) -> Int { min(max(v, lo), hi) }
         func clampD(_ v: Double, _ lo: Double, _ hi: Double) -> Double { min(max(v, lo), hi) }
 
         for (key, val) in tokens(value) {
-            let bad = "Invalid value for tag rule option \(key): \(val)"
             switch key {
-            case "id":
-                if val == "*" { rule.id = nil }
-                else if let n = ValueParse.int(val) { rule.id = clampI(n, 0, 31) }
-                else { errors.append(bad) }
-            case "layout_name":
-                rule.layoutName = val
+            case "id": rule.id = val == "*" ? nil : clampI(ValueParse.atoi(val), 0, 31)
+            case "layout_name": rule.layoutName = val
             case "monitor_name": rule.monitorName = val
             case "monitor_make": rule.monitorMake = val
             case "monitor_model": rule.monitorModel = val
             case "monitor_serial": rule.monitorSerial = val
-            case "no_render_border":
-                if let n = ValueParse.int(val) { rule.noRenderBorder = n != 0 } else { errors.append(bad) }
-            case "open_as_floating":
-                if let n = ValueParse.int(val) { rule.openAsFloating = n != 0 } else { errors.append(bad) }
-            case "no_hide":
-                if let n = ValueParse.int(val) { rule.noHide = n != 0 } else { errors.append(bad) }
-            case "master_count":
-                if let n = ValueParse.int(val) { rule.masterCount = clampI(n, 1, 99) } else { errors.append(bad) }
-            case "master_factor":
-                if let d = ValueParse.double(val) { rule.masterFactor = clampD(d, 0.1, 0.9) } else { errors.append(bad) }
+            case "no_render_border": rule.noRenderBorder = ValueParse.atoi(val) > 0
+            case "open_as_floating": rule.openAsFloating = ValueParse.atoi(val) > 0
+            case "no_hide": rule.noHide = ValueParse.atoi(val) > 0
+            case "master_count": rule.masterCount = clampI(ValueParse.atoi(val), 1, 99)
+            case "master_factor": rule.masterFactor = clampD(ValueParse.atof(val), 0.1, 0.9)
             case "scroller_default_proportion":
-                if let d = ValueParse.double(val) { rule.scrollerDefaultProportion = clampD(d, 0, 1) } else { errors.append(bad) }
+                rule.scrollerDefaultProportion = clampD(ValueParse.atof(val), 0, 1)
             case "scroller_default_proportion_single":
-                if let d = ValueParse.double(val) { rule.scrollerDefaultProportionSingle = clampD(d, 0, 1) } else { errors.append(bad) }
+                rule.scrollerDefaultProportionSingle = clampD(ValueParse.atof(val), 0, 1)
             case "scroller_ignore_proportion_single":
-                if let n = ValueParse.int(val) { rule.scrollerIgnoreProportionSingle = n != 0 } else { errors.append(bad) }
+                rule.scrollerIgnoreProportionSingle = ValueParse.atoi(val) > 0
             default:
                 errors.append("Unknown tag rule option:\(mangoHighlight(key))")
+                parseError = true
             }
         }
-        return (rule, errors)
+        return (rule, !parseError)
     }
 
+    // not in mango: strtok's tokens split at their first colon, trimmed
     static func tokens(_ value: String) -> [(String, String)] {
         value.split(separator: ",").compactMap { tok in
             guard let colon = tok.firstIndex(of: ":") else { return nil }
-            let k = tok[..<colon].trimmingCharacters(in: .whitespaces)
-            let v = tok[tok.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+            let k = ConfigParser.trimWhitespace(tok[..<colon])
+            let v = ConfigParser.trimWhitespace(tok[tok.index(after: colon)...])
             return (k, v)
         }
     }

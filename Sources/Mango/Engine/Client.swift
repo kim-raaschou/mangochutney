@@ -19,24 +19,24 @@ public final class Client {
     public weak var mon: Monitor?
     public var tags: UInt32
 
-    public var isFloating = false
-    public var isFullscreen = false
-    public var isFakeFullscreen = false
-    public var isMaximizeScreen = false
-    public var isGlobal = false
-    public var isUnglobal = false
+    public var isfloating = false
+    public var isfullscreen = false
+    public var isfakefullscreen = false
+    public var ismaximizescreen = false
+    public var isglobal = false
+    public var isunglobal = false
     public var ignoreMinimize = true
-    public var isOverlay = false
+    public var isoverlay = false
     public var isInScratchpad = false
-    public var oldTags: UInt32 = 0
-    public var isMinimized = false
-    public var scratchpadShown: Bool { isInScratchpad && !isMinimized }
-    public var isNamedScratchpad = false
-    public var isCustomSize = false
-    public var isCustomPos = false
-    public var isOpenSilent = false
-    public var isTagSilent = false
-    public var isUrgent = false
+    public var oldtags: UInt32 = 0
+    public var isminimized = false
+    public var scratchpadShown: Bool { isInScratchpad && !isminimized }
+    public var isnamedscratchpad = false
+    public var iscustomsize = false
+    public var iscustompos = false
+    public var isopensilent = false
+    public var istagsilent = false
+    public var isurgent = false
 
     // not in mango: the display ID, not the output's name (two displays can share a name).
     public var oldmonname: CGDirectDisplayID?
@@ -70,20 +70,20 @@ public final class Client {
     public var animationTypeOpen: AnimationType?
     public var scrollerProportion: CGFloat?
     public var scrollerProportionSingle: CGFloat?
-    public var isCustomScrollerProportion = false
-    public var isCustomScrollerProportionSingle = false
+    public var iscustomScrollerProportion = false
+    public var iscustomScrollerProportionSingle = false
     public var masterSizeWeight: CGFloat = 0
     public var stackSizeWeight: CGFloat = 0
     public var masterInnerPer: CGFloat = 0
     public var stackInnerPer: CGFloat = 0
-    public var isMaster = false
-    public var isLeftStack = false
+    public var ismaster = false
+    public var isleftstack = false
 /// Not in mango: scroller_stack_weight on the window; the port's scroller state holds only the columns.
     public var scrollerStackWeight: CGFloat = 0
     var oldMasterMfactPer: CGFloat = 0
     var oldMasterInnerPer: CGFloat = 0
     var oldStackInnerPer: CGFloat = 0
-    var oldScrollerProportion: CGFloat = 0
+    var oldScrollerPproportion: CGFloat = 0
     var scrollerOldStackProportion: CGFloat = 0
     var oldGridColPer: CGFloat = 0
     var oldGridRowPer: CGFloat = 0
@@ -96,15 +96,15 @@ public final class Client {
 /// Not in mango: without the border (mango's box includes it).
     public var geom: CGRect?
     public var isPendingOpenAnimation = true
-    public var isFloatingBeforeScratchpad = false
+    public var isfloatingBeforeScratchpad = false
     public var overining = false
     public var tagouting = false
     package var action: AnimationAction = .none
     public var scratchpadTagin = false
     public var overviewBackupGeom: CGRect?
-    public var overviewIsFloatingBak = false
-    public var overviewIsFullscreenBak = false
-    public var overviewIsMaximizeScreenBak = false
+    public var overviewIsfloatingbak = false
+    public var overviewIsfullscreenbak = false
+    public var overviewIsmaximizescreenbak = false
     public var jumpChar: Character?
     public var jumpKeycodes = MultiKeycode()
     package var jumpLabelNode: MangoJumpLabel?
@@ -126,8 +126,8 @@ public final class Client {
     public var appid: String { bundleId.isEmpty ? appName : bundleId }
 
     public func isVisible(on m: Monitor) -> Bool {
-        guard mon === m, !groupParked, !isMinimized else { return false }
-        if isGlobal || isUnglobal { return true }
+        guard mon === m, !groupParked, !isminimized else { return false }
+        if isglobal || isunglobal { return true }
         return tags & m.tagset[m.seltags] != 0
     }
 }
@@ -165,6 +165,7 @@ public final class Monitor {
     public var carouselAnimDir = 0
     public var isInHotarea = false
     public var specialEmptyView = false
+    public var hideClients: UInt32 = 0
     public var ovbkCurrentTagset: UInt32 = 0
     public var ovbkPrevTagset: UInt32 = 0
     package var titleMessageBar: MangoBarDecoration?
@@ -219,12 +220,12 @@ public final class Monitor {
             if let ln = r.layoutName, let k = LayoutKind(name: ln) { ruleLayout = k }
             if let v = r.masterCount { p.settings.nmaster = v }
             if let v = r.masterFactor { p.settings.mfact = CGFloat(v) }
-            if let v = r.scrollerDefaultProportion { p.settings.scrollerDefaultProportion = CGFloat(v) }
-            if let v = r.scrollerDefaultProportionSingle { p.settings.scrollerDefaultProportionSingle = CGFloat(v) }
+            if r.scrollerDefaultProportion > 0 { p.settings.scrollerDefaultProportion = CGFloat(r.scrollerDefaultProportion) }
+            if r.scrollerDefaultProportionSingle > 0 { p.settings.scrollerDefaultProportionSingle = CGFloat(r.scrollerDefaultProportionSingle) }
             if let v = r.scrollerIgnoreProportionSingle { p.settings.scrollerIgnoreProportionSingle = v }
-            if let v = r.noRenderBorder { p.noRenderBorder = v }
-            if let v = r.openAsFloating { p.openAsFloating = v }
-            if let v = r.noHide { p.noHide = v }
+            p.noRenderBorder = r.noRenderBorder
+            p.openAsFloating = r.openAsFloating
+            p.noHide = r.noHide
         }
         p.configLayout = ruleLayout ?? .tile
         p.layout = p.configLayout
@@ -250,12 +251,12 @@ public final class Monitor {
                 if let ln = r.layoutName, let k = LayoutKind(name: ln) { ruleLayout = k }
                 if let v = r.masterCount { p.settings.nmaster = v }
                 if let v = r.masterFactor { p.settings.mfact = CGFloat(v) }
-                if let v = r.scrollerDefaultProportion { p.settings.scrollerDefaultProportion = CGFloat(v) }
-                if let v = r.scrollerDefaultProportionSingle { p.settings.scrollerDefaultProportionSingle = CGFloat(v) }
+                if r.scrollerDefaultProportion > 0 { p.settings.scrollerDefaultProportion = CGFloat(r.scrollerDefaultProportion) }
+                if r.scrollerDefaultProportionSingle > 0 { p.settings.scrollerDefaultProportionSingle = CGFloat(r.scrollerDefaultProportionSingle) }
                 if let v = r.scrollerIgnoreProportionSingle { p.settings.scrollerIgnoreProportionSingle = v }
-                if let v = r.noRenderBorder { p.noRenderBorder = v }
-                if let v = r.openAsFloating { p.openAsFloating = v }
-                if let v = r.noHide { p.noHide = v }
+                p.noRenderBorder = r.noRenderBorder
+                p.openAsFloating = r.openAsFloating
+                p.noHide = r.noHide
             }
             let prevConfigLayout = p.configLayout
             p.configLayout = ruleLayout ?? .tile
@@ -264,7 +265,7 @@ public final class Monitor {
         let tagmask = TagMask.mask(forTagNum: config.tagNum)
         for i in 1...max(1, min(config.tagNum, pertag.count - 1)) {
             for c in clients where c.tags & (1 << UInt32(i - 1)) & tagmask != 0
-                && !c.isFloating && !c.isMinimized && !c.isMaximizeScreen && !c.isFullscreen && !c.isUnglobal {
+                && !c.isfloating && !c.isminimized && !c.ismaximizescreen && !c.isfullscreen && !c.isunglobal {
                 // not in mango: this monitor's windows only; mango's gives every window the last monitor's mfact (a mango bug, docs/afvigelser.md §6).
                 guard c.mon === self else { continue }
                 if pertag[i].settings.mfact > 0 { c.masterMfactPer = pertag[i].settings.mfact }

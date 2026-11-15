@@ -67,8 +67,8 @@ public extension AXUIElement {
     var title: String { attribute(kAXTitleAttribute) ?? "" }
     var identifier: String? { attribute(kAXIdentifierAttribute) }
 
-    var isMinimized: Bool { (attribute(kAXMinimizedAttribute) as Bool?) ?? false }
-    var isFullscreen: Bool { (attribute("AXFullScreen") as Bool?) ?? false }
+    var isminimized: Bool { (attribute(kAXMinimizedAttribute) as Bool?) ?? false }
+    var isfullscreen: Bool { (attribute("AXFullScreen") as Bool?) ?? false }
     var isMain: Bool { (attribute(kAXMainAttribute) as Bool?) ?? false }
     var isFocused: Bool { (attribute(kAXFocusedAttribute) as Bool?) ?? false }
 

@@ -3,15 +3,18 @@ import Mango
 
 @MainActor
 public final class Nag: NagDisplay {
-    var macOS = false
+    var macOS = false   // Port extension: not in mango (chutney_macos_appearance)
+    /// The selected monitor's display: where a layer surface without an output goes (handle_new_layer_surface).
+    var selected: CGDirectDisplayID?
 
     private var panel: NSPanel?
     private var timeout: DispatchWorkItem?
 
     public init() {}
 
-    public func spawn(_ argv: [String], input: String, macOS: Bool = false) {
+    public func spawn(_ argv: [String], input: String, selected: CGDirectDisplayID? = nil, macOS: Bool = false) {
         kill()
+        self.selected = selected
         self.macOS = macOS
         mangonagMain(argv, stdin: input, display: self)
     }
@@ -28,7 +31,11 @@ public final class Nag: NagDisplay {
 
     public func nagSetupSurface() {
         let n = Mango.nag
+        func number(_ s: NSScreen) -> CGDirectDisplayID? {
+            (s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
+        }
         let screen = NSScreen.screens.first { $0.localizedName == n.outputName }
+            ?? NSScreen.screens.first { selected != nil && number($0) == selected }
             ?? NSScreen.screens.first { $0.frame.origin == .zero } ?? NSScreen.main
         guard let screen else { return }
         let view = NagView(macOS: macOS) { [weak self] p in
@@ -47,7 +54,7 @@ public final class Nag: NagDisplay {
         p.isFloatingPanel = true
         p.hidesOnDeactivate = false
         p.collectionBehavior = [.canJoinAllSpaces, .stationary]
-        if macOS {
+        if macOS {   // Port extension: not in mango (chutney_macos_appearance)
             p.isOpaque = false
             p.backgroundColor = .clear
             p.hasShadow = true
@@ -132,7 +139,7 @@ public final class Nag: NagDisplay {
 }
 
 private final class NagView: NSView {
-    let macOS: Bool
+    let macOS: Bool   // Port extension: not in mango (chutney_macos_appearance): the system's look where it is used
     let onClick: (CGPoint) -> Void
     let font: NSFont
     let padding: CGFloat = 8, borderThickness: CGFloat = 3, buttonBorder: CGFloat = 3
