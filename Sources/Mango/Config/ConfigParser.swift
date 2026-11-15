@@ -230,11 +230,15 @@ package struct ParserState {
                 if let mode = modeOf(mice[j].mode, b.mode) { report("mousebind", mode, mouseLocs[j], mouseLocs[i]) }
             }
         }
+        // not in mango: ALLDIR is a nil direction that is not isUndir, UNDIR a nil one that is
+        func sameDir(_ a: Direction?, _ aUndir: Bool, _ b: Direction?, _ bUndir: Bool) -> Bool {
+            (a == nil && !aUndir) || (b == nil && !bUndir) || (a == b && aUndir == bUndir)
+        }
         let axes = config.axisBindings
         for i in axes.indices {
             let b = axes[i]
-            for j in axes[..<i].indices where axes[j].mods == b.mods && axes[j].isUndir == b.isUndir
-                && (axes[j].direction == nil || b.direction == nil || axes[j].direction == b.direction) {
+            for j in axes[..<i].indices where axes[j].mods == b.mods
+                && sameDir(axes[j].direction, axes[j].isUndir, b.direction, b.isUndir) {
                 if let mode = modeOf(axes[j].mode, b.mode) { report("axisbind", mode, axisLocs[j], axisLocs[i]) }
             }
         }
@@ -242,7 +246,7 @@ package struct ParserState {
         for i in gestures.indices {
             let b = gestures[i]
             for j in gestures[..<i].indices where gestures[j].mods == b.mods && gestures[j].fingers == b.fingers
-                && (gestures[j].direction == nil || b.direction == nil || gestures[j].direction == b.direction) {
+                && sameDir(gestures[j].direction, gestures[j].isUndir, b.direction, b.isUndir) {
                 if let mode = modeOf(gestures[j].mode, b.mode) { report("gesturebind", mode, gestureLocs[j], gestureLocs[i]) }
             }
         }

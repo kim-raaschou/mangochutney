@@ -386,6 +386,24 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.config.keyBindings.count, 10, "conflicting binds are kept like mango")
     }
 
+    // mango same_axisbind_key / same_gesturebind_key: ALLDIR meets every direction, UNDIR only UNDIR
+    func testAxisAndGestureConflictsFollowMangosDirections() {
+        let parsed = parse("""
+        axisbind=SUPER,diagonal,quit
+        axisbind=SUPER,alldir,killclient
+        axisbind=SUPER+SHIFT,sideways,quit
+        axisbind=SUPER+SHIFT,Up,killclient
+        axisbind=SUPER+SHIFT,crooked,killclient
+        gesturebind=none,diagonal,3,quit
+        gesturebind=none,up,3,killclient
+        gesturebind=none,alldir,3,toggleoverview
+        gesturebind=none,sideways,3,quit
+        """)
+        XCTAssertEqual(parsed.errors.map(\.line), [2, 5, 8, 8, 9, 9], parsed.errors.map(\.description).joined(separator: "\n"))
+        XCTAssertTrue(parsed.errors[0].message.hasPrefix("axisbind conflict in keymode default:"))
+        XCTAssertTrue(parsed.errors[2].message.hasPrefix("gesturebind conflict in keymode default:"))
+    }
+
     func testMouseAxisGestureBindings() {
         let parsed = parse("""
         mousebind=SUPER,btn_right,moveresize,curresize
