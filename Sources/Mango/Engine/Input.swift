@@ -17,7 +17,6 @@ package struct Grab {
 package extension MangoServer {
     /// Not in mango: hands binding state to the event-tap thread.
     func publishInputState() {
-        let ov = overviewState
         let c = config
         let mode = keyMode
         let sw = switcherState != nil
@@ -25,12 +24,15 @@ package extension MangoServer {
         let combo = tagCombo
         system.publishInput(InputState(
             keymode: mode, bindings: c.keyBindings, mouseBindings: c.mouseBindings, axisBindings: c.axisBindings,
-            axisTimeout: Double(c.axisBindApplyTimeout) / 1000, overviewFrame: ov?.monitor.screen.frame,
+            axisTimeout: Double(c.axisBindApplyTimeout) / 1000,
+            overviewFrame: selectedMonitor.flatMap { $0.isoverview ? $0.screen.frame : nil },
             jumpMode: selectedMonitor?.isJumpMode ?? false,
             jumpKeycodes: Set(clients.filter { $0.mon === selectedMonitor }.flatMap {
                 [$0.jumpKeycodes.keycode1, $0.jumpKeycodes.keycode2, $0.jumpKeycodes.keycode3].compactMap { $0 }
             }),
-            overcircleActive: ov.map { isOvercircleMode($0.monitor) } ?? false, switcherActive: sw, tagCombo: combo,
+            // not in mango: keyboard.c's overcircle test, for the event tap
+            overcircleActive: selectedMonitor.map { $0.ovTabLayout && !$0.isJumpMode && $0.isoverview && $0.sel != nil } ?? false,
+            switcherActive: sw, tagCombo: combo,
             wantsMouseMoved: c.sloppyfocus || c.enableHotarea || c.cursorHideTimeout > 0 || hidden
                 || c.windowRules.contains { $0.confinePointer == true } || c.enableBorderResize,
             cursorHideOnKeypress: c.cursorHideOnKeypress && !hidden,
@@ -67,8 +69,9 @@ package extension MangoServer {
         for a in actions {
             switch a {
             case .leaveOvercircle:
-                if let ov = overviewState, isOvercircleMode(ov.monitor) {
-                    leaveOverview(select: ov.circleFocus.flatMap { clientByIdAll($0) })
+                // In overcircle mode, releasing the mode key exits overview.
+                if let m = selectedMonitor, m.ovTabLayout, !m.isJumpMode, m.isoverview, m.sel != nil {
+                    toggleOverview()
                 }
             case .switcherCommit:
                 switcherCommit()
@@ -86,7 +89,7 @@ package extension MangoServer {
             case .overviewKey(.jump(let keycode)):
                 if let m = selectedMonitor, m.isJumpMode, let target = keyboardFindJumpClient(m, keycode) {
                     clientFocus(target, true)
-                    leaveOverview(select: target)
+                    toggleOverview(tc: target)
                 }
             case .forward:
                 break
@@ -98,8 +101,8 @@ package extension MangoServer {
     package func clientAtPoint(_ p: CGPoint, on m: Monitor? = nil) -> Client? {
         let mon = m ?? monitorAtPoint(p)
         guard let mon else { return nil }
-        if let ov = overviewState, ov.monitor === mon {
-            return ov.cards.first { $0.value.contains(p) }.flatMap { clientByIdAll($0.key) }
+        if mon.isoverview {
+            return mon.ovCards.first { $0.value.contains(p) }.flatMap { clientByIdAll($0.key) }
         }
         let vis = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon)).filter { !$0.parked }
         if let f = vis.first(where: { ($0.isFloating || $0.scratchpadShown) && clientGeom($0).contains(p) }) { return f }
@@ -136,11 +139,12 @@ package extension MangoServer {
             }
             let c = bar == nil ? clientAtPoint(p) : nil
             // not in mango: not in overview, and not the focused one again (macOS has focused it with the click)
-            if let c, let cm = c.mon, c.isVisible(on: cm), overviewState == nil, selectedMonitor.sel != c.id {
+            if let c, let cm = c.mon, c.isVisible(on: cm), !selectedMonitor.isoverview, selectedMonitor.sel != c.id {
                 clientFocus(c, true)
             }
-            if overviewState != nil, let c, button == 0 { leaveOverview(select: c); return true }
-            if overviewState != nil, let c, button == 1 { pendingKillClient(c); return true }
+            // In overview mode, left click jumps and right click closes windows.
+            if selectedMonitor.isoverview, let c, button == 0 { toggleOverview(tc: c); return true }
+            if selectedMonitor.isoverview, let c, button == 1 { pendingKillClient(c); return true }
             if let bar, !bar.isTab, button == 0, let tc = clientByIdAll(bar.client) {
                 if bar.onClose { pendingKillClient(tc); return true }
                 clientHandleDecorateClick(tc, isTab: false)
@@ -295,7 +299,9 @@ package extension MangoServer {
         default: inHotarea = p.y > f.maxY - s && p.x < f.minX + s && p.x >= f.minX && p.y <= f.maxY
         }
         if config.enableHotarea && !m.isInHotarea && inHotarea {
-            toggleOverview(onlyCurrent: false)
+            /* Hot-area entry: uses the normal grid layout. */
+            m.ovNormalMode = true
+            toggleOverview()
             m.isInHotarea = true
         } else if config.enableHotarea && m.isInHotarea && !inHotarea {
             m.isInHotarea = false
@@ -303,7 +309,7 @@ package extension MangoServer {
     }
 
     func pointerConfineRuleClient() -> Client? {
-        guard let c = focused, c.confinePointer, let m = c.mon, overviewState?.monitor !== m,
+        guard let c = focused, c.confinePointer, let m = c.mon, !m.isoverview,
               !c.isMinimized, c.isVisible(on: m) else { return nil }
         return c
     }
@@ -379,9 +385,9 @@ package extension MangoServer {
             }
             return p
         }
-        if let ov = overviewState {
+        if let pm = monitorAtPoint(p), pm.isoverview {
 // not in mango: the real window is under the pictures.
-            guard config.sloppyfocus, !ov.circle, let c = clientAtPoint(p), selectedMonitor.sel != c.id else { return p }
+            guard config.sloppyfocus, let c = clientAtPoint(p, on: pm), !isOvercircleMode(c.mon), selectedMonitor.sel != c.id else { return p }
             clientFocus(c, false)
             return p
         }
@@ -500,7 +506,7 @@ package extension MangoServer {
         /* A popup or any other child surface sitting on the border grab strip
          * must keep receiving its own input instead of resizing the parent. */
         if let surface, surface != c.id { return [] }
-        guard let m = c.mon, overviewState?.monitor !== m, c.isVisible(on: m) else { return [] }
+        guard let m = c.mon, !m.isoverview, c.isVisible(on: m) else { return [] }
 
         var t = clientResizeGrab(c)
         if t <= 0 { return [] }

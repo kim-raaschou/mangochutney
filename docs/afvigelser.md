@@ -118,7 +118,7 @@ Hvor koden står, når den ikke står som i mango.
   cursor-timeren, `Log` og nogle få, der allerede har mangos navn.
 - **Bevidst i kernen, mærket:** parkeringen (`c.parked`, mango klipper i scenen), scrollerens
   kolonner i tag-tilstanden (mango bruger `ScrollerStackNode` i klientlisten), overview med
-  billeder (`thumbnails`), drag-tile delt med appens eget træk, `parse_option` som en tabel,
+  billeder (`Monitor.ovThumbnails`, `ovCards`), drag-tile delt med appens eget træk, `parse_option` som en tabel,
   og `resize_tile_master` i begge retninger i én funktion.
 - **Mærket i kernen, som at skrive mangos C i Swift:** `f32` (en værdi, mango har i et
   float-felt, afrundet som C) og `LayoutInput.sanitized()` (C laver et tal, der ikke er
@@ -168,9 +168,19 @@ Hvor koden står, når den ikke står som i mango.
   én bar pr. skærm (`Monitor.titleMessageBar`); baren selv (`MangoBarDecoration`, mangos `text-node.c`
   og scene-node) tegner porten. I overcircle ligger den under klientens kort, ikke under `c->geom`
   eller `c->animation.current`, og den sættes én gang, når kortet er sat (ved start og ved hvert
-  skift), hvor mangos `client_draw_frame` flytter den med hvert billede. `is_overcircle_mode` har
-  ingen `ov_normal_mode`. `chutney_launch_or_focus` lægger den under sit eget panel gennem
+  skift), hvor mangos `client_draw_frame` flytter den med hvert billede. `chutney_launch_or_focus` lægger den under sit eget panel gennem
   `PortHooks.titleMessageBarGeometry`.
+- **Overview:** mangos `set_overview`, `toggle_overview`, `enter_overview`, `leave_overview`,
+  `over_circle`, `overview`, `overview_backup`, `overview_restore` og `want_restore_fullscreen` står i
+  kernen (`Engine/OverviewMode.swift`) med skærmens `isoverview`, `ovTabLayout` og `ovNormalMode`, så hver
+  skærm har sit eget overview. Kortene er portens billeder, ét panel pr. skærm, hvor mangos kort-træer
+  er (`overview_backup_surface`, `overview_destroy_card`); `overview_scale` og `overview_scale_tab`
+  lægger dem i `Monitor.ovCards`, hvor mango flytter klienterne (`client_tile_resize`), og uden
+  Skærmoptagelse flyttes de rigtige vinduer. Uden macOS-del, mærket i koden: `bw` og `client_set_tiled`
+  i `overview_backup` og `overview_restore`, `overview_enter_anim_set` (kortene er billeder),
+  markørens fokus og cursor ved start, `resize` af en flydende klient og `is_restoring_from_ov`s
+  `resize` (arrange sætter vinduet, når det vises) og `refresh_monitors_workspaces_status`
+  (ext-workspace; `printstatus`).
 - **Jump-tilstand:** mangos `toggle_jump`, `begin_jump_mode`, `create_jump_hints`, `finish_jump_mode`,
   `overview_update_jump_label` og `keyboard_find_jump_client` står i kernen med `Monitor.isJumpMode` og
   klientens `jumpChar`, `jumpKeycodes` og `jumpLabelNode`; mærket selv (`MangoJumpLabel`, mangos
@@ -209,5 +219,9 @@ aftalt, rettet så lidt som muligt, mærket `a mango bug` i koden og låst med e
 | Værnet mod en `source`, der læser sig selv (direkte eller gennem en anden fil): mango læser den igen og igen, til stakken løber tør | går ned | filen læses én gang, og det meldes | `includeStack` i `ConfigParser.swift`; `testASourceCycleIsReadOnce` |
 | Et træk i `fair`, `vertical_fair`, `grid` og `vertical_grid` vælger naboen på den side af vinduet, man trækker i (`cursor_in_left_half`), og overskriver straks valget med tastaturets (*"Keyboard hotkey logic unchanged"*): naboen til højre, og kun for den yderste kolonne til højre den til venstre | tre kolonner, træk i midterste vindues venstre kant: dens højre kant flytter sig | venstre kant flytter sig | Tastaturets valg bruges kun ved tastaturet (`!isdrag`), og trækkets valg, som mango selv udregner, står. `resizeTileGridFair` i `Dispatch.swift`; `testAGridDragMovesTheEdgeItGrabs` |
 | `focus_direction` sender venstre og højre gennem `focus_stack`, når tagget er monocle, også i overview, hvor kortene ligger i et gitter; samme funktion springer stakken over i overview tre linjer længere nede (`if (!isoverview)`) | overview fra et monocle-tag: venstre/højre følger vinduernes rækkefølge, ikke kortene | venstre/højre går til kortet ved siden af | Monocle-grenen gælder ikke i overview, som mangos egen `!isoverview`. `focusDirection` i `Dispatch.swift`; `testMonocleInTheOverviewGoesByTheCards` |
-| `togglejump` på en skærm uden vinduer sætter `is_jump_mode` (`begin_jump_mode`), men `set_overview` vender om uden at gå i overview, så flaget bliver stående: kun at forlade overview rydder det | indtil næste overview er switcheren afvist, og Escape sluges i alle apps (`toggle_jump`) | jump-tilstanden slutter igen | Den tomme vej kalder `finish_jump_mode`, som mangos egen vej ud af overview gør. `toggleOverview` i `OverviewMode.swift`; `testToggleJumpOnAnEmptyMonitorLeavesNoJumpMode` |
+| `togglejump` på en skærm uden vinduer sætter `is_jump_mode` (`begin_jump_mode`), men `set_overview` vender om uden at gå i overview, så flaget bliver stående: kun at forlade overview rydder det | indtil næste overview er switcheren afvist, og Escape sluges i alle apps (`toggle_jump`) | jump-tilstanden slutter igen | Den tomme vej kalder `finish_jump_mode`, som mangos egen vej ud af overview gør. `setOverview` i `OverviewMode.swift`; `testToggleJumpOnAnEmptyMonitorLeavesNoJumpMode` |
+| `togglejump` under et træk med musen (`grab_client`): `toggle_jump` har intet værn, så `begin_jump_mode` sætter `is_jump_mode`, og `toggle_overview` afviser bagefter | som rækken over: jump-tilstanden bliver stående uden overview | intet sker | Værnet mod `grab_client`, som `toggle_overview` selv har, står før `toggle_jump`. `togglejump` i `Dispatch.swift`; `testOverviewNotWhileGrabbed` |
+| Hot area på en skærm uden vinduer: `toggle_hotarea` sætter `ov_normal_mode`, og `set_overview`s tomme vej rydder den ikke | næste `overcircle` viser gitteret, og i overview går den ud i stedet for at skifte | `ov_normal_mode` ryddes | Den tomme vej rydder den, som mangos vej ud af overview gør. `setOverview` i `OverviewMode.swift`; `testTheHotAreaOnAnEmptyMonitorLeavesNoNormalMode` |
+| `monitor_close` på en skærm i overview kalder `toggle_overview`, som virker på den valgte skærm | fjernes en anden skærm end den valgte, går den valgte ind i (eller ud af) overview, og den fjernede bliver i det | den fjernede skærm går ud af overview | `toggle_overview` kører med den fjernede skærm som den valgte og sætter den valgte tilbage. `rebuildMonitors` i `MangoServer.swift`; `testRemovingAMonitorInOverviewLeavesTheSelectedOneAlone` |
+| Et vindue, der åbner i overview, får kun `overview_backup_surface`, ikke `overview_backup`, så `overview_restore` giver det de nulstillede kopier tilbage | en dialog, der åbner i overview, ligger i layoutet med en tom `geom`, når overview lukker | vinduet beholder sin tilstand (fx flydende) | `overview_restore` springer et vindue uden kopi over. `overviewRestore` i `OverviewMode.swift`; `testAClientMappedInTheOverviewKeepsItsState` |
 | Ved reload giver `parse_tagrule` alle vinduer master-bredden fra den sidste skærms tag, også vinduer på andre skærme, så en `tag_rule` med `monitor_name` kun virker på den sidste skærm | to skærme, 0,3 og 0,7: begge får 0,7 | hver skærms vinduer får deres egen | `c.mon === self` i `parseTagrule`; `testAReloadKeepsEachMonitorsOwnMfact` |

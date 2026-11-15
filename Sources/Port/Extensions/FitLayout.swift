@@ -246,7 +246,7 @@ enum FitLayout {
         let windows = shown(server, m).map { c in
             "\(c.id):\(c.geom.map { "\($0)" } ?? ""):\(c.refusedSize.map { "\($0)" } ?? "")"
         }
-        let seen = "\(level)|\(server.overviewState == nil)|\(server.grab == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel ?? 0)|\(windows.joined(separator: ","))"
+        let seen = "\(level)|\(!m.isoverview)|\(server.grab == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel ?? 0)|\(windows.joined(separator: ","))"
         guard mac.fitState.seen != seen else { return }
         mac.fitState.seen = seen
         let plan = plan(server, m)
@@ -308,7 +308,7 @@ enum FitLayout {
             mac.fitState.notified = nil
             return
         }
-        guard server.overviewState == nil, server.grab == nil else { return }
+        guard !server.monitors.contains(where: \.isoverview), server.grab == nil else { return }
         guard mac.fitState.notified != note.title + note.body else { return }
         mac.fitState.notified = note.title + note.body
         mac.postFitNotification(title: note.title, body: note.body, fit: note.fit)
@@ -318,7 +318,7 @@ enum FitLayout {
     /// view (tags, layout, windows) stays, so two windows that take each other's room cannot go on.
     /// The fit runs after this turn of the main queue (not a timer), out of Placement's reading.
     static func auto(_ server: MangoServer, _ m: Monitor, _ plan: Plan) {
-        guard server.overviewState == nil, server.grab == nil else { return }
+        guard !server.monitors.contains(where: \.isoverview), server.grab == nil else { return }
         let key = view(server, m)
         let mac = server.mac
         if mac.fitState.autoView != key {

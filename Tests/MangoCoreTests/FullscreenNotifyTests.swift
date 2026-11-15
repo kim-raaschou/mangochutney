@@ -210,7 +210,7 @@ final class FullscreenNotifyTests: MangoTestCase {
         macOS(r, 2, true)
         run(r, "toggleoverview", 1)
         macOS(r, 2, false)
-        XCTAssertNil(r.server.overviewState)
+        XCTAssertFalse(r.server.anyOverview)
         XCTAssertFalse(r.server.clientByIdAll(2)!.isFullscreen)
         XCTAssertEqual(tiled(r), [1, 2, 3])
     }

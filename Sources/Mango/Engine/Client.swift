@@ -169,6 +169,13 @@ public final class Monitor {
     public var ovbkPrevTagset: UInt32 = 0
     package var titleMessageBar: MangoBarDecoration?
     public var isJumpMode = false
+    public var isoverview = false
+    public var ovTabLayout = false
+    public var ovNormalMode = false
+    // not in mango: the cards, where client_tile_resize puts the clients in overview (the port's windows stay under its pictures)
+    package var ovCards: [ClientID: CGRect] = [:]
+    // not in mango: the port shows pictures of the windows (screen capture granted)
+    package var ovThumbnails = false
 
     public var getMonCurtag: Int {
         // special workspace uses slot 0; all-tags is an ordinary multi-tag view

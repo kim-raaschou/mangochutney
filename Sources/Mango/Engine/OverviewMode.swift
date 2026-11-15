@@ -1,158 +1,264 @@
 import CoreGraphics
 
-@MainActor
-package struct OverviewState {
-    package let monitor: Monitor
-    package let previousSel: ClientID?
-    var cards: [ClientID: CGRect]
-    var circle = false
-    package var members: [ClientID] = []
-    package var circleFocus: ClientID?
-    package var thumbnails = false
-}
-
 package extension MangoServer {
     /// mango is_overcircle_mode (monitor.c)
-    func isOvercircleMode(_ m: Monitor) -> Bool {
-        // not in mango: no ov_normal_mode
-        guard let ov = overviewState, ov.monitor === m else { return false }
-        return ov.circle && !m.isJumpMode
+    func isOvercircleMode(_ m: Monitor?) -> Bool {
+        guard let m else { return false }
+        return m.isoverview && m.ovTabLayout && !m.isJumpMode && !m.ovNormalMode
     }
-
-    func toggleOverview(onlyCurrent: Bool, circle: Bool = false) {
-        if overviewState != nil { leaveOverview(select: nil); return }
-        let m = selectedMonitor!
-        let tagmask = TagMask.mask(forTagNum: config.tagNum)
-        let members: [Client] = clients.filter { c in
-            c.mon === m && !c.isMinimized && !c.isUnglobal && c.tags & TagMask.special == 0
-                && (!onlyCurrent || c.isVisible(on: m))
-        }
-        guard !members.isEmpty else {
-            titleMessageBarHide(m)
-            // not in mango: jump mode ends as when leaving overview (a mango bug, docs/afvigelser.md §6).
-            if m.isJumpMode {
-                finishJumpMode(m)
-            }
-            return
-        }
-        for c in members {
-            c.overining = true
-            overviewBackup(c)
-        }
-        let sizes = members.map { c -> (id: ClientID, size: CGSize) in
-            let f = c.overviewBackupGeom!
-            return (c.id, f.width <= 0 || f.height <= 0 ? CGSize(width: 100, height: 100) : f.size)
-        }
-        let focusID = m.sel.flatMap { id in members.contains { $0.id == id } ? id : nil } ?? members[0].id
-        let cards = circle
-            ? OverviewLayout.overviewScaleTab(clients: sizes, focused: focusID, workArea: m.screen.workArea,
-                                            gapInner: CGFloat(config.overviewgappi), gapOuter: CGFloat(config.overviewgappo),
-                                            centerRatio: CGFloat(config.overcircleCenterRatio),
-                                            titleBlockHeight: config.titleMessageBarHeight > 0
-                                                ? CGFloat(config.titleMessageBarHeight + config.titleMessageBarGap) : 0)
-            : OverviewLayout.overviewScale(clients: sizes, workArea: m.screen.workArea,
-                                  gapInner: CGFloat(config.overviewgappi),
-                                  gapOuter: CGFloat(config.overviewgappo))
-        m.ovbkCurrentTagset = m.tagset[m.seltags]
-        m.ovbkPrevTagset = m.tagset[m.seltags ^ 1]
-        var state = OverviewState(monitor: m, previousSel: m.sel, cards: cards)
-        state.circle = circle
-        state.members = members.map(\.id)
-        state.circleFocus = circle ? focusID : nil
-        if system.canCapture {   // not in mango: the port's side
-            state.thumbnails = true
-            let look = OverviewLook(focusColor: config.focuscolor, borderColor: config.bordercolor,
-                                    mango: (config.rootcolor, CGFloat(config.borderpx), CGFloat(config.borderRadius)))
-            overviewState = state
-            clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
-            system.showOverview(overlayCards(state, focused: state.circleFocus ?? m.sel), on: m, look: look)   // not in mango: the port's side
-            overviewCardSurfaceAdd(state)
-            titleMessageBarUpdateGeometry(m)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
-            printstatus()
-            return
-        }
-        system.askToCapture()   // not in mango: the port's side
-        overviewState = state
-        clientViewOnMonitor(onlyCurrent ? m.tagset[m.seltags] & tagmask : tagmask, on: m, changeFocus: true)
-        arrange(m)
-        titleMessageBarUpdateGeometry(m)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
-        printstatus()
-    }
-
 
     func fixMonTagsetFromOverview(_ m: Monitor) {
         let tagmask = TagMask.mask(forTagNum: config.tagNum)
         if m.tagset[m.seltags] == m.ovbkPrevTagset & tagmask {
             m.tagset[m.seltags ^ 1] = m.ovbkCurrentTagset
-            m.prevTag = TagMask.getTagsFirstTagNum(m.ovbkCurrentTagset) ?? m.prevTag
+            m.prevTag = TagMask.getTagsFirstTagNum(m.ovbkCurrentTagset) ?? 0
         } else {
             m.tagset[m.seltags ^ 1] = m.ovbkPrevTagset
-            m.prevTag = TagMask.getTagsFirstTagNum(m.ovbkPrevTagset) ?? m.prevTag
+            m.prevTag = TagMask.getTagsFirstTagNum(m.ovbkPrevTagset) ?? 0
+        }
+    }
+
+    func overviewClientOnCurrentTags(_ c: Client, _ onlyCurrent: Bool, _ currentTags: UInt32) -> Bool {
+        !onlyCurrent || c.isGlobal || c.tags & currentTags != 0
+    }
+
+    /* Enter or leave overview mode on the selected monitor. */
+    func setOverview(tc: Client?, onlyCurrent: Bool, enter: Bool) {
+        let m: Monitor = selectedMonitor
+        let sel = tc ?? m.sel.flatMap { clientByIdAll($0) }
+        var target: UInt32 = 0
+        var visibleClientNumber = 0
+        var currentTags: UInt32 = 0
+        let tagmask = TagMask.mask(forTagNum: config.tagNum)
+        defer { publishInputState() }   // not in mango: the event tap's snapshot
+
+        m.isoverview = enter
+
+        if !enter {
+            m.ovTabLayout = false
+            titleMessageBarHide(m)
+            if m.isJumpMode {
+                finishJumpMode(m)
+            }
+        }
+
+        if enter {
+            currentTags = m.tagset[m.seltags] & tagmask
+            for c in clients where c.mon === m {
+                // not in mango: no unmanaged clients or X11 popups
+                if !c.isMinimized && !c.isUnglobal && c.tags & TagMask.special == 0
+                    && overviewClientOnCurrentTags(c, onlyCurrent, currentTags) {
+                    visibleClientNumber += 1
+                }
+            }
+            if visibleClientNumber > 0 {
+                m.ovbkCurrentTagset = m.tagset[m.seltags]
+                m.ovbkPrevTagset = m.tagset[m.seltags ^ 1]
+                target = onlyCurrent ? currentTags : tagmask
+            } else {
+                m.isoverview = false
+                m.ovTabLayout = false
+                titleMessageBarHide(m)
+                // not in mango: jump mode ends as when leaving overview (a mango bug, docs/afvigelser.md §6).
+                if m.isJumpMode {
+                    finishJumpMode(m)
+                }
+                // not in mango: the hot area's normal mode ends too (a mango bug, docs/afvigelser.md §6).
+                m.ovNormalMode = false
+                return
+            }
+        } else if let sel, sel.tags & tagmask != 0 {
+            target = getTagsFirstTag(sel.tags)
+        } else {
+            target = m.ovbkCurrentTagset != 0
+                ? (m.ovbkCurrentTagset & tagmask)
+                : (m.prevTag != 0 ? 1 << UInt32(m.prevTag - 1) : 1)
+            if target == 0 {
+                target = 1
+            }
+        }
+
+        if enter {
+            // not in mango: no pointer focus to clear; the cursor is macOS'
+
+            for c in clients where c.mon === m {
+                // not in mango: every Client is a mapped window
+                if c.isUnglobal || c.isMinimized || c.tags & TagMask.special != 0
+                    || !overviewClientOnCurrentTags(c, onlyCurrent, currentTags) {
+                    continue
+                }
+                c.overining = true
+                overviewBackup(c)
+            }
+            overviewCardsShow(m)   // not in mango: the port's pictures, overview_backup_surface's card trees
+        } else {
+            m.ovNormalMode = false /* Clears hot-area normal mode when exiting overview. */
+
+            m.tagset[m.seltags] = target
+            overviewCardsClose(m)   // not in mango: the port's pictures, overview_destroy_card
+            for c in clients where c.mon === m && !c.isUnglobal && !c.isMinimized && c.tags & TagMask.special == 0 {
+                overviewRestore(c, target)
+            }
+        }
+
+        clientSwitchView(target, wantAnimation: false)
+
+        /* Tab layout: rearrange after entering. */
+        if enter && !m.isJumpMode && !m.ovNormalMode {
+            arrange(m)
+        }
+        if enter {
+            overviewCardSurfaceAdd(m)
+        }
+        fixMonTagsetFromOverview(m)
+        printstatus()   // not in mango: refresh_monitors_workspaces_status is ext-workspace's
+
+        if !enter, let sel, sel.tags & target != 0 {
+            clientFocus(sel, true)
+        }
+    }
+
+    /// mango toggle_overview (dispatch/bind.c)
+    func toggleOverview(tc: Client? = nil, onlyCurrent: Bool = false) {
+        guard let m = selectedMonitor, grab == nil else { return }
+
+        setOverview(tc: tc, onlyCurrent: onlyCurrent, enter: !m.isoverview)
+    }
+
+    /// mango enter_overview (dispatch/bind.c)
+    func enterOverview(tc: Client? = nil) {
+        guard let m = selectedMonitor, grab == nil, !m.isoverview else { return }
+
+        setOverview(tc: tc, onlyCurrent: false, enter: true)
+    }
+
+    /// mango leave_overview (dispatch/bind.c)
+    func leaveOverview(tc: Client? = nil) {
+        guard let m = selectedMonitor, grab == nil, m.isoverview else { return }
+
+        setOverview(tc: tc, onlyCurrent: false, enter: false)
+    }
+
+    /// mango over_circle (dispatch/bind.c)
+    func overCircle(_ dir: String, tc: Client? = nil) {
+        guard let m = selectedMonitor, grab == nil else { return }
+
+        let sel = tc ?? m.sel.flatMap { clientByIdAll($0) }
+
+        let d = dir.lowercased()
+        let next = d == "next" || d == "current_next"
+        let current = d == "current_next" || d == "current_prev"
+
+        if m.isoverview && !m.isJumpMode && !m.ovNormalMode, let sel {
+            m.ovTabLayout = true
+            publishInputState()   // not in mango: the event tap's snapshot
+            guard let tc = next ? getNextStackClient(sel, reverse: false) : getNextStackClient(sel, reverse: true) else {
+                return
+            }
+
+            clientFocus(tc, true)
+
+            arrange(m)
+            return
+        }
+
+        m.ovTabLayout = true
+        toggleOverview(tc: tc, onlyCurrent: current)
+        if !m.isoverview {
+            m.ovTabLayout = false
+            publishInputState()   // not in mango: the event tap's snapshot
         }
     }
 
     /// Not in mango: card list for the port's overview overlay.
-    func overlayCards(_ ov: OverviewState, focused: ClientID?) -> [OverviewCard] {
-        ov.cards.compactMap { id, frame in
+    func overlayCards(_ m: Monitor) -> [OverviewCard] {
+        m.ovCards.compactMap { id, frame in
             guard let c = clientByIdAll(id) else { return nil }
             return OverviewCard(id: id, frame: frame, title: c.title.isEmpty ? c.appName : c.title,
-                                pid: c.pid, focused: id == focused)
+                                pid: c.pid, focused: id == m.sel)
         }
     }
 
-    func overviewCardSurfaceAdd(_ ov: OverviewState) {
-        if ov.thumbnails { system.captureOverviewCards(scale: CGFloat(ov.monitor.screen.scale)) }   // not in mango: the port's side
+    /// Not in mango: the port's overlay, where mango's card trees are.
+    func overviewCardsShow(_ m: Monitor) {
+        m.ovThumbnails = system.canCapture
+        m.ovCards = [:]
+        if m.ovThumbnails {
+            let look = OverviewLook(focusColor: config.focuscolor, borderColor: config.bordercolor,
+                                    mango: (config.rootcolor, CGFloat(config.borderpx), CGFloat(config.borderRadius)))
+            system.showOverview([], on: m, look: look)
+        } else {
+            system.askToCapture()
+        }
     }
 
+    /// Not in mango: the port's overlay closes with the cards.
+    func overviewCardsClose(_ m: Monitor) {
+        if m.ovThumbnails { system.closeOverview(on: m) }
+        m.ovThumbnails = false
+        m.ovCards = [:]
+    }
 
+    func overviewCardSurfaceAdd(_ m: Monitor) {
+        if m.ovThumbnails { system.captureOverviewCards(on: m, scale: CGFloat(m.screen.scale)) }   // not in mango: the port's side
+    }
 
-    func overCircle(forward: Bool) {
-        guard var ov = overviewState, ov.circle, !ov.members.isEmpty else { return }
-        let ids = ov.members.filter { clientByIdAll($0) != nil }
-        guard !ids.isEmpty else { return }
-        let members = Set(ids)
-        let order = clients.map(\.id).filter { members.contains($0) } + ids.filter { id in !clients.contains { $0.id == id } }
-        let i = (ov.circleFocus ?? selectedMonitor.sel).flatMap { order.firstIndex(of: $0) } ?? 0
-        let next = order[forward ? (i + 1) % order.count : (i - 1 + order.count) % order.count]
-        let sizes = ids.compactMap { id -> (id: ClientID, size: CGSize)? in
-            guard let c = clientByIdAll(id) else { return nil }
-            let f = c.overviewBackupGeom ?? (c.isFloating ? c.floatGeom : (c.geom ?? c.frame))
-            return (id, f.width <= 0 || f.height <= 0 ? CGSize(width: 100, height: 100) : f.size)
+    /// Not in mango: the overview's items, VISIBLEON and not unglobal, with overview_backup_geom's size.
+    func overviewItems(_ m: Monitor) -> [(id: ClientID, size: CGSize)] {
+        clients.filter { $0.mon === m && $0.isVisible(on: m) && !$0.isUnglobal }.map { c in
+            let f = c.overviewBackupGeom ?? .zero
+            return (c.id, f.width <= 0 || f.height <= 0 ? CGSize(width: 100, height: 100) : f.size)
         }
-        ov.circleFocus = next
-        ov.cards = OverviewLayout.overviewScaleTab(clients: sizes, focused: next, workArea: ov.monitor.screen.workArea,
-                                            gapInner: CGFloat(config.overviewgappi), gapOuter: CGFloat(config.overviewgappo),
-                                            centerRatio: CGFloat(config.overcircleCenterRatio),
-                                            titleBlockHeight: config.titleMessageBarHeight > 0
-                                                ? CGFloat(config.titleMessageBarHeight + config.titleMessageBarGap) : 0)
-        overviewState = ov
-        if ov.thumbnails {
-            system.updateOverview(overlayCards(ov, focused: next))   // not in mango: the port's side
-            if let c = clientByIdAll(next) { clientFocus(c, true) }
-            titleMessageBarUpdateGeometry(ov.monitor)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
+    }
+
+    func overviewScale(_ m: Monitor) {
+        let items = overviewItems(m)
+        if items.isEmpty { return }
+        overviewTileResize(m, OverviewLayout.overviewScale(clients: items, workArea: m.screen.workArea,
+                                                           gapInner: CGFloat(config.overviewgappi),
+                                                           gapOuter: CGFloat(config.overviewgappo)))
+    }
+
+    func overviewScaleTab(_ m: Monitor) {
+        let items = overviewItems(m)
+        if items.isEmpty { return }
+        overviewTileResize(m, OverviewLayout.overviewScaleTab(
+            clients: items, focused: m.sel, workArea: m.screen.workArea,
+            gapInner: CGFloat(config.overviewgappi), gapOuter: CGFloat(config.overviewgappo),
+            centerRatio: CGFloat(config.overcircleCenterRatio),
+            titleBlockHeight: config.titleMessageBarHeight > 0
+                ? CGFloat(config.titleMessageBarHeight + config.titleMessageBarGap) : 0))
+    }
+
+    // not in mango: client_tile_resize of each card; the pictures are the cards, the real windows stay under them
+    func overviewTileResize(_ m: Monitor, _ cards: [ClientID: CGRect]) {
+        m.ovCards = cards
+        if m.ovThumbnails {
+            for id in cards.keys { clientByIdAll(id)?.overining = false }
+            system.updateOverview(overlayCards(m), on: m)
             return
         }
-        overview(ov)
-        if let c = clientByIdAll(next) { clientFocus(c, true) }
-        titleMessageBarUpdateGeometry(ov.monitor)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
+        for c in clientsAll where c.mon === m {
+            if let f = cards[c.id] {
+                system.resize(c, to: f, .move)
+            } else {
+                system.hide(c)
+            }
+        }
+        updateBorders()
     }
 
-    func overview(_ ov: OverviewState) {
-        let m = ov.monitor
-        if !ov.thumbnails {   // not in mango: the pictures are the cards; the real windows stay under them
-            for c in clientsAll where c.mon === m {
-                if let f = ov.cards[c.id] {
-                    system.resize(c, to: f, .move)
-                } else {
-                    system.hide(c)
-                }
-            }
-            updateBorders()
+    func overview(_ m: Monitor) {
+        if m.ovTabLayout && !m.isJumpMode && !m.ovNormalMode {
+            overviewScaleTab(m)
+        } else {
+            overviewScale(m)
         }
 
         if m.isJumpMode {
             createJumpHints(m)
         }
+        titleMessageBarUpdateGeometry(m)   // not in mango: client_draw_frame's call (animation/client.c), once at the card
     }
 
     func beginJumpMode(_ m: Monitor) {
@@ -208,10 +314,10 @@ package extension MangoServer {
     }
 
     func overviewUpdateJumpLabel(_ c: Client) {
-        guard let m = c.mon, let ov = overviewState, ov.monitor === m, m.isJumpMode, c.jumpChar != nil,
+        guard let m = c.mon, m.isoverview, m.isJumpMode, c.jumpChar != nil,
               let label = c.jumpLabelNode else { return }
         // not in mango: the client's card stands for its ov_card_tree and c->animation.current
-        guard let cur = ov.cards[c.id] else { return }
+        guard let cur = m.ovCards[c.id] else { return }
 
         let lw = label.logicalWidth
         let lh = label.logicalHeight
@@ -249,16 +355,18 @@ package extension MangoServer {
     }
 
     /// mango toggle_jump (dispatch/bind.c)
-    func toggleJump() {
+    func toggleJump(tc: Client? = nil) {
         guard let m = selectedMonitor else { return }
 
-        if overviewState?.monitor !== m {
+        if !m.isoverview {
             beginJumpMode(m)
-            toggleOverview(onlyCurrent: false)
+            toggleOverview(tc: tc)
             return
         }
 
-        leaveOverview(select: nil)
+        if m.isoverview {
+            toggleOverview(tc: tc)
+        }
     }
 
     /// mango keyboard_find_jump_client (input/keyboard.c)
@@ -283,6 +391,7 @@ package extension MangoServer {
         c.overviewIsFloatingBak = c.isFloating
         c.overviewIsFullscreenBak = c.isFullscreen
         c.overviewIsMaximizeScreenBak = c.isMaximizeScreen
+        c.tagouting = false   // not in mango: no tagining or tagouted
         c.overviewBackupGeom = c.isFloating ? c.floatGeom : (c.geom ?? c.frame)   // not in mango: our geom is without the border, a floating one's is floatGeom
         if c.isFloating {
             c.isFloating = false
@@ -294,48 +403,47 @@ package extension MangoServer {
         }
     }
 
+    // Returns 0 when the target window shares its tag with other windows.
+    func wantRestoreFullscreen(_ targetClient: Client) -> Bool {
+        for c in clients where c !== targetClient && c.tags == targetClient.tags && c.id == selectedMonitor.sel {
+            guard let m = c.mon else { continue }
+            let layout = m.pertag[TagMask.getTagsFirstTagNum(c.tags) ?? 0].layout
+            if layout != .scroller && layout != .verticalScroller {
+                return false
+            }
+        }
+
+        return true
+    }
+
     // Restores window state when switching back from overview to the normal view.
-    func overviewRestore(_ c: Client, thumbnails: Bool) {
+    func overviewRestore(_ c: Client, _ target: UInt32) {
+        // not in mango: a client mapped in overview has no backup and keeps its state (a mango bug, docs/afvigelser.md §6)
         guard let b = c.overviewBackupGeom else { return }
+
         c.isFloating = c.overviewIsFloatingBak
         c.isFullscreen = c.overviewIsFullscreenBak
         c.isMaximizeScreen = c.overviewIsMaximizeScreenBak
         c.overviewIsFloatingBak = false
         c.overviewIsFullscreenBak = false
         c.overviewIsMaximizeScreenBak = false
-        if !thumbnails && !c.isFloating { c.geom = b }   // not in mango: the pictures are the cards; the windows kept their place
+        if !c.isFloating { c.geom = b }   // not in mango: a floating one's backup is its floatGeom
         c.overviewBackupGeom = nil
-    }
 
-    // not in mango: set_overview's leaving branch, which toggle_overview with a tc runs
-    func leaveOverview(select: Client?) {
-        guard let ov = overviewState else { return }
-        if ov.thumbnails { system.closeOverview() }
-        titleMessageBarHide(ov.monitor)
-        if ov.monitor.isJumpMode {
-            finishJumpMode(ov.monitor)
+        if c.isFloating {
+            // not in mango: arrange places a floating client at its floatGeom
+        } else if c.isFullscreen || c.isMaximizeScreen {
+            if wantRestoreFullscreen(c) && c.isMaximizeScreen {
+                clientSetMaximizeScreen(c, true, rearrange: false)
+            } else if wantRestoreFullscreen(c) && c.isFullscreen {
+                clientSetFullscreen(c, true, rearrange: false)
+            } else {
+                c.isFullscreen = false
+                c.isMaximizeScreen = false
+                clientSetFullscreen(c, false, rearrange: false)
+            }
+        } else if target & c.tags & TagMask.mask(forTagNum: config.tagNum) == 0 {
+            // not in mango: is_restoring_from_ov's resize; the geom is the backup, and the window is placed when shown
         }
-        overviewState = nil
-        let m = ov.monitor
-        let sel = select ?? m.sel.flatMap { clientByIdAll($0) }
-        let tagmask = TagMask.mask(forTagNum: config.tagNum)
-        var target: UInt32
-        if let s = sel, s.tags & tagmask != 0 {
-            target = getTagsFirstTag(s.tags)
-        } else {
-            target = m.ovbkCurrentTagset != 0 ? m.ovbkCurrentTagset & tagmask : (m.prevTag > 0 ? 1 << UInt32(m.prevTag - 1) : 1)
-            if target == 0 { target = 1 }
-        }
-        m.tagset[m.seltags] = target
-        for id in ov.members {
-            guard let c = clientByIdAll(id) else { continue }
-            overviewRestore(c, thumbnails: ov.thumbnails)
-        }
-        clientViewOnMonitor(target, on: m, changeFocus: true)
-        fixMonTagsetFromOverview(m)
-        for id in ov.members { clientByIdAll(id)?.overining = false }
-        if !ov.thumbnails { arrange(m) }
-        if let s = sel, s.tags & target != 0 { clientFocus(s, true) }
-        printstatus()
     }
 }

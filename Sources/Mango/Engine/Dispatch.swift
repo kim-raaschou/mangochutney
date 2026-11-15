@@ -115,11 +115,11 @@ package extension MangoServer {
                 setLayout(all[i], on: sm)
             }
         case "set_proportion":
-            guard let c, selectedMonitor.layout.isScroller, overviewState?.monitor !== selectedMonitor,
+            guard let c, selectedMonitor.layout.isScroller, !selectedMonitor.isoverview,
                   let f = finiteDouble(a0) else { return nil }
             setProportion(c, CGFloat(f))
         case "switch_proportion_preset":
-            guard let c, selectedMonitor.layout.isScroller, overviewState?.monitor !== selectedMonitor,
+            guard let c, selectedMonitor.layout.isScroller, !selectedMonitor.isoverview,
                   !c.isFloating, !config.scrollerProportionPreset.isEmpty else { return nil }
             let presets = config.scrollerProportionPreset.map { CGFloat($0) }
             let cur = scrollGetStackHeadClient(c).scrollerProportion ?? m.current.settings.scrollerDefaultProportion
@@ -163,7 +163,7 @@ package extension MangoServer {
             }
             printstatus()
         case "toggleview":
-            guard overviewState?.monitor !== selectedMonitor else { return nil }
+            guard !selectedMonitor.isoverview else { return nil }
             let ui = TagMask.parseTagMask(a0)
             let target = ui == 0 ? TagMask.all : ui
             let n = selectedMonitor.tagset[selectedMonitor.seltags] ^ (target & TagMask.mask(forTagNum: config.tagNum))
@@ -224,7 +224,7 @@ package extension MangoServer {
             tagMonitor(c, to: tm, newtags: mask)
         case "toggletag":
             guard let sel = target ?? clientFocusTop(selectedMonitor), let sm = sel.mon else { return nil }
-            if overviewState?.monitor === sm { return nil }
+            if sm.isoverview { return nil }
             if sel.tags & TagMask.special != 0 { return nil }
             let ui = TagMask.parseTagMask(a0)
             let all = TagMask.mask(forTagNum: config.tagNum)
@@ -257,7 +257,7 @@ package extension MangoServer {
             clientFocus(clientFocusTop(selectedMonitor), true)
             arrange(cm)
         case "togglefloating":
-            guard grab == nil, overviewState?.monitor !== selectedMonitor,
+            guard grab == nil, !selectedMonitor.isoverview,
                   let c = target ?? clientFocusTop(selectedMonitor) else { return nil }
             let floating = c.isFullscreen || c.isMaximizeScreen ? true : !c.isFloating
             clientSetFloating(c, floating)
@@ -304,10 +304,10 @@ package extension MangoServer {
             arrange(selectedMonitor)
 
         case "minimized":
-            guard overviewState?.monitor !== selectedMonitor, let c, !c.isMinimized else { return nil }
+            guard !selectedMonitor.isoverview, let c, !c.isMinimized else { return nil }
             setMinimized(c)
         case "restore_minimized":
-            guard overviewState?.monitor !== selectedMonitor else { return nil }
+            guard !selectedMonitor.isoverview else { return nil }
             let sm: Monitor = selectedMonitor
             let focused = sm.sel.flatMap { clientByIdAll($0) } ?? clientFocusTop(sm)
             var r: Client?
@@ -392,35 +392,19 @@ package extension MangoServer {
             arrange(selectedMonitor)
 
         case "toggleoverview":
-            guard grab == nil else { return nil }
-            toggleOverview(onlyCurrent: a0 == "1")
+            toggleOverview(tc: target, onlyCurrent: a0 == "1")
         case "enteroverview":
-            guard grab == nil else { return nil }
-            if overviewState == nil { toggleOverview(onlyCurrent: false) }
+            enterOverview(tc: target)
         case "leaveoverview":
-            guard grab == nil else { return nil }
-            if overviewState != nil { leaveOverview(select: focused) }
+            leaveOverview(tc: target)
         case "overcircle":
-            guard grab == nil else { return nil }
-            let dir = a0.lowercased()
-            let next = dir == "next" || dir == "current_next"
-            if var ov = overviewState, ov.monitor === selectedMonitor, !selectedMonitor.isJumpMode, let sel = focused {
-                if !ov.circle {
-                    ov.circle = true
-                    ov.circleFocus = sel.id
-                    overviewState = ov
-                }
-                overCircle(forward: next)
-            } else if overviewState != nil {
-                leaveOverview(select: nil)
-            } else {
-                toggleOverview(onlyCurrent: dir.hasPrefix("current"), circle: true)
-            }
+            overCircle(a0, tc: target)
         case "switcher":
             switcher(a0)
         case "togglejump":
+            // not in mango: begin_jump_mode stays on when toggle_overview refuses a grab (a mango bug, docs/afvigelser.md §6)
             guard grab == nil else { return nil }
-            toggleJump()
+            toggleJump(tc: target)
 
         case "dwindle_toggle_split_direction":
             guard let c else { return nil }
@@ -606,7 +590,7 @@ package extension MangoServer {
     }
 
     package func clientViewOnMonitor(_ rawMask: UInt32, on m: Monitor, changeFocus: Bool? = nil, wantAnimation: Bool = true) {
-        if let ov = overviewState, ov.monitor === m, rawMask != TagMask.mask(forTagNum: config.tagNum) { return }
+        if m.isoverview, rawMask != TagMask.mask(forTagNum: config.tagNum) { return }
         guard rawMask != 0 else { return }
         var wantAnimation = wantAnimation
         if rawMask == TagMask.all {
@@ -660,7 +644,7 @@ package extension MangoServer {
     @discardableResult
     func viewShiftTag(_ dir: Int, allMonitors: Bool = false) -> Bool {
         let m: Monitor = selectedMonitor
-        if overviewState?.monitor === m || m.curtag == 0 { return false }
+        if m.isoverview || m.curtag == 0 { return false }
         let tagmask = TagMask.mask(forTagNum: config.tagNum)
         let cur = TagMask.getTagsFirstTagNum(m.tagset[m.seltags]) ?? 1
         let last = config.tagGather ? tagGatherLastTagNum(m) : config.tagNum
@@ -693,7 +677,7 @@ package extension MangoServer {
     @discardableResult
     func viewShiftTagHaveClient(_ dir: Int, allMonitors: Bool = false) -> Bool {
         let m: Monitor = selectedMonitor
-        if overviewState?.monitor === m || isSpecialActive(m) { return false }
+        if m.isoverview || isSpecialActive(m) { return false }
         let current = TagMask.getTagsFirstTagNum(m.tagset[m.seltags]) ?? 1
         var found: Int?
         var wrapped = false
@@ -719,7 +703,7 @@ package extension MangoServer {
 
     func viewInsert(next: Bool) {
         let m: Monitor = selectedMonitor
-        guard overviewState?.monitor !== m else { return }
+        guard !m.isoverview else { return }
         let tagmask = TagMask.mask(forTagNum: config.tagNum)
         let curmask = m.tagset[m.seltags] & tagmask
         guard curmask != 0, curmask & (curmask - 1) == 0, let cur = TagMask.getTagsFirstTagNum(curmask), cur > 0 else { return }
@@ -807,7 +791,7 @@ package extension MangoServer {
     }
 
     func setProportion(_ c: Client, _ p: CGFloat) {
-        guard let m = c.mon, overviewState?.monitor !== m, m.layout.isScroller else { return }
+        guard let m = c.mon, !m.isoverview, m.layout.isScroller else { return }
         if tiledClients(m).count == 1 && !config.scrollerIgnoreProportionSingle { return }
         scrollGetStackHeadClient(c).scrollerProportion = p
         arrange(m)
@@ -989,7 +973,7 @@ package extension MangoServer {
     }
 
     func resizeTileClient(_ gc: Client, isdrag: Bool = false, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint = .zero) {
-        guard let m = gc.mon, !gc.isFullscreen, !gc.isMaximizeScreen, overviewState?.monitor !== m else { return }
+        guard let m = gc.mon, !gc.isFullscreen, !gc.isMaximizeScreen, !m.isoverview else { return }
         let layout = m.pertag[TagMask.getTagsFirstTagNum(gc.tags) ?? m.getMonCurtag].layout
         switch layout {
         case .tile, .deck, .centerTile, .rightTile:
@@ -1232,7 +1216,7 @@ package extension MangoServer {
     }
 
     func resizeTileGridFair(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint) {
-        guard let m = gc.mon, !gc.isFullscreen, !gc.isMaximizeScreen, overviewState?.monitor !== m else { return }
+        guard let m = gc.mon, !gc.isFullscreen, !gc.isMaximizeScreen, !m.isoverview else { return }
         let tiled = tiledClients(m)
         guard tiled.count > 1 else { return }
         func recordOldShares() {
@@ -1433,7 +1417,7 @@ package extension MangoServer {
     func focusDirection(_ dir: Direction) {
         let m = selectedMonitor!
         // not in mango: not in the overview, whose cards are no monocle (a mango bug, docs/afvigelser.md §6)
-        if m.layout == .monocle, overviewState?.monitor !== m, let sel = focused, !sel.isFloating, dir.isHorizontal {
+        if m.layout == .monocle, !m.isoverview, let sel = focused, !sel.isFloating, dir.isHorizontal {
             focusStack(dir == .right ? .next : .prev)
             return
         }
@@ -1441,7 +1425,7 @@ package extension MangoServer {
 
         if let sc = c, sc.mon !== selectedMonitor && !config.focusCrossMonitor { return }
 
-        if let sc = c, overviewState?.monitor !== m {
+        if let sc = c, !m.isoverview {
             if sc.mon !== selectedMonitor {
                 guard let tm = sc.mon, let top = clientFocusTop(tm) else { return }
                 c = top
@@ -1464,7 +1448,7 @@ package extension MangoServer {
 
     func focusWindowOrWorkspace(_ dir: Direction) {
         let m = selectedMonitor!
-        if overviewState?.monitor === m { return }
+        if m.isoverview { return }
         let c = getFocusedStackClient(directionSelect(dir), nil)
         if let c, c.mon === m {
             clientFocus(c, true)
@@ -1484,7 +1468,7 @@ package extension MangoServer {
 
     /// Not in mango: stands for c->geom with its border.
     func directionGeom(_ c: Client) -> CGRect {
-        if let ov = overviewState, ov.monitor === c.mon, let card = ov.cards[c.id] { return card }
+        if let m = c.mon, m.isoverview, let card = m.ovCards[c.id] { return card }
         let g = c.isFloating ? c.floatGeom : (c.geom ?? c.frame)
         guard let m = c.mon else { return g }
         let bw = borderWidth(c, on: m)
@@ -1527,7 +1511,7 @@ package extension MangoServer {
                 if config.focusdirOnlyZoneOverlap && !overlap { continue }
                 if step == 0 {
                     guard let m = tc.mon, cm === m else { continue }
-                    if overviewState?.monitor !== m && !clientIsInSameStack(tc, c, nil) { continue }
+                    if !m.isoverview && !clientIsInSameStack(tc, c, nil) { continue }
                 }
                 var penalty: Int64 = 0
                 if main < 0 { penalty = 10_000_000_000; main = -main }
@@ -1755,7 +1739,7 @@ package extension MangoServer {
     func specialTagPrepareTarget(_ target: Monitor) {
         guard config.specialTagCrossMonitor else { return }
 
-        for m in monitors where m !== target && overviewState?.monitor !== m && isSpecialActive(m) {
+        for m in monitors where m !== target && !m.isoverview && isSpecialActive(m) {
             clientViewOnMonitor(specialTagPreviousTagset(m), on: m, changeFocus: false)
         }
 
@@ -1763,7 +1747,7 @@ package extension MangoServer {
     }
 
     func toggleScratchpad() {
-        if overviewState?.monitor === selectedMonitor { return }
+        if selectedMonitor.isoverview { return }
         var shown: Client?
         var hidden: Client?
         for c in clients {
@@ -1875,7 +1859,7 @@ package extension MangoServer {
     }
 
     func toggleNamedScratchpad(appId: String, title: String, command: String) {
-        if overviewState?.monitor === selectedMonitor { return }
+        if selectedMonitor.isoverview { return }
         let aid: String? = appId == "none" || appId == "0" || appId.isEmpty ? nil : appId
         let tid: String? = title == "none" || title == "0" || title.isEmpty ? nil : title
 // mango get_client_by_id_or_title. Not in mango: the app's name matches too (macOS app ids are bundle ids).

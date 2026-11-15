@@ -166,7 +166,7 @@ public final class HotkeysPalette {
         }
         c.monitorCount = server.monitors.count
         c.minimizedCount = server.clients.filter(\.isMinimized).count
-        c.overview = server.overviewState != nil
+        c.overview = server.selectedMonitor?.isoverview ?? false
         c.gaps = server.enableGaps
         for r in server.shortcutRows where r.dispatch == "chutney_launch_or_focus" {
             guard let app = r.args.first?.lowercased(), c.appSteps[app] == nil else { continue }

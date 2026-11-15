@@ -78,7 +78,7 @@ final class TitleMessageBarTests: MangoTestCase {
         run(r, "overcircle", "next")
         let bar = try XCTUnwrap(bar(r))
         let sel = try XCTUnwrap(r.monitor.sel)
-        let card = try XCTUnwrap(r.server.overviewState?.cards[sel])
+        let card = try XCTUnwrap(r.server.selectedMonitor.ovCards[sel])
         XCTAssertTrue(bar.enabled)
         XCTAssertEqual(bar.frame, CGRect(x: card.minX, y: card.maxY + 20, width: card.width, height: 52))
         XCTAssertEqual(bar.lastText, "t\(sel)\ntest")
@@ -86,7 +86,7 @@ final class TitleMessageBarTests: MangoTestCase {
         let next = try XCTUnwrap(r.monitor.sel)
         XCTAssertNotEqual(next, sel)
         XCTAssertEqual(bar.lastText, "t\(next)\ntest", "it follows the focused client")
-        r.server.leaveOverview(select: nil)
+        r.server.leaveOverview()
         XCTAssertFalse(bar.enabled)
     }
 

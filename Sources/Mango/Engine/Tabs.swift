@@ -9,7 +9,7 @@ package extension MangoServer {
 
     func tabLayoutEnabled(_ m: Monitor) -> Bool { tabLayoutIdSupported(m.layout) }
 
-    func tabLayoutActive(_ m: Monitor) -> Bool { overviewState?.monitor !== m && tabLayoutEnabled(m) }
+    func tabLayoutActive(_ m: Monitor) -> Bool { !m.isoverview && tabLayoutEnabled(m) }
 
     func tabStateOk(_ c: Client) -> Bool {
         guard c.mon != nil, !c.isMinimized else { return false }
@@ -63,7 +63,7 @@ package extension MangoServer {
     }
 
     func clientCheckTabNodeVisible(_ c: Client, on m: Monitor) -> Bool {
-        clientWantsGroupBar(c) && overviewState?.monitor !== m && !c.isFullscreen && !c.parked && c.isVisible(on: m)
+        clientWantsGroupBar(c) && !m.isoverview && !c.isFullscreen && !c.parked && c.isVisible(on: m)
     }
 
     // not in mango: client_set_clip's client_draw_group_bar and client_draw_tabbar for every client at once

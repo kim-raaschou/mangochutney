@@ -32,7 +32,7 @@ package extension MangoServer {
               config.titleMessageBarHeight != 0 else { return nil }
 
         // not in mango: the client's card, not c->geom or c->animation.current
-        guard let geo = overviewState?.cards[id], geo.width > 0 else { return nil }
+        guard let geo = m.ovCards[id], geo.width > 0 else { return nil }
 
         return (c, CGRect(x: geo.minX, y: geo.maxY + CGFloat(config.titleMessageBarGap),
                           width: geo.width, height: CGFloat(config.titleMessageBarHeight)))

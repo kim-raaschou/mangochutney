@@ -25,6 +25,8 @@ final class OverviewOverlay {
     private let mango: MangoLook?
 
     private let origin: CGPoint
+    /// The scale of the pictures once taken; a card added later gets its picture with it.
+    private var captureScale: CGFloat?
 
     init(workArea: CGRect, top: CGFloat? = nil, focusColor: RGBA, borderColor: RGBA, mango: MangoLook? = nil) {
         self.mango = mango
@@ -77,6 +79,7 @@ final class OverviewOverlay {
         guard let rootLayer = root.layer else { return }
         let keep = Set(cards.map(\.id))
         for (id, l) in layers where !keep.contains(id) { l.removeFromSuperlayer(); layers.removeValue(forKey: id) }
+        let added = cards.map(\.id).filter { layers[$0] == nil }
         CATransaction.begin()
         CATransaction.setDisableActions(layers.isEmpty)
         for c in cards {
@@ -87,6 +90,7 @@ final class OverviewOverlay {
             layout(layer, c)
         }
         CATransaction.commit()
+        if let scale = captureScale, !added.isEmpty { capture(added, scale: scale) }
     }
 
     private func makeCard(_ c: Card, in parent: CALayer) -> CALayer {
@@ -132,8 +136,14 @@ final class OverviewOverlay {
     private func side(_ b: CGRect) -> CGFloat { min(64, b.width * 0.4, b.height * 0.4) }
 
     func captureCards(scale: CGFloat) {
-        let sizes = layers.mapValues { CGSize(width: $0.frame.width * scale, height: $0.frame.height * scale) }
-        WindowSnapshot.capture(Array(layers.keys), pixelSize: sizes) { [weak self] id, image in
+        captureScale = scale
+        capture(Array(layers.keys), scale: scale)
+    }
+
+    private func capture(_ ids: [ClientID], scale: CGFloat) {
+        var sizes: [ClientID: CGSize] = [:]
+        for id in ids { if let l = layers[id] { sizes[id] = CGSize(width: l.frame.width * scale, height: l.frame.height * scale) } }
+        WindowSnapshot.capture(ids, pixelSize: sizes) { [weak self] id, image in
             self?.setImage(image, for: id)
         }
     }

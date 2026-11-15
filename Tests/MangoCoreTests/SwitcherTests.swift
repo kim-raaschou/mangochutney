@@ -114,7 +114,7 @@ final class SwitcherTests: MangoTestCase {
 
     func testNotInOverview() {
         let r = rig()
-        r.server.overviewState = OverviewState(monitor: r.monitor, previousSel: nil, cards: [:])
+        r.monitor.isoverview = true
         open(r)
         XCTAssertNil(r.server.switcherState)
     }

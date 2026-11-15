@@ -20,7 +20,7 @@ package extension MangoServer {
         case "prev": (-1, .currentTag)
         default: (1, .currentTag)
         }
-        guard selectedMonitor != nil, !selectedMonitor.isJumpMode, overviewState == nil else { return }
+        guard selectedMonitor != nil, !selectedMonitor.isJumpMode, !monitors.contains(where: { $0.isoverview }) else { return }
         if let sw = switcherState {
             if scope != sw.scope {
                 switcherClose()

@@ -65,7 +65,6 @@ public final class MangoServer {
     package internal(set) var started = false
     public var cliDebugLog = false
 
-    package var overviewState: OverviewState? { didSet { publishInputState() } }
     package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
     var switcherState: SwitcherState? { didSet { publishInputState() } }
     var publishedGlobalKeys = false
@@ -160,7 +159,7 @@ public final class MangoServer {
         }
 
         return config.monocleNoRadius && !c.isFloating && !c.isMinimized && !c.isUnglobal
-            && overviewState?.monitor !== m && m.layout == .monocle
+            && !m.isoverview && m.layout == .monocle
     }
 
     // not in mango: the server's side of parse_config, the config read, its errors and the nag
@@ -315,7 +314,13 @@ public final class MangoServer {
         guard !newMonitors.isEmpty else { return }
         let removed = monitors.filter { m in !newMonitors.contains { $0 === m } }
         let added = newMonitors.filter { m in !monitors.contains { $0 === m } }
-        if let ov = overviewState, removed.contains(where: { $0 === ov.monitor }) { leaveOverview(select: nil) }
+        for m in removed where m.isoverview {
+            // not in mango: the closed monitor's overview, not the selected one's (a mango bug, docs/afvigelser.md §6)
+            let keep = selectedMonitor
+            selectedMonitor = m
+            toggleOverview()
+            selectedMonitor = keep
+        }
         for m in removed { titleMessageBarFinish(m) }
         monitors = newMonitors
         if selectedMonitor == nil || removed.contains(where: { $0 === selectedMonitor }) {
@@ -396,8 +401,8 @@ public final class MangoServer {
 
     package func arrange(_ m: Monitor, _ anim: ArrangeAnimation = .move) {
         guard started else { return }
-        if let ov = overviewState, ov.monitor === m {
-            overview(ov)
+        if m.isoverview {
+            overview(m)
             return
         }
         if m.sel == nil { m.sel = clientFocusTop(m)?.id }
@@ -598,7 +603,7 @@ public final class MangoServer {
     }
 
     func toggleSpecialTagMon(_ m: Monitor) {
-        guard overviewState?.monitor !== m else { return }
+        guard !m.isoverview else { return }
         selectedMonitor = m
         if isSpecialActive(m) {
             clientViewOnMonitor(specialTagPreviousTagset(m), on: m, changeFocus: true)
@@ -609,7 +614,7 @@ public final class MangoServer {
     }
 
     package func isSpecialActive(_ m: Monitor) -> Bool {
-        m.tagset[m.seltags] & TagMask.special != 0 && overviewState?.monitor !== m
+        m.tagset[m.seltags] & TagMask.special != 0 && !m.isoverview
     }
 
     package func specialUpdateDim(_ m: Monitor) {
@@ -652,7 +657,7 @@ public final class MangoServer {
 
     func checkHitNoBorder(_ c: Client) -> Bool {
         guard let m = c.mon, c.tags != 0 else { return false }
-        let isoverview = overviewState?.monitor === m
+        let isoverview = m.isoverview
         var hitNoBorder = false
         if !renderBorder { hitNoBorder = true }
         if !isoverview && m.pertag[c.tags & TagMask.special != 0 ? 0 : (TagMask.getTagsFirstTagNum(c.tags) ?? 0)].noRenderBorder { hitNoBorder = true }
@@ -769,8 +774,8 @@ public final class MangoServer {
             system.clientActivateSurface(old, false)
         }
         system.restack()   // not in mango: the port's side
-        if let c, let ov = overviewState, ov.thumbnails, ov.monitor === c.mon {
-            system.updateOverview(overlayCards(ov, focused: ov.circle ? (ov.circleFocus ?? c.id) : c.id))   // not in mango: the port's side
+        if let cm = c?.mon, cm.isoverview, cm.ovThumbnails {
+            system.updateOverview(overlayCards(cm), on: cm)   // not in mango: the port's side
         }
         if c != nil { printstatus() }   // not in mango: with no client, after sel is cleared; the port's status reads it at once
 
@@ -825,7 +830,7 @@ public final class MangoServer {
     func pointerWarpToClient(_ c: Client) {
         guard let m = c.mon else { return }
         // not in mango: in the overview mango's geom is the card; ours is the window under it
-        let g = (overviewState?.monitor === m ? overviewState?.cards[c.id] : nil) ?? c.geom ?? c.frame
+        let g = (m.isoverview ? m.ovCards[c.id] : nil) ?? c.geom ?? c.frame
         if m.screen.frame.contains(g) { system.warp(to: g.center) }
     }
 
@@ -1023,8 +1028,7 @@ public final class MangoServer {
 /// Not in mango: the port's overview leaves the tags in view, so the overview backup is the tagset.
     package func clientResetMonTags(_ c: Client, _ mon: Monitor, _ newtags: UInt32) {
         if newtags == 0 {
-            let inOverview = overviewState.map { $0.monitor === mon } ?? false
-            c.tags = inOverview ? mon.ovbkCurrentTagset : mon.tagset[mon.seltags]
+            c.tags = mon.isoverview ? mon.ovbkCurrentTagset : mon.tagset[mon.seltags]
         } else {
             let masked = newtags & TagMask.special != 0 ? TagMask.special : normalizeTagMask(newtags) & ~TagMask.special
             c.tags = masked != 0 ? masked : mon.tagset[mon.seltags]
@@ -1096,7 +1100,7 @@ public final class MangoServer {
 
     func clientSetFullscreen(_ c: Client, _ fullscreen: Bool, rearrange: Bool) {
         guard let m = c.mon, grab?.client !== c else { return }
-        if overviewState?.monitor === m { return }
+        if m.isoverview { return }
         c.isFullscreen = fullscreen
         system.clientNotifyFullscreen(c, fullscreen)
         if fullscreen {
@@ -1117,7 +1121,7 @@ public final class MangoServer {
 
     func clientSetMaximizeScreen(_ c: Client, _ maximizescreen: Bool, rearrange: Bool) {
         guard let m = c.mon, grab?.client !== c else { return }
-        if overviewState?.monitor === m { return }
+        if m.isoverview { return }
         c.isMaximizeScreen = maximizescreen
         if maximizescreen {
             if c.isFullscreen { system.clientNotifyFullscreen(c, false) }
@@ -1268,7 +1272,7 @@ public final class MangoServer {
         if m === selectedMonitor {
             var next = stackNext ?? stackPrev ?? clientFocusTop(m)
             if let n = next, !n.isVisible(on: m) { next = clientFocusTop(m) }
-            if let next { clientFocus(next, true) } else if overviewState?.monitor === m { leaveOverview(select: nil) }
+            if let next { clientFocus(next, true) } else if selectedMonitor.isoverview { toggleOverview() }
         }
         printstatus()
     }

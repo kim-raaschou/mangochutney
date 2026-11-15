@@ -34,7 +34,7 @@ final class WindowMemory {
         let g = departed.groups[gi]
         let present = g.members.compactMap { server.clientByIdAll($0) }.filter { $0.mon != nil }
         if present.count == g.members.count { departed.groups.remove(at: gi) }
-        guard present.count > 1, server.overviewState == nil else { return }
+        guard present.count > 1, !server.monitors.contains(where: \.isoverview) else { return }
         let focus = present.first { $0.id == g.focus }
             ?? present.first { $0.isGroupFocus && !$0.groupParked } ?? present[0]
         for m in present where m.isGroupMember {

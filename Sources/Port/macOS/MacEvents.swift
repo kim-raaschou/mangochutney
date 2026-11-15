@@ -126,8 +126,8 @@ extension MacWindowSystem: AppWatcherDelegate {
         }
         guard let m = c.mon else { return }
         wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map(String.init) ?? "none"))")
-        if let ov = server.overviewState {
-            if !ov.monitor.isJumpMode, server.focused !== c { server.leaveOverview(select: c) }
+        if m.isoverview {
+            if !m.isJumpMode, server.focused !== c, m === server.selectedMonitor { server.toggleOverview(tc: c) }
             return
         }
         if c.groupParked { server.clientFocusGroupMember(c); return }

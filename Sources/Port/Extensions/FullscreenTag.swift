@@ -85,7 +85,7 @@ enum FullscreenTag {
 
     static func enter(_ server: MangoServer, _ c: Client, discovered: Bool = false) -> Bool {
         guard isOn(server), let m = c.mon, let bit = freeBit(server, c, m) else { return false }
-        if server.overviewState != nil { _ = server.dispatch(Dispatch(name: "toggleoverview")) }
+        if server.selectedMonitor?.isoverview == true { _ = server.dispatch(Dispatch(name: "toggleoverview")) }
         let mac = server.mac
         let own = c.tags & ~mask(server.config)
         mac.fullscreenTag.homes[c.id] = Home(tags: own != 0 ? own : desktopView(m, server.config), bit: bit)
@@ -109,7 +109,7 @@ enum FullscreenTag {
     }
 
     static func leave(_ server: MangoServer, _ c: Client) {
-        if server.overviewState != nil { _ = server.dispatch(Dispatch(name: "toggleoverview")) }
+        if server.selectedMonitor?.isoverview == true { _ = server.dispatch(Dispatch(name: "toggleoverview")) }
         c.scheduledFullscreen = false
         c.fullscreenPending = false
         // Out of mango's fullscreen too, while macOS still places it (as in enter).
@@ -197,7 +197,7 @@ enum FullscreenTag {
     /// Back to the desktop's view, mango's other view, as macOS went there: mango moves no focus, which
     /// could take macOS to another Space, and its own window is not taken.
     static func viewDesktop(_ server: MangoServer, _ m: Monitor) {
-        guard isFullscreenView(m, server.config), server.overviewState?.monitor !== m else { return }
+        guard isFullscreenView(m, server.config), !m.isoverview else { return }
         server.mac.fullscreenTag.viewed.remove(m.screen.displayID)
         server.clientViewOnMonitor(desktopView(m, server.config), on: m, changeFocus: false)
     }
@@ -205,7 +205,7 @@ enum FullscreenTag {
     /// The active Space changed: on each monitor, the F tag of the window in fullscreen on screen (the
     /// focused one of two side by side), else the desktop's view.
     static func followSpace(_ server: MangoServer) {
-        guard server.overviewState == nil else { return }
+        guard !server.monitors.contains(where: \.isoverview) else { return }
         let mac = server.mac
         for m in server.monitors {
             let shown = mac.fullscreenTag.homes.compactMap { id, home -> (Client, UInt32)? in
@@ -268,7 +268,7 @@ enum FullscreenTag {
             server.printstatus()
             return
         }
-        for m in server.monitors where server.overviewState?.monitor !== m {
+        for m in server.monitors where !m.isoverview {
             let display = m.screen.displayID
             let fullscreen = isFullscreenView(m, server.config)
             if fullscreen, window(server, on: m, m.tagset[m.seltags]) == nil {

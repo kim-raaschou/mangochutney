@@ -57,7 +57,7 @@ package extension MangoServer {
             return i == .left || i == .right
         }
 
-        let isoverview = overviewState?.monitor === m
+        let isoverview = m.isoverview
         if f == "toggleoverview" {
             if motion != .up && motion != .down { return false }
             return isoverview ? motion == .down : motion == .up

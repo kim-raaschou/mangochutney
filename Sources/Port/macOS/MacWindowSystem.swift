@@ -69,7 +69,7 @@ class MacWindowSystem: WindowSystem {
     var publishedTabShortcuts = 0
     let tabBars = TabBarManager()
     let groupBars = TabBarManager()
-    var overviewOverlay: OverviewOverlay?
+    var overviewOverlays: [ObjectIdentifier: OverviewOverlay] = [:]
     var switcherPanel: SwitcherPanel?
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
     var swipeSent: Swipe?
@@ -148,13 +148,13 @@ class MacWindowSystem: WindowSystem {
     }
 
     private func focusLater(_ c: Client) {
-        if holdFocus || overviewOverlay != nil { heldFocus = c; return }
+        if holdFocus || !overviewOverlays.isEmpty { heldFocus = c; return }
         pendingFocus = c
         scheduleFlush()
     }
 
     func releaseHeldFocus() {
-        guard !holdFocus, overviewOverlay == nil, let c = heldFocus else { return }
+        guard !holdFocus, overviewOverlays.isEmpty, let c = heldFocus else { return }
         heldFocus = nil
         if server.clientByIdAll(c.id) === c { focusLater(c) }
     }
@@ -262,22 +262,25 @@ class MacWindowSystem: WindowSystem {
     var windowCornerRadius: CGFloat { BorderGeometry.cornerRadius }
 
     func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) {
-        overviewOverlay?.close()
+        overviewOverlays[ObjectIdentifier(m)]?.close()
         let macOS = server.config.chutneyMacOSAppearance
         let overlay = OverviewOverlay(workArea: m.screen.workArea, top: m.screen.frame.minY, focusColor: look.focusColor, borderColor: look.borderColor,
                                       mango: macOS ? nil : .init(root: look.mango.root, borderWidth: look.mango.borderWidth,
                                                                  cornerRadius: look.mango.cornerRadius))
-        overviewOverlay = overlay
+        overviewOverlays[ObjectIdentifier(m)] = overlay
         overlay.show(cards.map(Self.card))
     }
 
-    func updateOverview(_ cards: [OverviewCard]) { overviewOverlay?.update(cards.map(Self.card)) }
+    func updateOverview(_ cards: [OverviewCard], on m: Monitor) {
+        overviewOverlays[ObjectIdentifier(m)]?.update(cards.map(Self.card))
+    }
 
-    func captureOverviewCards(scale: CGFloat) { overviewOverlay?.captureCards(scale: scale) }
+    func captureOverviewCards(on m: Monitor, scale: CGFloat) {
+        overviewOverlays[ObjectIdentifier(m)]?.captureCards(scale: scale)
+    }
 
-    func closeOverview() {
-        overviewOverlay?.close()
-        overviewOverlay = nil
+    func closeOverview(on m: Monitor) {
+        overviewOverlays.removeValue(forKey: ObjectIdentifier(m))?.close()
         releaseHeldFocus()
     }
 

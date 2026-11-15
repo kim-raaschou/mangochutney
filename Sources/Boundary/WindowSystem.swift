@@ -20,9 +20,9 @@ package protocol WindowSystem: AnyObject {
     func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle)
     var windowCornerRadius: CGFloat { get }
     func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook)
-    func updateOverview(_ cards: [OverviewCard])
-    func captureOverviewCards(scale: CGFloat)
-    func closeOverview()
+    func updateOverview(_ cards: [OverviewCard], on m: Monitor)
+    func captureOverviewCards(on m: Monitor, scale: CGFloat)
+    func closeOverview(on m: Monitor)
     func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat)
     func switcherApplyHighlight(_ tiles: [SwitcherTile])
     func closeSwitcherPanel()

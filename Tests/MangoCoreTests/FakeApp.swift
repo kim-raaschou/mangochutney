@@ -113,7 +113,8 @@ final class FakeWindowSystem: MacWindowSystem {
     override var mouseButtons: Int { 0 }
     override func startInput() {}
     override func watchGestures(_ on: Bool) {}
-    override var canCapture: Bool { false }
+    var fakeCanCapture = false
+    override var canCapture: Bool { fakeCanCapture }
     override func quit() { quits += 1 }
     override func askToCapture() { asked += 1 }
     var focused: [(id: ClientID, raise: Bool)] = []
@@ -130,9 +131,9 @@ final class FakeWindowSystem: MacWindowSystem {
     var overviewCards: [OverviewCard]?, switcherTiles: [SwitcherTile]?
     var specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
     override func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
-    override func updateOverview(_ cards: [OverviewCard]) { overviewCards = cards }
-    override func captureOverviewCards(scale: CGFloat) {}
-    override func closeOverview() { overviewCards = nil }
+    override func updateOverview(_ cards: [OverviewCard], on m: Monitor) { overviewCards = cards }
+    override func captureOverviewCards(on m: Monitor, scale: CGFloat) {}
+    override func closeOverview(on m: Monitor) { overviewCards = nil }
     override func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat) { switcherTiles = tiles }
     override func switcherApplyHighlight(_ tiles: [SwitcherTile]) { switcherTiles = tiles }
     override func closeSwitcherPanel() { switcherTiles = nil }
@@ -243,3 +244,8 @@ final class EngineRig {
     }
 }
 
+
+extension MangoServer {
+    /// Any monitor in overview.
+    var anyOverview: Bool { monitors.contains { $0.isoverview } }
+}

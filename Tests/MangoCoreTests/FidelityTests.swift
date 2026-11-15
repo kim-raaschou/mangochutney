@@ -335,10 +335,10 @@ final class FidelityTests: MangoTestCase {
         r.server.arrange(r.monitor)
         r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "overcircle", args: ["next"]))
-        XCTAssertNotNil(r.server.overviewState)
-        r.server.overCircle(forward: true)
+        XCTAssertTrue(r.server.anyOverview)
+        r.server.overCircle("next")
         let s1 = r.monitor.sel
-        r.server.overCircle(forward: true)
+        r.server.overCircle("next")
         XCTAssertNotEqual(r.monitor.sel, s1, "the focus moves at every step")
         XCTAssertNotNil(r.monitor.sel)
     }
@@ -586,7 +586,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         let a = r.map(1)
         r.server.toggleOverview(onlyCurrent: false)
-        XCTAssertNotNil(r.server.overviewState)
+        XCTAssertTrue(r.server.anyOverview)
         d(r, "togglefullscreen", [], a)
         d(r, "togglemaximizescreen", [], a)
         XCTAssertFalse(a.isFullscreen)
@@ -1011,12 +1011,12 @@ final class FidelityTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["left"]))
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
         let fake = r.server.system as! FakeWindowSystem
-        XCTAssertEqual(fake.warps.last, r.server.overviewState?.cards[f.id]?.center, "warp_cursor: to the card")
+        XCTAssertEqual(fake.warps.last, r.server.selectedMonitor.ovCards[f.id]?.center, "warp_cursor: to the card")
         r.server.mac.windowFocused(id: f.id)
-        XCTAssertNotNil(r.server.overviewState, "the overview stays")
+        XCTAssertTrue(r.server.anyOverview, "the overview stays")
         let other = r.server.clients.first { $0 !== f }!
         r.server.mac.windowFocused(id: other.id)
-        XCTAssertNil(r.server.overviewState, "another window is the one chosen")
+        XCTAssertFalse(r.server.anyOverview, "another window is the one chosen")
         XCTAssertTrue(r.server.focused === other)
     }
 
@@ -1036,8 +1036,10 @@ final class FidelityTests: MangoTestCase {
             if r.monitor.sel != b.id { moved = true }
         }
         XCTAssertTrue(moved, "the fullscreen window's card is no stop")
+        r.server.clientFocus(b, true)
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
-        XCTAssertEqual([a.isFloating, b.isFullscreen, c.isMaximizeScreen], [true, true, true])
+        XCTAssertEqual([a.isFloating, b.isFullscreen, c.isMaximizeScreen], [true, true, false],
+                       "want_restore_fullscreen: c shares its tag with b, the selection")
     }
 
     func testMonocleInTheOverviewGoesByTheCards() throws {
@@ -1046,7 +1048,7 @@ final class FidelityTests: MangoTestCase {
         for id in 1...4 { r.map(CGWindowID(id)) }
         r.server.arrange(r.monitor)
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
-        let cards = try XCTUnwrap(r.server.overviewState?.cards)
+        let cards = r.server.selectedMonitor.ovCards
         let top = cards.values.map(\.minY).min()!
         let start = try XCTUnwrap(cards.filter { $0.value.minY == top }.max { $0.value.minX < $1.value.minX })
         r.server.clientFocus(r.server.clientByIdAll(start.key)!, true)
@@ -1206,7 +1208,7 @@ final class FidelityTests: MangoTestCase {
         r.map(1)
         r.server.toggleOverview(onlyCurrent: false)
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 1, y: 1080), mods: [])
-        XCTAssertNotNil(r.server.overviewState)
+        XCTAssertTrue(r.server.anyOverview)
     }
 
     func testAPressSelectsTheMonitorAndFocuses() {
@@ -1230,9 +1232,9 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         a.tags = 1 << 2
         r.server.toggleOverview(onlyCurrent: false)
-        XCTAssertTrue(r.server.overviewState?.monitor === side)
+        XCTAssertTrue(side.isoverview)
         r.server.rebuildMonitors(screens: [r.screen])
-        XCTAssertNil(r.server.overviewState)
+        XCTAssertFalse(r.server.anyOverview)
         XCTAssertTrue(a.mon === r.monitor)
         XCTAssertEqual(a.tags, 1 << 2)
     }
@@ -1398,12 +1400,12 @@ final class FidelityTests: MangoTestCase {
         d(r, "toggleoverview")
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], TagMask.mask(forTagNum: 9))
         d(r, "view", ["3"])
-        XCTAssertNotNil(r.server.overviewState, "a tag view is refused in overview")
+        XCTAssertTrue(r.server.anyOverview, "a tag view is refused in overview")
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], TagMask.mask(forTagNum: 9))
         d(r, "focusstack", ["next"])
         XCTAssertTrue(r.server.focused === b, "a card on another tag is reached")
         d(r, "toggleoverview")
-        XCTAssertNil(r.server.overviewState)
+        XCTAssertFalse(r.server.anyOverview)
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1, "b's first tag")
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags ^ 1], 1, "the tags from before")
         XCTAssertTrue(r.server.focused === b)
@@ -1415,7 +1417,7 @@ final class FidelityTests: MangoTestCase {
         r.map(2)
         d(r, "toggleoverview")
         d(r, "overcircle", ["next"])
-        XCTAssertEqual(r.server.overviewState?.circle, true)
+        XCTAssertEqual(r.server.selectedMonitor.ovTabLayout, true)
     }
 
     func testTheLastGroupMemberIsNoGroupFocus() {
@@ -1503,13 +1505,14 @@ final class FidelityTests: MangoTestCase {
         let c = r.map(1)
         r.server.grab = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
         for name in ["toggleoverview", "enteroverview", "togglejump"] { d(r, name) }
-        XCTAssertNil(r.server.overviewState)
+        XCTAssertFalse(r.server.anyOverview)
+        XCTAssertFalse(r.monitor.isJumpMode, "a mango bug, docs/afvigelser.md §6: no jump mode left on")
         r.server.grab = nil
         d(r, "toggleoverview")
-        XCTAssertNotNil(r.server.overviewState)
+        XCTAssertTrue(r.server.anyOverview)
         r.server.grab = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
         d(r, "leaveoverview")
-        XCTAssertNotNil(r.server.overviewState, "leave_overview: nothing while grabbed")
+        XCTAssertTrue(r.server.anyOverview, "leave_overview: nothing while grabbed")
     }
 
     func testLayoutDispatchersUseTheSelectedMonitor() {

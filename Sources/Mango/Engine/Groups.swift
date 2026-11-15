@@ -15,7 +15,7 @@ package extension MangoServer {
     }
 
     func clientGroupJoin(_ c: Client, into target: Client) {
-        guard c !== target, c.mon != nil, target.mon != nil, overviewState == nil else { return }
+        guard c !== target, let cm = c.mon, target.mon != nil, !cm.isoverview else { return }
         if c.isGroupMember { clientGroupLeave(c) }
         var oldmon: Monitor?
         if c.mon !== target.mon { oldmon = c.mon; c.mon = target.mon }
@@ -31,7 +31,7 @@ package extension MangoServer {
 
     @discardableResult
     func clientGroupLeave(_ c: Client) -> Bool {
-        guard c.isGroupFocus, c.isGroupMember, overviewState == nil,
+        guard c.isGroupFocus, c.isGroupMember, c.mon?.isoverview != true,
               let rc = c.groupNext ?? c.groupPrev else { return false }
         clientFocusGroupMember(rc)
         clientGroupDetach(c)
@@ -46,7 +46,7 @@ package extension MangoServer {
     }
 
     func groupFocus(next: Bool) {
-        guard let c = focused, c.isGroupMember, overviewState == nil,
+        guard let c = focused, c.isGroupMember, c.mon?.isoverview != true,
               let t = next ? c.groupNext : c.groupPrev else { return }
         clientFocusGroupMember(t)
         if let m = t.mon { arrange(m) }
@@ -62,7 +62,7 @@ package extension MangoServer {
     func clientGroupSwapFocus(_ c: Client) -> Bool {
         guard c.isGroupMember, !c.isGroupFocus,
               let current = groupMembers(c).first(where: { $0.isGroupFocus }), let m = current.mon,
-              overviewState == nil else { return false }
+              !m.isoverview else { return false }
         current.isGroupFocus = false
         c.mon = m
         clientReplace(c, current, isGroupChangeMember: true)

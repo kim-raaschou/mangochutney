@@ -125,7 +125,7 @@ final class SwipeDriveTests: MangoTestCase {
         move(r, 0, -20, 0)
         move(r, 0, -10, 1000)
         end(r)
-        XCTAssertNotNil(r.server.overviewState)
+        XCTAssertTrue(r.server.anyOverview)
     }
 
     func testFiredWithNoTransitionItIsNotFiredAgainAtTheEnd() {

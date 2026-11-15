@@ -156,7 +156,7 @@ package extension MangoServer {
         if special {
             var tagSwitch = false
             if case .tag = anim { tagSwitch = true }
-            if tagSwitch && overviewState?.monitor !== m && animates {
+            if tagSwitch && !m.isoverview && animates {
                 let g = c.geom ?? c.frame
                 c.tagouting = true
                 system.hide(c, tagout: TagoutAnimation(to: CGRect(x: g.minX, y: m.screen.frame.minY - g.height, width: g.width, height: g.height),

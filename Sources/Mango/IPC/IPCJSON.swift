@@ -137,7 +137,7 @@ package extension MangoServer {
     }
 
     func monitorActiveTags(_ m: Monitor) -> JSONValue {
-        if overviewState?.monitor === m { return .array([.int(0)]) }
+        if m.isoverview { return .array([.int(0)]) }
         return .array(TagMask.tagsMaskToArray(getMonitorActiveTagset(m), tagNum: config.tagNum).map { .int($0) })
     }
 
@@ -243,7 +243,7 @@ package extension MangoServer {
             ("layout_symbol", .string(m.layout.symbol)),
             ("last_open_surface", .string("")), // not in mango: set by layer-shell maps, which macOS does not have
             ("tag_num", .int(config.tagNum)),
-            ("hide_clients", .int(overviewState != nil ? 1 : 0)),
+            ("hide_clients", .int(m.isoverview ? 1 : 0)),
             ("tags", buildTagsJson(m)),
             ("active_tags", monitorActiveTags(m)),
             ("active_client", monitorActiveClient(m)),

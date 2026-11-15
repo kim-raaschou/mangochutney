@@ -395,9 +395,9 @@ final class FullscreenTagTests: MangoTestCase {
     func testEnteringLeavesOverview() {
         let r = rig()
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
-        XCTAssertNotNil(r.server.overviewState)
+        XCTAssertTrue(r.server.anyOverview)
         fullscreen(r, 2, true)
-        XCTAssertNil(r.server.overviewState)
+        XCTAssertFalse(r.server.anyOverview)
         XCTAssertEqual(viewed(r), f1)
     }
 

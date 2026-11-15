@@ -13,15 +13,15 @@ final class SmallOptionTests: MangoTestCase {
         let corner = CGPoint(x: f.minX + 2, y: f.maxY - 2), away = CGPoint(x: f.midX, y: f.midY)
         c.isFullscreen = true
         r.server.toggleHotarea(corner)
-        XCTAssertNil(r.server.overviewState, "under a fullscreen window: quiet")
+        XCTAssertFalse(r.server.anyOverview, "under a fullscreen window: quiet")
         c.isFullscreen = false
         r.server.toggleHotarea(corner)
-        XCTAssertNotNil(r.server.overviewState, "entering the corner opens it")
+        XCTAssertTrue(r.server.anyOverview, "entering the corner opens it")
         r.server.toggleHotarea(corner)
-        XCTAssertNotNil(r.server.overviewState, "staying in it does not toggle it again")
+        XCTAssertTrue(r.server.anyOverview, "staying in it does not toggle it again")
         r.server.toggleHotarea(away)
         r.server.toggleHotarea(corner)
-        XCTAssertNil(r.server.overviewState, "left and entered again: toggled")
+        XCTAssertFalse(r.server.anyOverview, "left and entered again: toggled")
     }
 
     func testTheSpecialDimTakesThePointer() {

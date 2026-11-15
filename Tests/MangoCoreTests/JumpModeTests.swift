@@ -21,7 +21,7 @@ final class JumpModeTests: MangoTestCase {
         let (r, _) = rig()
         jump(r)
         XCTAssertTrue(r.monitor.isJumpMode)
-        XCTAssertNotNil(r.server.overviewState)
+        XCTAssertTrue(r.server.anyOverview)
         let labels = Array(r.server.config.jumpLabels)
         for (i, c) in r.server.clients.enumerated() {
             XCTAssertEqual(c.jumpChar, labels[i])
@@ -33,7 +33,7 @@ final class JumpModeTests: MangoTestCase {
     func testTheLabelIsCentredOnTheCard() {
         let (r, cs) = rig(1)
         jump(r)
-        let card = r.server.overviewState!.cards[cs[0].id]!
+        let card = r.server.selectedMonitor.ovCards[cs[0].id]!
         let p = fake(r).jumpLabels[cs[0].id]!.position
         XCTAssertEqual(p.x, card.minX + ((card.width - 40) / 2).rounded(.towardZero))
         XCTAssertEqual(p.y, card.minY + ((card.height - 40) / 2).rounded(.towardZero))
@@ -60,7 +60,7 @@ final class JumpModeTests: MangoTestCase {
         let target = r.server.clients[1]
         let keycode = target.jumpKeycodes.keycode1!
         r.server.handleKeyboardKey([.overviewKey(.jump(keycode))])
-        XCTAssertNil(r.server.overviewState)
+        XCTAssertFalse(r.server.anyOverview)
         XCTAssertTrue(r.server.focused === target)
         XCTAssertFalse(r.monitor.isJumpMode)
         for c in r.server.clients {
@@ -74,7 +74,7 @@ final class JumpModeTests: MangoTestCase {
         let (r, _) = rig(1)
         jump(r)
         r.server.handleKeyboardKey([.overviewKey(.jump(25))])
-        XCTAssertNotNil(r.server.overviewState)
+        XCTAssertTrue(r.server.anyOverview)
         XCTAssertTrue(r.monitor.isJumpMode)
     }
 
@@ -82,7 +82,7 @@ final class JumpModeTests: MangoTestCase {
         let (r, _) = rig()
         jump(r)
         r.server.handleKeyboardKey([.overviewKey(.escape)])
-        XCTAssertNil(r.server.overviewState)
+        XCTAssertFalse(r.server.anyOverview)
         XCTAssertFalse(r.monitor.isJumpMode)
     }
 
@@ -91,14 +91,14 @@ final class JumpModeTests: MangoTestCase {
         jump(r)
         let leave = KeyBinding(mods: [], keyName: "escape", keyCodes: [53], dispatch: Dispatch(name: "leaveoverview", args: []))
         r.server.handleKeyboardKey([.binding(leave, held: false), .overviewKey(.escape)])
-        XCTAssertNil(r.server.overviewState, "is_jump_mode is asked after the binding has left overview")
+        XCTAssertFalse(r.server.anyOverview, "is_jump_mode is asked after the binding has left overview")
         XCTAssertFalse(r.monitor.isJumpMode)
     }
 
     func testToggleJumpOnAnEmptyMonitorLeavesNoJumpMode() {
         let r = EngineRig()
         jump(r)
-        XCTAssertNil(r.server.overviewState, "no windows: no overview")
+        XCTAssertFalse(r.server.anyOverview, "no windows: no overview")
         XCTAssertFalse(r.monitor.isJumpMode, "a mango bug, docs/afvigelser.md §6: mango keeps is_jump_mode set")
         let a = r.map(1)
         r.server.arrange(r.monitor, .none)
@@ -111,7 +111,7 @@ final class JumpModeTests: MangoTestCase {
         let (r, _) = rig()
         jump(r)
         jump(r)
-        XCTAssertNil(r.server.overviewState)
+        XCTAssertFalse(r.server.anyOverview)
         XCTAssertFalse(r.monitor.isJumpMode)
     }
 
@@ -119,7 +119,7 @@ final class JumpModeTests: MangoTestCase {
         let (r, _) = rig()
         jump(r)
         XCTAssertFalse(r.server.isOvercircleMode(r.monitor))
-        r.server.leaveOverview(select: nil)
+        r.server.leaveOverview()
         r.monitor.isJumpMode = true
         r.server.switcher("next")
         XCTAssertNil(r.server.switcherState, "mango's switcher returns in jump mode")
