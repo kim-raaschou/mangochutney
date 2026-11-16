@@ -57,7 +57,7 @@ package extension MangoServer {
                 if tc.mon !== cm {
                     clientMoveToMonitor(c, tc, dir)
                 } else if cm.layout == .dwindle {
-                    dwindleMoveNextTo(c, tc, dir)
+                    dwindleMoveNextTo(c, tc, Float(config.dwindleSplitRatio), dir)
                 } else if let t2 = getFocusedStackClient(tc, c) {
                     clientExchange(c, t2)
                 }
@@ -411,18 +411,22 @@ package extension MangoServer {
             toggleJump(tc: target)
 
         case "dwindle_toggle_split_direction":
-            guard let c else { return nil }
-            m.pertag.dwindleRoot[getMonCurtag(m)].dwindleSetSplitDirection(c.id, horizontal: nil)
+            guard let c, c.mon != nil, !c.isfloating else { return nil }
+            dwindleSetSplitDirection(c, true, false)
         case "dwindle_toggle_current_split":
-            guard let c else { return nil }
-            m.pertag.dwindleRoot[getMonCurtag(m)].dwindleToggleCurrentSplit(for: c.id)
-            arrange(m, false, false)
+            guard let c, let cm = c.mon, !c.isfloating else { return nil }
+            let tag = getClientTagIdx(c)
+            if cm.pertag.ltidxs[tag] != .dwindle { return nil }
+            guard let leaf = dwindleFindLeaf(cm.pertag.dwindleRoot[tag], c), let parent = leaf.parent else { return nil }
+            parent.splitH = !parent.splitH
+            parent.splitLocked = true
+            arrange(cm, false, false)
         case "dwindle_split_horizontal":
-            guard let c else { return nil }
-            m.pertag.dwindleRoot[getMonCurtag(m)].dwindleSetSplitDirection(c.id, horizontal: true)
+            guard let c, c.mon != nil, !c.isfloating else { return nil }
+            dwindleSetSplitDirection(c, false, true)
         case "dwindle_split_vertical":
-            guard let c else { return nil }
-            m.pertag.dwindleRoot[getMonCurtag(m)].dwindleSetSplitDirection(c.id, horizontal: false)
+            guard let c, c.mon != nil, !c.isfloating else { return nil }
+            dwindleSetSplitDirection(c, false, false)
 
         case "spawn":
             system.spawn(combineArgsUntilEmpty(d.args))
@@ -1367,16 +1371,29 @@ package extension MangoServer {
 
     func resizeTileDwindle(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint) {
         guard let m = gc.mon else { return }
-        let tree = m.pertag.dwindleRoot[getMonCurtag(m)]
         if !isdrag {
-            tree.dwindleResizeClientStep(gc.id, dx: offsetX, dy: offsetY, config: config)
-            arrange(m, false, false)
+            dwindleResizeClientStep(m, gc, Int32(offsetX), Int32(offsetY))
             return
         }
-        if tree.dwindleResizeClient(gc.id, startDragWindow: &startDragWindow, dragBeginCursor: &dragBeginCursor,
-                                    cursor: cursor, smartResize: config.dwindleSmartResize) {
-            arrange(m, false, false)
+
+        dwindleResizeClient(m, gc)
+    }
+
+    func dwindleSetSplitDirection(_ c: Client, _ istoggle: Bool, _ horizontal: Bool) {
+        guard let m = c.mon else { return }
+        let tag = getClientTagIdx(c)
+        if m.pertag.ltidxs[tag] != .dwindle { return }
+
+        guard let leaf = dwindleFindLeaf(m.pertag.dwindleRoot[tag], c) else { return }
+
+        if istoggle {
+            leaf.customLeafSplitH = !leaf.customLeafSplitH
+        } else if horizontal {
+            leaf.customLeafSplitH = true
+        } else {
+            leaf.customLeafSplitH = false
         }
+        updateBorders()   // not in mango: client_draw_split_border; the port draws the split in the border's overlay
     }
 
     func resizeTileGridFair(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint) {
@@ -1540,13 +1557,8 @@ package extension MangoServer {
             if m1 !== m2 { swapMonitorsAndTags() }
         } else if m1.layout == .dwindle && m2.layout == .dwindle {
             swapLayoutProperties()
-            if m1 === m2 {
-                m1.pertag.dwindleRoot[getMonCurtag(m1)].dwindleSwapClients(c1.id, c2.id)
-            } else {
-                m1.pertag.dwindleRoot[getMonCurtag(m1)].replace(c1.id, with: c2.id, config: config)
-                m2.pertag.dwindleRoot[getMonCurtag(m2)].replace(c2.id, with: c1.id, config: config)
-                swapMonitorsAndTags()
-            }
+            dwindleSwapClients(c1, c2)
+            if m1 !== m2 { swapMonitorsAndTags() }
             swapList()
         } else {
             swapLayoutProperties()
@@ -1720,11 +1732,17 @@ package extension MangoServer {
 
     func getFocusedStackClient(_ sc: Client?, _ customFocusClient: Client?) -> Client? {
         guard let sc, !sc.isfloating, let fc = customFocusClient ?? focused, !fc.isfloating, let m = sc.mon else { return sc }
-        let block: Set<ClientID>? = m.layout == .dwindle ? m.pertag.dwindleRoot[getMonCurtag(m)].dwindleFocusBlockRoot(sc.id, fc.id) : nil
+        var isDwindle = false
+        var dwindleBlock: DwindleNode?
+        let tag = getClientTagIdx(sc)
+        if m.pertag.ltidxs[tag] == .dwindle {
+            isDwindle = true
+            dwindleBlock = dwindleFocusBlockRoot(m.pertag.dwindleRoot[tag], sc, fc)
+        }
         for id in focusStack {
             guard let tc = clientByIdAll(id), !tc.isunglobal, VISIBLEON(tc, m), tc !== fc else { continue }
-            if m.layout == .dwindle {
-                if let block, block.contains(tc.id) { return tc }
+            if isDwindle {
+                if dwindleBlock != nil && dwindleFocusBlockHasClient(dwindleBlock, tc) { return tc }
                 continue
             }
             if clientIsInSameStack(sc, tc, fc) { return tc }
@@ -1822,7 +1840,7 @@ package extension MangoServer {
               monitorMoveDirection(src, dst) == dir else { return }
         let layout = dst.layout
         if layout == .dwindle {
-            dwindleMoveNextTo(c, target, dir)
+            dwindleMoveNextTo(c, target, Float(config.dwindleSplitRatio), dir)
             return
         }
         let insertBefore = dir == .right || dir == .up
@@ -1847,17 +1865,6 @@ package extension MangoServer {
         }
         arrange(src, false, false)
         arrange(dst, false, false)
-    }
-
-    func dwindleMoveNextTo(_ c: Client, _ target: Client, _ dir: Direction) {
-        guard let cm = c.mon, c !== target, let tm = target.mon else { return }
-        let crossed = cm !== tm
-        let origin = c.geom
-        if !clientJumpToMonitor(c, tm, dir) && c.mon !== tm { return }
-        guard let m = c.mon else { return }
-        m.pertag.dwindleRoot[getMonCurtag(m)].dwindleMoveNextTo(c.id, nextTo: target.id, direction: dir, crossed: crossed,
-                                                      origin: origin, config: config)
-        arrange(m, false, false)
     }
 
     func tagMonitor(_ c: Client, to m: Monitor, newtags: UInt32) {

@@ -122,9 +122,11 @@ package extension MangoServer {
                     m.pertag.scrollerState[getMonCurtag(m)].scrollerDropTile(c.id, onto: t.id, intoStack: along,
                                                   before: direction == .left || direction == .up)
                 case .dwindle:
-                    m.pertag.dwindleRoot[getMonCurtag(m)].drop(c.id, nextTo: t.id, asFirst: direction == .left || direction == .up,
-                                                 splitH: direction == .left || direction == .right,
-                                                 lock: !config.dwindleDropSimpleSplit, config: config)
+                    let tag = getClientTagIdx(c)
+                    let insertBefore = direction == .left || direction == .up
+                    let splitH = direction == .left || direction == .right
+                    dwindleInsert(&m.pertag.dwindleRoot[tag], c, t, Float(config.dwindleSplitRatio), insertBefore, splitH,
+                                  !config.dwindleDropSimpleSplit)
                 case .rightTile:
                     inOrder(before: direction == .right || direction == .up)
                 default:

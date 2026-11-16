@@ -17,9 +17,15 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let right = r.server.clientByIdAll(900_401)!.geom
         let p = CGPoint(x: right.midX, y: right.midY)
         r.server.mousebind(resize, at: p)
-        r.server.pointerProcessMotion(p, time: 1000)
-        r.server.pointerProcessMotion(CGPoint(x: p.x + dx, y: p.y), time: 1100)
+        motion(r, p, time: 1000)
+        motion(r, CGPoint(x: p.x + dx, y: p.y), time: 1100)
         return r.server.clientByIdAll(900_400)!.geom.width
+    }
+
+    /// The pointer moved there (macOS moves it before the event comes), then the motion.
+    func motion(_ r: EngineRig, _ p: CGPoint, time: UInt32) {
+        (r.server.system as! FakeWindowSystem).fakePointer = p
+        _ = r.server.pointerProcessMotion(p, time: time)
     }
 
     func testADragMovesTheSplitLineWithThePointer() {
@@ -38,7 +44,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
     func testATiledDragLaysOutOnEveryMotion() {
         let r = dwindle(2)
         let width = dragRight(r, by: 100)
-        r.server.pointerProcessMotion(CGPoint(x: 0, y: 0), time: 1110)
+        motion(r, CGPoint(x: 0, y: 0), time: 1110)
         XCTAssertNotEqual(r.server.clientByIdAll(900_400)!.geom.width, width, "1 ms later: laid out")
         XCTAssertEqual(r.server.dragRefreshIntervalMs(r.monitor), 16)
         r.monitor.screen.refresh = 120_000
@@ -50,10 +56,10 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let c = r.server.clientByIdAll(900_400)!
         XCTAssertNil(r.server.clientDrawSplitBorder(c, on: r.monitor), "only with dwindle_manual_split")
         r.server.config.dwindleManualSplit = true
-        let horizontal = r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)].leafSplitHorizontal(for: c.id)!
+        let horizontal = r.server.dwindleFindLeaf(r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)], c)!.customLeafSplitH
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.side, horizontal ? .right : .bottom)
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.color, r.server.config.splitcolor)
-        r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)].dwindleSetSplitDirection(c.id, horizontal: nil)
+        r.server.dwindleSetSplitDirection(c, true, false)
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.side, horizontal ? .bottom : .right)
         c.isurgent = true
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.color, r.server.config.urgentcolor)

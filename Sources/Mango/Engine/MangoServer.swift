@@ -90,6 +90,9 @@ public final class MangoServer {
     var swipeFingers = 0
     var gestureDriveMon: Monitor?
     var gestureDriveActive = false
+    // mango's static locked_horizontal_node and locked_vertical_node (layout/dwindle.c)
+    weak var dwindleLockedHorizontalNode: DwindleNode?
+    weak var dwindleLockedVerticalNode: DwindleNode?
     var bordersDirty = false   // not in mango: a border changed; the port draws them all at once
     var watchTimer: EventSource?
     var watchedFiles: [WatchedFile] = []
@@ -541,11 +544,13 @@ public final class MangoServer {
         if drawsOverlays { system.drawBorders(specs) }
     }
 
+    // not in mango: client_draw_split_border's choice of side; the port draws it in the border's overlay
     func clientDrawSplitBorder(_ c: Client, on m: Monitor) -> (side: BorderSpec.SplitSide, color: RGBA)? {
-        guard config.dwindleManualSplit, m.layout == .dwindle, !c.isfloating, !c.isfullscreen,
-              tiledClients(m).contains(where: { $0 === c }),
-              let horizontal = m.pertag.dwindleRoot[getMonCurtag(m)].leafSplitHorizontal(for: c.id) else { return nil }
-        return (horizontal ? .right : .bottom, c.isurgent ? config.urgentcolor : config.splitcolor)
+        let tag = getClientTagIdx(c)
+        let layout = m.pertag.ltidxs[tag]
+        if !ISTILED(c) || layout != .dwindle || !config.dwindleManualSplit || c.isfullscreen { return nil }
+        guard let dnode = dwindleFindLeaf(m.pertag.dwindleRoot[tag], c) else { return nil }
+        return (dnode.customLeafSplitH ? .right : .bottom, c.isurgent ? config.urgentcolor : config.splitcolor)
     }
 
     package func clientFocus(_ c: Client?, _ lift: Bool) {
@@ -799,7 +804,6 @@ public final class MangoServer {
     /// a new window next to the focused one before focus moves to it.
     package func layoutStateInsert(_ c: Client, on m: Monitor) {
         m.pertag.scrollerState[getMonCurtag(m)].insert(c.id, afterFocused: m.sel)
-        m.pertag.dwindleRoot[getMonCurtag(m)].dwindleInsertWithConfig(c.id, nextTo: m.sel, config: config, cursor: system.pointer)
     }
 
     func clientAdaptGeometryToMonitor(_ c: Client, _ oldmon: Monitor) {
@@ -1195,6 +1199,7 @@ public final class MangoServer {
             c.jumpLabelNode = nil
         }
 
+        let replaced = c.isGroupMember && c.isGroupFocus && (c.groupNext ?? c.groupPrev) != nil
         if c.isGroupMember {
             if c.isGroupFocus, let r = c.groupNext ?? c.groupPrev {
                 r.mon = c.mon
@@ -1202,6 +1207,7 @@ public final class MangoServer {
             }
             clientGroupDetach(c)
         }
+        if !replaced { dwindleRemoveClient(c) }
         let order = clients.map(\.id)
         clients.removeAll { $0 === c }
         portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
@@ -1211,7 +1217,6 @@ public final class MangoServer {
         if dragTile?.client === c { dragTile = nil; system.showDropArea(nil, color: config.dropcolor) }
         for m in monitors {
             for st in m.pertag.scrollerState { st.scrollerNodeRemove(id) }
-            for root in m.pertag.dwindleRoot { root.dwindleRemove(id, config: config) }
             if m.sel == id { m.sel = nil }
             if m.prevsel == id { m.prevsel = nil }
         }

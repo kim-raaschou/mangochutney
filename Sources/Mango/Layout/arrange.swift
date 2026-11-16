@@ -26,7 +26,7 @@ package struct Layout {
     Layout(symbol: "VT", arrange: { $0.verticalTile($1) }, name: "vertical_tile", id: .verticalTile), // Vertical tiled layout
     Layout(symbol: "VG", arrange: { $0.verticalGrid($1) }, name: "vertical_grid", id: .verticalGrid), // Vertical grid layout
     Layout(symbol: "VK", arrange: { $0.verticalDeck($1) }, name: "vertical_deck", id: .verticalDeck), // Vertical card layout
-    Layout(symbol: "DW", arrange: { $0.layoutEngineArrange($1) }, name: "dwindle", id: .dwindle),
+    Layout(symbol: "DW", arrange: { $0.dwindle($1) }, name: "dwindle", id: .dwindle),
     Layout(symbol: "F", arrange: { $0.fair($1) }, name: "fair", id: .fair),
     Layout(symbol: "VF", arrange: { $0.verticalFair($1) }, name: "vertical_fair", id: .verticalFair),
 ]
@@ -305,7 +305,6 @@ package extension MangoServer {
                                       scrollerIgnoreProportionSingle: m.pertag.scrollerIgnoreProportionSingle[curtag])
         let state = TagLayoutState()
         state.scrollerState = m.pertag.scrollerState[curtag]
-        state.dwindleRoot = m.pertag.dwindleRoot[curtag]
         var input = LayoutInput(workArea: work, monitorFrame: m.screen.frame, gaps: gaps, clients: layoutClients,
                                 focusedID: m.sel, prevFocusedID: m.prevsel, pertag: settings,
                                 config: config, cursor: system.pointer)

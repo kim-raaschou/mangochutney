@@ -201,14 +201,20 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .dwindle
         let a = r.map(1), _ = r.map(2), _ = r.map(3)
-        let tree = r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)]
-        let before = tree.clientOrder
+        func order() -> [ClientID] {
+            func leaves(_ n: DwindleNode?) -> [ClientID] {
+                guard let n else { return [] }
+                return n.isSplit ? leaves(n.first) + leaves(n.second) : [n.client?.id].compactMap { $0 }
+            }
+            return leaves(r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)])
+        }
+        let before = order()
         a.isfullscreen = true
         r.arrange()
-        XCTAssertTrue(tree.contains(a.id), "its leaf stays")
+        XCTAssertTrue(order().contains(a.id), "its leaf stays")
         a.isfullscreen = false
         r.arrange()
-        XCTAssertEqual(tree.clientOrder, before)
+        XCTAssertEqual(order(), before)
     }
 
     func testTabMembersAndChainFocus() {
@@ -1471,17 +1477,20 @@ final class FidelityTests: MangoTestCase {
     }
 
     func testDwindleNewcomersSplitTheFocusedLeaf() {
-        let tree = DwindleTree()
         let area = CGRect(x: 0, y: 0, width: 2000, height: 1000)
-        func input(_ ids: [ClientID], focused: ClientID?) -> LayoutInput {
-            LayoutInput(workArea: area, monitorFrame: area, gaps: .zero,
-                        clients: ids.map { LayoutClient(id: $0, currentFrame: area) },
-                        focusedID: focused, prevFocusedID: nil, pertag: PertagSettings(), config: Config())
-        }
-        _ = tree.dwindleCore(input([1], focused: 1))
-        let r = tree.dwindleCore(input([1, 2, 3], focused: 1))
-        XCTAssertEqual(r.frames[2]?.width, 1000)
-        XCTAssertEqual(r.frames[1]?.width, 500)
+        let r = EngineRig()
+        r.server.rebuildMonitors(screens: [Screen(displayID: 1, name: "t", frame: area, workArea: area, scale: 1, isMain: true)])
+        r.monitor.gappih = 0; r.monitor.gappiv = 0; r.monitor.gappoh = 0; r.monitor.gappov = 0
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .dwindle
+        let c1 = r.window(1, frame: area)
+        r.server.clientFocus(c1, false)
+        r.arrange()
+        r.window(2, frame: area); r.window(3, frame: area)
+        r.server.focusStack.removeAll { $0 == 1 }
+        r.server.focusStack.insert(1, at: 0)
+        r.arrange()
+        XCTAssertEqual(r.server.clientByIdAll(2)?.geom.width, 1000)
+        XCTAssertEqual(c1.geom.width, 500)
     }
 
     func testExecRunsThroughTheShell() throws {

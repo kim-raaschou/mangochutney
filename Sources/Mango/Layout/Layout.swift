@@ -176,7 +176,6 @@ public struct LayoutResult: Equatable, Sendable {
 
 public final class TagLayoutState {
     public var scrollerState = ScrollerState()
-    public var dwindleRoot = DwindleTree()
     public init() {}
 }
 
@@ -229,10 +228,7 @@ public enum LayoutEngine {
         case .verticalGrid: return GridLayouts.verticalGrid(input)
         case .fair: return GridLayouts.fair(input)
         case .verticalFair: return GridLayouts.verticalFair(input)
-        case .dwindle:
-            var tiled = input
-            tiled.clients = input.clients.filter { !$0.isfullscreen && !$0.isMaximized }
-            return state.dwindleRoot.dwindleCore(tiled)
+        case .dwindle: return LayoutResult()   // mango's own dwindle (Layout/dwindle.swift)
         case .scroller: return state.scrollerState.arrange(input, vertical: false)
         case .verticalScroller: return state.scrollerState.arrange(input, vertical: true)
         }

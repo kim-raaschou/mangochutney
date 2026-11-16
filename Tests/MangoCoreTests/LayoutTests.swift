@@ -18,6 +18,40 @@ final class LayoutTests: MangoTestCase {
 
     func ids(_ n: Int) -> [ClientID] { (1...n).map { ClientID($0) } }
 
+    // mango's dwindle (layout/dwindle.c) on a rig with this test's monitor, gaps and config
+    @MainActor
+    func dwindleRig(_ config: Config = Config(), work area: CGRect? = nil, gaps g: Int32? = nil) -> EngineRig {
+        let r = EngineRig()
+        let w = area ?? work
+        r.server.rebuildMonitors(screens: [Screen(displayID: 1, name: "test", frame: area ?? monitor, workArea: w, scale: 1, isMain: true)])
+        var cfg = config
+        cfg.animations = false
+        r.server.config = cfg
+        let m = r.monitor
+        m.gappih = g ?? 5; m.gappiv = g ?? 5; m.gappoh = g ?? 10; m.gappov = g ?? 10
+        m.pertag.ltidxs[getMonCurtag(m)] = .dwindle
+        return r
+    }
+
+    /// The windows `visible` shown (the others on another tag), `focus` on top of the focus stack, arranged;
+    /// each shown one's box.
+    @MainActor
+    @discardableResult
+    func dwindleStep(_ r: EngineRig, _ visible: [ClientID], focus: ClientID?) -> [ClientID: CGRect] {
+        for id in visible where r.server.clientByIdAll(id) == nil { r.window(id) }
+        for c in r.server.clientsAll { c.tags = visible.contains(c.id) ? 1 : 2 }
+        if let focus {
+            r.server.focusStack.removeAll { $0 == focus }
+            r.server.focusStack.insert(focus, at: 0)
+        }
+        r.monitor.sel = focus
+        r.arrange()
+        return Dictionary(uniqueKeysWithValues: visible.map { ($0, r.server.clientByIdAll($0)!.geom) })
+    }
+
+    @MainActor
+    func dwindleRoot(_ r: EngineRig) -> DwindleNode? { r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)] }
+
     func checkInvariants(_ name: String, _ input: LayoutInput, _ r: LayoutResult,
                          insideWork: Bool = true, file: StaticString = #filePath, line: UInt = #line) {
         for c in input.clients {
@@ -75,11 +109,12 @@ final class LayoutTests: MangoTestCase {
         }
     }
 
+    @MainActor
     func testDwindleInvariants() {
         for n in [1, 2, 3, 5] {
-            let tree = DwindleTree()
-            let input = makeInput(ids(n), focused: ClientID(n))
-            checkInvariants("dwindle n=\(n)", input, tree.dwindleCore(input))
+            let r = dwindleRig()
+            let frames = dwindleStep(r, ids(n), focus: ClientID(n))
+            checkInvariants("dwindle n=\(n)", makeInput(ids(n), focused: ClientID(n)), LayoutResult(frames: frames))
         }
     }
 
@@ -193,83 +228,89 @@ final class LayoutTests: MangoTestCase {
         XCTAssertEqual(v.frames[2]!.minY, v.frames[3]!.minY)
     }
 
+    @MainActor
     func testDwindleSplitsAndRemove() {
-        let t = DwindleTree()
-        var r = t.dwindleCore(makeInput([1]))
-        XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 1900, height: 1060))
-        r = t.dwindleCore(makeInput([1, 2], focused: 1))
-        XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 948, height: 1060))
-        XCTAssertEqual(r.frames[2], CGRect(x: 963, y: 35, width: 947, height: 1060))
-        r = t.dwindleCore(makeInput([1, 2, 3], focused: 2))
-        XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 948, height: 1060))
-        XCTAssertEqual(r.frames[2]!.minX, 963)
-        XCTAssertEqual(r.frames[3]!.minX, 963)
-        XCTAssertLessThan(r.frames[2]!.maxY, r.frames[3]!.minY)
-        XCTAssertEqual(r.frames[3]!.minY - r.frames[2]!.maxY, 5)
-        t.dwindleRemove(2, config: Config())
-        XCTAssertFalse(t.contains(2))
-        r = t.dwindleCore(makeInput([1, 3], focused: 3))
-        XCTAssertEqual(r.frames[3], CGRect(x: 963, y: 35, width: 947, height: 1060))
-        r = t.dwindleCore(makeInput([3], focused: 3))
-        XCTAssertFalse(t.contains(1))
-        XCTAssertEqual(r.frames[3], CGRect(x: 10, y: 35, width: 1900, height: 1060))
+        let t = dwindleRig()
+        var r = dwindleStep(t, [1], focus: 1)
+        XCTAssertEqual(r[1], CGRect(x: 10, y: 35, width: 1900, height: 1060))
+        r = dwindleStep(t, [1, 2], focus: 1)
+        XCTAssertEqual(r[1], CGRect(x: 10, y: 35, width: 948, height: 1060))
+        XCTAssertEqual(r[2], CGRect(x: 963, y: 35, width: 947, height: 1060))
+        r = dwindleStep(t, [1, 2, 3], focus: 2)
+        XCTAssertEqual(r[1], CGRect(x: 10, y: 35, width: 948, height: 1060))
+        XCTAssertEqual(r[2]!.minX, 963)
+        XCTAssertEqual(r[3]!.minX, 963)
+        XCTAssertLessThan(r[2]!.maxY, r[3]!.minY)
+        XCTAssertEqual(r[3]!.minY - r[2]!.maxY, 5)
+        let c2 = t.server.clientByIdAll(2)!
+        t.server.dwindleRemove(&t.monitor.pertag.dwindleRoot[getMonCurtag(t.monitor)], c2)
+        XCTAssertNil(t.server.dwindleFindLeaf(dwindleRoot(t), c2))
+        r = dwindleStep(t, [1, 3], focus: 3)
+        XCTAssertEqual(r[3], CGRect(x: 963, y: 35, width: 947, height: 1060))
+        r = dwindleStep(t, [3], focus: 3)
+        XCTAssertNil(t.server.dwindleFindLeaf(dwindleRoot(t), t.server.clientByIdAll(1)!))
+        XCTAssertEqual(r[3], CGRect(x: 10, y: 35, width: 1900, height: 1060))
     }
 
+    @MainActor
     func testDwindleSplitSide() {
         var cfg = Config(); cfg.dwindleHsplit = 2
-        let t = DwindleTree()
-        _ = t.dwindleCore(makeInput([1], config: cfg))
-        let r = t.dwindleCore(makeInput([1, 2], focused: 1, config: cfg))
-        XCTAssertLessThan(r.frames[2]!.minX, r.frames[1]!.minX)
+        let t = dwindleRig(cfg)
+        dwindleStep(t, [1], focus: 1)
+        let r = dwindleStep(t, [1, 2], focus: 1)
+        XCTAssertLessThan(r[2]!.minX, r[1]!.minX)
     }
 
+    @MainActor
     func testDwindleResizeAndExchange() {
-        let t = DwindleTree()
-        _ = t.dwindleCore(makeInput([1]))
-        _ = t.dwindleCore(makeInput([1, 2], focused: 1))
-        t.dwindleResizeClientStep(1, dx: 190, dy: 0, config: Config())
-        var r = t.dwindleCore(makeInput([1, 2], focused: 1))
-        XCTAssertEqual(r.frames[1]!.width, CGFloat(Int(1900 * 0.6) - 2))
-        t.dwindleResizeClientStep(1, dx: 10_000, dy: 0, config: Config())
-        r = t.dwindleCore(makeInput([1, 2], focused: 1))
-        XCTAssertEqual(r.frames[1]!.width, CGFloat(Int(1900 * 0.95) - 2))
+        let t = dwindleRig()
+        dwindleStep(t, [1], focus: 1)
+        dwindleStep(t, [1, 2], focus: 1)
+        let c1 = t.server.clientByIdAll(1)!, c2 = t.server.clientByIdAll(2)!
+        t.server.dwindleResizeClientStep(t.monitor, c1, 190, 0)
+        var r = dwindleStep(t, [1, 2], focus: 1)
+        XCTAssertEqual(r[1]!.width, CGFloat(Int(1900 * 0.6) - 2))
+        t.server.dwindleResizeClientStep(t.monitor, c1, 10_000, 0)
+        r = dwindleStep(t, [1, 2], focus: 1)
+        XCTAssertEqual(r[1]!.width, CGFloat(Int(1900 * 0.95) - 2))
         let before = r
-        t.dwindleSwapClients(1, 2)
-        r = t.dwindleCore(makeInput([1, 2], focused: 1))
-        XCTAssertEqual(r.frames[1], before.frames[2])
-        XCTAssertEqual(r.frames[2], before.frames[1])
+        t.server.dwindleSwapClients(c1, c2)
+        r = dwindleStep(t, [1, 2], focus: 1)
+        XCTAssertEqual(r[1], before[2])
+        XCTAssertEqual(r[2], before[1])
     }
 
+    @MainActor
     func testDwindleMoveAndToggle() {
-        let t = DwindleTree()
-        _ = t.dwindleCore(makeInput([1]))
-        _ = t.dwindleCore(makeInput([1, 2], focused: 1))
-        _ = t.dwindleCore(makeInput([1, 2, 3], focused: 2))
-        t.dwindleMoveNextTo(1, nextTo: 3, direction: .right, config: Config())
-        let r = t.dwindleCore(makeInput([1, 2, 3], focused: 1))
-        checkInvariants("dwindle after move", makeInput([1, 2, 3]), r)
-        XCTAssertEqual(r.frames[2]!.height, 1060)
-        t.dwindleToggleCurrentSplit(for: 2)
-        let r2 = t.dwindleCore(makeInput([1, 2, 3], focused: 1))
-        checkInvariants("dwindle after toggle", makeInput([1, 2, 3]), r2)
-        XCTAssertNotEqual(r.frames[2], r2.frames[2])
-        t.dwindleSetSplitDirection(2, horizontal: false)
-        XCTAssertEqual(t.leafSplitHorizontal(for: 2), false)
-        t.dwindleSetSplitDirection(2, horizontal: nil)
-        XCTAssertEqual(t.leafSplitHorizontal(for: 2), true)
-        t.dwindleFreeTree()
-        XCTAssertFalse(t.contains(1))
+        let t = dwindleRig()
+        dwindleStep(t, [1], focus: 1)
+        dwindleStep(t, [1, 2], focus: 1)
+        dwindleStep(t, [1, 2, 3], focus: 2)
+        let c1 = t.server.clientByIdAll(1)!, c2 = t.server.clientByIdAll(2)!, c3 = t.server.clientByIdAll(3)!
+        t.server.dwindleMoveNextTo(c1, c3, 0.5, .right)
+        let r = dwindleStep(t, [1, 2, 3], focus: 1)
+        checkInvariants("dwindle after move", makeInput([1, 2, 3]), LayoutResult(frames: r))
+        XCTAssertEqual(r[2]!.height, 1060)
+        _ = t.server.dispatch(Dispatch(name: "dwindle_toggle_current_split"), target: c2)
+        let r2 = dwindleStep(t, [1, 2, 3], focus: 1)
+        checkInvariants("dwindle after toggle", makeInput([1, 2, 3]), LayoutResult(frames: r2))
+        XCTAssertNotEqual(r[2], r2[2])
+        t.server.dwindleSetSplitDirection(c2, false, false)
+        XCTAssertEqual(t.server.dwindleFindLeaf(dwindleRoot(t), c2)?.customLeafSplitH, false)
+        t.server.dwindleSetSplitDirection(c2, true, false)
+        XCTAssertEqual(t.server.dwindleFindLeaf(dwindleRoot(t), c2)?.customLeafSplitH, true)
     }
 
+    @MainActor
     func testDwindleManualSplitEqualShares() {
         var cfg = Config(); cfg.dwindleManualSplit = true
-        let t = DwindleTree()
-        _ = t.dwindleCore(makeInput([1], config: cfg))
-        _ = t.dwindleCore(makeInput([1, 2], focused: 1, config: cfg))
-        let r = t.dwindleCore(makeInput([1, 2, 3], focused: 2, config: cfg))
-        let ws = [1, 2, 3].map { r.frames[ClientID($0)]!.width }
+        let t = dwindleRig(cfg)
+        dwindleStep(t, [1], focus: 1)
+        dwindleStep(t, [1, 2], focus: 1)
+        let r = dwindleStep(t, [1, 2, 3], focus: 2)
+        let ws = [1, 2, 3].map { r[ClientID($0)]!.width }
         XCTAssertEqual(ws.max()! - ws.min()!, 0, accuracy: 3)
-        checkInvariants("dwindle manual", makeInput([1, 2, 3], config: cfg), r)
+        checkInvariants("dwindle manual", makeInput([1, 2, 3], config: cfg), LayoutResult(frames: r))
     }
 
     func testScrollerStateOperations() {
@@ -376,7 +417,7 @@ final class LayoutTests: MangoTestCase {
 
     func testLayoutEngineDispatchFramesEveryClient() {
         let state = TagLayoutState()
-        for kind in LayoutKind.allCases {
+        for kind in LayoutKind.allCases where kind != .dwindle {
             let input = makeInput(ids(4), focused: 2)
             let r = LayoutEngine.arrange(kind, input: input, state: state)
             XCTAssertEqual(Set(r.frames.keys), Set(ids(4)), kind.name)
@@ -440,7 +481,7 @@ final class LayoutTests: MangoTestCase {
         }
         let input = LayoutInput(workArea: work, monitorFrame: monitor, gaps: gaps, clients: clients, focusedID: 2,
                                 prevFocusedID: 3, pertag: pt, config: Config())
-        for kind in LayoutKind.allCases {
+        for kind in LayoutKind.allCases where kind != .dwindle {
             let r = LayoutEngine.arrange(kind, input: input, state: TagLayoutState())
             XCTAssertEqual(r.frames.count, 4, kind.name)
             for f in r.frames.values { XCTAssertTrue(f.origin.x.isFinite && f.width.isFinite && f.width >= 1, "\(kind.name) \(f)") }
@@ -476,11 +517,11 @@ final class LayoutTests: MangoTestCase {
             let input = LayoutInput(workArea: area, monitorFrame: area, gaps: gaps, clients: clients,
                                     focusedID: ids.randomElement(using: &rng), prevFocusedID: ids.randomElement(using: &rng),
                                     pertag: pt, config: cfg, cursor: CGPoint(x: 100, y: 100))
-            for (i, kind) in LayoutKind.allCases.enumerated() {
+            for (i, kind) in LayoutKind.allCases.enumerated() where kind != .dwindle {
                 let r = LayoutEngine.arrange(kind, input: input, state: states[i])
                 for c in clients { XCTAssertNotNil(r.frames[c.id], "\(kind.name) n=\(n) lost client \(c.id)") }
             }
-            if iter % 5 == 0 { for st in states { st.scrollerState.clearScrollerState(); st.dwindleRoot.dwindleFreeTree() } }
+            if iter % 5 == 0 { for st in states { st.scrollerState.clearScrollerState() } }
             let cards = OverviewLayout.overviewScale(clients: ids.map { ($0, CGSize(width: Double.random(in: 0...1500, using: &rng), height: Double.random(in: 0...1500, using: &rng))) },
                                             workArea: area, gapInner: CGFloat(Int.random(in: 0...100, using: &rng)), gapOuter: CGFloat(Int.random(in: 0...200, using: &rng)))
             XCTAssertTrue(cards.count == n || cards.isEmpty, "mango: all placed, or none when no scale fits")

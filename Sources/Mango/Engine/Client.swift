@@ -180,7 +180,7 @@ public final class Pertag {
     public var scrollerDefaultProportion = PertagSlots<Float>(0)
     public var scrollerDefaultProportionSingle = PertagSlots<Float>(0)
     public var scrollerIgnoreProportionSingle = PertagSlots<Bool>(false)
-    public var dwindleRoot = PertagSlots<DwindleTree>(DwindleTree())
+    package var dwindleRoot = PertagSlots<DwindleNode?>(nil)
     public var configLtidxs = PertagSlots<LayoutKind>(.tile)
     public var ltidxs = PertagSlots<LayoutKind>(.tile)
     public var scrollerState = PertagSlots<ScrollerState>(ScrollerState())
@@ -327,7 +327,7 @@ package extension MangoServer {
         m.pertag.noHide[tag] = false
         m.pertag.noRenderBorder[tag] = false
         m.pertag.openAsFloating[tag] = false
-        m.pertag.dwindleRoot[tag] = DwindleTree()
+        m.pertag.dwindleRoot[tag] = nil
         m.pertag.scrollerState[tag] = ScrollerState()
 
         for tr in config.tagRules {

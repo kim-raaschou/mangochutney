@@ -100,7 +100,10 @@ package extension MangoServer {
         if let m = w.mon {
             let layout = m.layout
             for i in 0..<Int(PERTAG_SLOTS) {
-                if layout == .dwindle { m.pertag.dwindleRoot[i].replace(w.id, with: c.id, config: config) }
+                if layout == .dwindle {
+                    dwindleRemove(&m.pertag.dwindleRoot[i], c)
+                    if let dnode = dwindleFindLeaf(m.pertag.dwindleRoot[i], w) { dnode.client = c }
+                }
                 if layout.isScroller { m.pertag.scrollerState[i].replace(w.id, with: c.id) }
             }
         }

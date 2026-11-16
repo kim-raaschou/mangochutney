@@ -23,6 +23,63 @@ package extension MangoServer {
         }
     }
 
+    private func dwindleNodeDepth(_ node: DwindleNode?) -> Int32 {
+        var depth: Int32 = 0
+        var n = node
+        while let x = n, x.parent != nil {
+            depth += 1
+            n = x.parent
+        }
+        return depth
+    }
+
+    private func dwindleNodeLca(_ a: DwindleNode?, _ b: DwindleNode?) -> DwindleNode? {
+        guard var a, var b else { return nil }
+
+        var da = dwindleNodeDepth(a)
+        var db = dwindleNodeDepth(b)
+        while da > db, let p = a.parent {
+            a = p
+            da -= 1
+        }
+        while db > da, let p = b.parent {
+            b = p
+            db -= 1
+        }
+        while a !== b {
+            guard let pa = a.parent, let pb = b.parent else { return nil }
+            a = pa
+            b = pb
+        }
+        return a
+    }
+
+    /* Dwindle keeps a binary split tree. The focus memory may only kick in when the
+     * target `sc` lives in the branch that is directly attached to `fc`, i.e. the
+     * sibling subtree created when `fc` itself was split. If the target sits in a
+     * higher ancestor branch, it is not part of fc's own subtree and the move is
+     * left untouched. Within that directly attached branch the most recently
+     * focused client wins, so the focus order is remembered for any tree shape. */
+    func dwindleFocusBlockRoot(_ root: DwindleNode?, _ sc: Client, _ fc: Client?) -> DwindleNode? {
+        let scLeaf = dwindleFindLeaf(root, sc)
+        let fcLeaf = fc.flatMap { dwindleFindLeaf(root, $0) }
+        guard let scLeaf, let fcLeaf, scLeaf !== fcLeaf, fcLeaf.parent != nil else { return nil }
+
+        /* sc must be inside the branch that is directly attached to fc, so the
+         * lca of both leaves has to be fc's own parent. Anything above it is an
+         * ancestor branch of fc and must not use the focus memory. */
+        guard let lca = dwindleNodeLca(scLeaf, fcLeaf), lca === fcLeaf.parent else { return nil }
+
+        guard let branch = lca.first === fcLeaf ? lca.second : lca.first, branch.isSplit else { return nil }
+        return branch
+    }
+
+    func dwindleFocusBlockHasClient(_ node: DwindleNode?, _ c: Client) -> Bool {
+        guard let node else { return false }
+        if !node.isSplit { return node.client === c }
+        return dwindleFocusBlockHasClient(node.first, c) || dwindleFocusBlockHasClient(node.second, c)
+    }
+
     func clientTileResize(_ c: Client, _ box: CGRect, _ interact: Bool, _ ctx: LayoutContext?) {
         var geo = box
         if let ctx, let probe = ctx.probe {

@@ -494,29 +494,41 @@ final class LayoutGoldenTests: MangoTestCase {
     STEP cur=1135,507 focus=7 vis=5 6 7 | 5:622,43,335,873 6:111,43,504,873 7:964,43,562,873
     """
 
+    /// mango's dwindle (layout/dwindle.c) on a rig, step by step as the C run: the windows `vis` shown
+    /// (the others on another tag), `focus` on top of the focus stack, the cursor where it was.
+    @MainActor
     func testDwindleMatchesC() throws {
         let mons: [(x: Int, y: Int, w: Int, h: Int, ih: Int, iv: Int, oh: Int, ov: Int)] =
             [(0, 25, 1920, 1080, 5, 5, 10, 10), (100, 30, 1437, 899, 7, 3, 11, 13)]
         let hs = [(1, 1), (0, 0), (2, 2)]
         let ratios = [0.5, 0.6]
-        var tree = DwindleTree(), cfg = Config(), m = mons[0], area = CGRect.zero
-        var frames: [ClientID: CGRect] = [:]
+        var rig: EngineRig?
         var scenario = "", steps = 0
         for line in Self.dwindle.split(separator: "\n") {
             if line.hasPrefix("CFG") {
                 let f = line.split(separator: " ").map(String.init)
-                cfg = Config()
+                var cfg = Config()
+                cfg.animations = false
                 cfg.dwindleHsplit = hs[Int(f[2].dropFirst())!].0
                 cfg.dwindleVsplit = hs[Int(f[2].dropFirst())!].1
                 cfg.dwindleSmartSplit = Int(f[3].dropFirst())! == 1
                 cfg.dwindleManualSplit = Int(f[4].dropFirst(3))! == 1
                 cfg.dwindlePreserveSplit = Int(f[5].dropFirst(3))! == 1
                 cfg.dwindleSplitRatio = ratios[Int(f[6].dropFirst())!]
-                m = mons[Int(f[1].dropFirst())!]
-                area = CGRect(x: m.x, y: m.y, width: m.w, height: m.h)
-                tree = DwindleTree(); frames = [:]; scenario = String(line)
+                let m = mons[Int(f[1].dropFirst())!]
+                let area = CGRect(x: m.x, y: m.y, width: m.w, height: m.h)
+                let r = EngineRig()
+                r.server.rebuildMonitors(screens: [Screen(displayID: 1, name: "golden", frame: area, workArea: area,
+                                                          scale: 1, isMain: true)])
+                r.server.config = cfg
+                r.monitor.gappih = Int32(m.ih); r.monitor.gappiv = Int32(m.iv)
+                r.monitor.gappoh = Int32(m.oh); r.monitor.gappov = Int32(m.ov)
+                r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .dwindle
+                rig = r
+                scenario = String(line)
                 continue
             }
+            let r = try XCTUnwrap(rig)
             let halves = line.split(separator: "|", maxSplits: 1).map(String.init)
             let head = halves[0].split(separator: " ").map(String.init)
             let cur = head[1].dropFirst(4).split(separator: ",").map { Double($0)! }
@@ -530,17 +542,21 @@ final class LayoutGoldenTests: MangoTestCase {
                 let a = tok.split(separator: ":")
                 expected[ClientID(a[0])!] = Self.rects([a[1]])[0]
             }
-            let clients = vis.map { LayoutClient(id: $0, currentFrame: frames[$0] ?? .zero) }
-            let input = LayoutInput(workArea: area, monitorFrame: area,
-                                    gaps: Gaps(ih: CGFloat(m.ih), iv: CGFloat(m.iv), oh: CGFloat(m.oh), ov: CGFloat(m.ov)),
-                                    clients: clients, focusedID: focus == 0 ? nil : focus, prevFocusedID: nil,
-                                    pertag: PertagSettings(), config: cfg, cursor: CGPoint(x: cur[0], y: cur[1]))
-            let r = tree.dwindleCore(input)
-            for id in vis {
-                XCTAssertEqual(r.frames[id], expected[id], "\(scenario) \(head[1...3].joined(separator: " ")) client \(id)")
-                frames[id] = r.frames[id]
+            for id in vis where r.server.clientByIdAll(id) == nil { r.window(id) }
+            for c in r.server.clientsAll { c.tags = vis.contains(c.id) ? 1 : 2 }
+            if focus == 0 {
+                r.server.focusStack.removeAll()
+            } else {
+                r.server.focusStack.removeAll { $0 == focus }
+                r.server.focusStack.insert(focus, at: 0)
             }
-            frames = frames.filter { vis.contains($0.key) }
+            r.monitor.sel = focus == 0 ? nil : focus
+            (r.server.system as! FakeWindowSystem).fakePointer = CGPoint(x: cur[0], y: cur[1])
+            r.arrange()
+            for id in vis {
+                XCTAssertEqual(r.server.clientByIdAll(id)?.geom, expected[id],
+                               "\(scenario) \(head[1...3].joined(separator: " ")) client \(id)")
+            }
             steps += 1
         }
         XCTAssertEqual(steps, 96)
