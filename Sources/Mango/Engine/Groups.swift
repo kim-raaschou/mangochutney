@@ -25,8 +25,8 @@ package extension MangoServer {
         c.groupPrev = target.groupPrev
         target.groupPrev = c
         clientFocusGroupMember(c)
-        if let m = c.mon { arrange(m) }
-        if let oldmon { arrange(oldmon) }
+        if let m = c.mon { arrange(m, false, false) }
+        if let oldmon { arrange(oldmon, false, false) }
     }
 
     @discardableResult
@@ -49,13 +49,13 @@ package extension MangoServer {
         guard let c = focused, c.isGroupMember, c.mon?.isoverview != true,
               let t = next ? c.groupNext : c.groupPrev else { return }
         clientFocusGroupMember(t)
-        if let m = t.mon { arrange(m) }
+        if let m = t.mon { arrange(m, false, false) }
     }
 
     package func clientFocusGroupMember(_ c: Client) {
         guard clientGroupSwapFocus(c) else { return }
         clientFocus(c, true)
-        if let m = c.mon { arrange(m) }
+        if let m = c.mon { arrange(m, false, false) }
     }
 
     @discardableResult
@@ -71,6 +71,7 @@ package extension MangoServer {
     }
 
     func clientReplace(_ c: Client, _ w: Client, isGroupChangeMember: Bool) {
+        c.bw = w.bw
         c.isfloating = w.isfloating
         c.isurgent = w.isurgent
         c.tags = w.tags
@@ -85,6 +86,7 @@ package extension MangoServer {
         c.scrollerProportion = w.scrollerProportion
         c.isglobal = w.isglobal
         c.overviewBackupGeom = w.overviewBackupGeom
+        c.animation.current = w.animation.current
         c.isfullscreen = w.isfullscreen
         c.ismaximizescreen = w.ismaximizescreen
         c.isInScratchpad = w.isInScratchpad
@@ -103,6 +105,11 @@ package extension MangoServer {
             }
         }
         w.jumpLabelNode?.setEnabled(false)
+
+        c.tagVisible = w.tagVisible
+        w.tagVisible = false
+        clientUpdateVisibility(w)
+        clientUpdateVisibility(c)
         clientPark(w)
     }
 
@@ -137,6 +144,7 @@ package extension MangoServer {
     }
 
     func clientPark(_ c: Client) {
+        c.animation.running = false
         c.groupParked = true
         clients.removeAll { $0 === c }
         focusStack.removeAll { $0 == c.id }

@@ -49,7 +49,7 @@ final class LayerFocusTests: MangoTestCase {
     func testAWindowUnderAMaximizedOneGetsTheFocusWithoutBeingLifted() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientSetMaximizeScreen(a, true, rearrange: true)
         r.settle(1)
         XCTAssertTrue(a.frame.intersects(b.frame))
@@ -61,7 +61,7 @@ final class LayerFocusTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1)
         r.window(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1)
         XCTAssertTrue(MacWindowSystem.lifts(a, raise: true, in: r.server))
     }
@@ -70,7 +70,7 @@ final class LayerFocusTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2)
         let f = r.window(3, floating: true)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1)
         f.frame = CGRect(x: b.frame.midX, y: b.frame.midY, width: 50, height: 50)
         XCTAssertFalse(MacWindowSystem.lifts(b, raise: true, in: r.server))
@@ -81,7 +81,7 @@ final class LayerFocusTests: MangoTestCase {
     func testFocusWithoutRaiseNeverLifts() {
         let r = EngineRig()
         let a = r.window(1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         XCTAssertFalse(MacWindowSystem.lifts(a, raise: false, in: r.server), "client_focus(c, 0)")
     }
 }

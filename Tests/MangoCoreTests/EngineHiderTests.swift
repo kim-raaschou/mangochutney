@@ -54,7 +54,7 @@ final class EngineParkAgainTests: MangoTestCase {
         rig.server.rebuildMonitors(screens: [benqAlone])
         rig.window(1, tags: 1)
         let hidden = rig.window(2, tags: 2)
-        rig.server.arrangeAll(.none)
+        rig.server.arrangeAll(false)
         rig.settle()
         XCTAssertTrue(hidden.parked)
         XCTAssertEqual(rig.app.frames[2]?.origin, CGPoint(x: 2559, y: 1706))
@@ -64,7 +64,7 @@ final class EngineParkAgainTests: MangoTestCase {
         let benq = Screen(displayID: 2, name: "BenQ", frame: CGRect(x: 1728, y: 0, width: 3360, height: 2240),
                           workArea: CGRect(x: 1728, y: 30, width: 3360, height: 2210), scale: 2, isMain: false)
         rig.server.rebuildMonitors(screens: [laptop, benq])
-        rig.server.arrangeAll(.none)
+        rig.server.arrangeAll(false)
         rig.server.mac.parkAgainAfterScreensChanged()
         rig.settle()
         XCTAssertTrue(hidden.parked)

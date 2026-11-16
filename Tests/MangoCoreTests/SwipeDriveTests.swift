@@ -11,7 +11,7 @@ final class SwipeDriveTests: MangoTestCase {
         if windows {
             r.map(1)
             r.map(2).tags = 2
-            r.server.arrange(r.monitor, .none)
+            r.server.arrange(r.monitor, false, false)
             r.settle(0.2)
         }
         r.server.config.gestureSwipeMinSpeedToForce = minSpeed
@@ -65,7 +65,9 @@ final class SwipeDriveTests: MangoTestCase {
         move(r, 150, 0, 20)
         let to = r.app.frames[2]!
         XCTAssertNotEqual(start, to)
-        XCTAssertEqual(half, CGRect.lerp(start, to, 0.5).rounded(), "client_animation_set_progress is linear")
+        let mid = CGRect(x: (start.minX + to.minX) / 2, y: (start.minY + to.minY) / 2,
+                         width: (start.width + to.width) / 2, height: (start.height + to.height) / 2)
+        XCTAssertEqual(half, mid.rounded(), "client_animation_set_progress is linear")
     }
 
     func testHeldStillWhileTheFingersRest() {
@@ -177,7 +179,7 @@ final class SwipeDriveTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         r.map(1); r.map(2); r.map(3)
         r.server.clientFocus(r.server.clientByIdAll(2), true)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(0.2)
         r.server.config.gestureBindings = [GestureBinding(mods: [], direction: nil, fingers: 4,
                                                           dispatch: Dispatch(name: "focusdir", args: ["right"]))]

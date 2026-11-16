@@ -55,7 +55,7 @@ final class BorderRadiusTests: MangoTestCase {
         let c = r.window(900_900)
         r.window(900_901)
         let fake = r.server.system as! FakeWindowSystem
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         func radius() -> CGFloat {
             r.server.updateBorders()
             return fake.borderSpecs.first { $0.id == c.id }?.radius ?? 0

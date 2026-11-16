@@ -80,13 +80,13 @@ package extension MangoServer {
             // column of the window put first goes first, as mango's list order makes it.
             if let zm = z.mon, zm.layout.isScroller { zm.pertag.scrollerState[getMonCurtag(zm)].moveColumnToFront(z.id) }
             clientFocus(z, true)
-            arrange(selectedMonitor)
+            arrange(selectedMonitor, false, false)
 
         case "incnmaster":
             let sm: Monitor = selectedMonitor
             let tag = getMonCurtag(sm)
             sm.pertag.nmasters[tag] = max(sm.pertag.nmasters[tag] + Int32(truncatingIfNeeded: ValueParse.atoi(a0)), 0)
-            arrange(sm)
+            arrange(sm, false, false)
         case "setmfact":
             let sm: Monitor = selectedMonitor
             let argf = Float(ValueParse.atof(a0))
@@ -94,7 +94,7 @@ package extension MangoServer {
             if f < 0.1 || f > 0.9 { return nil }
             sm.pertag.mfacts[getMonCurtag(sm)] = f
             for t in clients where VISIBLEON(t, sm) && ISTILED(t) { t.masterMfactPer = CGFloat(f) }
-            arrange(sm)
+            arrange(sm, false, false)
         case "setlayout":
             guard let k = LayoutKind(name: a0) else { return "unknown layout" }
             setLayout(k, on: selectedMonitor)
@@ -107,7 +107,7 @@ package extension MangoServer {
                     setLayout(k, on: sm)
                 } else {
                     clearFullscreenAndMaximizedState(sm)
-                    arrange(sm)
+                    arrange(sm, false, false)
                     printstatus(.arrangge)
                 }
             } else {
@@ -136,7 +136,7 @@ package extension MangoServer {
                   let dir = Direction(mangoName: a0) else { return nil }
             let ids = tiledClients(m).map(\.id)
             if m.pertag.scrollerState[getMonCurtag(m)].scrollerApplyStack(c.id, direction: dir, vertical: m.layout == .verticalScroller, clientOrder: ids) {
-                arrange(m)
+                arrange(m, false, false)
             }
         case "centerwin":
             guard let c, !c.isfullscreen, !c.ismaximizescreen else { return nil }
@@ -147,7 +147,7 @@ package extension MangoServer {
             } else if selectedMonitor.layout.isScroller {
                 m.pertag.scrollerState[getMonCurtag(m)].centerWindow(c.id)
             }
-            arrange(m)
+            arrange(m, false, false)
 
         case "view":
             bindToView(TagMask.parseTagMask(a0), allMonitors: ValueParse.atoi(a1) != 0)
@@ -157,7 +157,7 @@ package extension MangoServer {
             if tagCombo {
                 selectedMonitor.tagset[selectedMonitor.seltags] |= newtags
                 clientFocus(clientFocusTop(selectedMonitor), true)
-                arrange(selectedMonitor, .none)
+                arrange(selectedMonitor, false, false)
             } else {
                 tagCombo = true
                 clientViewOnMonitor(newtags, on: selectedMonitor)
@@ -172,7 +172,7 @@ package extension MangoServer {
             selectedMonitor.tagset[selectedMonitor.seltags] = n
             clientFocus(clientFocusTop(selectedMonitor), true)
             for t in tiledClients(selectedMonitor) { setSizePer(selectedMonitor, t, resetProportion: true) }
-            arrange(selectedMonitor)
+            arrange(selectedMonitor, false, false)
         case "viewtoleft", "viewtoright":
             viewShiftTag(d.name == "viewtoright" ? 1 : -1, allMonitors: ValueParse.atoi(a0) != 0)
         case "viewtoleft_have_client", "viewtoright_have_client", "viewprev_have_client", "viewnext_have_client":
@@ -241,7 +241,7 @@ package extension MangoServer {
             if newtags != 0 {
                 sel.tags = newtags
                 clientFocus(clientFocusTop(selectedMonitor), true)
-                arrange(selectedMonitor)
+                arrange(selectedMonitor, false, false)
             }
 
         case "killclient":
@@ -254,7 +254,7 @@ package extension MangoServer {
             if remaining == 0 { pendingKillClient(c); return nil }
             c.tags = remaining
             clientFocus(clientFocusTop(selectedMonitor), true)
-            arrange(cm)
+            arrange(cm, false, false)
         case "togglefloating":
             guard grab == nil, !selectedMonitor.isoverview,
                   let c = target ?? clientFocusTop(selectedMonitor) else { return nil }
@@ -297,10 +297,10 @@ package extension MangoServer {
         case "toggleoverlay":
             guard let c, c.mon != nil, !c.isfullscreen else { return nil }
             c.isoverlay.toggle()
-            arrange(m, .none)
+            arrange(m, false, false)
         case "toggle_render_border":
             renderBorder.toggle()
-            arrange(selectedMonitor)
+            arrange(selectedMonitor, false, false)
 
         case "minimized":
             guard !selectedMonitor.isoverview, let c, !c.isminimized else { return nil }
@@ -359,7 +359,7 @@ package extension MangoServer {
             c.floatGeom.origin.x = relOrAbs(a0, c.floatGeom.minX)
             c.floatGeom.origin.y = relOrAbs(a1, c.floatGeom.minY)
             c.iscustomsize = true
-            arrange(m, .none)
+            arrange(m, false, false)
         case "resizewin":
             guard let c, !c.isfullscreen, !c.ismaximizescreen else { return nil }
             let animationsBackup = config.animations
@@ -371,7 +371,7 @@ package extension MangoServer {
                 c.floatGeom.size.width = max(1, relOrAbs(a0, c.floatGeom.width))
                 c.floatGeom.size.height = max(1, relOrAbs(a1, c.floatGeom.height))
                 c.iscustomsize = true
-                arrange(m)
+                arrange(m, false, false)
             }
         case "smartmovewin":
             guard let c, let dir = Direction(mangoName: a0) else { return nil }
@@ -393,7 +393,7 @@ package extension MangoServer {
             }
         case "togglegaps":
             enableGaps.toggle()
-            arrange(selectedMonitor)
+            arrange(selectedMonitor, false, false)
 
         case "toggleoverview":
             toggleOverview(tc: target, onlyCurrent: a0 == "1")
@@ -416,7 +416,7 @@ package extension MangoServer {
         case "dwindle_toggle_current_split":
             guard let c else { return nil }
             m.pertag.dwindleRoot[getMonCurtag(m)].dwindleToggleCurrentSplit(for: c.id)
-            arrange(m)
+            arrange(m, false, false)
         case "dwindle_split_horizontal":
             guard let c else { return nil }
             m.pertag.dwindleRoot[getMonCurtag(m)].dwindleSetSplitDirection(c.id, horizontal: true)
@@ -457,12 +457,12 @@ package extension MangoServer {
             clientGroupJoin(c, into: target)
         case "groupleave":
             guard let c else { return nil }
-            if clientGroupLeave(c), let cm = c.mon { arrange(cm) }
+            if clientGroupLeave(c), let cm = c.mon { arrange(cm, false, false) }
         case "groupfocus":
             groupFocus(next: NextPrev(mangoArg: a0) == .next)
         case "togglegroupbar":
             config.alwaysShowGroupBar.toggle()
-            arrangeAll(.move)
+            arrangeAll(false)
         default:
             // Port extension: not in mango. The port's own dispatchers (chutney_*).
             if let ext = portHooks.extraDispatchers[d.name] {
@@ -509,7 +509,7 @@ package extension MangoServer {
                 && !c.isfloating {
                 clearFullscreenFlag(fc)
             }
-            if ui & TAG0_MASK != 0, let cm = c.mon { arrange(cm) }
+            if ui & TAG0_MASK != 0, let cm = c.mon { arrange(cm, false, false) }
         }
         clientSwitchView(ui, allMonitors: allMonitors)
         clientFocus(target, true)
@@ -531,7 +531,7 @@ package extension MangoServer {
             clearFullscreenFlag(fc)
         }
         clientFocus(clientFocusTop(selectedMonitor), true)
-        arrange(m)
+        arrange(m, false, false)
     }
 
     func clientActive(_ c: Client) {
@@ -551,7 +551,7 @@ package extension MangoServer {
             c.isInScratchpad = false
             c.isnamedscratchpad = false
             showHideClient(c)
-            if let m = c.mon { arrange(m) }
+            if let m = c.mon { arrange(m, false, false) }
             return
         }
         if let cm = c.mon { clientViewOnMonitor(getTagsFirstTag(c.tags), on: cm, changeFocus: true) }
@@ -666,9 +666,8 @@ package extension MangoServer {
         for c in clients where VISIBLEON(c, m) && (c.isglobal || c.isunglobal || (c.tags & ~TAG0_MASK).nonzeroBitCount > 1) {
             setSizePer(m, c, resetProportion: true)
         }
-        let forward = m.carouselAnimDir != 0 ? m.carouselAnimDir > 0 : m.pertag.curtag > m.pertag.prevtag
         if changeFocus ?? (m === selectedMonitor) { clientFocus(clientFocusTop(m), true) }
-        arrange(m, wantAnimation ? .tag(forward: forward) : .move)
+        arrange(m, wantAnimation, true)
         printstatus(.arrangge)
     }
 
@@ -948,7 +947,7 @@ package extension MangoServer {
     func setLayout(_ k: LayoutKind, on m: Monitor) {
         m.pertag.ltidxs[getMonCurtag(m)] = k
         clearFullscreenAndMaximizedState(m)
-        arrange(m)
+        arrange(m, false, false)
         printstatus(.arrangge)
     }
 
@@ -956,7 +955,7 @@ package extension MangoServer {
         guard let m = c.mon, !m.isoverview, m.layout.isScroller else { return }
         if tiledClients(m).count == 1 && !config.scrollerIgnoreProportionSingle { return }
         scrollGetStackHeadClient(c).scrollerProportion = p
-        arrange(m)
+        arrange(m, false, false)
     }
 
     func scrollGetStackHeadClient(_ c: Client) -> Client {
@@ -976,7 +975,7 @@ package extension MangoServer {
             sm.gappih = max(ih, 0)
             sm.gappiv = max(iv, 0)
         }
-        arrange(sm)
+        arrange(sm, false, false)
     }
 
     func smartResizeWindow(_ c: Client, _ dir: Direction) {
@@ -1016,7 +1015,7 @@ package extension MangoServer {
         }
         c.floatGeom = CGRect(x: g.minX, y: g.minY, width: nw, height: nh)
         c.iscustomsize = true
-        if let cm = c.mon { arrange(cm, .none) }
+        if let cm = c.mon { arrange(cm, false, false) }
     }
 
     func smartMoveWindow(_ c: Client, _ dir: Direction) {
@@ -1070,7 +1069,7 @@ package extension MangoServer {
         }
         c.floatGeom = CGRect(x: nx, y: ny, width: g.width, height: g.height).insetBy(dx: bw, dy: bw)
         c.iscustomsize = true
-        arrange(m, .move)
+        arrange(m, false, false)
     }
 
     func setSizePer(_ m: Monitor, _ c: Client, resetProportion: Bool = false) {
@@ -1177,7 +1176,7 @@ package extension MangoServer {
         let nextnext = gi + 2 < tiled.count ? tiled[gi + 2] : nil
         let prev = gi > 0 ? tiled[gi - 1] : nil
         let prevprev = gi > 1 ? tiled[gi - 2] : nil
-        let geom = gc.geom ?? gc.frame
+        let geom = gc.geom
         if !startDragWindow && isdrag {
             dragBeginCursor = cursor
             startDragWindow = true
@@ -1277,10 +1276,10 @@ package extension MangoServer {
         for tc in tiled { tc.masterMfactPer = CGFloat(newMfact) }
         persistTileSizeWeights(m)
         if !isdrag {
-            arrange(m, .move)
+            arrange(m, false, false)
             return
         }
-        arrange(m, .none)
+        arrange(m, false, false)
     }
 
     func resizeTileScroller(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint,
@@ -1302,7 +1301,7 @@ package extension MangoServer {
         }
         var props = proportions()
         let headProportion = head.scrollerProportion ?? CGFloat(m.pertag.scrollerDefaultProportion[tag])
-        let geom = gc.geom ?? gc.frame
+        let geom = gc.geom
         if !startDragWindow && isdrag {
             dragBeginCursor = cursor
             startDragWindow = true
@@ -1367,10 +1366,10 @@ package extension MangoServer {
         }
         for (k, c) in col.enumerated() { c.scrollerStackWeight = CGFloat(props[k]) }
         if !isdrag {
-            arrange(m, .move)
+            arrange(m, false, false)
             return
         }
-        arrange(m, .none)
+        arrange(m, false, false)
     }
 
     func resizeTileDwindle(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint) {
@@ -1378,12 +1377,12 @@ package extension MangoServer {
         let tree = m.pertag.dwindleRoot[getMonCurtag(m)]
         if !isdrag {
             tree.dwindleResizeClientStep(gc.id, dx: offsetX, dy: offsetY, config: config)
-            arrange(m)
+            arrange(m, false, false)
             return
         }
         if tree.dwindleResizeClient(gc.id, startDragWindow: &startDragWindow, dragBeginCursor: &dragBeginCursor,
                                     cursor: cursor, smartResize: config.dwindleSmartResize) {
-            arrange(m, .none)
+            arrange(m, false, false)
         }
     }
 
@@ -1508,7 +1507,7 @@ package extension MangoServer {
                 if c.gridRowIdx == adjR { c.gridRowPer = CGFloat(newAdj) }
             }
         }
-        arrange(m, .none)
+        arrange(m, false, false)
     }
 
     func clientExchange(_ c1: Client, _ c2: Client) {
@@ -1561,8 +1560,8 @@ package extension MangoServer {
             swapList()
             if m1 !== m2 { swapMonitorsAndTags() }
         }
-        arrange(m1)
-        if m2 !== m1 { arrange(m2) }
+        arrange(m1, false, false)
+        if m2 !== m1 { arrange(m2, false, false) }
         focusStack.removeAll { $0 == c2.id }
         if let i = focusStack.firstIndex(of: c1.id) { focusStack.insert(c2.id, at: i + 1) }
         if config.warpcursor { pointerWarpToClient(c1) }
@@ -1638,13 +1637,10 @@ package extension MangoServer {
         return findClientByDirection(tc, dir, findFloating: true)
     }
 
-    /// Not in mango: stands for c->geom with its border.
+    /// Not in mango: c->geom, or the card in the overview's pictures.
     func directionGeom(_ c: Client) -> CGRect {
         if let m = c.mon, m.isoverview, let card = m.ovCards[c.id] { return card }
-        let g = c.isfloating ? c.floatGeom : (c.geom ?? c.frame)
-        guard let m = c.mon else { return g }
-        let bw = borderWidth(c, on: m)
-        return g.insetBy(dx: -bw, dy: -bw)
+        return c.geom
     }
 
     func findClientByDirection(_ tc: Client, _ dir: Direction, findFloating: Bool) -> Client? {
@@ -1823,8 +1819,8 @@ package extension MangoServer {
         guard let old = c.mon, old !== m, config.exchangeCrossMonitor,
               monitorMoveDirection(old, m) == dir else { return false }
         clientReassignMonitor(c, m)
-        arrange(old)
-        arrange(m)
+        arrange(old, false, false)
+        arrange(m, false, false)
         return true
     }
 
@@ -1856,19 +1852,19 @@ package extension MangoServer {
         } else {
             inOrder(beside: target, before: insertBefore)
         }
-        arrange(src)
-        arrange(dst)
+        arrange(src, false, false)
+        arrange(dst, false, false)
     }
 
     func dwindleMoveNextTo(_ c: Client, _ target: Client, _ dir: Direction) {
         guard let cm = c.mon, c !== target, let tm = target.mon else { return }
         let crossed = cm !== tm
-        let origin = c.geom ?? c.frame
+        let origin = c.geom
         if !clientJumpToMonitor(c, tm, dir) && c.mon !== tm { return }
         guard let m = c.mon else { return }
         m.pertag.dwindleRoot[getMonCurtag(m)].dwindleMoveNextTo(c.id, nextTo: target.id, direction: dir, crossed: crossed,
                                                       origin: origin, config: config)
-        arrange(m)
+        arrange(m, false, false)
     }
 
     func tagMonitor(_ c: Client, to m: Monitor, newtags: UInt32) {
@@ -1885,7 +1881,7 @@ package extension MangoServer {
 
         clientViewOnMonitor(target, on: selectedMonitor, changeFocus: true)
         clientFocus(c, true)
-        arrange(selectedMonitor)
+        arrange(selectedMonitor, false, false)
         if config.warpcursor, let cm = c.mon { pointerWarpToMonitor(cm) }
     }
 
@@ -1956,7 +1952,7 @@ package extension MangoServer {
         c.isminimized = true
         c.isInScratchpad = true
         clientFocus(clientFocusTop(selectedMonitor), true)
-        arrange(m)
+        arrange(m, false, false)
         clients.removeAll { $0 === c }
         clients.insert(c, at: 0)
     }
@@ -1971,7 +1967,7 @@ package extension MangoServer {
         } else {
             c.tags = m.tagset[m.seltags]
             c.isminimized = false
-            arrange(m)
+            arrange(m, false, false)
         }
         c.isminimized = false
         clientFocus(c, true)
@@ -2008,7 +2004,7 @@ package extension MangoServer {
 
             if shown {
                 c.tags = getTagsFirstTag(selectedMonitor.tagset[selectedMonitor.seltags])
-                arrange(selectedMonitor)
+                arrange(selectedMonitor, false, false)
                 clientFocus(c, true)
                 return true
             }
@@ -2022,7 +2018,7 @@ package extension MangoServer {
         c.oldtags = c.tags
         c.scratchpadTagin = true
         if shown {
-            arrange(m)
+            arrange(m, false, false)
             clientFocus(c, true)
         } else {
             showScratchpad(c)

@@ -91,13 +91,12 @@ enum FullscreenTag {
         mac.fullscreenTag.homes[c.id] = Home(tags: own != 0 ? own : desktopView(m, server.config), bit: bit)
         c.nativeFullscreen = true
         mac.forgetPlacement(c)
-        mac.animator.cancel(c.id)
         c.tags = bit
         c.scheduledFullscreen = true
         c.fullscreenPending = false
         wlrLog(.info, "chutney_fullscreen_tag: \(c.appName) window \(c.id) is in macOS fullscreen, on \(name(bit, server.config))")
         if discovered && !mac.windowOnScreen(c.id) {
-            server.arrange(m, .none)
+            server.arrange(m, false, false)
             server.printstatus(.arrangge)
         } else {
             view(server, m, bit)
@@ -126,7 +125,7 @@ enum FullscreenTag {
             m.tagset[m.seltags ^ 1] = desktop & ~mask(server.config) != 0 ? desktop : m.tagset[m.seltags]
             server.clientFocus(c, true)
         } else {
-            server.arrange(m, .none)
+            server.arrange(m, false, false)
             server.printstatus(.arrangge)
         }
     }
@@ -152,13 +151,12 @@ enum FullscreenTag {
         c.scheduledFullscreen = fullscreen
         c.fullscreenPending = true
         server.mac.forgetPlacement(c)
-        server.mac.animator.cancel(c.id)
         server.mac.setNativeFullscreen(c, fullscreen) { took in
             guard !took, c.scheduledFullscreen == fullscreen, server.clientByIdAll(c.id) === c else { return }
             wlrLog(.info, "chutney_fullscreen_tag: \(c.appName) window \(c.id) cannot go \(fullscreen ? "into" : "out of") macOS fullscreen")
             c.scheduledFullscreen = c.nativeFullscreen
             c.fullscreenPending = false
-            if let m = c.mon { server.arrange(m) }
+            if let m = c.mon { server.arrange(m, false, false) }
         }
     }
 
@@ -170,7 +168,7 @@ enum FullscreenTag {
         if c.isfullscreen {
             _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false)
         } else if let m = c.mon {
-            server.arrange(m)
+            server.arrange(m, false, false)
         }
     }
 
@@ -187,7 +185,7 @@ enum FullscreenTag {
             let before = m.pertag.curtag
             m.pertag.curtag = UInt32(bit.trailingZeroBitCount + 1)
             if before != m.pertag.curtag { m.pertag.prevtag = before }
-            server.arrange(m, .none)
+            server.arrange(m, false, false)
         }
         server.clientFocus(c, true)
         server.printstatus(.arrangge)
@@ -264,7 +262,7 @@ enum FullscreenTag {
             return
         }
         if !changed.isEmpty {
-            for m in server.monitors where changed.contains(where: { $0 === m }) { server.arrange(m, .none) }
+            for m in server.monitors where changed.contains(where: { $0 === m }) { server.arrange(m, false, false) }
             server.printstatus(.arrangge)
             return
         }

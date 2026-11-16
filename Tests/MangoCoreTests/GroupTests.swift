@@ -8,7 +8,7 @@ final class GroupTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
         for i in 0..<3 { r.window(CGWindowID(900_700 + i)) }
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(r.server.clientByIdAll(900_701)!, false)
         return r
     }
@@ -19,14 +19,14 @@ final class GroupTests: MangoTestCase {
 
     func testJoiningTakesThePlaceOfTheWindowJoined() {
         let r = rig()
-        let slot = c(r, 900_702).geom!
+        let slot = c(r, 900_702).geom
         run(r, "groupjoin", "down")
         XCTAssertEqual(r.server.groupMembers(c(r, 900_701)).map(\.id), [900_701, 900_702])
         XCTAssertTrue(c(r, 900_701).isGroupFocus)
         XCTAssertTrue(c(r, 900_702).groupParked, "the member out of view is parked")
         XCTAssertEqual(tiled(r), [900_700, 900_701], "one place for the group")
         XCTAssertEqual(r.monitor.sel, 900_701)
-        XCTAssertEqual(c(r, 900_701).geom!.minX, slot.minX, accuracy: 1, "in the joined window's column")
+        XCTAssertEqual(c(r, 900_701).geom.minX, slot.minX, accuracy: 1, "in the joined window's column")
     }
 
     func testAPressOnTheGroupBar() {
@@ -123,12 +123,12 @@ final class GroupTests: MangoTestCase {
 
     func testTheGroupBarTakesRoomAbove() {
         let r = rig()
-        let master = c(r, 900_700).geom!
+        let master = c(r, 900_700).geom
         run(r, "togglegroupbar")
-        XCTAssertEqual(c(r, 900_700).geom!.minY, master.minY + 33, accuracy: 1)
-        XCTAssertEqual(c(r, 900_700).geom!.height, master.height - 33, accuracy: 1)
+        XCTAssertEqual(c(r, 900_700).geom.minY, master.minY + 33, accuracy: 1)
+        XCTAssertEqual(c(r, 900_700).geom.height, master.height - 33, accuracy: 1)
         run(r, "togglegroupbar")
-        XCTAssertEqual(c(r, 900_700).geom!.minY, master.minY, accuracy: 1)
+        XCTAssertEqual(c(r, 900_700).geom.minY, master.minY, accuracy: 1)
     }
 
     func groupBar(_ r: EngineRig) -> TabStrip? {

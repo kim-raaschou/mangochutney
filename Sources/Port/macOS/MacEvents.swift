@@ -85,7 +85,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         memory.returned(server, c)
         wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isfloating) dialog=\(c.mac.isFloatType) (returned)")
         if initial { scheduleInitialSettle(); return }
-        if let cm = c.mon { server.arrange(cm, .move) }
+        if let cm = c.mon { server.arrange(cm, false, false) }
         server.printstatus(.arrangge)
     }
 
@@ -96,7 +96,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.initialSettlePending = false
-                self.server.arrangeAll(.none)
+                self.server.arrangeAll(false)
                 if self.server.focused == nil, let c = self.server.clientFocusTop(self.server.selectedMonitor) {
                     self.server.clientFocus(c, true)
                 }
@@ -171,7 +171,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func screensChanged() {
-        animator.screensChanged()
+        frameClock.screensChanged()
         server.handleOutputLayoutChange()
         parkAgainAfterScreensChanged()
     }
@@ -203,7 +203,6 @@ extension MacWindowSystem: AppWatcherDelegate {
         guard let c = server.clientByIdAll(id) else { return }
         c.element = element
         guard let m = c.mon else { return }
-        animator.cancel(c.id)
         if s.fullscreen == false, c.nativeFullscreen { fullscreenChanged(c, false) }   // Port extension: chutney_fullscreen_tag
         if s.minimized == true || s.fullscreen == true || s.appHidden {
             wlrLog(.info, "\(c.appName): window \(c.id) went away while its element was dead (minimized \(s.minimized ?? false), fullscreen \(s.fullscreen ?? false), hidden \(s.appHidden))")
@@ -215,7 +214,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         guard let f = s.frame, f != c.frame else { return }
         c.frame = f
         c.parked = false
-        server.arrange(m, .none)
+        server.arrange(m, false, false)
         server.printstatus(.arrangge)
     }
 
@@ -309,12 +308,12 @@ extension MacWindowSystem: AppWatcherDelegate {
     func placeAgain(_ id: ClientID) {
         guard let c = server.clientByIdAll(id), let m = c.mon else { return }
         if let real = windowServerFrame(c.id) { c.frame = real }
-        server.arrange(m, .none)
+        server.arrange(m, false, false)
     }
 
     func moved(_ c: Client, to actual: CGRect, resized: Bool) {
         guard !missionControl.isActive, !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
-        if animator.isAnimating(c.id) { return }
+        if c.animation.running { return }
         if server.grab?.client === c { return }
         if c.parked { keepHidden(c, seenAt: actual); return }
         if CACurrentMediaTime() < c.ignoreMovesUntil {

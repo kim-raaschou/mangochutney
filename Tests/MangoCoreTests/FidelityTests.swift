@@ -37,7 +37,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.warpcursor = true
         let a = r.window(1), b = r.window(2), c = r.window(3)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(a, true)
         XCTAssertEqual(fake(r).warps, [], "client_focus does not warp")
         c.noFocus = true
@@ -54,7 +54,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.newIsMaster = false
         let a = r.window(1), _ = r.window(2), c = r.window(3)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(c, true)
         r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
@@ -65,7 +65,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.focusCrossTag = true
         let a = r.window(1, tags: 1), _ = r.window(2, tags: 1 << 1)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["down"]))
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
@@ -74,7 +74,7 @@ final class FidelityTests: MangoTestCase {
     func testExchangePutsTheOtherNextInTheFocusStack() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2), c = r.window(3)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(b, true); r.server.clientFocus(c, true); r.server.clientFocus(a, true)
         r.server.clientExchange(a, b)
         XCTAssertEqual(Array(r.server.focusStack.prefix(2)), [a.id, b.id])
@@ -154,7 +154,7 @@ final class FidelityTests: MangoTestCase {
     func testToggleScratchpadOneAtATime() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2), _ = r.window(3)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: b)
         XCTAssertEqual(r.server.clients.first?.id, 2, "the last minimized first")
@@ -171,7 +171,7 @@ final class FidelityTests: MangoTestCase {
     func testRestoreMinimizedIsLastInFirstOutWithItsFloating() {
         let r = EngineRig()
         let a = r.window(1, floating: true), b = r.window(2)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: b)
         _ = r.server.dispatch(Dispatch(name: "restore_minimized"))
@@ -204,10 +204,10 @@ final class FidelityTests: MangoTestCase {
         let tree = r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)]
         let before = tree.clientOrder
         a.isfullscreen = true
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         XCTAssertTrue(tree.contains(a.id), "its leaf stays")
         a.isfullscreen = false
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         XCTAssertEqual(tree.clientOrder, before)
     }
 
@@ -216,7 +216,7 @@ final class FidelityTests: MangoTestCase {
         r.server.config.monocleTabMode = true
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         let a = r.window(1), b = r.window(2), c = r.window(3, floating: true)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         a.isfullscreen = true
         XCTAssertTrue(r.server.tabMembers(r.monitor).contains { $0 === a }, "fullscreen: a member")
         r.server.clientFocus(b, true)
@@ -278,7 +278,7 @@ final class FidelityTests: MangoTestCase {
                            workArea: CGRect(x: 1728, y: 25, width: 1920, height: 1055), scale: 1, isMain: false)
         r.server.rebuildMonitors(screens: [r.screen, right])
         let c = r.window(1)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         let g = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
         r.server.pointerEndGrabClient(g, at: CGPoint(x: 2500, y: 500))
         let b = r.server.monitors[1]
@@ -334,7 +334,7 @@ final class FidelityTests: MangoTestCase {
     func testOvercircleFocusesEachStep() {
         let r = EngineRig()
         let a = r.window(1), _ = r.window(2), _ = r.window(3)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "overcircle", args: ["next"]))
         XCTAssertTrue(r.server.anyOverview)
@@ -350,9 +350,9 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1), b = r.map(2)
         let first = r.server.clients.first!
         first.masterMfactPer = 0.7
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         let w = r.monitor.screen.workArea.width
-        let master = r.server.clients.first!.geom!.width
+        let master = r.server.clients.first!.geom.width
         XCTAssertGreaterThan(master, w * 0.6, "the first window's 0.7, not the tag's 0.55")
         _ = r.server.dispatch(Dispatch(name: "setmfact", args: ["1.4"]))
         XCTAssertEqual(a.masterMfactPer, 0.4, accuracy: 0.001)
@@ -365,22 +365,22 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .grid
         for id in 1...4 { r.map(CGWindowID(id)) }
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         let first = r.server.clients[0], second = r.server.clients[1]
-        let before = first.geom!.width
+        let before = first.geom.width
         r.server.resizeTileClient(first, offsetX: 200, offsetY: 0)
         XCTAssertGreaterThan(first.gridColPer, 1)
         XCTAssertLessThan(second.gridColPer, 1)
-        XCTAssertGreaterThan(first.geom!.width, before + 100)
-        r.server.arrange(r.monitor)
-        XCTAssertGreaterThan(first.geom!.width, before + 100, "kept on the windows")
+        XCTAssertGreaterThan(first.geom.width, before + 100)
+        r.server.arrange(r.monitor, false, false)
+        XCTAssertGreaterThan(first.geom.width, before + 100, "kept on the windows")
     }
 
     func testAGridDragMovesTheEdgeItGrabs() throws {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .grid
         for id in 1...6 { r.map(CGWindowID(id)) }
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         let tiled = r.server.tiledClients(r.monitor)
         XCTAssertEqual(Set(tiled.map(\.gridColIdx)), [0, 1, 2], "three columns")
         let middle = try XCTUnwrap(tiled.first { $0.gridColIdx == 1 })
@@ -397,7 +397,7 @@ final class FidelityTests: MangoTestCase {
     func testScratchpadFieldsAsMango() {
         let r = EngineRig()
         let a = r.window(1), _ = r.window(2)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
         XCTAssertTrue(a.isInScratchpad)
         XCTAssertTrue(a.isminimized)
@@ -786,7 +786,7 @@ final class FidelityTests: MangoTestCase {
         r.server.config.dragTileToTile = false
         r.server.selectedMonitor = r.monitor
         let a = r.map(1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
         let f = a.geom ?? a.frame
         r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
@@ -803,7 +803,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         let a = r.map(1)
         let b = r.map(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         let before = a.geom
         d(r, "togglemaximizescreen", [], b)
         XCTAssertTrue(b.ismaximizescreen)
@@ -817,14 +817,14 @@ final class FidelityTests: MangoTestCase {
         d(r, "togglegaps")
         d(r, "togglemaximizescreen", [], a)
         let w = r.monitor.screen.workArea
-        XCTAssertEqual(a.geom?.minX, w.minX + CGFloat(r.server.config.gappoh))
+        XCTAssertEqual(a.geom.minX, w.minX + CGFloat(r.server.config.gappoh))
     }
 
     func testArrangeFillsTheSelection() {
         let r = EngineRig()
         let a = r.map(1)
         r.monitor.sel = nil
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         XCTAssertEqual(r.monitor.sel, a.id)
     }
 
@@ -835,7 +835,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         d(r, "scroller_stack", ["left"], b)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         let w = r.monitor.screen.workArea
         let top = [a, b].compactMap(\.geom).min { $0.minY < $1.minY }!
         let bottom = [a, b].compactMap(\.geom).max { $0.minY < $1.minY }!
@@ -849,14 +849,14 @@ final class FidelityTests: MangoTestCase {
         r.server.config.smartgaps = true
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .grid
         let a = r.map(1)
-        r.server.arrange(r.monitor, .none)
-        XCTAssertGreaterThan(a.geom!.minX, r.monitor.screen.workArea.minX)
+        r.server.arrange(r.monitor, false, false)
+        XCTAssertGreaterThan(a.geom.minX, r.monitor.screen.workArea.minX)
     }
 
     private func tileOf4(_ r: EngineRig, _ layout: LayoutKind = .tile) -> [Client] {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = layout
         for id in 1...4 { r.map(CGWindowID(id)) }
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         return r.server.tiledClients(r.monitor)
     }
 
@@ -864,13 +864,13 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         let t = tileOf4(r)
         let top = t[1], mid = t[2], low = t[3]
-        XCTAssertEqual(top.geom!.height, mid.geom!.height, accuracy: 2)
+        XCTAssertEqual(top.geom.height, mid.geom.height, accuracy: 2)
         d(r, "resizewin", ["0", "+100"], top)
-        XCTAssertGreaterThan(top.geom!.height, mid.geom!.height + 50)
-        XCTAssertEqual(mid.geom!.height, low.geom!.height, accuracy: 2)
-        let h = top.geom!.height
-        r.server.arrange(r.monitor, .none)
-        XCTAssertEqual(top.geom!.height, h, accuracy: 1, "kept in the weights")
+        XCTAssertGreaterThan(top.geom.height, mid.geom.height + 50)
+        XCTAssertEqual(mid.geom.height, low.geom.height, accuracy: 2)
+        let h = top.geom.height
+        r.server.arrange(r.monitor, false, false)
+        XCTAssertEqual(top.geom.height, h, accuracy: 1, "kept in the weights")
     }
 
     func testResizewinMovesTheSplitMangosWay() {
@@ -890,12 +890,12 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         d(r, "scroller_stack", ["left"], b)
-        r.server.arrange(r.monitor, .none)
-        let top = [a, b].min { $0.geom!.minY < $1.geom!.minY }!
+        r.server.arrange(r.monitor, false, false)
+        let top = [a, b].min { $0.geom.minY < $1.geom.minY }!
         let other = top === a ? b : a
-        XCTAssertEqual(top.geom!.height, other.geom!.height, accuracy: 2)
+        XCTAssertEqual(top.geom.height, other.geom.height, accuracy: 2)
         d(r, "resizewin", ["0", "+100"], top)
-        XCTAssertGreaterThan(top.geom!.height, other.geom!.height + 50)
+        XCTAssertGreaterThan(top.geom.height, other.geom.height + 50)
     }
 
     func testResizewinLeavesALoneColumnsProportion() {
@@ -903,7 +903,7 @@ final class FidelityTests: MangoTestCase {
         r.server.config.scrollerIgnoreProportionSingle = false
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         d(r, "resizewin", ["+100", "0"], a)
         XCTAssertEqual(a.scrollerProportion ?? 0, CGFloat(Float(0.9)), "the tag's default (a float), as set_size_per copied it")
     }
@@ -958,7 +958,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         b.tags = 1 << 8
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         XCTAssertEqual(a.tags, 1)
         XCTAssertEqual(b.tags, 1 << 1, "tag 9 became tag 2")
     }
@@ -969,7 +969,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         b.tags = 1 << 1
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(a, true)
         r.server.handleClientActivationRequest(b)
         XCTAssertTrue(b.isurgent)
@@ -983,7 +983,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         b.tags = 1 << 1
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(a, true)
         r.server.handleClientActivationRequest(b)
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
@@ -1005,7 +1005,7 @@ final class FidelityTests: MangoTestCase {
     func testFocusdirInTheOverviewKeepsIt() {
         let r = EngineRig()
         for id in 1...4 { r.map(CGWindowID(id)) }
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
         let f = try! XCTUnwrap(r.server.focused)
@@ -1025,7 +1025,7 @@ final class FidelityTests: MangoTestCase {
     func testTheOverviewClearsAndRestoresTheStates() {
         let r = EngineRig()
         let a = r.map(1), b = r.map(2), c = r.map(3)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         a.isfloating = true
         b.isfullscreen = true
         c.ismaximizescreen = true
@@ -1048,7 +1048,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         for id in 1...4 { r.map(CGWindowID(id)) }
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
         let cards = r.server.selectedMonitor.ovCards
         let top = cards.values.map(\.minY).min()!
@@ -1248,7 +1248,7 @@ final class FidelityTests: MangoTestCase {
         r.server.config.alwaysShowGroupBar = true
         let a = r.map(1)
         let b = r.map(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
         let f = b.geom ?? b.frame
         r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
@@ -1451,8 +1451,8 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1), b = r.map(2), c = r.map(3)
         d(r, "scroller_stack", ["left"], b)
         d(r, "scroller_stack", ["left"], c)
-        r.server.arrange(r.monitor, .none)
-        let hs = [a, b, c].map { $0.geom!.height }
+        r.server.arrange(r.monitor, false, false)
+        let hs = [a, b, c].map { $0.geom.height }
         XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].column(of: a.id).count, 3)
         XCTAssertLessThanOrEqual(hs.max()! - hs.min()!, 0.5, "\(hs)")
     }
@@ -1462,7 +1462,7 @@ final class FidelityTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1), b = r.map(2), c = r.map(3)
         r.server.clients = [a, b, c]
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         d(r, "togglefloating", [], b)
         r.server.clientFocus(c, true)
         d(r, "togglefloating", [], b)

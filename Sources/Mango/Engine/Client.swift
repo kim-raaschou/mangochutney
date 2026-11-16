@@ -6,6 +6,8 @@ public protocol PlatformWindow: AnyObject {
     var frame: CGRect { get set }
     var parked: Bool { get set }
     var isFloatType: Bool { get }   // not in mango: wlroots' side of client_is_float_type
+    var sceneNodeEnabled: Bool { get }   // not in mango: wlroots' c->scene->node.enabled
+    var sceneSurfaceEnabled: Bool { get }   // not in mango: wlroots' c->scene_surface->node.enabled
 }
 
 @MainActor
@@ -64,6 +66,7 @@ public final class Client {
 
     public var noBorder = false
     public var noAnimation = false
+    public var noSizeHint = false
     public var noForceCenter = false
     public var noFocus = false
     public var confinePointer = false
@@ -93,15 +96,25 @@ public final class Client {
 
 /// Not in mango: without the border (mango's box includes it).
     public var floatGeom: CGRect
-/// Not in mango: without the border (mango's box includes it).
-    public var geom: CGRect?
+    public var geom: CGRect
+    public var pending: CGRect
+    public var current: CGRect
+    public var animainitGeom: CGRect
+    public var bw: CGFloat = 0
+    public var dirty = false
+    public var configureSerial: UInt32 = 0
     public var isPendingOpenAnimation = true
+    public var needOutputFlush = false
+    public var animation = MangoAnimation()
     public var isfloatingBeforeScratchpad = false
-    public var overining = false
-    public var tagouting = false
-    package var action: AnimationAction = .none
+    public var isClipToHide = false
+    public var scratchpadSwitchingMon = false
     public var scratchpadTagin = false
+    public var fakeNoBorder = false
+    public var tagVisible = false
+    public var isSurfaceHidden = false
     public var overviewBackupGeom: CGRect?
+    public var overviewBackupBw: CGFloat = 0
     public var overviewIsfloatingbak = false
     public var overviewIsfullscreenbak = false
     public var overviewIsmaximizescreenbak = false
@@ -120,6 +133,13 @@ public final class Client {
         self.mon = monitor
         self.tags = tags
         floatGeom = frame
+        // not in mango: the window's frame as the port finds it; handle_client_map's border comes with the first resize
+        geom = frame
+        pending = frame
+        current = frame
+        animainitGeom = frame
+        animation.current = frame
+        animation.initial = frame
     }
 
 

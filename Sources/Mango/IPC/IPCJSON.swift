@@ -160,8 +160,7 @@ package extension MangoServer {
     }
 
     func buildClientJson(_ c: Client) -> JSONValue {
-        let bw = borderWidth(c, on: c.mon ?? selectedMonitor)
-        let f = (c.geom ?? c.frame).insetBy(dx: -bw, dy: -bw)
+        let f = c.geom
         let group = c.isGroupMember
         return .object([
             ("id", .int(Int(c.id))),

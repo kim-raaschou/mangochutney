@@ -8,30 +8,30 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .dwindle
         for i in 0..<windows { r.window(CGWindowID(900_400 + i)) }
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         return r
     }
 
     func dragRight(_ r: EngineRig, by dx: CGFloat) -> CGFloat {
         let resize = MouseBinding(mods: [.superKey], button: .right, dispatch: Dispatch(name: "moveresize", args: ["curresize"]))
-        let right = r.server.clientByIdAll(900_401)!.geom!
+        let right = r.server.clientByIdAll(900_401)!.geom
         let p = CGPoint(x: right.midX, y: right.midY)
         r.server.mousebind(resize, at: p)
         r.server.pointerProcessMotion(p, time: 1000)
         r.server.pointerProcessMotion(CGPoint(x: p.x + dx, y: p.y), time: 1100)
-        return r.server.clientByIdAll(900_400)!.geom!.width
+        return r.server.clientByIdAll(900_400)!.geom.width
     }
 
     func testADragMovesTheSplitLineWithThePointer() {
         let r = dwindle(2)
-        let before = r.server.clientByIdAll(900_400)!.geom!.width
+        let before = r.server.clientByIdAll(900_400)!.geom.width
         XCTAssertEqual(dragRight(r, by: 100), before + 100, accuracy: 2)
     }
 
     func testSmartResizeInvertsBeyondTheSplitLine() {
         let r = dwindle(2)
         r.server.config.dwindleSmartResize = true
-        let before = r.server.clientByIdAll(900_400)!.geom!.width
+        let before = r.server.clientByIdAll(900_400)!.geom.width
         XCTAssertEqual(dragRight(r, by: 100), before - 100, accuracy: 2)
     }
 
@@ -39,7 +39,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let r = dwindle(2)
         let width = dragRight(r, by: 100)
         r.server.pointerProcessMotion(CGPoint(x: 0, y: 0), time: 1110)
-        XCTAssertNotEqual(r.server.clientByIdAll(900_400)!.geom!.width, width, "1 ms later: laid out")
+        XCTAssertNotEqual(r.server.clientByIdAll(900_400)!.geom.width, width, "1 ms later: laid out")
         XCTAssertEqual(r.server.dragRefreshIntervalMs(r.monitor), 16)
         r.monitor.screen.refresh = 120_000
         XCTAssertEqual(r.server.dragRefreshIntervalMs(r.monitor), 8)
@@ -131,10 +131,10 @@ final class TiledDragStaysFiniteTests: MangoTestCase {
                 r.server.renderBorder = true
                 r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = kind
                 for i in 0..<count { r.window(900_600 + CGWindowID(i)) }
-                r.server.arrange(r.monitor, .none)
+                r.server.arrange(r.monitor, false, false)
                 for c in r.server.clientsAll {
                     let resize = MouseBinding(mods: [.superKey], button: .right, dispatch: Dispatch(name: "moveresize", args: ["curresize"]))
-                    guard let g = c.geom else { continue }
+                    let g = c.geom
                     var p = CGPoint(x: g.midX, y: g.midY)
                     r.server.mousebind(resize, at: p)
                     var t: UInt32 = 1000

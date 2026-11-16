@@ -15,11 +15,11 @@ final class TabStripTests: MangoTestCase {
     func testMonocleWindowsMakeRoomForTheStrip() {
         let r = rig(.monocle, windows: 3)
         r.server.config.monocleTabMode = false
-        r.server.arrange(r.monitor, .none)
-        let plain = r.server.clientByIdAll(900_100)!.geom!
+        r.server.arrange(r.monitor, false, false)
+        let plain = r.server.clientByIdAll(900_100)!.geom
         r.server.config.monocleTabMode = true
-        r.server.arrange(r.monitor, .none)
-        let tabbed = r.server.clientByIdAll(900_100)!.geom!
+        r.server.arrange(r.monitor, false, false)
+        let tabbed = r.server.clientByIdAll(900_100)!.geom
         XCTAssertEqual(r.server.tabMembers(r.monitor).count, 3)
         XCTAssertEqual(tabbed.minY, plain.minY + 33)
         XCTAssertEqual(tabbed.height, plain.height - 33)
@@ -28,27 +28,36 @@ final class TabStripTests: MangoTestCase {
     func testMembersOtherThanTheFocusedOneAreHidden() {
         let r = rig(.monocle, windows: 3)
         r.server.clientFocus(r.server.clientByIdAll(900_101)!, false)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
+        r.settle()
         let parked = { (id: CGWindowID) in r.server.clientByIdAll(id)!.parked }
         XCTAssertEqual([parked(900_100), parked(900_101), parked(900_102)], [true, false, true])
         XCTAssertTrue(Hider.isParked(r.app.frames[900_100]!, in: r.screen.frame))
 
+        r.server.config.animations = true
+        let writes = r.app.writes.count
         r.server.tabFocusMember(900_102)
+        r.settle()
         XCTAssertEqual([parked(900_100), parked(900_101), parked(900_102)], [true, true, false])
+        let after = r.app.writes.dropFirst(writes)
+        let shown = after.firstIndex { $0.id == 900_102 }, hidden = after.firstIndex { $0.id == 900_101 }
+        XCTAssertNotNil(shown)
+        XCTAssertLessThan(shown ?? .max, hidden ?? .max, "the new member is written before the old one is parked: no wallpaper between")
         XCTAssertEqual(r.app.frames[900_102], r.server.clientByIdAll(900_102)!.geom, "shown where the layout has it")
     }
 
     func testWithoutTabModeNoMonocleWindowIsHidden() {
         let r = rig(.monocle, windows: 3)
         r.server.config.monocleTabMode = false
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         XCTAssertFalse(r.server.clientsAll.contains { $0.parked })
     }
 
     func testTheDeckHidesItsStackButTheFocusedMember() {
         let r = rig(.deck, windows: 4)
         r.server.clientFocus(r.server.clientByIdAll(900_102)!, false)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
+        r.settle()
         let parked = (0..<4).map { r.server.clientByIdAll(CGWindowID(900_100 + $0))!.parked }
         XCTAssertEqual(parked, [false, true, false, true])
         r.server.clientFocus(r.server.clientByIdAll(900_100)!, false)
@@ -62,7 +71,7 @@ final class TabStripTests: MangoTestCase {
 
     func testTheDeckTabsItsStackNotItsMaster() {
         let r = rig(.deck, windows: 3)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         let ids = r.server.tabMembers(r.monitor).map(\.id)
         XCTAssertEqual(ids, [900_101, 900_102], "the master (first) is not a member")
     }
@@ -157,7 +166,13 @@ final class TabStripTests: MangoTestCase {
     func drawn(_ r: EngineRig, animating: [ClientID: CGRect] = [:]) -> FakeWindowSystem {
         let fake = r.server.system as! FakeWindowSystem
         r.server.drawsOverlays = true
-        r.server.tabRefreshBars(animating: animating)
+        for (id, f) in animating {
+            let c = r.server.clientByIdAll(id)!
+            let bw = r.server.borderWidth(c, on: r.monitor)
+            c.animation.running = true
+            c.animation.current = f.insetBy(dx: -bw, dy: -bw)
+        }
+        r.server.tabRefreshBars()
         return fake
     }
 
@@ -167,7 +182,7 @@ final class TabStripTests: MangoTestCase {
 
     func testTheTabBarsAreMangosBoxesSideBySide() {
         let r = rig(.monocle, windows: 3)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         let s = drawn(r).tabStrips[0]
         let tw = Int(s.frame.width)
         XCTAssertEqual(s.segments.map { Int($0.frame.width) }, (0..<3).map { tw / 3 + ($0 < tw % 3 ? 1 : 0) })
@@ -179,9 +194,9 @@ final class TabStripTests: MangoTestCase {
 
     func testTheTabBarIsClippedAtTheMonitorEdge() {
         let r = rig(.monocle, windows: 2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         let f = focus(r)
-        var shown = f.geom!
+        var shown = f.tile
         shown.origin.x = r.screen.frame.maxX - 100
         let s = drawn(r, animating: [f.id: shown]).tabStrips[0]
         let bw = r.server.borderWidth(f, on: r.monitor)
@@ -192,13 +207,13 @@ final class TabStripTests: MangoTestCase {
 
     func testDuringTheOpenAnimationTheTabBarSitsWhereTheWindowGoes() {
         let r = rig(.monocle, windows: 2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         let f = focus(r)
         let bw = r.server.borderWidth(f, on: r.monitor)
-        let shown = f.geom!.insetBy(dx: 100, dy: 100)
-        f.action = .open
-        XCTAssertEqual(drawn(r, animating: [f.id: shown]).tabStrips[0].frame.minX, f.geom!.minX - bw, "c->geom while opening")
-        f.action = .move
+        let shown = f.tile.insetBy(dx: 100, dy: 100)
+        f.animation.action = .open
+        XCTAssertEqual(drawn(r, animating: [f.id: shown]).tabStrips[0].frame.minX, f.geom.minX, "c->geom while opening")
+        f.animation.action = .move
         XCTAssertEqual(drawn(r, animating: [f.id: shown]).tabStrips[0].frame.minX, shown.minX - bw, "c->animation.current")
     }
 
@@ -208,10 +223,10 @@ final class TabStripTests: MangoTestCase {
         r.server.clientGroupJoin(b, into: a)
         let owner = [a, b].first { !$0.groupParked }!
         r.server.clientFocus(owner, false)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         XCTAssertEqual(drawn(r).groupStrips.map(\.above), [owner.id])
         r.server.clientFocus(r.server.clientByIdAll(900_102)!, false)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         XCTAssertTrue(owner.isTabHidden)
         XCTAssertTrue(drawn(r).groupStrips.isEmpty)
     }

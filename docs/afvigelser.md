@@ -68,6 +68,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Mangos lag (`client_target_layer`) holdes, når mango giver fokus, men et klik med musen løfter altid vinduet; en app, der selv lægger sit vindue frem, når den bliver aktiv eller får sit nøglevindue (fx Arc, IntelliJ), kommer øverst alligevel; og et vindue, der får fokus under et højere lag, løftes heller ikke over sine naboer i sit eget lag | Klikket når macOS, før mango ser det; tastaturfokus kræver, at appen er aktiv, og en aktiv app ordner selv sine vinduer; porten kan lade være med at løfte et vindue, men ikke lægge et andet programs vindue over det aktive |
 | Layoutet holder menulinjen og Dock'en fri | De svarer til mangos bjælker med eksklusiv zone |
 | Ingen skygge, blur, dæmpning, gennemsigtighed eller runde hjørner fra mango; ingen luk- og fade-animationer | macOS tegner andre apps' vinduer; gennemsigtighed kræver SIP slået fra |
+| Et vindue, der glider over skærmkanten (tag-skift, scroller), tegnes helt, til mango slukker det, og parkeres så; under en animation skifter vinduet størrelse billede for billede, hvor mango skalerer sin buffer | Andre apps' vinduer kan ikke klippes eller skaleres |
 | Animationer skrives via Accessibility (højst 60 Hz) | Ingen compositor |
 | En flydende resize med musen sker højst én gang pr. skærmens opdateringsinterval; mango én gang pr. tegnet billede (`frame_serial`, 09828ec) | Kernen får ingen billedbegivenheder fra macOS |
 | Overview og switcher viser billeder (Skærmoptagelse), stillbilleder taget ved åbning; de rigtige vinduer bliver under dem, så `warp_cursor` sætter markøren på kortet (mangos `geom` i overview) | Andre apps' vinduer kan ikke skaleres; en strøm pr. vindue koster meget |
@@ -96,7 +97,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | `source=` med relativ sti læses fra config-mappen; ingen `/etc/mango`-fallback | Under launchd er arbejdsmappen `/`; macOS har ingen `/etc`-config |
 | Første start skriver `Resources/config.conf` som `config.conf`: mangos config med mangos taster på Hyper (en tast, brugeren vælger som i Raycasts Hyper Key: Caps Lock, en venstre/højre modifier eller F1–F12; `chutney_hyper_key`), ikke mangos egne taster, og de første linjer at prøve nær slutningen. Også et velkomstvindue, der åbner Getting Started | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config. mangos taster (⌘M, ⌘N, ⌥+bogstav, ⌃+pile) er macOS' og appernes genveje |
 | Input besluttes på event tappets tråd; `setkeymode` og `chvt` stopper søgningen efter bindinger | macOS vil have svaret med det samme; dispatcherens svar kendes først på hovedtråden |
-| Timere: cursor-skjul (som mangos), animationernes reserve-timer, 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,15 s, som mangos), appens egne rapporter lige efter et træk (0,4 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt, mangonags `-T` (kun når den er sat; config-fejlenes bjælke har ingen) | macOS melder ikke alt som en begivenhed |
+| Timere: cursor-skjul (som mangos), billedurets reserve-timer (kun uden skærm), 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,15 s, som mangos), appens egne rapporter lige efter et træk (0,4 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt, mangonags `-T` (kun når den er sat; config-fejlenes bjælke har ingen) | macOS melder ikke alt som en begivenhed |
 | `get all-devices` lister macOS' HID-enheder (IOKit): tastaturer, mus, trackpads, touchskærme og tablets; grænseflader på samme sted (USB-port, Bluetooth-enhed) er én enhed. `vendor`/`product` er IOKits (0 for Macens indbyggede), og `matched` er altid `false` | macOS har ingen libinput; `device_rule` virker ikke på macOS |
 | `watch all-devices` sender kun sin første linje (`{"name":null,"type":null}`); `ipc_notify_device_event` sendes aldrig | macOS' tastatur- og musehændelser (CGEvent) siger ikke, hvilken enhed de kom fra |
 | mangonag reserverer ikke plads (`set_exclusive_zone`): flisede vinduer flyttes ikke ned under bjælken, den står over dem | Ikke bygget: porten skulle trække bjælkens højde fra skærmens arbejdsområde, mens bjælken står, og lægge skærmene om ved åbning og lukning. Kan bygges |
@@ -121,13 +122,15 @@ Hvor koden står, når den ikke står som i mango.
   kommentarer eller mærker om, hvor vi afviger (CLAUDE.md regel 8). En funktion med andet navn
   end mangos har én linje `/// mango <funktion> (<fil>)`; der er 14 tilbage: tastaturets tråd,
   cursor-timeren, `Log` og nogle få, der allerede har mangos navn.
-- **Bevidst i kernen, mærket:** parkeringen (`c.parked`, mango klipper i scenen), scrollerens
+- **Bevidst i kernen, mærket:** `c.parked` (portens slukkede scene-node) læses nogle steder, scrollerens
   kolonner i tag-tilstanden (mango bruger `ScrollerStackNode` i klientlisten), overview med
   billeder (`Monitor.ovThumbnails`, `ovCards`), drag-tile delt med appens eget træk, `parse_option` som en tabel,
   og `resize_tile_master` i begge retninger i én funktion.
 - **Mærket i kernen, som at skrive mangos C i Swift:** `f32` (en værdi, mango har i et
   float-felt, afrundet som C) og `LayoutInput.sanitized()` (C laver et tal, der ikke er
-  endeligt, om til et heltal uden videre; Swift stopper programmet). `oldmonname` holder
+  endeligt, om til et heltal uden videre; Swift stopper programmet), og `1 << (prevtag - 1)` med
+  `prevtag` 0 i tag-animationerne regnes som intet tag (C's skift er udefineret; Swift stopper
+  programmet). `oldmonname` holder
   skærmens display-ID, ikke navnet, for to skærme kan have samme navn.
 - **Faner:** fanekæden holdes for de tags, der er i visning, som `tab_member_kept` holder den;
   mango kæder den pr. vindue (`Tabs.swift`).
@@ -147,11 +150,27 @@ Hvor koden står, når den ikke står som i mango.
   det højere lag bliver øverst. `client_sync_layer` og `client_reparent_group` (et vindue og dets
   gruppebjælke flyttes til et andet lag i scenen) har ingen funktion i kernen; porten ordner
   vinduerne i `restack`.
-- **Animationer:** `c->animation` (kører, start, nu, varighed) står i portens `Animator`; kernen
-  spørger `clientAnimationRunning` og kalder mangos `client_animation_set_progress` og
-  `client_animation_resume` over grænsen, og `client_draw_frame`s spring over et vindue, en gest
-  holder (`client_gesture_driven`), er animatorens `frozen`. `c.action` sættes i
-  `clientAnimation`, som står for mangos `resize`.
+- **Animationer:** mangos `animation/client.c`, `animation/tag.c` og `animation/common.c` står i
+  kernen (`Sources/Mango/animation/animation-*.swift`; SwiftPM tillader ikke to filer med samme navn
+  i ét modul) med `c->animation`, `geom` (med kanten), `pending`, `current`, `animainit_geom` og
+  `bw`, og `handle_output_frame` i `manage/monitor.swift`. Porten står for wlroots: et billedur
+  (display link) kalder `handleOutputFrame` for hver skærm med et planlagt billede
+  (`wlr_output_schedule_frame`), og `wlr_scene_node_set_position` og
+  `wlr_scene_subsurface_tree_set_clip` skriver vinduets ramme. macOS kan ikke klippe et andet
+  programs vindue: det tegnes helt, i animationens størrelse uden kanten, og parkeres, når mangos
+  synlighed (`client_should_visible`, også `clip_to_hide`) slukker det. Parkeringen sker, når
+  billedet afleveres (wlroots' output commit), efter at billedets synlige vinduer er skrevet, så
+  intet hul viser skrivebordet, når et vindue afløser et andet (monocle, faner). Uden macOS-del, mærket i
+  koden: buffer-effekter, fokus-opacitet (`client_set_focus_opacity` giver false), pointer-enter ved
+  animationens slut, `force_render`, frame-skip mens klienter skifter størrelse
+  (`resizing_count_pending`), swallowing, størrelses-hints (`client_set_size_bound` får ingen fra
+  macOS) og kortene i overviewet (`ov_card_tree`). Kanter og bjælker tegnes for alle vinduer på
+  én gang efter billedet (`bordersDirty`), hvor mango tegner dem pr. vindue i `client_set_clip`.
+  `find_animation_curve_at` løser kurven i stedet for at bage den; CLOSE-, FOCUS- og fade-kurverne
+  bruges ikke. `floatGeom` er stadig uden kanten.
+- **`arrange` indtil trin 3:** `set_arrange_visible` og `set_arrange_hidden` kaldes fra `arrange`
+  før layoutets `resize`, og en flydende, fuldskærms- eller maksimeret klients `geom` sættes i
+  `arrange`, hvor mango sætter den i `setfloating`, `setfullscreen` og `setmaximizescreen`.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
   subrole); appens egne flyt under et træk tager porten ud (`grabBegan`, `grabEnded`).
 - **Logning:** mangos `common/log.c` i kernen (`mangoError`, `mangoLogInit`) og wlroots'
@@ -181,9 +200,8 @@ Hvor koden står, når den ikke står som i mango.
   skærm har sit eget overview. Kortene er portens billeder, ét panel pr. skærm, hvor mangos kort-træer
   er (`overview_backup_surface`, `overview_destroy_card`); `overview_scale` og `overview_scale_tab`
   lægger dem i `Monitor.ovCards`, hvor mango flytter klienterne (`client_tile_resize`), og uden
-  Skærmoptagelse flyttes de rigtige vinduer. Uden macOS-del, mærket i koden: `bw` og `client_set_tiled`
-  i `overview_backup` og `overview_restore`, `overview_enter_anim_set` (kortene er billeder),
-  markørens fokus og cursor ved start, `resize` af en flydende klient og `is_restoring_from_ov`s
+  Skærmoptagelse flyttes de rigtige vinduer. Uden macOS-del, mærket i koden: `client_set_tiled`
+  i `overview_backup` og `overview_restore`, markørens fokus og cursor ved start, `resize` af en flydende klient og `is_restoring_from_ov`s
   `resize` (arrange sætter vinduet, når det vises) og `refresh_monitors_workspaces_status`
   (ext-workspace; `printstatus`).
 - **Jump-tilstand:** mangos `toggle_jump`, `begin_jump_mode`, `create_jump_hints`, `finish_jump_mode`,
@@ -199,7 +217,7 @@ Hvor koden står, når den ikke står som i mango.
 - **`reset_option` og opstarten:** `reset_option` har mangos trin i mangos rækkefølge
   (`MangoServer.resetOption`), og opstarten følger `setup` og `run`: `exec` og `exec_once` kører
   til sidst, når skærmene er sat op, og et reload kører kun `exec`. Uden macOS-del, mærket i koden:
-  `init_baked_points` (portens animator bager sine egne kurver), `reset_blur_params`,
+  `init_baked_points` (kurven løses, ikke bages), `reset_blur_params`,
   `reapply_rootbg` (porten læser `rootcolor`, hvor den tegner), `reapply_keyboard`,
   `reapply_monitor_rules`, xcursor-delen af `reapply_cursor_style` og `bw` og
   `client_set_tab_bar_config` i `reapply_property` (kanten og bjælken tegnes ud fra config).

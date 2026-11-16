@@ -165,7 +165,9 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertEqual(Set(MangoCompat.unsupportedDispatchers.keys).subtracting(Self.list("dispatchers")).sorted(), [])
     }
 
-    static let readOnlyToWarn: Set<String> = ["focused_opacity", "unfocused_opacity"]
+    /// Read as mango reads them, with no effect here: the warning for the opacities, and no_size_hint
+    /// before a size hint macOS does not give.
+    static let readOnlyToWarn: Set<String> = ["focused_opacity", "unfocused_opacity", "no_size_hint"]
 
     func testOptionsWithoutEffectAreExactlyTheUnreadOnes() throws {
         let setters = Self.source("Sources/Mango/Config/ConfigOptions.swift")

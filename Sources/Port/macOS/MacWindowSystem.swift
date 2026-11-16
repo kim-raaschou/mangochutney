@@ -80,7 +80,12 @@ class MacWindowSystem: WindowSystem {
     let gestures = GestureRecognizer()
     var windowServerOverride: ((CGWindowID) -> CGRect?)?
     let watcher = AppWatcher()
-    let animator = Animator()
+    lazy var frameClock: FrameClock = {
+        let clock = FrameClock(server)
+        clock.commit = { [unowned self] in commitFrame() }
+        return clock
+    }()
+    var parkAtCommit: Set<ClientID> = []
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
     var writerOverride: ((pid_t) -> (any WindowWriter)?)?
@@ -99,10 +104,6 @@ class MacWindowSystem: WindowSystem {
     init(_ server: MangoServer) {
         self.server = server
         server.onStateChange = { [unowned self] in statusChanged() }
-        animator.frozen = { [weak server] id in
-            guard let server, let c = server.clientByIdAll(id) else { return false }
-            return server.clientGestureDriven(c)
-        }
         tabBars.onSelect = { [weak self] id in self?.barPress(id, isTab: true, right: false, onClose: false) }
         tabBars.onRightClick = { [weak self] id in self?.barPress(id, isTab: true, right: true, onClose: false) }
         groupBars.onSelect = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: false) }
@@ -212,7 +213,7 @@ class MacWindowSystem: WindowSystem {
     func restack(pid: pid_t?) {
         guard let pid else { return }
         DispatchQueue.main.async { [weak self] in
-            MainActor.assumeIsolated { self?.animator.whenIdle { [weak self] in self?.restackNow(pid) } }
+            MainActor.assumeIsolated { self?.frameClock.whenIdle { [weak self] in self?.restackNow(pid) } }
         }
     }
 
@@ -413,9 +414,8 @@ class MacWindowSystem: WindowSystem {
         memory.restore(server)
         watcher.delegate = self
         watcher.start()
-        missionControl.onExit = { [weak server] in server?.arrangeAll(.none) }
+        missionControl.onExit = { [weak server] in server?.arrangeAll(false) }
         missionControl.start()
-        animator.onFrame = { [weak server] frames in server?.clientDrawFrame(frames) }
         if wlrLogGetVerbosity() == .debug { watchdog.start() }
         wlrLog(.info, "scanning \(watcher.apps.count) app(s)")
     }
@@ -444,7 +444,7 @@ class MacWindowSystem: WindowSystem {
 
     func shutdown() {
         memory.save(server, final: true)
-        animator.cancelAll()
+        frameClock.stop()
         if let user = userKeyMappings, appliedKeyMappings != user { KeyboardOptions.apply(user) }
         let restore = DispatchGroup()
         if restarting {
@@ -455,14 +455,14 @@ class MacWindowSystem: WindowSystem {
         }
         for c in server.clientsAll {
             guard let m = c.mon, c.parked || Hider.isParked(c.frame, in: m.screen.frame) else { continue }
-            let f = c.isfloating ? c.floatGeom : (c.geom ?? c.floatGeom)
+            let f = c.isfloating ? c.floatGeom : c.tile
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         for (c, _) in away.values {
             guard let m = c.mon ?? server.monitors.first else { continue }
             let real = windowServerFrame(c.id) ?? c.frame
             guard c.parked || Hider.isParked(real, in: m.screen.frame) else { continue }
-            let f = c.isfloating ? c.floatGeom : (c.geom ?? c.floatGeom)
+            let f = c.isfloating ? c.floatGeom : c.tile
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         restoreAppSettings(restore)
@@ -470,34 +470,15 @@ class MacWindowSystem: WindowSystem {
     }
 
     func rescan() {
-        animator.whenIdle { [weak self] in self?.watcher.refreshAll(recheckRejected: true) }
+        frameClock.whenIdle { [weak self] in self?.watcher.refreshAll(recheckRejected: true) }
     }
 
     func spawn(_ command: String) { Spawn.run(command) }
 
     func spawnShell(_ command: String) { Spawn.shell(command) }
 
-    func cancelAnimation(_ id: ClientID) { animator.cancel(id) }
-    func animatedFrame(_ id: ClientID) -> CGRect? { animator.shownRect(id) }
-    func whenAnimationsIdle(_ body: @escaping () -> Void) { animator.whenIdle(body) }
-    /// mango's c->animation.running && c->need_output_flush.
-    func clientAnimationRunning(_ c: Client) -> Bool { animator.isAnimating(c.id) }
-
-    func clientAnimationSetProgress(_ c: Client, _ p: Double) {
-        animator.setProgress(c.id, min(1, max(0, p)))
-        c.isPendingOpenAnimation = false
-    }
-
-    func clientAnimationResume(_ c: Client, _ remaining: Double) {
-        guard animator.isAnimating(c.id) else { return }
-        if !server.config.animations || remaining < 0.05 {
-            c.action = .move
-            c.overining = false
-            animator.finish(c.id)
-            return
-        }
-        animator.restart(c.id)
-    }
+    var animationsRunning: Bool { frameClock.animationsRunning }
+    func whenAnimationsIdle(_ body: @escaping () -> Void) { frameClock.whenIdle(body) }
 
     var screens: [Screen] { Screens.all() }
 

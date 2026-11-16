@@ -17,7 +17,6 @@ extension MacWindowSystem {
         memory.departed.away.insert(c.id)
         c.parked = false
         forgetPlacement(c)
-        animator.cancel(c.id)
         server.handleClientUnmap(c)
         wlrLog(.info, "\(c.appName): window \(c.id) is away (\(reason)); out of the layout until it is back")
     }

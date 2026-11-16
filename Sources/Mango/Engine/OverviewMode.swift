@@ -87,7 +87,7 @@ package extension MangoServer {
                     || !overviewClientOnCurrentTags(c, onlyCurrent, currentTags) {
                     continue
                 }
-                c.overining = true
+                c.animation.overining = true
                 overviewBackup(c)
             }
             overviewCardsShow(m)   // not in mango: the port's pictures, overview_backup_surface's card trees
@@ -105,7 +105,7 @@ package extension MangoServer {
 
         /* Tab layout: rearrange after entering. */
         if enter && !m.isJumpMode && !m.ovNormalMode {
-            arrange(m)
+            arrange(m, false, false)
         }
         if enter {
             overviewCardSurfaceAdd(m)
@@ -158,7 +158,7 @@ package extension MangoServer {
 
             clientFocus(tc, true)
 
-            arrange(m)
+            arrange(m, false, false)
             return
         }
 
@@ -234,15 +234,17 @@ package extension MangoServer {
     func overviewTileResize(_ m: Monitor, _ cards: [ClientID: CGRect]) {
         m.ovCards = cards
         if m.ovThumbnails {
-            for id in cards.keys { clientByIdAll(id)?.overining = false }
+            for id in cards.keys { clientByIdAll(id)?.animation.overining = false }
             system.updateOverview(overlayCards(m), on: m)
             return
         }
         for c in clientsAll where c.mon === m {
             if let f = cards[c.id] {
-                system.resize(c, to: f, .move)
+                c.tagVisible = true   // not in mango: the card is the window itself
+                resize(c, f, ResizeOpts())
             } else {
-                system.hide(c)
+                c.tagVisible = false   // not in mango: a window with no card is hidden
+                clientUpdateVisibility(c)
             }
         }
         updateBorders()
@@ -391,8 +393,11 @@ package extension MangoServer {
         c.overviewIsfloatingbak = c.isfloating
         c.overviewIsfullscreenbak = c.isfullscreen
         c.overviewIsmaximizescreenbak = c.ismaximizescreen
-        c.tagouting = false   // not in mango: no tagining or tagouted
-        c.overviewBackupGeom = c.isfloating ? c.floatGeom : (c.geom ?? c.frame)   // not in mango: our geom is without the border, a floating one's is floatGeom
+        c.animation.tagining = false
+        c.animation.tagouted = false
+        c.animation.tagouting = false
+        c.overviewBackupGeom = c.geom
+        c.overviewBackupBw = c.bw
         if c.isfloating {
             c.isfloating = false
         }
@@ -401,6 +406,7 @@ package extension MangoServer {
             c.isfullscreen = false // Clears the window fullscreen flag.
             c.ismaximizescreen = false
         }
+        c.bw = c.noBorder ? 0 : CGFloat(config.borderpx)
     }
 
     // Returns 0 when the target window shares its tag with other windows.
@@ -427,7 +433,9 @@ package extension MangoServer {
         c.overviewIsfloatingbak = false
         c.overviewIsfullscreenbak = false
         c.overviewIsmaximizescreenbak = false
-        if !c.isfloating { c.geom = b }   // not in mango: a floating one's backup is its floatGeom
+        c.geom = b
+        c.bw = c.overviewBackupBw
+        c.animation.tagining = false
         c.overviewBackupGeom = nil
 
         if c.isfloating {

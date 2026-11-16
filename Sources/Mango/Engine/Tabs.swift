@@ -67,18 +67,18 @@ package extension MangoServer {
     }
 
     // not in mango: client_set_clip's client_draw_group_bar and client_draw_tabbar for every client at once
-    func tabRefreshBars(animating: [ClientID: CGRect] = [:]) {
+    func tabRefreshBars() {
         guard drawsOverlays else { return }
         var strips: [TabStrip] = []
         var groups: [TabStrip] = []
         for m in monitors {
             for c in visibleClients(m) where clientCheckTabNodeVisible(c, on: m) {
-                if let s = clientDrawGroupBar(c, computeEdgeOffsets(c, animating: animating), animating: animating) {
+                if let s = clientDrawGroupBar(c, computeEdgeOffsets(c)) {
                     groups.append(s)
                 }
             }
             guard let f = tabChainFocus(tabMembers(m), on: m), !f.parked else { continue }   // not in mango: parked is the port's
-            if let s = clientDrawTabbar(f, computeEdgeOffsets(f, animating: animating), animating: animating) {
+            if let s = clientDrawTabbar(f, computeEdgeOffsets(f)) {
                 strips.append(s)
             }
         }
@@ -89,39 +89,23 @@ package extension MangoServer {
         system.drawGroupBars(groups, style: style)
     }
 
-    // not in mango: c->animation.current, the box the window is drawn in
-    func animationCurrent(_ c: Client, animating: [ClientID: CGRect]) -> CGRect {
-        let bw = c.mon.map { borderWidth(c, on: $0) } ?? 0
-        return shownFrame(c, animating: animating).insetBy(dx: -bw, dy: -bw)
-    }
-
-    func clientIsIgnoreOutputClip(_ c: Client, animating: [ClientID: CGRect]) -> Bool {
-        // not in mango: animation.tagining is a running tag animation that is not a tagout
-        let running = animating[c.id] != nil || system.clientAnimationRunning(c)
-        let tagining = running && c.action == .tag && !c.tagouting
-        return grab?.client === c || (!Self.isScrollTiled(c) && !tagining && !c.tagouting)
-    }
-
-    /// mango compute_edge_offsets (animation/client.c): x left, y top, width right, height bottom.
-    func computeEdgeOffsets(_ c: Client, animating: [ClientID: CGRect]) -> CGRect {
-        guard let mon = c.mon, !clientIsIgnoreOutputClip(c, animating: animating) else { return .zero }
-        let cur = animationCurrent(c, animating: animating), m = mon.screen.frame
-        return CGRect(x: max(0, m.minX - cur.minX), y: max(0, m.minY - cur.minY),
-                      width: max(0, cur.maxX - m.maxX), height: max(0, cur.maxY - m.maxY))
+    // not in mango: c->animation.current; a window standing still is drawn where it stands (an app may refuse its size)
+    func animationCurrent(_ c: Client) -> CGRect {
+        c.animation.running ? c.animation.current : c.frame.insetBy(dx: -c.bw, dy: -c.bw)
     }
 
     // not in mango: the edge clipping both bars share, as client_draw_tabbar and client_draw_group_bar write it
-    func clipBar(_ anchor: CGRect, y: CGFloat, height: CGFloat, _ offsets: CGRect, on m: Monitor) -> CGRect {
+    func clipBar(_ anchor: CGRect, y: CGFloat, height: CGFloat, _ offsets: IVec2, on m: Monitor) -> CGRect {
         var tabX = anchor.minX, tabY = y, tw = anchor.width, th = height
-        if offsets.minY > 0 {
+        if offsets.y > 0 {
             tabY = m.screen.frame.minY
-            th = height - offsets.minY
+            th = height - offsets.y
         }
         if offsets.height > 0 { th = th - max(0, offsets.height - anchor.height) }
         if offsets.width > 0 { tw = tw - offsets.width }
-        if offsets.minX > 0 {
+        if offsets.x > 0 {
             tabX = m.screen.frame.minX
-            tw = tw - offsets.minX
+            tw = tw - offsets.x
         }
         return CGRect(x: tabX, y: tabY, width: tw, height: th)
     }
@@ -139,17 +123,15 @@ package extension MangoServer {
         }
     }
 
-    func clientDrawTabbar(_ c: Client, _ offsets: CGRect, animating: [ClientID: CGRect]) -> TabStrip? {
+    func clientDrawTabbar(_ c: Client, _ offsets: IVec2) -> TabStrip? {
         guard let m = c.mon, c.isTabFocus else { return nil }
         let members = tabMembers(m)
         guard tabLayoutActive(m), !c.isfullscreen, !c.ismaximizescreen else { return nil }
         let count = members.count
         if count < 2 { return nil }
-        var anchor = animationCurrent(c, animating: animating)
-        let running = animating[c.id] != nil || system.clientAnimationRunning(c)   // not in mango: c->animation.running
-        if running && c.action == .open {
-            let bw = borderWidth(c, on: m)
-            anchor = (c.geom ?? c.frame).insetBy(dx: -bw, dy: -bw)
+        var anchor = animationCurrent(c)
+        if c.animation.running && c.animation.action == .open {
+            anchor = c.geom
         }
         // Port extension: not in mango. The bars inside the border (chutney_macos_appearance).
         let ported = barsInsideBorder
@@ -172,13 +154,13 @@ package extension MangoServer {
             above: c.id, plain: !ported)
     }
 
-    func clientDrawGroupBar(_ c: Client, _ offsets: CGRect, animating: [ClientID: CGRect]) -> TabStrip? {
+    func clientDrawGroupBar(_ c: Client, _ offsets: IVec2) -> TabStrip? {
         guard let m = c.mon, clientWantsGroupBar(c) else { return nil }
         /* Owner hidden by tab: hide the whole strip, otherwise its nodes (they are
          * not children of the window) would float over the visible window. */
         if c.isTabHidden { return nil }
         let members = groupMembers(c)
-        var current = animationCurrent(c, animating: animating)
+        var current = animationCurrent(c)
         // Port extension: not in mango. The bars inside the border (chutney_macos_appearance).
         let ported = barsInsideBorder
         if ported { current = current.insetBy(dx: borderWidth(c, on: m), dy: borderWidth(c, on: m)) }
@@ -216,6 +198,6 @@ package extension MangoServer {
     func tabFocusMember(_ id: CGWindowID) {
         guard let c = clientByIdAll(id), let m = c.mon else { return }
         clientFocus(c, true)
-        arrange(m, .none)
+        arrange(m, false, false)
     }
 }

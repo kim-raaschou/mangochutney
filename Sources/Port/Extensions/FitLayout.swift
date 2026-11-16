@@ -43,9 +43,9 @@ enum FitLayout {
 
     /// The tiled windows shown: on one tile only the one shown.
     static func shown(_ server: MangoServer, _ m: Monitor) -> [Client] {
-        let tiled = server.tiledClients(m).filter { !$0.parked && $0.geom != nil }
+        let tiled = server.tiledClients(m).filter { !$0.parked }
         return tiled.filter { c in
-            let tile = tiled.filter { $0.geom == c.geom }
+            let tile = tiled.filter { $0.tile == c.tile }
             return tile.count == 1 || c === (tile.first { $0.id == m.sel } ?? tile[0])
         }
     }
@@ -63,15 +63,15 @@ enum FitLayout {
 
     /// What a window keeps beyond its tile on `axis`.
     static func lacks(_ c: Client, _ axis: Axis) -> CGFloat {
-        guard let g = c.geom, let rs = c.refusedSize else { return 0 }
-        return size(rs, axis) - size(g.size, axis)
+        guard let rs = c.refusedSize else { return 0 }
+        return size(rs, axis) - size(c.tile.size, axis)
     }
 
     /// The sizes the apps keep their windows at, larger than their tiles, while the windows stand still:
     /// on each side the largest seen, for as long as the window is open.
     static func learn(_ server: MangoServer, _ m: Monitor) {
         let mac = server.mac
-        guard server.grab == nil, !mac.animator.isActive else { return }
+        guard server.grab == nil, !mac.animationsRunning else { return }
         let open = Set(server.clientsAll.map(\.id))
         mac.fitState.minimum = mac.fitState.minimum.filter { open.contains($0.key) }
         for c in shown(server, m) {
@@ -88,17 +88,17 @@ enum FitLayout {
     /// their apps have kept them at, none where not seen) and the gaps between them, within the tiles'
     /// extent.
     static func room(_ c: Client, _ axis: Axis, _ windows: [Client], minimum: [ClientID: CGSize] = [:]) -> Bool {
-        guard let g = c.geom, let rs = c.refusedSize else { return false }
+        guard let rs = c.refusedSize else { return false }
+        let g = c.tile
         let across: Axis = axis == .width ? .height : .width
         let band = span(g, across)
         let line = windows.filter { o in
-            guard let og = o.geom else { return false }
-            let s = span(og, across)
+            let s = span(o.tile, across)
             return min(s.hi, band.hi) - max(s.lo, band.lo) > 0.5
         }
         var lanes: [(lo: CGFloat, hi: CGFloat, keeps: CGFloat)] = []
         for o in line {
-            let s = span(o.geom!, axis)
+            let s = span(o.tile, axis)
             let keeps = o === c ? size(rs, axis)
                 : lacks(o, axis) > 0.5 ? size(o.refusedSize!, axis)
                 : minimum[o.id].map { size($0, axis) } ?? 0
@@ -122,7 +122,8 @@ enum FitLayout {
         var steps: [Step] = []
         var names: [String] = []
         for c in over {
-            guard let g = c.geom, let rs = c.refusedSize else { continue }
+            guard let rs = c.refusedSize else { continue }
+            let g = c.tile
             for axis in [Axis.width, .height] {
                 let lack = size(rs, axis) - size(g.size, axis)
                 guard lack > 0.5, !server.mac.fitState.stuck.contains("\(key)|\(c.id)|\(axis)"),
@@ -152,12 +153,13 @@ enum FitLayout {
         var kept: [ClientID: CGSize] = [:]
         for c in shown(server, m) { kept[c.id] = c.refusedSize }
         func lack(_ c: Client, _ axis: Axis) -> CGFloat {
-            guard let g = c.geom, let k = kept[c.id] else { return 0 }
-            return size(k, axis) - size(g.size, axis)
+            guard let k = kept[c.id] else { return 0 }
+            return size(k, axis) - size(c.tile.size, axis)
         }
         for s in plan.steps {
-            guard let c = server.clientByIdAll(s.id), let g0 = c.geom else { continue }
-            let tiles = shown(server, m).compactMap(\.geom).reduce(CGRect.null) { $0.union($1) }
+            guard let c = server.clientByIdAll(s.id) else { continue }
+            let g0 = c.tile
+            let tiles = shown(server, m).map(\.tile).reduce(CGRect.null) { $0.union($1) }
             let atFar = span(tiles, s.axis).hi - span(g0, s.axis).hi <= 1
             var sign = atFar ? -1 : 1
             var by = CGFloat(s.by)
@@ -165,12 +167,12 @@ enum FitLayout {
             var turned = false
             var tries = 0
             while tries < 3 {
-                guard let before = c.geom else { break }
+                let before = c.tile
                 let others = shown(server, m).filter { $0 !== c && lack($0, s.axis) > 0.5 }
                 let lacked = others.map { lack($0, s.axis) }
                 let offset = Int(by.rounded(.up)) * sign
                 resizewin(server, c, s.axis, offset)
-                guard let after = c.geom else { break }
+                let after = c.tile
                 let grew = size(after.size, s.axis) - size(before.size, s.axis)
                 let worse = zip(others, lacked).contains { lack($0, s.axis) > $1 + 0.5 }
                 if grew < 0.5 || worse {
@@ -202,15 +204,14 @@ enum FitLayout {
     static func putBack(_ server: MangoServer, _ c: Client, _ axis: Axis, to target: CGFloat, offset: Int, grew: CGFloat) {
         var k = grew / CGFloat(offset)
         for _ in 0..<8 {
-            guard abs(k) > 0.001, let g = c.geom else { return }
-            let now = size(g.size, axis)
+            guard abs(k) > 0.001 else { return }
+            let now = size(c.tile.size, axis)
             let miss = target - now
             if abs(miss) < 0.5 { return }
             let step = Int((miss / k).rounded())
             if step == 0 { return }
             resizewin(server, c, axis, step)
-            guard let g2 = c.geom else { return }
-            let moved = size(g2.size, axis) - now
+            let moved = size(c.tile.size, axis) - now
             if abs(moved) > 0.5 { k = moved / CGFloat(step) }
         }
     }
@@ -233,10 +234,10 @@ enum FitLayout {
             return
         }
         // Not while windows move: the sizes between are not the layout's.
-        guard server.grab == nil, !mac.animator.isActive else {
-            if mac.animator.isActive && !mac.fitState.waiting {
+        guard server.grab == nil, !mac.animationsRunning else {
+            if mac.animationsRunning && !mac.fitState.waiting {
                 mac.fitState.waiting = true
-                mac.animator.whenIdle {
+                mac.whenAnimationsIdle {
                     mac.fitState.waiting = false
                     statusChanged(server)
                 }
@@ -244,7 +245,7 @@ enum FitLayout {
             return
         }
         let windows = shown(server, m).map { c in
-            "\(c.id):\(c.geom.map { "\($0)" } ?? ""):\(c.refusedSize.map { "\($0)" } ?? "")"
+            "\(c.id):\(c.tile):\(c.refusedSize.map { "\($0)" } ?? "")"
         }
         let seen = "\(level)|\(!m.isoverview)|\(server.grab == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel ?? 0)|\(windows.joined(separator: ","))"
         guard mac.fitState.seen != seen else { return }
@@ -253,7 +254,7 @@ enum FitLayout {
         let over = shown(server, m).filter { $0.refusedSize != nil }
         if !over.isEmpty {
             let sizes = over.map { c in
-                "\(c.appName) tile \(c.geom.map { "\(Int($0.width))x\(Int($0.height))" } ?? "-") keeps \(c.refusedSize.map { "\(Int($0.width))x\(Int($0.height))" } ?? "-")"
+                "\(c.appName) tile \(Int(c.tile.width))x\(Int(c.tile.height)) keeps \(c.refusedSize.map { "\(Int($0.width))x\(Int($0.height))" } ?? "-")"
             }
             let least = shown(server, m).filter { $0.refusedSize == nil }.compactMap { c in
                 mac.fitState.minimum[c.id].map { "\(c.appName) at least \(Int($0.width))x\(Int($0.height))" }

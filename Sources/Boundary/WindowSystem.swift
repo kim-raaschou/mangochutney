@@ -49,12 +49,20 @@ package protocol WindowSystem: AnyObject {
     func rescan()
     func spawn(_ command: String)
     func spawnShell(_ command: String)
-    func cancelAnimation(_ id: ClientID)
-    func animatedFrame(_ id: ClientID) -> CGRect?
-    func whenAnimationsIdle(_ body: @escaping () -> Void)
-    func clientAnimationRunning(_ c: Client) -> Bool
-    func clientAnimationSetProgress(_ c: Client, _ p: Double)
-    func clientAnimationResume(_ c: Client, _ remaining: Double)
+    /// client_set_size: the size the window is to have, without the border; the configure serial.
+    func clientSetSize(_ c: Client, _ width: CGFloat, _ height: CGFloat, _ forceConfigure: Bool) -> UInt32
+    /// The toplevel's min and max size (toplevel->current), 0 where it has none.
+    func clientSizeHints(_ c: Client) -> ClientSizeHints
+    /// wlr_scene_node_set_position on the client's scene: where its box (with the border) stands.
+    func sceneNodeSetPosition(_ c: Client, _ x: CGFloat, _ y: CGFloat)
+    /// wlr_scene_subsurface_tree_set_clip on the client's surface.
+    func sceneSubsurfaceTreeSetClip(_ c: Client, _ clip: CGRect)
+    /// wlr_scene_node_set_enabled on the client's scene.
+    func sceneNodeSetEnabled(_ c: Client, _ enabled: Bool)
+    /// wlr_scene_node_set_enabled on the client's surface.
+    func sceneSurfaceSetEnabled(_ c: Client, _ enabled: Bool)
+    /// wlr_output_schedule_frame: the port calls handleOutputFrame(m) on the monitor's next frame.
+    func outputScheduleFrame(_ m: Monitor)
     var canCapture: Bool { get }
     func askToCapture()
     func keyboardHardModifiers() -> Modifiers
@@ -69,10 +77,6 @@ package protocol WindowSystem: AnyObject {
     func keyboardCancelPendingReleaseBind()
     func publishInput(_ state: InputState)
     func publishGlobalKeys(_ keys: [GlobalKey])
-    func resize(_ placements: [(Client, CGRect)], _ anim: ArrangeAnimation, rising: Set<ClientID>)
-    func resize(_ c: Client, to frame: CGRect, _ anim: ArrangeAnimation, cover: CGRect?, now: CGRect?)
-    func hide(_ c: Client)
-    func hide(_ c: Client, tagout: TagoutAnimation)
     func settle(_ c: Client)
     func setFrame(_ c: Client, _ frame: CGRect, size: Bool)
     func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void)
@@ -83,8 +87,8 @@ package protocol WindowSystem: AnyObject {
     func grabEnded(_ c: Client)
 }
 
-package extension WindowSystem {
-    func resize(_ c: Client, to frame: CGRect, _ anim: ArrangeAnimation) {
-        resize(c, to: frame, anim, cover: nil, now: nil)
-    }
+/// The toplevel's min and max size (wlr_xdg_toplevel_state's min_width … max_height).
+public struct ClientSizeHints {
+    public var minWidth: CGFloat = 0, minHeight: CGFloat = 0, maxWidth: CGFloat = 0, maxHeight: CGFloat = 0
+    public init() {}
 }

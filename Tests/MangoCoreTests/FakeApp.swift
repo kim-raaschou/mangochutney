@@ -207,6 +207,7 @@ final class EngineRig {
         server.rebuildMonitors(screens: [screen])
         let app = app
         server.system = FakeWindowSystem(server)
+        server.mac.frameClock.manual = true
         server.mac.memory.layoutURL = nil
         server.mac.writerOverride = { _ in app }
         server.mac.windowServerOverride = { [app] id in app.frames[id] }
@@ -241,8 +242,13 @@ final class EngineRig {
         return server.clientByIdAll(id)!
     }
 
+    /// The run loop for `seconds`, with an output frame every 16 ms (the tests' display link).
     func settle(_ seconds: TimeInterval = 0.05) {
-        RunLoop.main.run(until: Date().addingTimeInterval(seconds))
+        let end = Date().addingTimeInterval(seconds)
+        repeat {
+            RunLoop.main.run(until: min(end, Date().addingTimeInterval(0.016)))
+            server.mac.frameClock.fire()
+        } while Date() < end
     }
 }
 

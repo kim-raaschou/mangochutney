@@ -49,9 +49,11 @@ final class WindowMemory {
         for m in present where m !== focus {
             m.mon = focus.mon
             m.tags = focus.tags
+            m.tagVisible = false
+            server.clientUpdateVisibility(m)
             server.clientPark(m)
         }
-        if let m = focus.mon { server.arrange(m) }
+        if let m = focus.mon { server.arrange(m, false, false) }
     }
 
     static func isfloating(_ c: Client) -> Bool {

@@ -13,7 +13,7 @@ final class UnmanagedGlobalTests: MangoTestCase {
         let petFrame = CGRect(x: 1500, y: 900, width: 120, height: 90)
         let u = r.window(pet, frame: petFrame)
         u.isunglobal = true
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         XCTAssertEqual(r.server.tiledClients(r.monitor).map(\.id), [a, b], "not a tile")
         XCTAssertFalse(r.app.writes.contains { $0.id == pet }, "mango does not move it")

@@ -39,6 +39,6 @@ package extension MangoServer {
                                       distance: CGFloat(config.snapDistance))
         guard to != from else { return }
         c.floatGeom = c.frame.offsetBy(dx: to.minX - from.minX, dy: to.minY - from.minY)
-        arrange(m, .none)
+        arrange(m, false, false)
     }
 }

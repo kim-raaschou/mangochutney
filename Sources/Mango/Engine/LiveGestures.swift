@@ -86,8 +86,10 @@ package extension MangoServer {
 
     func swipeHasRunningTransition(_ m: Monitor) -> Bool {
         for c in clients {
-            if c.mon !== m || !system.clientAnimationRunning(c) { continue }   // not in mango: the port's side
-            if c.action == .tag || c.action == .move || c.action == .overview || c.tagouting { return true }
+            if c.mon !== m || !c.animation.running || !c.needOutputFlush { continue }
+            if c.animation.action == .tag || c.animation.action == .move
+                || c.animation.action == .overview || c.animation.tagining
+                || c.animation.tagouting { return true }
         }
         return false
     }
@@ -106,9 +108,9 @@ package extension MangoServer {
                 visible += 1
                 if Self.isTiled(c) { tiled += 1 }
             }
-            if system.clientAnimationRunning(c) {   // not in mango: the port's side
+            if c.animation.running {
                 running += 1
-                if c.action == .tag || c.action == .move || c.action == .overview { geometry += 1 }
+                if c.animation.action == .tag || c.animation.action == .move || c.animation.action == .overview { geometry += 1 }
             }
         }
 
@@ -132,11 +134,14 @@ package extension MangoServer {
 
     func swipeDriveApply(_ m: Monitor, _ p: Double) {
         for c in clients {
-            if c.mon !== m || !system.clientAnimationRunning(c) { continue }   // not in mango: the port's side
-            if c.action != .tag && c.action != .move && c.action != .overview && !c.tagouting { continue }
-            system.clientAnimationSetProgress(c, p)
+            if c.mon !== m || !c.animation.running || !c.needOutputFlush { continue }
+            if c.animation.action != .tag && c.animation.action != .move
+                && c.animation.action != .overview && !c.animation.tagining
+                && !c.animation.tagouting { continue }
+            clientAnimationSetProgress(c, p)
         }
-        // not in mango: request_fresh_all_monitors is the port's frame report
+
+        requestFreshAllMonitors()
     }
 
     func swipeDrivePanTarget(_ m: Monitor, _ offset: Double) -> Client? {
@@ -154,7 +159,7 @@ package extension MangoServer {
              * excluded by ISTILED; keep the drag strip consistent with scroller()
              * so a maximized/fullscreen page can be panned away like any other. */
             if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) { continue }
-            guard let g = c.geom else { continue }   // not in mango: geom is optional
+            let g = c.geom
 
             var cx = Double(g.minX + g.width / 2)
             var cy = Double(g.minY + g.height / 2)
@@ -174,21 +179,20 @@ package extension MangoServer {
 
     func swipeDriveApplyPan(_ m: Monitor, _ offset: Double) {
         let horizontal = swipeHorizontal
-        var shown: [ClientID: CGRect] = [:]
 
         for c in clients {
             if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) { continue }
-            guard var box = c.geom else { continue }   // not in mango: geom is optional
 
+            var box = c.geom
             if horizontal { box.origin.x += CGFloat(offset.rounded()) } else { box.origin.y += CGFloat(offset.rounded()) }
 
-            system.setFrame(c, box, size: false)
-            c.frame = box
-            c.parked = false   // not in mango: the port's side
-            shown[c.id] = box
+            system.sceneNodeSetPosition(c, box.minX, box.minY)   // not in mango: the port's wlr_scene_node_set_position
+            c.animation.current = box
+            c.current = box
+            clientSetClip(c, 1.0)
         }
 
-        updateBorders(animating: shown)   // not in mango: request_fresh_all_monitors, the borders drawn by the core
+        requestFreshAllMonitors()
     }
 
     /* Computes the pan range that keeps at least one window centrable, then
@@ -203,7 +207,7 @@ package extension MangoServer {
 
         for c in clients {
             if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) { continue }
-            guard let g = c.geom else { continue }   // not in mango: geom is optional
+            let g = c.geom
 
             let center = Double(horizontal ? g.minX + g.width / 2 : g.minY + g.height / 2)
             let centerRel = center - Double(horizontal ? w.minX : w.minY)
@@ -227,7 +231,8 @@ package extension MangoServer {
     }
 
     func swipeDrivePanFlickTarget(_ m: Monitor, _ dir: Double) -> (offset: Double, client: Client)? {
-        guard let sel = m.sel.flatMap({ clientByIdAll($0) }), let sg = sel.geom else { return nil }
+        guard let sel = m.sel.flatMap({ clientByIdAll($0) }) else { return nil }
+        let sg = sel.geom
 
         let horizontal = swipeHorizontal
         let w = m.screen.workArea
@@ -241,7 +246,7 @@ package extension MangoServer {
         var bestOffset = 0.0
         for c in clients {
             if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) || c === sel { continue }
-            guard let g = c.geom else { continue }   // not in mango: geom is optional
+            let g = c.geom
 
             let center = Double(horizontal ? g.minX + g.width / 2 : g.minY + g.height / 2)
             let offset = monCenter - (center - monOrigin)
@@ -500,15 +505,15 @@ package extension MangoServer {
                     if shift != 0 {
                         for c in clients {
                             if c.mon !== m || !VISIBLEON(c, m) || !Self.isScrollTiled(c) { continue }
-                            if swipeHorizontal { c.geom?.origin.x += shift } else { c.geom?.origin.y += shift }
+                            if swipeHorizontal { c.geom.origin.x += shift } else { c.geom.origin.y += shift }
                         }
                     }
 
                     clientFocus(target, true)
-                    arrange(m)
+                    arrange(m, false, false)
                 } else {
                     wlrLog(.debug, "swipe drive: pan revert, offset=\(Int(offset))")
-                    arrange(m)
+                    arrange(m, false, false)
                 }
 
                 swipeDrive.active = false
@@ -538,10 +543,12 @@ package extension MangoServer {
             if commit {
                 wlrLog(.debug, "swipe drive: commit, p=\(p) speed=\(swipeDrive.avgSpeed)")
                 for c in clients {
-                    if c.mon !== m || !system.clientAnimationRunning(c) { continue }   // not in mango: the port's side
-                    if c.action != .tag && c.action != .move && c.action != .overview && !c.tagouting { continue }
+                    if c.mon !== m || !c.animation.running || !c.needOutputFlush { continue }
+                    if c.animation.action != .tag && c.animation.action != .move
+                        && c.animation.action != .overview && !c.animation.tagining
+                        && !c.animation.tagouting { continue }
 
-                    system.clientAnimationResume(c, 1.0 - p)
+                    clientAnimationResume(c, 1.0 - p)
                 }
                 if !config.animations { pointerProcessMotion(system.pointer, time: 0) }
             } else {

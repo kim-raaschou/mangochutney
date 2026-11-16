@@ -65,12 +65,12 @@ public enum MenuBarStatus {
     static func overlaps(_ server: MangoServer, _ m: Monitor, tag t: Int) -> Bool {
         guard server.config.chutneyOverlapWarning else { return false }
         let bit: UInt32 = t == 0 ? 1 << 31 : 1 << UInt32(t - 1)
-        let shown = server.tiledClients(m).filter { $0.tags & bit != 0 && !$0.parked && $0.geom != nil }
+        let shown = server.tiledClients(m).filter { $0.tags & bit != 0 && !$0.parked }
         return shown.contains { c in
-            let tile = shown.filter { $0.geom == c.geom }
-            guard tile.count == 1 || c === (tile.first { $0.id == m.sel } ?? tile[0]), let rs = c.refusedSize, let g = c.geom
+            let tile = shown.filter { $0.tile == c.tile }
+            guard tile.count == 1 || c === (tile.first { $0.id == m.sel } ?? tile[0]), let rs = c.refusedSize
             else { return false }
-            return rs.width > g.width + 0.5 || rs.height > g.height + 0.5
+            return rs.width > c.tile.width + 0.5 || rs.height > c.tile.height + 0.5
         }
     }
 

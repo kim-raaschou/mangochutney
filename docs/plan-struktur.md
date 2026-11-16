@@ -88,6 +88,23 @@ Hos os:
   `ISSCROLLTILED`, `ISFAKETILED`, `VISIBLEON`, `TAGMATCH`, `SCRATCHPAD_SHOWN`, `ISFULLSCREEN`.
 - Tilbage af trin 1: mangos retningskonstanter (`UP`…`ALLDIR`) i stedet for `Direction`, `m`/`w`
   på `Monitor`. Tages med trin 3–4, hvor layoutet skrives om.
+- Trin 2 (16. november): mangos `resize`, `client_set_pending_state`, `client_commit`,
+  `client_animation_next_tick`, `client_set_finish_geometry`, `client_set_clip`, `clip_to_hide`,
+  `client_animation_set_progress`, `client_animation_resume`, `client_draw_frame`,
+  `set_client_open_animation`, `set_overview_enter_animation`, `is_special_animation_rule`,
+  `set_tagin_animation`, `set_arrange_visible`, `set_tagout_animation`, `set_arrange_hidden`,
+  `client_should_visible`, `client_update_visibility`, `client_set_bounds`, `client_get_clip` og
+  `handle_output_frame` står i kernen (`animation/animation-client.swift`, `animation-tag.swift`,
+  `animation-common.swift`, `manage/client.swift`, `manage/monitor.swift`; SwiftPM vil ikke have to
+  `client.swift` i ét modul). `Client` har `geom` (med kanten), `pending`, `current`,
+  `animainitGeom`, `bw` og `animation` (`MangoAnimation`). Grænsen har `clientSetSize`,
+  `sceneNodeSetPosition`, `sceneSubsurfaceTreeSetClip`, `sceneNodeSetEnabled`,
+  `sceneSurfaceSetEnabled` og `outputScheduleFrame`; portens `Animator` er væk, dens plads har
+  `FrameClock` (display link → `handleOutputFrame`). `arrange(m, wantAnimation, fromView)` har
+  mangos parametre og kalder `set_arrange_visible`/`set_arrange_hidden` og `resize` pr. klient;
+  resten af `arrange` (pre_calculate, layouts via tabellen) er trin 3. `LayoutResult.hidden`
+  bruges ikke længere af kernen (mangos `clip_to_hide` skjuler scrollerens kolonner) og går med
+  trin 4. `floatGeom` er stadig uden kanten.
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter

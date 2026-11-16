@@ -12,7 +12,7 @@ final class FitLayoutTests: MangoTestCase {
         for id: CGWindowID in 1...windows { r.window(id) }
         for c in r.server.tiledClients(r.monitor) { r.server.setSizePer(r.monitor, c) }   // as mango maps a window
         for (id, size) in min { r.app.minSize[id] = size }
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1.5)
         return r
     }
@@ -42,11 +42,11 @@ final class FitLayoutTests: MangoTestCase {
 
     func testTheMenuOffersWhatTheWindowLacks() {
         let r = rig(level: 1, min: [1: CGSize(width: 1100, height: 0)])
-        let lack = Int((1100 - r.server.clientByIdAll(1)!.geom!.width).rounded(.up))
+        let lack = Int((1100 - r.server.clientByIdAll(1)!.geom.width).rounded(.up))
         XCTAssertEqual(MenuBarStatus.fitTitle(r.server), "Fit layout: Test \(lack) pt wider")
         fitted(r)
-        XCTAssertGreaterThanOrEqual(r.server.clientByIdAll(1)!.geom!.width, 1100 - 0.5)
-        XCTAssertLessThan(r.server.clientByIdAll(1)!.geom!.width, 1100 + 12, "no more than it needs")
+        XCTAssertGreaterThanOrEqual(r.server.clientByIdAll(1)!.geom.width, 1100 - 0.5)
+        XCTAssertLessThan(r.server.clientByIdAll(1)!.geom.width, 1100 + 12, "no more than it needs")
     }
 
     func testAStackWindowGrowsToTheLeft() {
@@ -55,7 +55,7 @@ final class FitLayoutTests: MangoTestCase {
         XCTAssertNil(r.server.dispatch(Dispatch(name: "chutney_fit_layout")))
         r.settle(1.5)
         XCTAssertEqual(over(r), [])
-        XCTAssertLessThan(r.server.clientByIdAll(1)!.geom!.width, 948, "the master gives the room")
+        XCTAssertLessThan(r.server.clientByIdAll(1)!.geom.width, 948, "the master gives the room")
     }
 
     func testAHeightInTheStack() {
@@ -107,7 +107,7 @@ final class FitLayoutTests: MangoTestCase {
     /// moves that split, so its far border out shrinks it; the near one grows it.
     func testDwindleTheWindowInTheMiddle() {
         let r = rig(level: 1, min: [4: CGSize(width: 573, height: 0)], layout: .dwindle, windows: 4)
-        let g = { (id: ClientID) in r.server.clientByIdAll(id)!.geom! }
+        let g = { (id: ClientID) in r.server.clientByIdAll(id)!.geom }
         XCTAssertTrue(g(1).maxX < g(4).minX && g(4).maxX < g(2).minX, "4 between 1 and 2")
         XCTAssertEqual(over(r), [4])
         XCTAssertNotNil(FitLayout.plan(r.server, r.monitor))
@@ -124,7 +124,7 @@ final class FitLayoutTests: MangoTestCase {
         for c in r.server.tiledClients(r.monitor) { r.server.setSizePer(r.monitor, c) }
         r.app.minSize[2] = CGSize(width: 1600, height: 0)
         r.server.clientFocus(r.server.clientByIdAll(2)!, true)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1.5)
         XCTAssertEqual(over(r), [2])
         XCTAssertNotNil(FitLayout.plan(r.server, r.monitor))
@@ -141,7 +141,7 @@ final class FitLayoutTests: MangoTestCase {
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
         r.monitor.sel = 3
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1.5)
         XCTAssertEqual(over(r), [3])
         XCTAssertNil(FitLayout.plan(r.server, r.monitor))
@@ -215,11 +215,11 @@ final class FitLayoutTests: MangoTestCase {
         XCTAssertNotNil(fake(r).fitNotification)
         fake(r).fitNotification = nil
         _ = r.server.dispatch(Dispatch(name: "setmfact", args: ["+0.05"]))
-        XCTAssertTrue(r.server.mac.animator.isActive, "the layout moves")
+        XCTAssertTrue(r.server.mac.animationsRunning, "the layout moves")
         FitLayout.statusChanged(r.server)
         XCTAssertNil(fake(r).fitNotification, "nothing while they move")
         r.settle(1.5)
-        XCTAssertFalse(r.server.mac.animator.isActive)
+        XCTAssertFalse(r.server.mac.animationsRunning)
         XCTAssertNotNil(fake(r).fitNotification, "told when they stand still")
     }
 
@@ -272,7 +272,7 @@ final class FitLayoutTests: MangoTestCase {
         r.server.onStateChange = { told += 1 }
         for id: CGWindowID in 1...2 { r.window(id) }
         r.app.minSize[1] = CGSize(width: 1100, height: 0)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         told = 0
         r.settle(1.5)
         XCTAssertGreaterThan(told, 0)
@@ -285,7 +285,7 @@ final class FitLayoutTests: MangoTestCase {
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
         r.monitor.sel = 1
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1.5)
         XCTAssertNotNil(r.server.clientByIdAll(3)!.refusedSize, "larger than the screen")
         XCTAssertEqual(FitLayout.shown(r.server, r.monitor).map(\.id), [1], "under the one shown")

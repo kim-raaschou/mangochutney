@@ -2,70 +2,91 @@ import AppKit
 import Mango
 
 extension MacWindowSystem {
-    func resize(_ placements: [(Client, CGRect)], _ anim: ArrangeAnimation, rising: Set<ClientID>) {
-        var animated = server.config.animations && placements.count > 1
-        if case .none = anim { animated = false }
-        guard animated else {
-            for (c, t) in placements { resize(c, to: t, anim) }
-            return
-        }
-        var rank: [CGWindowID: Int] = [:]
-        var shown: [CGWindowID: StackedWindow] = [:]
-        for (i, w) in stackingOrder().enumerated() where rank[w.id] == nil { rank[w.id] = i; shown[w.id] = w }
-        let sorted = placements.enumerated().sorted {
-            (rank[$0.element.0.id] ?? .max, $0.offset) < (rank[$1.element.0.id] ?? .max, $1.offset)
-        }.map(\.element)
-        var above: [(c: Client, now: CGRect, to: CGRect)] = []
-        for (c, t) in sorted {
-            let now = shown[c.id]?.frame ?? c.frame
-            let to = t.rounded()
-            var cover: CGRect?
-            if rank[c.id] != nil, !rising.contains(c.id), let v = above.first(where: { $0.now.contains(now) && $0.to.contains(to) }) {
-                cover = animator.covered(v.c.id) ?? v.c.frame
+    // MARK: wlroots' side of mango's resize and animation
+
+    /// client_set_size. Not in mango: the size is written with the clip; macOS has no configure serial.
+    func clientSetSize(_ c: Client, _ width: CGFloat, _ height: CGFloat, _ forceConfigure: Bool) -> UInt32 { 0 }
+
+    /// toplevel->current's min and max size: macOS does not tell them.
+    func clientSizeHints(_ c: Client) -> ClientSizeHints { ClientSizeHints() }
+
+    func sceneNodeSetPosition(_ c: Client, _ x: CGFloat, _ y: CGFloat) {
+        c.mac.nodePosition = CGPoint(x: x, y: y)
+    }
+
+    /// macOS cannot clip another app's window: it is drawn whole, at the size of mango's box without the
+    /// border, where the scene node stands (docs/afvigelser.md).
+    func sceneSubsurfaceTreeSetClip(_ c: Client, _ clip: CGRect) {
+        let node = c.mac.nodePosition
+        place(c, CGRect(x: node.x + c.bw, y: node.y + c.bw,
+                        width: c.animation.current.width - 2 * c.bw, height: c.animation.current.height - 2 * c.bw))
+    }
+
+    func sceneNodeSetEnabled(_ c: Client, _ enabled: Bool) {
+        c.mac.sceneNodeEnabled = enabled
+        showOrPark(c)
+    }
+
+    func sceneSurfaceSetEnabled(_ c: Client, _ enabled: Bool) {
+        c.mac.sceneSurfaceEnabled = enabled
+        showOrPark(c)
+    }
+
+    func outputScheduleFrame(_ m: Monitor) { frameClock.schedule(m) }
+
+    /// A disabled scene is parked out of sight when the frame is shown (wlroots' output commit), after
+    /// the windows shown in the same frame are written; an enabled one is written where mango next puts it.
+    func showOrPark(_ c: Client) {
+        if !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled {
+            parkAtCommit.insert(c.id)
+            if let m = c.mon { frameClock.schedule(m) }
+        } else {
+            parkAtCommit.remove(c.id)
+            if c.parked {
+                c.parked = false
+                c.parkRetries = 0
             }
-            resize(c, to: t, anim, cover: cover, now: now)
-            if shown[c.id]?.opaque == true { above.append((c, now, to)) }
         }
     }
 
-    func resize(_ c: Client, to tile: CGRect, _ anim: ArrangeAnimation, cover: CGRect? = nil, now: CGRect? = nil) {
-        if c.leftToMacOS { c.geom = tile.rounded(); return }   // Port extension: chutney_fullscreen_tag
-        guard let q = writer(for: c.pid), let m = c.mon else { return }
-        c.geom = tile.rounded()
-        var target = tile.rounded()
-        if let rs = c.refusedSize, !c.isfloating, rs.width > target.width + 0.5 || rs.height > target.height + 0.5 {
+    /// wlroots' output commit: the windows whose scene the frame disabled are parked.
+    func commitFrame() {
+        let ids = parkAtCommit
+        parkAtCommit.removeAll()
+        for id in ids {
+            guard let c = server.clientByIdAll(id), !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled else { continue }
+            park(c)
+        }
+    }
+
+    /// Writes the window's frame: each step of an animation, and at its end the frame it is to keep.
+    func place(_ c: Client, _ box: CGRect) {
+        c.mac.box = box
+        guard c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled, !c.parked else { return }
+        guard !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
+        guard let q = writer(for: c.pid) else { return }
+        var target = box.rounded()
+        let final = !c.animation.running
+        if final, let rs = c.refusedSize, !c.isfloating, let m = c.mon,
+           rs.width > target.width + 0.5 || rs.height > target.height + 0.5 {
             let size = CGSize(width: max(rs.width, target.width), height: max(rs.height, target.height))
             target.origin = Self.inwardOrigin(target, size: size, in: layoutBounds(m))
         }
-        let wasParked = c.parked
-        c.parked = false
-        c.parkRetries = 0
-        if !wasParked && !c.isPendingOpenAnimation && c.frame == target && !animator.isAnimating(c.id) {
-            if c.refusedSize != nil { reconcileFrame(c, c.frame) }   // its tile is where it stands: no longer over
+        let wasMoving = c.mac.moving
+        c.mac.moving = !final
+        if target == c.frame && !(final && wasMoving) {
+            if final && c.refusedSize != nil { reconcileFrame(c, c.frame) }   // its tile is where it stands: no longer over
             return
         }
-
-        let moving = !wasParked && !c.isPendingOpenAnimation
+        let now = CACurrentMediaTime()
+        let left = final ? 0 : max(0, Double(c.animation.duration) - Double(getNowInMs() &- c.animation.timeStarted)) / 1000
+        c.ignoreMovesUntil = now + left + 0.4
+        watcher.suppressGeometry(c.id, until: now + left + 0.05)
         c.writes += 1
-        let a = server.clientAnimation(c, to: target, anim, current: c.frame, shown: !wasParked)
-        let from = a.from, curve = a.curve, total = a.durationMs
-        let animate = total > 0
-        let animationEnd = CACurrentMediaTime() + Double(total) / 1000
-        c.ignoreMovesUntil = animationEnd + 0.4
-        watcher.suppressGeometry(c.id, until: animationEnd + 0.05)
+        let resized = target.size != c.frame.size
         c.frame = target
-        var waitAt: CGRect?
-        if moving, let cover, !cover.isEmpty {
-            waitAt = cover.contains(target) ? target : cover.contains(now ?? from) ? now ?? from : cover
-        }
-        if animate && from != target && total > 0 && waitAt != target {
-            animator.animate(id: c.id, element: c.element, queue: q, from: from, to: target, durationMs: total,
-                             curve: curve, waitingAt: waitAt) { [weak self] in self?.verifyFrame(c) }
-        } else {
-            animator.cancel(c.id)
-            q.setFrame(c.element, id: c.id, frame: target)
-            verifyFrame(c)
-        }
+        q.setFrame(c.element, id: c.id, frame: target, setSize: final || resized, animating: !final && resized)
+        if final { verifyFrame(c) }
     }
 
     func verifyFrame(_ c: Client) {
@@ -102,7 +123,7 @@ extension MacWindowSystem {
         if wait <= 0 {
             c.retryCount += 1
             c.lastReassert = now
-            resize(c, to: target, .none)
+            place(c, target)
             return
         }
         guard !c.deferredRetryPending else { return }
@@ -110,15 +131,15 @@ extension MacWindowSystem {
         DispatchQueue.main.asyncAfter(deadline: .now() + wait + 0.05) { [weak self] in
             MainActor.assumeIsolated {
                 c.deferredRetryPending = false
-                guard let self, self.server.clientByIdAll(c.id) === c, c.geom == target, !c.parked,
-                      !self.animator.isAnimating(c.id), let q = self.writer(for: c.pid) else { return }
+                guard let self, self.server.clientByIdAll(c.id) === c, c.tile == target, !c.parked,
+                      !c.animation.running, let q = self.writer(for: c.pid) else { return }
                 self.readBack(c, q)
             }
         }
     }
 
     func layoutBounds(_ m: Monitor) -> CGRect {
-        let tiles = server.tiledClients(m).compactMap(\.geom).reduce(CGRect.null) { $0.union($1) }
+        let tiles = server.tiledClients(m).map(\.tile).reduce(CGRect.null) { $0.union($1) }
         return tiles.isNull ? m.screen.workArea : tiles.intersection(m.screen.workArea)
     }
 
@@ -131,22 +152,24 @@ extension MacWindowSystem {
 
     func reconcileFrame(_ c: Client, _ actual: CGRect?, settled: Bool = false) {
         guard let actual = actual ?? windowServerFrame(c.id), server.clientByIdAll(c.id) === c, !c.parked,
-              !animator.isAnimating(c.id), server.grab?.client !== c else { return }
+              !c.animation.running, server.grab?.client !== c else { return }
         let refused = c.refusedSize
         defer { if c.refusedSize != refused { server.onStateChange?() } }
-        if let t = c.geom, MangoServer.frameDistance(actual, t) <= 0.5 { c.retryCount = 0; c.refusedSize = nil }
-        if let t = c.geom, let rs = c.refusedSize, actual.width < rs.width - 0.5 || actual.height < rs.height - 0.5 {
+        if MangoServer.frameDistance(actual, c.tile) <= 0.5 { c.retryCount = 0; c.refusedSize = nil }
+        if let rs = c.refusedSize, actual.width < rs.width - 0.5 || actual.height < rs.height - 0.5 {
+            let t = c.tile
             c.refusedSize = actual.width > t.width + 0.5 || actual.height > t.height + 0.5 ? actual.size : nil
         }
         let d = abs(actual.minX - c.frame.minX) + abs(actual.minY - c.frame.minY)
             + abs(actual.width - c.frame.width) + abs(actual.height - c.frame.height)
         let offLayout = !c.isfloating && !SCRATCHPAD_SHOWN(c)
-            && c.geom.map { MangoServer.frameDistance(actual, $0) > 0.5 } == true
+            && MangoServer.frameDistance(actual, c.tile) > 0.5
         guard d > 0.5 || offLayout else { return }
         if c.isfloating { userMoved(c, to: actual, resized: false, dragging: false); return }
         c.frame = actual
         let now = CACurrentMediaTime()
-        if !c.isfloating, !SCRATCHPAD_SHOWN(c), let target = c.geom, MangoServer.frameDistance(actual, target) > 0.5 {
+        let target = c.tile
+        if !c.isfloating, !SCRATCHPAD_SHOWN(c), MangoServer.frameDistance(actual, target) > 0.5 {
             let larger = actual.width > target.width + 0.5 || actual.height > target.height + 0.5
             let inward = larger && c.mon != nil ? Self.inwardOrigin(target, size: actual.size, in: layoutBounds(c.mon!)) : target.origin
             let atTile = abs(actual.minX - target.minX) <= 1 && abs(actual.minY - target.minY) <= 1
@@ -177,30 +200,11 @@ extension MacWindowSystem {
         server.updateBorders()
     }
 
-    func hide(_ c: Client, tagout t: TagoutAnimation) {
-        guard !c.leftToMacOS, !fullscreenTagViewed(c) else { c.tagouting = false; return }   // Port extension: chutney_fullscreen_tag
-        guard !c.parked, let q = writer(for: c.pid), t.durationMs > 0, c.frame != t.to else {
-            c.tagouting = false
-            hide(c)
-            return
-        }
-        let end = CACurrentMediaTime() + Double(t.durationMs) / 1000
-        c.ignoreMovesUntil = end + 0.4
-        watcher.suppressGeometry(c.id, until: end + 0.05)
-        let from = c.frame
-        c.frame = t.to
-        animator.animate(id: c.id, element: c.element, queue: q, from: from, to: t.to, durationMs: t.durationMs,
-                         curve: t.curve) { [weak self] in
-            guard let self, c.tagouting, self.server.clientByIdAll(c.id) === c else { return }
-            c.tagouting = false
-            self.hide(c)
-        }
-    }
-
-    func hide(_ c: Client) {
+    /// The port's disabled scene node: the window out of sight in a corner of its monitor.
+    func park(_ c: Client) {
         // Port extension: chutney_fullscreen_tag (leftToMacOS, fullscreenTagViewed)
         guard !c.parked, !c.leftToMacOS, !fullscreenTagViewed(c), let m = c.mon, let q = writer(for: c.pid) else { return }
-        animator.cancel(c.id)
+        c.mac.moving = false
         c.parked = true
         c.frame = CGRect(origin: parkedOrigin(c, on: m), size: c.frame.size)
         c.ignoreMovesUntil = CACurrentMediaTime() + 0.5
@@ -227,7 +231,7 @@ extension MacWindowSystem {
             guard let m = c.mon, c.frame.origin != parkedOrigin(c, on: m) else { continue }
             c.parked = false
             c.parkRetries = 0
-            hide(c)
+            park(c)
         }
     }
 
@@ -240,6 +244,6 @@ extension MacWindowSystem {
         wlrLog(.debug, "\(c.appName): window \(c.id) is hidden but in view at \(actual); parking it again")
         c.frame = actual
         c.parked = false
-        hide(c)
+        park(c)
     }
 }

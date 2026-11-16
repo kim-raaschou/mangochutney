@@ -91,8 +91,8 @@ final class IPCTests: MangoTestCase {
             c2.scrollerProportion = 0.8
             _ = add(3, "Notes", "com.apple.Notes", on: hdmi)
             rig.server.selectedMonitor = dp1
-            rig.server.arrange(dp1, .none)
-            rig.server.arrange(hdmi, .none)
+            rig.server.arrange(dp1, false, false)
+            rig.server.arrange(hdmi, false, false)
             rig.server.clientFocus(c1, true)
             (rig.server.system as! FakeWindowSystem).fakePointer = CGPoint(x: 12.5, y: 40)
             let path = "/tmp/mango-test-\(getpid())-\(Int.random(in: 0..<100000)).sock"
@@ -403,7 +403,7 @@ final class IPCTests: MangoTestCase {
     func testHideClientsCountsTheMinimized() throws {
         XCTAssertEqual(try object(query("get monitor DP-1"))["hide_clients"] as? Int, 0)
         rig.server.setMinimized(rig.server.clientByIdAll(3)!)
-        rig.server.arrangeAll(.none)
+        rig.server.arrangeAll(false)
         XCTAssertEqual(try object(query("get monitor DP-1"))["hide_clients"] as? Int, 1, "any monitor's")
         XCTAssertEqual(try object(query("get monitor HDMI-A-1"))["hide_clients"] as? Int, 1)
     }
@@ -414,14 +414,15 @@ final class IPCTests: MangoTestCase {
         rig.server.config.noBorderWhenSingle = false
         let c = rig.server.clientByIdAll(1)!
         rig.server.renderBorder = true
-        let bw = rig.server.borderWidth(c, on: dp1)
-        XCTAssertGreaterThan(bw, 0)
-        let g = try XCTUnwrap(c.geom)
+        rig.server.arrangeAll(false)
+        XCTAssertGreaterThan(c.bw, 0)
+        let g = c.geom
+        XCTAssertEqual(g, c.tile.insetBy(dx: -c.bw, dy: -c.bw), "the window inside its border")
         let obj = try object(query("get client 1"))
-        XCTAssertEqual(obj["x"] as? Int, Int(g.minX - bw))
-        XCTAssertEqual(obj["y"] as? Int, Int(g.minY - bw))
-        XCTAssertEqual(obj["width"] as? Int, Int(g.width + 2 * bw))
-        XCTAssertEqual(obj["height"] as? Int, Int(g.height + 2 * bw))
+        XCTAssertEqual(obj["x"] as? Int, Int(g.minX))
+        XCTAssertEqual(obj["y"] as? Int, Int(g.minY))
+        XCTAssertEqual(obj["width"] as? Int, Int(g.width))
+        XCTAssertEqual(obj["height"] as? Int, Int(g.height))
     }
 
     // mango handle_command: client,<id> ends at a comma or the end; strtol's id is cast to int.

@@ -28,11 +28,11 @@ final class DragTileTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = layout
         for i in 0..<3 { r.window(CGWindowID(900_500 + i)) }
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         return r
     }
 
-    func frame(_ r: EngineRig, _ id: CGWindowID) -> CGRect { r.server.clientByIdAll(id)!.geom! }
+    func frame(_ r: EngineRig, _ id: CGWindowID) -> CGRect { r.server.clientByIdAll(id)!.geom }
 
     func drag(_ r: EngineRig, _ id: CGWindowID, to p: CGPoint) {
         let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
@@ -64,7 +64,7 @@ final class DragTileTests: MangoTestCase {
     func testTheScrollerStacksItAboveOrBelow() {
         let r = rig(.scroller)
         r.server.clientFocus(r.server.clientByIdAll(900_500)!, false)
-        r.server.arrange(r.monitor)
+        r.server.arrange(r.monitor, false, false)
         let f = frame(r, 900_500)
         r.server.clientBeginDragFloat(r.server.clientByIdAll(900_502)!, at: CGPoint(x: 1, y: 1))
         r.server.dropDraggedTile(at: CGPoint(x: f.midX, y: f.maxY - 5))

@@ -13,19 +13,19 @@ package extension MangoServer {
         setSizePer(m, c)
         if config.dragTileToTile, config.dragTileSmall {
             let small = CGRect(x: p.x.rounded() - 150, y: p.y.rounded() - 150, width: 300, height: 300)
-            system.cancelAnimation(c.id)   // not in mango: the port's side
+            c.animation.running = false   // not in mango: the port's side
             c.frame = small
             system.setFrame(c, small, size: true)
-            updateBorders(animating: [c.id: small])
+            updateBorders()
             system.readFrame(c) { [weak self] actual in   // not in mango: the port's side
                 guard let self, let actual, self.dragTile?.client === c, actual.size != small.size else { return }
                 c.frame.size = actual.size
-                self.updateBorders(animating: [c.id: c.frame])
+                self.updateBorders()
             }
         }
         c.floatGeom = c.frame
         c.isfloating = true
-        arrange(m, .move)
+        arrange(m, false, false)
     }
 
     func findClosestTiledClient(to p: CGPoint, except c: Client) -> Client? {
@@ -38,10 +38,9 @@ package extension MangoServer {
         }
     }
 
-    /// Not in mango: stands for c->geom with its border.
+    /// Not in mango: c->geom.
     func tileBox(_ c: Client, on m: Monitor) -> CGRect {
-        let bw = borderWidth(c, on: m)
-        return (c.geom ?? c.frame).insetBy(dx: -bw, dy: -bw)
+        c.geom
     }
 
     func groupBarTargetAt(at p: CGPoint, except c: Client) -> Client? {
@@ -58,7 +57,7 @@ package extension MangoServer {
         guard let t = findClosestTiledClient(to: p, except: c), let m = t.mon else { return nil }
         let tiled = tiledClients(m)
         let ismaster = (tiled.firstIndex { $0 === t } ?? .max) < m.pertag.nmasters[getMonCurtag(m)]
-        let (direction, area) = DropArea.clientSetDropArea(layout: m.layout, target: t.geom ?? t.frame, at: p,
+        let (direction, area) = DropArea.clientSetDropArea(layout: m.layout, target: t.geom, at: p,
                                                  ismaster: ismaster, tiled: tiled.count,
                                                  dwindleSimpleSplit: config.dwindleDropSimpleSplit,
                                                  dwindleSplitRatio: config.dwindleSplitRatio)
@@ -134,7 +133,7 @@ package extension MangoServer {
             }
         }
         if m.sel != c.id { m.prevsel = m.sel; m.sel = c.id }
-        arrange(m, .move)
+        arrange(m, false, false)
         printstatus(.arrangge)
     }
 }

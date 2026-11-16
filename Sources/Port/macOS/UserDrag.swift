@@ -38,22 +38,33 @@ extension MacWindowSystem {
             if resized { userDrag?.resized = true }
             if c.isfloating { c.floatGeom = actual; c.iscustomsize = true }
             c.frame = actual
-            server.updateBorders(animating: [c.id: actual])
+            standsAt(c, actual)
+            server.updateBorders()
             if server.dragTile?.client === c { server.updateDragTile(at: pointer) }
             return
         }
         if c.isfloating {
             c.floatGeom = actual
             c.frame = actual
+            standsAt(c, actual)
             server.updateBorders()
             return
         }
         c.frame = actual
-        if let target = c.geom, MangoServer.frameDistance(actual, target) > 0.5 {
+        let target = c.tile
+        if MangoServer.frameDistance(actual, target) > 0.5 {
             wlrLog(.debug, "\(c.appName): window \(c.id) moved to \(actual) by the app; its tile is \(target)")
             keepPlaced(c, at: target)
         }
         server.updateBorders()
+    }
+
+    /// The user or the app moved the window: mango's box stands where it is, as an interactive move
+    /// (resize with the grab) leaves it, so the next animation starts there.
+    func standsAt(_ c: Client, _ actual: CGRect) {
+        guard !c.animation.running else { return }
+        c.animation.current = actual.insetBy(dx: -c.bw, dy: -c.bw)
+        c.mac.nodePosition = c.animation.current.origin
     }
 
     func finishUserDrag(_ d: UserDrag, at p: CGPoint) {
@@ -71,7 +82,7 @@ extension MacWindowSystem {
             c.frame = actual
             server.dropDraggedTile(at: p)
             if !server.config.dragTileToTile {
-                if let cm = c.mon { server.arrange(cm, .none) }
+                if let cm = c.mon { server.arrange(cm, false, false) }
                 server.applyWindowSnap(c)
                 server.printstatus(.arrangge)
             }
@@ -97,7 +108,7 @@ extension MacWindowSystem {
             server.resizeTileClient(c, offsetX: dx, offsetY: dy)
         }
         c.frame = actual
-        server.arrange(m, .move)
+        server.arrange(m, false, false)
         server.printstatus(.arrangge)
     }
 }

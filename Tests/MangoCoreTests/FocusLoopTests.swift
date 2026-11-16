@@ -7,7 +7,7 @@ final class StaleFocusTests: MangoTestCase {
     func testAFocusRequestIsDroppedWhenMangoHasMovedOn() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(b, true)
         XCTAssertTrue(MacWindowSystem.stillFocused(b, in: r.server))
         r.server.mac.windowFocused(id: a.id)
@@ -18,7 +18,7 @@ final class StaleFocusTests: MangoTestCase {
     func testAFocusRequestForAGoneWindowIsDropped() {
         let r = EngineRig()
         let a = r.window(1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(a, true)
         r.server.handleClientUnmap(a)
         r.server.handleClientDestroy(a)

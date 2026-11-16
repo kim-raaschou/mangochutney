@@ -31,12 +31,6 @@ public enum Lyr: Int, Comparable {
     public static func < (a: Lyr, b: Lyr) -> Bool { a.rawValue < b.rawValue }
 }
 
-package enum ArrangeAnimation {
-    case none
-    case move
-    case tag(forward: Bool)
-}
-
 @MainActor
 public final class MangoServer {
     public internal(set) var config = Config()
@@ -96,6 +90,7 @@ public final class MangoServer {
     var swipeFingers = 0
     var gestureDriveMon: Monitor?
     var gestureDriveActive = false
+    var bordersDirty = false   // not in mango: a border changed; the port draws them all at once
     var watchTimer: EventSource?
     var watchedFiles: [WatchedFile] = []
     var watcherActive = false
@@ -137,7 +132,7 @@ public final class MangoServer {
         // not in mango: run's part of the start, in setup
         setEnvDisplay()
         started = true
-        arrangeAll(.none)
+        arrangeAll(false)
         printstatus(.arrangge)
         pointerCursorActivity()
         runExec()
@@ -248,7 +243,7 @@ public final class MangoServer {
         for m in monitors {
             titleMessageBarApplyConfig(m)
             titleMessageBarUpdate(m)
-            arrange(m)
+            arrange(m, false, false)
         }
     }
 
@@ -359,7 +354,7 @@ public final class MangoServer {
 
     public func handleOutputLayoutChange() {
         rebuildMonitors()
-        arrangeAll(.none)
+        arrangeAll(false)
         printstatus(.arrangge)
     }
 
@@ -406,11 +401,11 @@ public final class MangoServer {
     }
 
     /// Not in mango: arrange on every monitor.
-    package func arrangeAll(_ anim: ArrangeAnimation) {
-        for m in monitors { arrange(m, anim) }
+    package func arrangeAll(_ wantAnimation: Bool) {
+        for m in monitors { arrange(m, wantAnimation, false) }
     }
 
-    package func arrange(_ m: Monitor, _ anim: ArrangeAnimation = .move) {
+    package func arrange(_ m: Monitor, _ wantAnimation: Bool, _ fromView: Bool) {
         guard started else { return }
         // not in mango: pre_calculate_before_arrange's hide_clients, here before the overview
         m.hideClients = 0
@@ -421,7 +416,7 @@ public final class MangoServer {
         }
         if m.sel == nil { m.sel = clientFocusTop(m)?.id }
         if isSpecialActive(m) && specialClients(m).isEmpty {
-            if case .tag = anim { m.specialEmptyView = true }
+            if fromView { m.specialEmptyView = true }
             else if !m.specialEmptyView { toggleSpecialTagMon(m); return }
         } else {
             m.specialEmptyView = false
@@ -470,8 +465,7 @@ public final class MangoServer {
         let tabHidden = Set(members.filter { $0 !== shownMember }.map(\.id))
         for c in clientsAll where c.mon === m { c.isTabHidden = tabHidden.contains(c.id) }
         func tile(_ c: Client) -> CGRect {
-            let bw = borderWidth(c, on: m)
-            var f = (c.geom ?? c.frame).insetBy(dx: -bw, dy: -bw)
+            var f = c.geom   // not in mango: the layout engine's input
             let top = topBars(c, tabMember: strips.contains(c.id))
             f.origin.y -= top
             f.size.height += top
@@ -520,18 +514,17 @@ public final class MangoServer {
         }
 
         var raise: [Client] = []
-        var placements: [(Client, CGRect)] = []
+        // not in mango: the boxes mango's setfloating, setfullscreen, setmaximizescreen and
+        // reset_maximizescreen_size leave in c->geom, set here; our floatGeom is kept apart
         for c in visible where !c.isunglobal && dragTile?.client !== c {
-            var target: CGRect?
-            var park = false
+            let bw = borderWidth(c, on: m)
             if SCRATCHPAD_SHOWN(c) {
-                target = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
+                c.geom = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m).insetBy(dx: -bw, dy: -bw)   // not in mango: the port's side
                 raise.append(c)
             } else if c.isfullscreen {
-                target = m.screen.frame
+                c.geom = m.screen.frame
                 raise.append(c)
             } else if c.ismaximizescreen {
-                let bw = borderWidth(c, on: m)
                 let noGap = config.monocleNoGap && kind == .monocle
                 var box = work.insetBy(horizontal: noGap ? 0 : CGFloat(config.gappoh),
                                        vertical: noGap ? 0 : CGFloat(config.gappov))
@@ -539,40 +532,38 @@ public final class MangoServer {
                     box.origin.y += CGFloat(config.groupBarHeight)
                     box.size.height -= CGFloat(config.groupBarHeight)
                 }
-                target = box.insetBy(dx: bw, dy: bw)
+                c.geom = box
                 raise.append(c)
             } else if c.isfloating {
-                target = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m)   // not in mango: the port's side
+                c.geom = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m).insetBy(dx: -bw, dy: -bw)   // not in mango: the port's side
                 if c.isoverlay { raise.append(c) }
-            } else if let f = result.frames[c.id] {
-                let bw = borderWidth(c, on: m)
-                var box = f
-                if m.layout.isScroller {
-                    box.size.width = max(1 + 2 * bw, box.width)
-                    box.size.height = max(1 + 2 * bw, box.height)
-                } else {
-                    box = clientSetBounds(c, box, m.screen.workArea)
-                }
-                target = box.insetBy(dx: bw, dy: bw)
-                if c.isoverlay { raise.append(c) }
-                if (result.hidden.contains(c.id) && !kind.isMonocleLike) || tabHidden.contains(c.id) { park = true }
-            } else {
-                target = c.geom ?? c.frame
+            } else if c.isoverlay {
+                raise.append(c)
             }
-            if park {
-                c.geom = target
-                system.hide(c)
-            } else if let t = target {
-                placements.append((c, t))
+        }
+
+        // pre_calculate_before_arrange's set_arrange_visible and set_arrange_hidden
+        for c in clients where !c.iskilling && c.mon === m {
+            if VISIBLEON(c, m) {
+                if !c.isunglobal && dragTile?.client !== c { setArrangeVisible(m, c, wantAnimation) }   // not in mango: the tile being dragged stays where it is
+            } else if specialKeepBgClient(m, c) {
+                c.tagVisible = true
+                clientUpdateVisibility(c)
+                c.animation.running = false
+                c.animation.tagining = false
+                c.animation.tagouting = false
+            } else if c !== grab?.client {
+                setArrangeHidden(m, c, wantAnimation)
             }
+        }
+
+        // the layout's resize of each tiled client
+        for c in visible where !c.isunglobal && dragTile?.client !== c && !c.isfloating && !c.isfullscreen
+            && !c.ismaximizescreen && !SCRATCHPAD_SHOWN(c) {
+            guard let box = result.frames[c.id] else { continue }
+            resize(c, box, ResizeOpts())
         }
         if kind.isMonocleLike, let s = m.sel.flatMap({ clientByIdAll($0) }), !s.isfloating { raise.insert(s, at: 0) }
-// not in mango: raised now, or by macOS as it focuses it: never taken as covered.
-        system.resize(placements, anim, rising: Set(raise.map(\.id) + (m.sel.map { [$0] } ?? [])))
-
-        for c in clientsAll where c.mon === m {
-            if !VISIBLEON(c, m) && !specialKeepBgClient(m, c) { setArrangeHidden(m, c, anim) }
-        }
 
         let sel = m.sel.flatMap { clientByIdAll($0) }
         for c in raise where c !== sel {
@@ -705,8 +696,8 @@ public final class MangoServer {
     }
 
     // not in mango: client_draw_border for every window at once; the port draws the borders in one overlay
-    package func updateBorders(animating: [ClientID: CGRect] = [:]) {
-        tabRefreshBars(animating: animating)
+    package func updateBorders() {
+        tabRefreshBars()
         guard renderBorder, config.borderpx > 0 else { system.drawBorders([]); return }
         var specs: [BorderSpec] = []
         for m in monitors {
@@ -719,7 +710,7 @@ public final class MangoServer {
                 if m.layout.isMonocleLike && !c.isfloating && m.sel != c.id && tiledCount > 1 {
                     if m.layout == .monocle { continue }
                 }
-                var f = shownFrame(c, animating: animating)
+                var f = animationCurrent(c).insetBy(dx: c.bw, dy: c.bw)
                 let top = !barsInsideBorder ? 0
                     : (c === strip ? CGFloat(config.tabBarHeight) : 0) + (clientCheckTabNodeVisible(c, on: m) ? CGFloat(config.groupBarHeight) : 0)
                 f = CGRect(x: f.minX, y: f.minY - top, width: f.width, height: f.height + top)
@@ -736,15 +727,6 @@ public final class MangoServer {
               tiledClients(m).contains(where: { $0 === c }),
               let horizontal = m.pertag.dwindleRoot[getMonCurtag(m)].leafSplitHorizontal(for: c.id) else { return nil }
         return (horizontal ? .right : .bottom, c.isurgent ? config.urgentcolor : config.splitcolor)
-    }
-
-    /// Not in mango: where an animating window is on screen.
-    func shownFrame(_ c: Client, animating: [ClientID: CGRect]) -> CGRect {
-        animating[c.id] ?? system.animatedFrame(c.id) ?? c.frame
-    }
-
-    package func clientDrawFrame(_ frames: [ClientID: CGRect]) {
-        updateBorders(animating: frames)
     }
 
     package func clientFocus(_ c: Client?, _ lift: Bool) {
@@ -784,7 +766,7 @@ public final class MangoServer {
             func tagMatch(_ x: Client) -> Bool { x.mon === m && !x.isminimized && x.tags & m.tagset[m.seltags] != 0 }
             if let p = m.prevsel.flatMap({ clientByIdAll($0) }), tagMatch(p), tagMatch(c), !c.isfloating,
                m.layout.isScroller || m.layout == .monocle || tabMembers(m).contains(where: { $0 === c }) {
-                arrange(m, .move)
+                arrange(m, false, false)
             } else {
                 updateBorders()   // not in mango: the port's side
             }
@@ -855,7 +837,7 @@ public final class MangoServer {
     func pointerWarpToClient(_ c: Client) {
         guard let m = c.mon else { return }
         // not in mango: in the overview mango's geom is the card; ours is the window under it
-        let g = (m.isoverview ? m.ovCards[c.id] : nil) ?? c.geom ?? c.frame
+        let g = (m.isoverview ? m.ovCards[c.id] : nil) ?? c.geom
         if m.screen.frame.contains(g) { system.warp(to: g.center) }
     }
 
@@ -876,7 +858,7 @@ public final class MangoServer {
         clientInsertTilingOrder(c)
         focusStack.insert(c.id, at: 0)
         clientSetRules(c)
-        if let cm = c.mon { arrange(cm, .move) }
+        if let cm = c.mon { arrange(cm, false, false) }
         printstatus(.arrangge)
     }
 
@@ -952,7 +934,7 @@ public final class MangoServer {
             for fc in clients where fc !== c && c.tags & fc.tags != 0 && VISIBLEON(fc, cm)
                 && (fc.isfullscreen || fc.ismaximizescreen) {
                 clearFullscreenFlag(fc)
-                arrange(cm)
+                arrange(cm, false, false)
             }
         }
 
@@ -975,6 +957,7 @@ public final class MangoServer {
         if let v = r.isfakefullscreen { c.isfakefullscreen = v }
         if let v = r.noBorder { c.noBorder = v }
         if let v = r.noAnimation { c.noAnimation = v }
+        if let v = r.noSizeHint { c.noSizeHint = v }
         if let v = r.isopensilent { c.isopensilent = v }
         if let v = r.istagsilent { c.istagsilent = v }
         if let v = r.isnamedscratchpad { c.isnamedscratchpad = v }
@@ -1042,7 +1025,7 @@ public final class MangoServer {
         if let oldmon, oldmon.sel == c.id { oldmon.sel = nil }
         if let oldmon, oldmon.prevsel == c.id { oldmon.prevsel = nil }
         c.mon = m
-        if let oldmon { arrange(oldmon) }
+        if let oldmon { arrange(oldmon, false, false) }
         if c.groupParked { return }
         if let m {
             clientResetMonTags(c, m, newtags)
@@ -1125,7 +1108,7 @@ public final class MangoServer {
                 clearFullscreenFlag(fc)
             }
         }
-        arrange(m)
+        arrange(m, false, false)
         printstatus(.arrangge)
     }
 
@@ -1141,7 +1124,7 @@ public final class MangoServer {
         } else if c.isfloating {
             clientSetFloating(c, true)
         }
-        if rearrange { arrange(m) }
+        if rearrange { arrange(m, false, false) }
     }
 
     func clientSetFakeFullscreen(_ c: Client, _ fakefullscreen: Bool) {
@@ -1161,7 +1144,7 @@ public final class MangoServer {
         } else if c.isfloating {
             clientSetFloating(c, true)
         }
-        if rearrange { arrange(m) }
+        if rearrange { arrange(m, false, false) }
     }
 
     // scene layer a client belongs to; only clients actually tagged with tag 0
@@ -1249,7 +1232,7 @@ public final class MangoServer {
     func centerTiledSelect(_ m: Monitor, among tiled: [Client]) -> Client? {
         let w = m.screen.workArea
         let d = tiled.map { c -> CGFloat in
-            let g = c.geom ?? c.frame
+            let g = c.geom
             return pow(g.midX - w.midX, 2) + pow(g.midY - w.midY, 2)
         }
         return d.indices.min { d[$0] < d[$1] }.map { tiled[$0] }
@@ -1289,7 +1272,6 @@ public final class MangoServer {
         switcherRemoveClient(id)
         if grab?.client === c { grab = nil }
         if dragTile?.client === c { dragTile = nil; system.showDropArea(nil, color: config.dropcolor) }
-        system.cancelAnimation(id)   // not in mango: the port's side
         for m in monitors {
             for st in m.pertag.scrollerState { st.scrollerNodeRemove(id) }
             for root in m.pertag.dwindleRoot { root.dwindleRemove(id, config: config) }
@@ -1297,7 +1279,7 @@ public final class MangoServer {
             if m.prevsel == id { m.prevsel = nil }
         }
         guard let m = c.mon else { return }
-        arrange(m, .move)
+        arrange(m, false, false)
         if m === selectedMonitor {
             var next = stackNext ?? stackPrev ?? clientFocusTop(m)
             if let n = next, !VISIBLEON(n, m) { next = clientFocusTop(m) }

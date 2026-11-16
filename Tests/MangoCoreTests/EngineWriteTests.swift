@@ -8,7 +8,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.window(1)
         r.window(2, tags: 1 << 1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         XCTAssertTrue(r.server.clientByIdAll(2)!.parked)
         r.app.writes.removeAll()
@@ -21,7 +21,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.window(1)
         let c = r.window(2, tags: 1 << 1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         XCTAssertTrue(c.parked)
         r.server.mac.appHidden(pid: c.pid, hidden: true)
@@ -37,7 +37,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.window(1)
         r.window(2, tags: 1 << 1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         r.app.writes.removeAll()
         r.server.mac.restarting = true
@@ -48,7 +48,7 @@ final class EngineWriteTests: MangoTestCase {
     func testTiledWindowsAreWrittenToTheirLayoutFramesOnce() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         for c in [a, b] {
             XCTAssertEqual(r.app.frames[c.id], c.geom, "the window is where the layout put it")
@@ -57,7 +57,7 @@ final class EngineWriteTests: MangoTestCase {
         }
         XCTAssertFalse(a.frame.intersects(b.frame.insetBy(dx: 1, dy: 1)))
         let writes = r.app.writes.count
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         XCTAssertEqual(r.app.writes.count, writes, "nothing to write when everything is in place")
     }
@@ -67,7 +67,7 @@ final class EngineWriteTests: MangoTestCase {
         r.window(1)
         let b = r.window(2)
         r.app.minSize[2] = CGSize(width: 300, height: 1000)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         XCTAssertEqual(b.frame, r.app.frames[2], "the border follows the real window")
         XCTAssertGreaterThanOrEqual(b.frame.height, 1000)
@@ -79,8 +79,8 @@ final class EngineWriteTests: MangoTestCase {
         let b = r.window(2)
         r.window(3)
         r.app.minSize[2] = CGSize(width: 0, height: 700)
-        r.server.arrange(r.monitor, .none)
-        let tile = b.geom!
+        r.server.arrange(r.monitor, false, false)
+        let tile = b.geom
         r.settle(4)
         XCTAssertEqual(b.geom, tile, "mango's tile, not moved for the window")
         XCTAssertEqual(r.app.frames[2]?.height, 700, "the window keeps its own size")
@@ -93,8 +93,8 @@ final class EngineWriteTests: MangoTestCase {
         r.window(1)
         let b = r.window(2)
         r.app.minSize[2] = CGSize(width: 1100, height: 0)
-        r.server.arrange(r.monitor, .none)
-        let tile = b.geom!
+        r.server.arrange(r.monitor, false, false)
+        let tile = b.geom
         r.settle(1)
         let f = r.app.frames[2]!
         XCTAssertEqual(b.geom, tile, "mango's tile stays")
@@ -102,7 +102,7 @@ final class EngineWriteTests: MangoTestCase {
         let right = r.server.tiledClients(r.monitor).compactMap(\.geom).map(\.maxX).max()!
         XCTAssertEqual(f.maxX, right, "in from the edge, inside the outer gap as the other tiles")
         XCTAssertEqual(f.minY, tile.minY, "only moved the way it would have crossed")
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1)
         XCTAssertEqual(r.app.frames[2], f, "the next arrange puts it there at once")
     }
@@ -124,7 +124,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1, frame: CGRect(x: 300, y: 300, width: 400, height: 300))
         r.app.busy = true
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         XCTAssertEqual(r.app.frames[1], CGRect(x: 300, y: 300, width: 400, height: 300), "busy: not applied")
         r.app.busy = false
@@ -136,7 +136,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.window(1)
         let hidden = r.window(2, tags: 1 << 1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         XCTAssertTrue(hidden.parked)
         XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame), "a sliver in a corner")
@@ -149,22 +149,23 @@ final class EngineWriteTests: MangoTestCase {
         let inView = CGRect(x: 12, y: 45, width: 1704, height: 1060)
         r.app.movesBackTo[2] = inView
         r.window(2, tags: 1 << 1, frame: inView)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(0.2)
         XCTAssertEqual(r.app.writes.filter { $0.id == 2 }.count, 4, "parked, then three more tries")
         r.app.movesBackTo[2] = nil
-        r.server.clientByIdAll(2)!.parked = false
-        r.server.clientByIdAll(2)!.parkRetries = 0
-        r.server.arrange(r.monitor, .none)
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         r.settle()
-        XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame))
+        XCTAssertFalse(r.server.clientByIdAll(2)!.parked)
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["1"]))
+        r.settle()
+        XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame), "hidden again: parked again")
     }
 
     func testAParkedWindowThatMovesItselfIntoViewIsParkedAgain() {
         let r = EngineRig()
         r.window(1)
         let hidden = r.window(2, tags: 1 << 1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         let inView = CGRect(x: 12, y: 45, width: 800, height: 600)
         r.app.frames[2] = inView
@@ -180,7 +181,7 @@ final class EngineWriteTests: MangoTestCase {
         let f = CGRect(x: 400, y: 300, width: 500, height: 400)
         let c = r.window(1, floating: true, frame: f)
         r.window(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
         XCTAssertEqual(r.app.frames[1], f)
         XCTAssertEqual(c.frame, f)
@@ -190,9 +191,9 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1)
         r.window(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
-        let target = a.geom!
+        let target = a.geom
         let writes = r.app.writes.count
         let moved = target.offsetBy(dx: 40, dy: 30)
         r.app.frames[1] = moved
@@ -206,13 +207,13 @@ final class EngineWriteTests: MangoTestCase {
     func testAnAppThatAppliesSizesLateTeachesNoMinimumSize() {
         let r = EngineRig()
         let a = r.window(1)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle()
-        let whole = a.geom!
+        let whole = a.geom
         r.app.appliesAfter = 0.3
         r.window(2)
-        r.server.arrange(r.monitor, .none)
-        let tile = a.geom!
+        r.server.arrange(r.monitor, false, false)
+        let tile = a.geom
         XCTAssertLessThan(tile.width, whole.width)
         r.settle(3)
         XCTAssertEqual(a.geom, tile, "the layout kept its tile")
@@ -224,14 +225,14 @@ final class EngineWriteTests: MangoTestCase {
         let a = r.window(1)
         r.app.minSize[1] = CGSize(width: 900, height: 400)
         r.app.appliesAfter = 0.3
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1.5)
         for id: CGWindowID in [2, 3, 4] { r.window(id) }
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(2)
         XCTAssertNil(a.mac.refusedSize, "it took its tile: no minimum")
         r.server.clients.append(r.server.clients.removeFirst())
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(4)
         let bounds = r.server.mac.layoutBounds(r.monitor)
         XCTAssertEqual(r.app.frames[1]?.size, CGSize(width: 900, height: 400))
@@ -247,7 +248,7 @@ final class ScratchpadPlaceTests: MangoTestCase {
         let r = EngineRig()
         r.window(1)
         r.window(2)
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.server.clientFocus(r.server.clientByIdAll(2)!, true)
         _ = r.server.dispatch(Dispatch(name: "minimized", args: []))
         return r
@@ -260,11 +261,11 @@ final class ScratchpadPlaceTests: MangoTestCase {
         toggle(r)
         let c = r.server.clientByIdAll(2)!
         let w = r.screen.workArea
-        XCTAssertEqual(c.geom?.width, (w.width * CGFloat(r.server.config.scratchpadWidthRatio)).rounded(), "first time: the ratio")
-        XCTAssertEqual(c.geom!.midX, w.midX, accuracy: 1, "and centred")
-        let first = c.geom!
+        XCTAssertEqual(c.geom.width, (w.width * CGFloat(r.server.config.scratchpadWidthRatio)).rounded(), "first time: the ratio")
+        XCTAssertEqual(c.geom.midX, w.midX, accuracy: 1, "and centred")
+        let first = c.geom
         _ = r.server.dispatch(Dispatch(name: "movewin", args: ["-100", "-50"]), target: c)
-        let moved = c.geom!
+        let moved = c.geom
         XCTAssertNotEqual(moved, first, "the move holds (it was centred again before)")
         toggle(r)
         toggle(r)
@@ -320,6 +321,6 @@ final class ScratchpadPlaceTests: MangoTestCase {
         r.server.clientFocus(c, true)
         _ = r.server.dispatch(Dispatch(name: "minimized", args: []))
         toggle(r)
-        XCTAssertEqual(c.geom!.midX, r.screen.workArea.midX, accuracy: 1, "centred again")
+        XCTAssertEqual(c.geom.midX, r.screen.workArea.midX, accuracy: 1, "centred again")
     }
 }

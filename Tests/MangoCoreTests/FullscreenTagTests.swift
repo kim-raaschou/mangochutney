@@ -12,7 +12,7 @@ final class FullscreenTagTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.chutneyFullscreenTag = on
         for id: CGWindowID in 1...3 { r.window(id) }
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1)
         return r
     }

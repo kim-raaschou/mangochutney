@@ -8,7 +8,7 @@ final class FullscreenAwayTests: MangoTestCase {
     func rig() -> EngineRig {
         let r = EngineRig()
         for id: CGWindowID in 1...3 { r.window(id) }
-        r.server.arrange(r.monitor, .none)
+        r.server.arrange(r.monitor, false, false)
         r.settle(1)
         return r
     }
@@ -61,7 +61,7 @@ final class FullscreenAwayTests: MangoTestCase {
 
     func testPlacedAgainWhenMacOSHasFinishedMovingIt() {
         let r = rig()
-        let tile = r.server.clientByIdAll(2)!.geom!
+        let tile = r.server.clientByIdAll(2)!.geom
         geometry(r, 2, fullscreen: true)
         geometry(r, 2, fullscreen: false, frame: r.monitor.screen.frame)
         r.app.frames[2] = r.monitor.screen.frame   // macOS still moving it out
@@ -74,7 +74,7 @@ final class FullscreenAwayTests: MangoTestCase {
 
     func testPlacedAtOnceWhenTheSpaceChangeCameFirst() {
         let r = rig()
-        let tile = r.server.clientByIdAll(2)!.geom!
+        let tile = r.server.clientByIdAll(2)!.geom
         geometry(r, 2, fullscreen: true)
         r.server.mac.spaceChanged()
         r.app.frames[2] = r.monitor.screen.frame

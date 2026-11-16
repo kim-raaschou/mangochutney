@@ -195,7 +195,7 @@ package extension MangoServer {
     func pointerBeginMoveResize(_ c: Client?, _ mode: Grab.Mode, at p: CGPoint, edge: WlrEdges = []) -> Bool {
         guard grab == nil else { return false }
         guard let c, !c.isfullscreen, !c.ismaximizescreen else { return false }
-        system.cancelAnimation(c.id)   // not in mango: the port's side
+        c.animation.running = false   // not in mango: the port's side
         if mode == .move && !c.isfloating { clientBeginDragFloat(c, at: p) }
         let start = c.frame
         var g = Grab(client: c, mode: mode, startMouse: p, startFrame: start)
@@ -251,6 +251,10 @@ package extension MangoServer {
         let c = g.client
         system.grabEnded(c)   // not in mango: the port's side
         defer { system.settle(c) }   // not in mango: the port's side
+        // not in mango: our grab writes the frame itself; mango's resize with the grab leaves the boxes there
+        c.animation.current = c.frame.insetBy(dx: -c.bw, dy: -c.bw)
+        c.current = c.animation.current
+        c.pending = c.animation.current
         guard let m = c.mon else { grab = nil; return }
         let moved = p != g.grabPointer
         /* A plain click on a resize border must not snap the window; every other
@@ -279,7 +283,7 @@ package extension MangoServer {
             dropDraggedTile(at: p)
             if config.dragTileToTile { printstatus(.arrangge); return }
         }
-        arrange(target, g.mode == .resize ? .none : .move)
+        arrange(target, false, false)
         if !borderResize || moved { applyWindowSnap(c) }
         printstatus(.arrangge)
     }
@@ -370,7 +374,7 @@ package extension MangoServer {
                 updateDragTile(at: p)
                 c.frame = f
                 system.setFrame(c, f, size: false)
-                updateBorders(animating: [c.id: f])
+                updateBorders()
             case .resize:
                 if c.isfloating || SCRATCHPAD_SHOWN(c) {
                     c.iscustomsize = true
@@ -444,7 +448,7 @@ package extension MangoServer {
 
         gc.frame = f
         system.setFrame(gc, f, size: true)
-        updateBorders(animating: [gc.id: f])
+        updateBorders()
         g.startMouse.x += cdx
         g.startMouse.y += cdy
         grab = g

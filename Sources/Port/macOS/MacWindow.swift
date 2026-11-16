@@ -15,6 +15,14 @@ final class MacWindow: PlatformWindow {
     var parkRetries = 0
     var deferredRetryPending = false
     var refusedSize: CGSize?
+    /// wlroots' c->scene->node.enabled and c->scene_surface->node.enabled.
+    var sceneNodeEnabled = true
+    var sceneSurfaceEnabled = true
+    /// Where mango's scene node stands (the box with the border), and the window's box the port writes.
+    var nodePosition: CGPoint
+    var box: CGRect
+    /// Whether the last frame written was a step of an animation.
+    var moving = false
     /// Port extension: chutney_fullscreen_tag. On its F tag in macOS fullscreen, in its own Space: macOS
     /// places it, the port writes nothing to it.
     var nativeFullscreen = false
@@ -29,6 +37,8 @@ final class MacWindow: PlatformWindow {
     init(element: AXUIElement, frame: CGRect, isFloatType: Bool = false) {
         self.element = element
         self.frame = frame
+        self.nodePosition = frame.origin
+        self.box = frame
         self.isFloatType = isFloatType
     }
 }
@@ -40,6 +50,9 @@ extension Client {
     }
 
     var mac: MacWindow { platform as! MacWindow }
+
+    /// The window's box in its tile: mango's geom without the border.
+    var tile: CGRect { geom.insetBy(dx: bw, dy: bw) }
 
     var element: AXUIElement {
         get { mac.element }

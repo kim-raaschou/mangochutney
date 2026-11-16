@@ -203,6 +203,10 @@ public struct Config: Sendable {
     }
 }
 
+/// mango's tag_animation_direction values (config/parse.h).
+public let VERTICAL = 0
+public let HORIZONTAL = 1
+
 public enum AnimationType: String, Sendable {
     case slide, zoom, fade, none
 }
