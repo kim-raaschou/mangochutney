@@ -134,6 +134,7 @@ public struct ConfigWinRule: Equatable, Sendable {
         }
         return matched
     }
+
 }
 
 public struct ConfigTagRule: Equatable, Sendable {

@@ -11,6 +11,8 @@ package protocol WindowSystem: AnyObject {
     func clientNotifyEnter(_ c: Client)
     /// client_activate_surface.
     func clientActivateSurface(_ c: Client, _ activated: Bool)
+    /// client_get_parent: the client this one is a child of.
+    func clientGetParent(_ c: Client) -> Client?
     /// wlr_seat_keyboard_notify_clear_focus.
     func keyboardNotifyClearFocus()
     func warp(to p: CGPoint)

@@ -26,19 +26,3 @@ package enum FloatingSnap {
         return f
     }
 }
-
-package extension MangoServer {
-    func applyWindowSnap(_ c: Client) {
-        guard config.enableFloatingSnap, c.isfloating, let m = c.mon else { return }
-        // mango snaps the outer edge while borders are drawn, the window's edge otherwise.
-        let bw = renderBorder ? CGFloat(config.borderpx) : 0
-        func outer(_ x: Client) -> CGRect { x.noBorder || bw == 0 ? x.frame : x.frame.insetBy(dx: -bw, dy: -bw) }
-        let others = clientsAll.filter { $0 !== c && $0.isfloating && !$0.parked && VISIBLEON($0, m) }.map(outer)
-        let from = outer(c)
-        let to = FloatingSnap.snapped(from, others: others, monitor: m.screen.frame, workArea: m.screen.workArea,
-                                      distance: CGFloat(config.snapDistance))
-        guard to != from else { return }
-        c.floatGeom = c.frame.insetBy(dx: -c.bw, dy: -c.bw).offsetBy(dx: to.minX - from.minX, dy: to.minY - from.minY)
-        arrange(m, false, false)
-    }
-}

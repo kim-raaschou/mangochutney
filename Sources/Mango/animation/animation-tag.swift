@@ -21,7 +21,7 @@ package extension MangoServer {
         guard let mon = c.mon else { return }   // not in mango: c->mon is always set here
         let goingForward = m.carouselAnimDir != 0 ? m.carouselAnimDir > 0 : m.pertag.curtag > m.pertag.prevtag
         let vertical = config.tagAnimationDirection == VERTICAL
-        let cm = mon.screen.frame, mm = m.screen.frame
+        let cm = mon.m, mm = m.m
 
         if goingForward {
             c.animainitGeom.origin.x = vertical ? c.animation.current.minX
@@ -65,7 +65,7 @@ package extension MangoServer {
                     c.animainitGeom.origin.x = c.animation.current.minX
                     c.animainitGeom.origin.y = c.animation.current.minY
                 } else {
-                    c.animainitGeom.origin.y = (c.mon?.screen.frame.minY ?? 0) - c.geom.height
+                    c.animainitGeom.origin.y = (c.mon?.m.minY ?? 0) - c.geom.height
                 }
             } else {
                 c.animation.tagining = false
@@ -84,7 +84,7 @@ package extension MangoServer {
             if wantAnimation && clientAnimationsEnabled(c) {
                 c.animation.tagining = true
                 c.animainitGeom = c.geom
-                c.animainitGeom.origin.y = (c.mon?.screen.frame.minY ?? 0) - c.geom.height
+                c.animainitGeom.origin.y = (c.mon?.m.minY ?? 0) - c.geom.height
             } else {
                 c.animainitGeom.origin.x = c.animation.current.minX
                 c.animainitGeom.origin.y = c.animation.current.minY
@@ -121,7 +121,7 @@ package extension MangoServer {
         guard let mon = c.mon else { return }   // not in mango: c->mon is always set here
         let goingForward = m.carouselAnimDir != 0 ? m.carouselAnimDir > 0 : m.pertag.curtag > m.pertag.prevtag
         let vertical = config.tagAnimationDirection == VERTICAL
-        let cm = mon.screen.frame
+        let cm = mon.m
         if goingForward {
             c.pending = c.geom
             c.pending.origin.x = vertical ? c.animation.current.minX
@@ -151,7 +151,7 @@ package extension MangoServer {
                 c.animation.tagouting = true
                 c.animation.tagining = false
                 c.pending = c.geom
-                c.pending.origin.y = (c.mon?.screen.frame.minY ?? 0) - c.geom.height
+                c.pending.origin.y = (c.mon?.m.minY ?? 0) - c.geom.height
                 resize(c, c.geom, ResizeOpts(interact: false))
             } else {
                 c.animation.running = false
@@ -173,7 +173,7 @@ package extension MangoServer {
                 c.animation.tagouting = true
                 c.animation.tagining = false
                 c.pending = c.geom
-                c.pending.origin.y = (c.mon?.screen.frame.minY ?? 0) - c.geom.height
+                c.pending.origin.y = (c.mon?.m.minY ?? 0) - c.geom.height
                 resize(c, c.geom, ResizeOpts(interact: false))
             } else {
                 c.animation.running = false

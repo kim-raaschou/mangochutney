@@ -52,7 +52,7 @@ package extension MangoServer {
         guard !tiles.isEmpty else { return }
         let index = tiles.count > 1 ? (dir < 0 ? tiles.count - 1 : 1) : 0
         switcherState = SwitcherState(monitor: m, scope: scope, tiles: tiles.map(\.id), index: index,
-                                 layout: SwitcherLayout.switcherLayout(sizes: tiles.map(\.frame.size), monitor: m.screen.frame))
+                                 layout: SwitcherLayout.switcherLayout(sizes: tiles.map(\.frame.size), monitor: m.m))
         drawSwitcher(fresh: true)
         titleMessageBarUpdate(m)
     }
@@ -92,7 +92,7 @@ package extension MangoServer {
         if sw.index > i { sw.index -= 1 }
         sw.index = min(sw.index, sw.tiles.count - 1)
         let sizes = sw.tiles.map { clientByIdAll($0)?.frame.size ?? .zero }
-        sw.layout = SwitcherLayout.switcherLayout(sizes: sizes, monitor: sw.monitor.screen.frame)
+        sw.layout = SwitcherLayout.switcherLayout(sizes: sizes, monitor: sw.monitor.m)
         switcherState = sw
         drawSwitcher(fresh: true)
         titleMessageBarUpdate(sw.monitor)

@@ -25,10 +25,10 @@ final class OverviewTests: MangoTestCase {
         r.arrange()
         d(r, "toggleoverview", ["1"])
         XCTAssertTrue(r.monitor.isoverview)
-        XCTAssertNotNil(a.overviewBackupGeom)
-        XCTAssertNotNil(g.overviewBackupGeom, "isglobal")
-        XCTAssertNil(off.overviewBackupGeom, "not on the current tags")
-        XCTAssertNil(s.overviewBackupGeom, "TAG0_MASK")
+        XCTAssertTrue(a.overviewBackedUp)
+        XCTAssertTrue(g.overviewBackedUp, "isglobal")
+        XCTAssertFalse(off.overviewBackedUp, "not on the current tags")
+        XCTAssertFalse(s.overviewBackedUp, "TAG0_MASK")
     }
 
     // fix_mon_tagset_from_overview runs on entering too

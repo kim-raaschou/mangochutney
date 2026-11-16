@@ -95,7 +95,7 @@ class MacWindowSystem: WindowSystem {
 
     /// The plate for a window parked at its monitor's edge (EdgePlates).
     func showEdgePlate(_ c: Client, box: CGRect) {
-        guard let m = c.mon else { return }
+        guard let m = monitor(of: c) else { return }
         edgePlates.show(c.id, pid: c.pid, box: box, monitor: m.screen.frame, border: plateBorder(c))
     }
 
@@ -257,7 +257,7 @@ class MacWindowSystem: WindowSystem {
         borders.restack(ids) { inPlace($0, $1, above: true) }
         tabBars.restack(ids) { inPlace($0, $1, above: false) }
         groupBars.restack(ids) { inPlace($0, $1, above: false) }
-        for m in server.monitors where server.isSpecialActive(m) { server.specialUpdateDim(m) }
+        for m in server.monitors where isSpecialActive(m) { server.specialUpdateDim(m) }
         guard reserve else { return }
         restackGeneration &+= 1
         let gen = restackGeneration
@@ -483,7 +483,7 @@ class MacWindowSystem: WindowSystem {
             return
         }
         for c in server.clientsAll {
-            guard let m = c.mon, c.parked || Hider.isParked(c.frame, in: m.screen.frame) else { continue }
+            guard let m = monitor(of: c), c.parked || Hider.isParked(c.frame, in: m.screen.frame) else { continue }
             let f = c.isfloating ? c.floatGeom.insetBy(dx: c.bw, dy: c.bw) : c.tile
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
@@ -606,6 +606,15 @@ class MacWindowSystem: WindowSystem {
 
     func surfaceAt(_ p: CGPoint) -> ClientID? { CursorHider.windowAt(p) }
 
+
+    /// macOS has no parent toplevel: a dialog's parent is its app's window that had the focus last.
+    func clientGetParent(_ c: Client) -> Client? {
+        guard c.mac.isFloatType else { return nil }
+        for id in server.focusStack where id != c.id {
+            if let p = server.clientByIdAll(id), p.pid == c.pid, !p.mac.isFloatType, p.mon != nil { return p }
+        }
+        return nil
+    }
 
     func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool) {
         writer(for: c.pid)?.async { [el = c.element] in el.setMinimized(minimizeWindow) }

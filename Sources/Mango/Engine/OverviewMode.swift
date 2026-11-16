@@ -1,11 +1,6 @@
 import CoreGraphics
 
 package extension MangoServer {
-    /// mango is_overcircle_mode (monitor.c)
-    func isOvercircleMode(_ m: Monitor?) -> Bool {
-        guard let m else { return false }
-        return m.isoverview && m.ovTabLayout && !m.isJumpMode && !m.ovNormalMode
-    }
 
     func fixMonTagsetFromOverview(_ m: Monitor) {
         let tagmask = TAGMASK
@@ -206,7 +201,7 @@ package extension MangoServer {
     /// Not in mango: the overview's items, VISIBLEON and not unglobal, with overview_backup_geom's size.
     func overviewItems(_ m: Monitor) -> [(id: ClientID, size: CGSize)] {
         clients.filter { $0.mon === m && VISIBLEON($0, m) && !$0.isunglobal }.map { c in
-            let f = c.overviewBackupGeom ?? .zero
+            let f = c.overviewBackupGeom
             return (c.id, f.width <= 0 || f.height <= 0 ? CGSize(width: 100, height: 100) : f.size)
         }
     }
@@ -214,7 +209,7 @@ package extension MangoServer {
     func overviewScale(_ m: Monitor) {
         let items = overviewItems(m)
         if items.isEmpty { return }
-        overviewTileResize(m, OverviewLayout.overviewScale(clients: items, workArea: m.screen.workArea,
+        overviewTileResize(m, OverviewLayout.overviewScale(clients: items, workArea: m.w,
                                                            gapInner: CGFloat(config.overviewgappi),
                                                            gapOuter: CGFloat(config.overviewgappo)))
     }
@@ -223,7 +218,7 @@ package extension MangoServer {
         let items = overviewItems(m)
         if items.isEmpty { return }
         overviewTileResize(m, OverviewLayout.overviewScaleTab(
-            clients: items, focused: m.sel, workArea: m.screen.workArea,
+            clients: items, focused: m.sel, workArea: m.w,
             gapInner: CGFloat(config.overviewgappi), gapOuter: CGFloat(config.overviewgappo),
             centerRatio: CGFloat(config.overcircleCenterRatio),
             titleBlockHeight: config.titleMessageBarHeight > 0
@@ -332,7 +327,7 @@ package extension MangoServer {
 
         let lx = cur.minX + ((cur.width - lw) / 2).rounded(.towardZero)
         let ly = cur.minY + ((cur.height - lh) / 2).rounded(.towardZero)
-        let mm = m.screen.frame
+        let mm = m.m
         if lx < mm.minX || ly < mm.minY || lx + lw > mm.maxX || ly + lh > mm.maxY {
             if label.enabled {
                 label.setEnabled(false)
@@ -397,6 +392,7 @@ package extension MangoServer {
         c.animation.tagouted = false
         c.animation.tagouting = false
         c.overviewBackupGeom = c.geom
+        c.overviewBackedUp = true   // not in mango: a mango bug, docs/afvigelser.md §6
         c.overviewBackupBw = c.bw
         if c.isfloating {
             c.isfloating = false
@@ -425,7 +421,8 @@ package extension MangoServer {
     // Restores window state when switching back from overview to the normal view.
     func overviewRestore(_ c: Client, _ target: UInt32) {
         // not in mango: a client mapped in overview has no backup and keeps its state (a mango bug, docs/afvigelser.md §6)
-        guard let b = c.overviewBackupGeom else { return }
+        guard c.overviewBackedUp else { return }
+        c.overviewBackedUp = false
 
         c.isfloating = c.overviewIsfloatingbak
         c.isfullscreen = c.overviewIsfullscreenbak
@@ -433,10 +430,9 @@ package extension MangoServer {
         c.overviewIsfloatingbak = false
         c.overviewIsfullscreenbak = false
         c.overviewIsmaximizescreenbak = false
-        c.geom = b
+        c.geom = c.overviewBackupGeom
         c.bw = c.overviewBackupBw
         c.animation.tagining = false
-        c.overviewBackupGeom = nil
 
         if c.isfloating {
             // not in mango: arrange places a floating client at its floatGeom

@@ -145,6 +145,21 @@ HYPER,F1–F12 i `~/.config/mango/config.conf` om (backup og diff af hele filen 
   testene beskriver en kørsel med deres egne typer og kører mangos layout på en rig
   (`LayoutRunner`), og de gyldne tests kører mangos funktioner mod mangos C. Layout-ikonerne
   (udvidelse) har deres bokse som en tabel. Overview er ikke skrevet om (trin 8).
+- Trin 5 (16. november): `manage/monitor.swift` er mangos `monitor.c` i mangos rækkefølge
+  (`special_has_clients`, `monitor_from_cycle`, `is_scroller_layout`, `is_monocle_layout`,
+  `is_centertile_layout`, `get_monitor_nearest_to`, `set_selected_monitor`, `handle_new_output`,
+  `handle_output_destroy`, `monitor_close`, `handle_output_layout_change`, `setgaps` …); porten melder
+  skærmene som wlroots' output-events (`Sources/Boundary/Outputs.swift`), og `m`/`w` er mangos
+  felter. `manage/tab.swift` er mangos `tab.c` med fanekæden (`tab_prev`, `tab_next`) på klienten.
+  `manage/client.swift` har `client.c`'s funktioner i mangos rækkefølge, gennemgået mod mango:
+  `client_active` (gruppe-skiftet først), `client_set_rules` (fullscreen-backup, fake fullscreen,
+  `tag_from_rule`), `handle_client_unmap` (fokus før `client_set_monitor(c, NULL)`, `iskilling`),
+  `client_park`/`client_unpark`/`client_unlink`/`client_replace`, scratchpad, `client_center_geometry`,
+  `center_tiled_select`, `client_insert_tiling_order`. `manage/misc.swift` har `node_at_point`'s port.
+  `layer.c` har ingen macOS-del. Tilbage: retningskonstanterne (`UP`…`ALLDIR`) kommer med `Arg` i
+  trin 6; en flydende klients `geom` (trin 6) bestemmer `apply_window_snap`, `set_float_malposition`
+  og den sidste `resize` i `handle_client_map`; `pointer_process_motion(0)` i `client_focus` og unmap
+  venter på trin 7.
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter

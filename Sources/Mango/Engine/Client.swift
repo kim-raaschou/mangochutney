@@ -58,6 +58,9 @@ public final class Client {
     public var gridRowIdx = 0
     public var isTabFocus = false
     public var isTabHidden = false
+    public weak var tabPrev: Client?
+    public var tabNext: Client?
+    var tabBarEnabled = false   // not in mango: c->tab_bar->scene->node.enabled
     public var groupPrev: Client?
     public var groupNext: Client?
     public var isGroupFocus = false
@@ -112,7 +115,8 @@ public final class Client {
     public var fakeNoBorder = false
     public var tagVisible = false
     public var isSurfaceHidden = false
-    public var overviewBackupGeom: CGRect?
+    public var overviewBackupGeom: CGRect = .zero
+    public var overviewBackedUp = false   // not in mango: overview_backup ran (a mango bug, docs/afvigelser.md §6)
     public var overviewBackupBw: CGFloat = 0
     public var overviewIsfloatingbak = false
     public var overviewIsfullscreenbak = false
@@ -189,6 +193,8 @@ public final class Pertag {
 @MainActor
 public final class Monitor {
     public var screen: Screen
+    public var m: CGRect      /* monitor area, layout-relative */
+    public var w: CGRect      /* window area, layout-relative */
     public var seltags = 0
     public var tagset: [UInt32] = [1, 1]
     var lastResizeTime: UInt32 = 0   // not in mango: last_resize_frame, as the time of that frame
@@ -232,6 +238,8 @@ public final class Monitor {
 
     init(screen: Screen, config: Config) {
         self.screen = screen
+        m = screen.frame
+        w = screen.workArea
         gappih = Int32(config.gappih)
         gappiv = Int32(config.gappiv)
         gappoh = Int32(config.gappoh)
@@ -248,19 +256,6 @@ public final class Monitor {
             pertag.ltidxs[i] = .tile
         }
     }
-}
-
-@MainActor public func isSpecialActive(_ m: Monitor?) -> Bool {
-    guard let m else { return false }
-    return !m.isoverview && (m.tagset[m.seltags] & TagMask.special) != 0
-}
-
-@MainActor public func getMonCurtag(_ m: Monitor?) -> UInt32 {
-    guard let m else { return 0 }
-    // special workspace uses slot 0; all-tags is an ordinary multi-tag view
-    // and follows its first tag
-    if isSpecialActive(m) { return 0 }
-    return m.pertag.curtag != 0 ? m.pertag.curtag : 1
 }
 
 package extension MangoServer {
@@ -379,14 +374,14 @@ extension MangoServer {
 /// mango INSIDEMON (manage/monitor.h).
 @MainActor func INSIDEMON(_ a: Client) -> Bool {
     guard let m = a.mon else { return false }
-    let g = a.geom, mm = m.screen.frame
+    let g = a.geom, mm = m.m
     return g.minX >= mm.minX && g.minY >= mm.minY && g.minX + g.width <= mm.minX + mm.width
         && g.minY + g.height <= mm.minY + mm.height
 }
 
 /// mango GEOMINSIDEMON (manage/monitor.h).
 @MainActor func GEOMINSIDEMON(_ a: CGRect, _ m: Monitor) -> Bool {
-    let mm = m.screen.frame
+    let mm = m.m
     return a.minX >= mm.minX && a.minY >= mm.minY && a.minX + a.width <= mm.minX + mm.width
         && a.minY + a.height <= mm.minY + mm.height
 }
@@ -403,8 +398,7 @@ extension MangoServer {
 
 @MainActor public func VISIBLEON(_ c: Client?, _ m: Monitor?) -> Bool {
     guard let c, let m else { return false }
-    // not in mango: groupParked stands for client_park's c->mon = NULL
-    return c.mon === m && !c.groupParked && !c.isminimized
+    return c.mon === m && !c.isminimized
         && ((c.tags & m.tagset[m.seltags]) != 0 || c.isglobal || c.isunglobal)
 }
 
@@ -423,29 +417,5 @@ extension MangoServer {
 }
 
 package extension MangoServer {
-    func getTagsFirstTagNum(_ sourceTags: UInt32) -> UInt32 {
-        var i: UInt32 = 0, tag: UInt32 = 0
 
-        if sourceTags == 0 { return 0 }
-
-        if sourceTags & TAG0_MASK != 0 { return 0 }
-
-        while tag & 1 == 0 && sourceTags != 0 && i < UInt32(config.tagNum) {
-            tag = sourceTags >> i
-            i += 1
-        }
-
-        if i == 1 {
-            return 1
-        } else if i >= UInt32(config.tagNum) {
-            return UInt32(config.tagNum)
-        } else {
-            return i
-        }
-    }
-
-    func getClientTagIdx(_ c: Client?) -> UInt32 {
-        guard let c, c.tags & TAG0_MASK == 0 else { return 0 }
-        return getTagsFirstTagNum(c.tags)
-    }
 }

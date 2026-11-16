@@ -49,7 +49,7 @@ package extension MangoServer {
         if clientIsIgnoreOutputClip(c) { return offsets }
         guard let mon = c.mon else { return offsets }   // not in mango: c->mon is always set here
 
-        let cur = c.animation.current, m = mon.screen.frame
+        let cur = c.animation.current, m = mon.m
         offsets.width = GEZERO(cur.minX + cur.width - m.minX - m.width) // right
         offsets.height = GEZERO(cur.minY + cur.height - m.minY - m.height) // bottom
         offsets.x = GEZERO(m.minX - cur.minX) // left
@@ -75,7 +75,7 @@ package extension MangoServer {
     func isSpecialAnimationRule(_ c: Client) -> Direction? {
         guard let m = c.mon else { return nil }
         let visibleTilingClients = m.visibleTilingClients
-        if m.layout.isScroller && !c.isfloating {
+        if isScrollerLayout(m) && !c.isfloating {
             return .down
         } else if visibleTilingClients == 1 && !c.isfloating {
             return .down
@@ -94,7 +94,7 @@ package extension MangoServer {
 
     func setOverviewEnterAnimation(_ c: Client) {
         if clientGestureDriven(c) {
-            var start = c.overviewBackupGeom ?? .zero
+            var start = c.overviewBackupGeom
             if start.width <= 0 || start.height <= 0 { start = c.animation.current }
             c.animainitGeom = start
             return
@@ -124,7 +124,7 @@ package extension MangoServer {
             return
         } else {
             guard let mon = c.mon else { return }   // not in mango: c->mon is always set here
-            let m = mon.screen.frame, w = mon.screen.workArea
+            let m = mon.m, w = mon.w
             let slideDirection: Direction?
             let specialDirection = isSpecialAnimationRule(c)
             let centerX = c.geom.minX + (c.geom.width / 2).rounded(.towardZero)
@@ -421,9 +421,9 @@ package extension MangoServer {
         c.needOutputFlush = true
         c.dirty = true
 
-        let bbox = opts.interact || c.isfloating || c.isfullscreen ? sceneGeometry : mon.screen.workArea
+        let bbox = opts.interact || c.isfloating || c.isfullscreen ? sceneGeometry : mon.w
 
-        if mon.layout.isScroller && (!c.isfloating || c === grab?.client) {
+        if isScrollerLayout(mon) && (!c.isfloating || c === grab?.client) {
             c.geom = geo
             c.geom.size.width = max(1 + 2 * c.bw, c.geom.width)
             c.geom.size.height = max(1 + 2 * c.bw, c.geom.height)

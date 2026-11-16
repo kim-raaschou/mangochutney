@@ -147,7 +147,7 @@ package extension MangoServer {
     func swipeDrivePanTarget(_ m: Monitor, _ offset: Double) -> Client? {
         if m.sel == nil { return nil }
 
-        let w = m.screen.workArea
+        let w = m.w
         let monCx = Double(w.minX + w.width / 2)
         let monCy = Double(w.minY + w.height / 2)
         var best: Client?
@@ -202,7 +202,7 @@ package extension MangoServer {
         var lo = 0.0, hi = 0.0
         var first = true
         let horizontal = swipeHorizontal
-        let w = m.screen.workArea
+        let w = m.w
         let monCenter = Double(horizontal ? w.width : w.height) / 2
 
         for c in clients {
@@ -235,7 +235,7 @@ package extension MangoServer {
         let sg = sel.geom
 
         let horizontal = swipeHorizontal
-        let w = m.screen.workArea
+        let w = m.w
         let monOrigin = Double(horizontal ? w.minX : w.minY)
         let monCenter = Double(horizontal ? w.width : w.height) / 2
         let selCenter = Double(horizontal ? sg.minX + sg.width / 2 : sg.minY + sg.height / 2)
@@ -383,8 +383,8 @@ package extension MangoServer {
 
         guard grab != nil, let m, distance > 0 else { return }
 
-        let scaleX = Double(m.screen.workArea.width) / distance
-        let scaleY = Double(m.screen.workArea.height) / distance
+        let scaleX = Double(m.w.width) / distance
+        let scaleY = Double(m.w.height) / distance
 
         let dx = (swipeDx - swipeDrive.dragPrevDx) * scaleX
         let dy = (swipeDy - swipeDrive.dragPrevDy) * scaleY
@@ -441,7 +441,7 @@ package extension MangoServer {
         var p = delta / distance
 
         if swipeDrive.pan {
-            let extent = Double(swipeHorizontal ? m.screen.workArea.width : m.screen.workArea.height)
+            let extent = Double(swipeHorizontal ? m.w.width : m.w.height)
             let raw = ((axis - swipeDrive.base) / distance) * extent
             let offset = swipeDrivePanOffset(m, raw)
             swipeDriveApplyPan(m, offset)
@@ -477,7 +477,7 @@ package extension MangoServer {
             if swipeDrive.pan {
                 let axis = swipeDriveAxis()
                 let distance = Double(config.gestureSwipeDistance)
-                let extent = Double(swipeHorizontal ? m.screen.workArea.width : m.screen.workArea.height)
+                let extent = Double(swipeHorizontal ? m.w.width : m.w.height)
                 let raw = ((axis - swipeDrive.base) / distance) * extent
                 var offset = swipeDrivePanOffset(m, raw)
 

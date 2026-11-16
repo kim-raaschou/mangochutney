@@ -57,6 +57,8 @@ final class GroupTests: MangoTestCase {
 
     func testARightClickOnATab() {
         let r = rig()
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
+        r.arrange()
         r.server.pointerProcessButtonPress(button: 1, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_700, isTab: true, onClose: false))
         XCTAssertEqual(r.monitor.sel, 900_700)
         XCTAssertEqual((r.server.system as! FakeWindowSystem).closed, [])
@@ -133,7 +135,7 @@ final class GroupTests: MangoTestCase {
 
     func groupBar(_ r: EngineRig) -> TabStrip? {
         r.server.drawsOverlays = true
-        r.server.tabRefreshBars()
+        r.server.drawBars()
         return (r.server.system as! FakeWindowSystem).groupStrips.first
     }
 

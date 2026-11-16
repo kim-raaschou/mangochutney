@@ -159,6 +159,12 @@ package extension MangoServer {
         }))])
     }
 
+    func clientOutputName(_ c: Client) -> String {
+        if let m = c.mon { return m.screen.name }
+        let active = clientGroupActive(c)
+        return active?.mon?.screen.name ?? ""
+    }
+
     func buildClientJson(_ c: Client) -> JSONValue {
         let f = c.geom
         let group = c.isGroupMember
@@ -168,7 +174,7 @@ package extension MangoServer {
             ("foreign_toplevel_id", .string(String(c.id))),
             ("title", .string(c.title)),
             ("appid", .string(c.appid)),
-            ("monitor", .string(c.mon?.screen.name ?? "")),
+            ("monitor", .string(clientOutputName(c))),
             ("tags", .array(TagMask.tagsMaskToArray(c.tags, tagNum: config.tagNum).map { .int($0) })),
             ("is_xwayland", .bool(false)),
             ("is_swallowing", .bool(false)),
@@ -203,7 +209,7 @@ package extension MangoServer {
             guard c.isGroupMember else { continue }
             var it: Client? = clientGroupHead(c)
             while let x = it {
-                if x.groupParked { out.append(buildClientJson(x)) }
+                if clientIsParked(x) { out.append(buildClientJson(x)) }
                 it = x.groupNext
             }
         }
@@ -225,7 +231,7 @@ package extension MangoServer {
     }
 
     func buildMonitorJson(_ m: Monitor) -> JSONValue {
-        let f = m.screen.frame
+        let f = m.m
         return .object([
             ("name", .string(m.screen.name)),
             ("active", .bool(m === selectedMonitor)),

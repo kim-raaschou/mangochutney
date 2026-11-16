@@ -15,6 +15,12 @@ package struct Grab {
 }
 
 package extension MangoServer {
+    func pointerClientDestroyed(_ c: Client) {
+        if confinePointerLast == c.id {
+            confinePointerLast = nil
+        }
+    }
+
     /// Not in mango: hands binding state to the event-tap thread.
     func publishInputState() {
         let c = config
@@ -25,7 +31,7 @@ package extension MangoServer {
         system.publishInput(InputState(
             keymode: mode, bindings: c.keyBindings, mouseBindings: c.mouseBindings, axisBindings: c.axisBindings,
             axisTimeout: Double(c.axisBindApplyTimeout) / 1000,
-            overviewFrame: selectedMonitor.flatMap { $0.isoverview ? $0.screen.frame : nil },
+            overviewFrame: selectedMonitor.flatMap { $0.isoverview ? $0.m : nil },
             jumpMode: selectedMonitor?.isJumpMode ?? false,
             jumpKeycodes: Set(clients.filter { $0.mon === selectedMonitor }.flatMap {
                 [$0.jumpKeycodes.keycode1, $0.jumpKeycodes.keycode2, $0.jumpKeycodes.keycode3].compactMap { $0 }
@@ -97,32 +103,9 @@ package extension MangoServer {
         }
     }
 
-/// Not in mango: the port has no scene, so the stacking of node_at_point is spelled out.
-    package func clientAtPoint(_ p: CGPoint, on m: Monitor? = nil) -> Client? {
-        let mon = m ?? monitorAtPoint(p)
-        guard let mon else { return nil }
-        if mon.isoverview {
-            return mon.ovCards.first { $0.value.contains(p) }.flatMap { clientByIdAll($0.key) }
-        }
-        let vis = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon)).filter { !$0.parked }
-        if let f = vis.first(where: { ($0.isfloating || SCRATCHPAD_SHOWN($0)) && clientGeom($0).contains(p) }) { return f }
-        if let s = mon.sel.flatMap({ clientByIdAll($0) }), vis.contains(where: { $0 === s }), clientGeom(s).contains(p) { return s }
-        return vis.first { clientGeom($0).contains(p) }
-    }
 
-    /// Not in mango: the surface of mango's node_at_point; the border is a node, not a surface.
-    func surfaceAt(_ c: Client?, _ p: CGPoint) -> ClientID? {
-        guard let c, c.frame.contains(p) else { return nil }
-        return system.surfaceAt(p)
-    }
 
-    /// Not in mango: mango's geom, with the border (our frame is without it).
-    func clientGeom(_ c: Client) -> CGRect {
-        let bw = borderWidth(c, on: c.mon ?? selectedMonitor)
-        return c.frame.insetBy(dx: -bw, dy: -bw)
-    }
 
-    func pendingKillClient(_ c: Client) { system.clientSendClose(c) }
 
     @discardableResult
     func pointerProcessButtonPress(button: Int, pressed: Bool, at p: CGPoint, mods: Modifiers,
@@ -137,7 +120,7 @@ package extension MangoServer {
                 if button == 0 { switcherCommitClient(sc) } else { pendingKillClient(sc) }
                 return true
             }
-            let c = bar == nil ? clientAtPoint(p) : nil
+            let c = bar == nil ? nodeAtPoint(p) : nil
             // not in mango: not in overview, and not the focused one again (macOS has focused it with the click)
             if let c, let cm = c.mon, VISIBLEON(c, cm), !selectedMonitor.isoverview, selectedMonitor.sel != c.id {
                 clientFocus(c, true)
@@ -276,7 +259,7 @@ package extension MangoServer {
         target.sel = c.id
         grab = nil
         // not in mango: of pointer_process_motion(0, …) only its resize cursor
-        let pointed = clientAtPoint(p)
+        let pointed = nodeAtPoint(p)
         pointerUpdateResizeCursor(pointed, surfaceAt(pointed, p), p)
         startDragWindow = false
         if dragTile?.client === c {
@@ -294,7 +277,7 @@ package extension MangoServer {
             m.isInHotarea = false
             return
         }
-        let f = m.screen.frame, s = CGFloat(config.hotareaSize)
+        let f = m.m, s = CGFloat(config.hotareaSize)
         let inHotarea: Bool
         switch config.hotareaCorner {
         case 3: inHotarea = p.y > f.maxY - s && p.x > f.maxX - s && p.x <= f.maxX && p.y <= f.maxY
@@ -361,7 +344,7 @@ package extension MangoServer {
                 }
             }
         }
-        let pointed = clientAtPoint(p)
+        let pointed = nodeAtPoint(p)
         pointerUpdateResizeCursor(pointed, surfaceAt(pointed, p), p)
 
         if let g = grab {
@@ -391,18 +374,18 @@ package extension MangoServer {
         }
         if let pm = monitorAtPoint(p), pm.isoverview {
 // not in mango: the real window is under the pictures.
-            guard config.sloppyfocus, let c = clientAtPoint(p, on: pm), !isOvercircleMode(c.mon), selectedMonitor.sel != c.id else { return p }
+            guard config.sloppyfocus, let c = nodeAtPoint(p, on: pm), !isOvercircleMode(c.mon), selectedMonitor.sel != c.id else { return p }
             clientFocus(c, false)
             return p
         }
         // not in mango: a held button is an app's own drag (macOS moves its window)
         guard config.sloppyfocus, system.mouseButtons == 0 else { return p }
-        guard let m = monitorAtPoint(p), let c = clientAtPoint(p, on: m) else { return p }
-        let inside = m.screen.frame.contains(c.frame)
+        guard let m = monitorAtPoint(p), let c = nodeAtPoint(p, on: m) else { return p }
+        let inside = m.m.contains(c.frame)
         let scrollTiled = !c.isfloating && !c.isminimized && !c.isunglobal
         if inside || !scrollTiled { scrollerFocusLock = false }
         if scrollerFocusLock && !inside { return p }
-        let offEdge = scrollTiled && m.layout.isScroller && !inside
+        let offEdge = scrollTiled && isScrollerLayout(m) && !inside
         let held = offEdge && (!config.edgeScrollerPointerFocus || Double(speed) < config.edgeScrollerFocusAllowSpeed)
         if !held && (selectedMonitor.sel != c.id || selectedMonitor !== m) { clientFocus(c, false) }
         if offEdge && m.sel == c.id { scrollerFocusLock = true }

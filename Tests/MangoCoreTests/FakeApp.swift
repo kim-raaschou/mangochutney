@@ -223,7 +223,7 @@ final class EngineRig {
         server.registerPortExtensions()
     }
 
-    var monitor: Monitor { server.monitors[0] }
+    var monitor: Monitor { server.monitors.first { $0.screen.displayID == screen.displayID } ?? server.monitors[0] }
 
     @discardableResult
     func window(_ id: CGWindowID, tags: UInt32 = 1, floating: Bool = false,
@@ -243,11 +243,12 @@ final class EngineRig {
     }
 
     @discardableResult
-    func map(_ id: CGWindowID, frame: CGRect = CGRect(x: 100, y: 100, width: 800, height: 600)) -> Client {
+    func map(_ id: CGWindowID, frame: CGRect = CGRect(x: 100, y: 100, width: 800, height: 600),
+             dialog: Bool = false) -> Client {
         app.frames[id] = frame
         server.mac.windowDiscovered(DiscoveredWindow(
             id: id, pid: getpid(), element: app.element(for: id), bundleId: "test", appName: "Test", title: "t\(id)",
-            subrole: "AXStandardWindow", isDialog: false, frame: frame, isminimized: false,
+            subrole: dialog ? "AXDialog" : "AXStandardWindow", isDialog: dialog, frame: frame, isminimized: false,
             isfullscreen: false, isAppHidden: false))
         return server.clientByIdAll(id)!
     }

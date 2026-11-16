@@ -293,7 +293,7 @@ package extension MangoServer {
         guard let cmon = c.mon, c !== target else { return }
 
         guard let target else {
-            if let to = monitorFromDirection(dir, from: cmon) { _ = clientJumpToMonitor(c, to, dir) }
+            if let to = monitorFromDirection(dir) { _ = clientJumpToMonitor(c, to, dir) }
             return
         }
 
@@ -406,7 +406,7 @@ package extension MangoServer {
         var gapOv: Int32 = enableGaps ? m.gappov : 0
         if config.smartgaps && n == 1 { gapIh = 0; gapIv = 0; gapOh = 0; gapOv = 0 }
 
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
         dwindleAssign(m.pertag.dwindleRoot[tag], w.x + gapOh, w.y + gapOv, w.width - 2 * gapOh,
                       w.height - 2 * gapOv, gapIh, gapIv, nil)
     }
@@ -447,7 +447,7 @@ package extension MangoServer {
         var gapOv: Int32 = enableGaps ? m.gappov : 0
         if config.smartgaps && nClients == 1 { gapIh = 0; gapIv = 0; gapOh = 0; gapOv = 0 }
 
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
         dwindleAssign(m.pertag.dwindleRoot[tag], w.x + gapOh, w.y + gapOv, w.width - 2 * gapOh,
                       w.height - 2 * gapOv, gapIh, gapIv, nil)
     }
@@ -596,7 +596,7 @@ package extension MangoServer {
         var gapOv: Int32 = enableGaps ? m.gappov : 0
         if config.smartgaps && n == 1 { gapIh = 0; gapIv = 0; gapOh = 0; gapOv = 0 }
 
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
         dwindleAssign(m.pertag.dwindleRoot[tag], w.x + gapOh, w.y + gapOv, w.width - 2 * gapOh,
                       w.height - 2 * gapOv, gapIh, gapIv, ctx)
     }

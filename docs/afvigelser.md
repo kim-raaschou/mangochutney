@@ -60,7 +60,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Vinduer på skjulte tags parkeres i et hjørne med en pixel synlig | Uden compositor kan et vindue ikke skjules |
 | Menulinjens punkt viser alle skærme, hver med sine tags og sit layout, den valgte fuldt optrukket og de andre dæmpet (som AeroSpace og rift) | macOS tegner ét menulinjepunkt som kopi på hver skærm; en bar som waybar viser hver skærm sine egne |
 | Et flydende vindue holdes inden for sin skærms arbejdsområde (`keepOnDisplay` efter mangos `client_set_bounds`); mango lader det stå halvt uden for skærmene | Med separate Spaces (macOS' standard) står et vindue på én skærm: et vindue lagt hen over to flytter macOS, væk fra den ramme, mango tegner |
-| Et vindue åbner flydende, når det er en dialog (`client_is_float_type`); mangos andet led, `|| parent` (et vindue med en forælder), mangler | macOS' Accessibility siger ikke, hvilket vindue der er et andets forælder |
+| `client_get_parent`: en dialogs forælder er dens apps vindue, der sidst havde fokus; dialogen åbner flydende på forælderens skærm og med dens tags, som i mango. Andre vinduer har ingen forælder | macOS' Accessibility siger ikke, hvilket vindue der er et andets forælder |
 | Hvilke vinduer der styres (popups aldrig), og hvilke der åbner flydende (dialoger), afgøres med AeroSpaces heuristik 1:1, med dens app-lister, og én ændring: AeroSpaces regel om vinduesniveau gælder alle apps, ikke kun dem på dens liste, så et vindue over normalt niveau (en notifikation, et flydende panel) aldrig styres; en `window_rule` med `is_floating` vinder. Som i AeroSpace flyder et vindue, der er minimeret, eller hvis app er skjult, når det findes | Wayland siger det med xdg-roller; macOS siger det ikke pålideligt, og AeroSpaces heuristik er afprøvet mod rigtige apps |
 | Et vindue, der ikke kan blive mindre end sit felt, går ind over naboen og vokser indad fra en skærmkant, det ellers ville krydse; mango klipper det (`chutney_overlap_warning`: tagget bliver orange i menulinjen; `chutney_fit_layout` kan give det plads) | Appen afviser størrelsen, og andre apps' vinduer kan ikke klippes |
 | Efter mangos kantgreb (`enable_border_resize`) eller et træk vises en pil, til appen selv sætter sin markør igen, når markøren går ind over en ny del af den; i mango giver wlroots straks appen sin markør tilbage. På macOS 14 er de skrå markører på et flydende vindues hjørner et sigtekors | En app i baggrunden kan sætte markøren (`SetsCursorInBackground`), men ikke bede en anden app om at sætte sin igen; macOS 14 har ingen offentlige skrå markører |
@@ -134,14 +134,39 @@ Hvor koden står, når den ikke står som i mango.
   programmet). En klippeboks' bredde læses som `size.width`, for `CGRect.width` er aldrig
   negativ, og `wlr_box`'s kan være det (`clip_to_hide`). `oldmonname` holder
   skærmens display-ID, ikke navnet, for to skærme kan have samme navn.
-- **Faner:** fanekæden holdes for de tags, der er i visning, som `tab_member_kept` holder den;
-  mango kæder den pr. vindue (`Tabs.swift`).
-- **Fane- og gruppebjælker:** mangos `client_draw_tabbar` og `client_draw_group_bar` står i kernen
-  (`Tabs.swift`) med anker (`c->geom` under åbne-animationen), kantklipning (`compute_edge_offsets`,
-  `client_is_ignore_output_clip`) og bredde-deling. De kaldes for alle vinduer på én gang
-  (`tabRefreshBars`), ikke fra `client_set_clip` pr. vindue, og porten tegner hver bjælke som ét
-  panel med en boks pr. medlem, hvor mango har en bar-node pr. medlem. Klippes en fanebjælke helt
-  væk, tegner porten ingen; mango lader barerne stå, hvor de var.
+- **Faner:** mangos `manage/tab.c` står i kernen (`manage/tab.swift`) med fanekæden på klienten
+  (`tab_prev`, `tab_next`, `is_tab_focus`, `is_tab_hidden`) og `tab_member_count` på serveren.
+  `client_chain_head` og `client_chain_unlink` tager felterne som key paths, ikke offsets. Barens
+  scene-node er portens: `tab_bar_set_enabled` sætter `tabBarEnabled`, og porten tegner bjælken ud
+  fra den. Uden macOS-del: `tab_update_input_penetration`, `client_reparent_tab` og barens
+  oprettelse, titel og config (porten tegner bjælken med titlen ud fra stripen).
+- **Fane- og gruppebjælker:** mangos `client_draw_tabbar` (`manage/tab.swift`) og
+  `client_draw_group_bar` (`Tabs.swift`) står i kernen med anker (`c->geom` under
+  åbne-animationen), kantklipning (`compute_edge_offsets`, `client_is_ignore_output_clip`) og
+  bredde-deling. De kaldes for alle vinduer på én gang (`drawBars`), ikke fra `client_set_clip` pr.
+  vindue, og giver porten en strip at tegne som ét panel med en boks pr. medlem, hvor mango
+  placerer en bar-node pr. medlem. Klippes en fanebjælke helt væk, tegner porten ingen; mango
+  lader barerne stå, hvor de var.
+- **Skærme:** mangos `manage/monitor.c` står i kernen (`manage/monitor.swift`) i mangos rækkefølge.
+  Porten melder skærmene, som wlroots melder outputs (`rebuildMonitors` i
+  `Sources/Boundary/Outputs.swift`): en ny skærm er `handle_new_output`, en skærm, der er væk, er
+  `handle_output_destroy`, og hver ændring ender i `handle_output_layout_change`. `m` og `w` er
+  mangos felter: `m` er skærmens ramme og `w` macOS' arbejdsområde, der står for `arrange_layers`.
+  `monitor_at_point`, `get_monitor_nearest_to` og `monitor_from_direction` regner på skærmenes
+  bokse, hvor mango spørger `wlr_output_layout`. Uden macOS-del: tilstande, regler, skala,
+  transform, VRR, HDR, ICC, blur, lag, låseskærm, frame-skip-timeren, output-manageren,
+  xdg-output og XWayland; macOS melder kun de skærme, der er tændt, så der er ingen slukkede
+  outputs at springe over. Før porten har sine vinduer, giver `handle_output_layout_change` ikke
+  fokus. Ved start vælges skærmen under markøren, som mangos `run`; er markøren uden for alle,
+  beholdes den, `handle_output_layout_change` valgte.
+- **Klienter:** mangos `manage/client.c` står i kernen (`manage/client.swift`) i mangos
+  rækkefølge. `client_park` giver medlemmet `mon` nil, som mango, og `client_is_parked` er
+  listemedlemskab; `groupParked` er portens mærke (`clientsAll`), og porten parkerer et parkeret
+  medlems vindue på gruppens skærm (`client_group_active`). En klient, der har været
+  væk (macOS-fuldskærm, minimeret, skjult), genbruges af porten, så af `init_client_properties` i
+  unmap nulstilles kun `iskilling`. Ingen macOS-del: swallowing, foreign toplevel,
+  scene-noderne ved map, `client_reparent_group`, regel-felterne MangoCompat lister.
+- **Lag (`layer.c`):** macOS har ingen layer shell; filen har ingen macOS-del.
 - **Hvad der er under markøren:** mangos `node_at_point` går scenen igennem fra øverste lag; porten
   har ingen scene, så `clientAtPoint` skriver rækkefølgen ud (overview-kort, flydende og
   scratchpad, det valgte vindue, så resten; med special-tagget fremme kun dets vinduer, som mangos
@@ -177,7 +202,7 @@ Hvor koden står, når den ikke står som i mango.
   (`horizontal.swift`, `vertical.swift`, `dwindle.swift`, `scroll.swift`). Mærket i koden: overview kommer før
   `pre_calculate_before_arrange` (kortene er portens billeder); en flydende klients `geom` tages fra
   `float_geom` i `pre_calculate_before_arrange`, til dispatcherne er mangos (trin 6);
-  `tab_sync_monitor` er vores fanekæde; `client_sync_layer` er portens løft til sidst;
+  `client_sync_layer` er portens løft til sidst;
   `special_sync_top_layer`, `pointer_process_motion` og
   `check_idle_inhibitor` har ingen macOS-del; `ltidxs` holder layoutets id.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
@@ -192,7 +217,7 @@ Hvor koden står, når den ikke står som i mango.
   (`NagDisplay`: bjælken placeret og tegnet, knappernes fork, løkken med `-T`) er portens
   (`Nag.swift`).
 - **`client_focus`:** 1:1 med mangos trin og rækkefølge, `lift` skrevet ud ved hvert kald. Uden
-  macOS-del: `session_locked`, `isfocusing` og opacity, `tab_sync_focus` og
+  macOS-del: `session_locked`, `isfocusing` og opacity,
   `client_check_tab_node_visible` (porten tegner bjælkerne ud fra `sel`), idle inhibit, vrr, foreign
   toplevel, løkken over de andre skærme, `exclusive_focus` (layer shell), `client_wants_focus` (X11) og
   pointer constraints. Af `pointer_process_motion(0, …)` kun markørens resize-billede. Uden klient
@@ -254,8 +279,8 @@ aftalt, rettet så lidt som muligt, mærket `a mango bug` i koden og låst med e
 | `togglejump` på en skærm uden vinduer sætter `is_jump_mode` (`begin_jump_mode`), men `set_overview` vender om uden at gå i overview, så flaget bliver stående: kun at forlade overview rydder det | indtil næste overview er switcheren afvist, og Escape sluges i alle apps (`toggle_jump`) | jump-tilstanden slutter igen | Den tomme vej kalder `finish_jump_mode`, som mangos egen vej ud af overview gør. `setOverview` i `OverviewMode.swift`; `testToggleJumpOnAnEmptyMonitorLeavesNoJumpMode` |
 | `togglejump` under et træk med musen (`grab_client`): `toggle_jump` har intet værn, så `begin_jump_mode` sætter `is_jump_mode`, og `toggle_overview` afviser bagefter | som rækken over: jump-tilstanden bliver stående uden overview | intet sker | Værnet mod `grab_client`, som `toggle_overview` selv har, står før `toggle_jump`. `togglejump` i `Dispatch.swift`; `testOverviewNotWhileGrabbed` |
 | Hot area på en skærm uden vinduer: `toggle_hotarea` sætter `ov_normal_mode`, og `set_overview`s tomme vej rydder den ikke | næste `overcircle` viser gitteret, og i overview går den ud i stedet for at skifte | `ov_normal_mode` ryddes | Den tomme vej rydder den, som mangos vej ud af overview gør. `setOverview` i `OverviewMode.swift`; `testTheHotAreaOnAnEmptyMonitorLeavesNoNormalMode` |
-| `monitor_close` på en skærm i overview kalder `toggle_overview`, som virker på den valgte skærm | fjernes en anden skærm end den valgte, går den valgte ind i (eller ud af) overview, og den fjernede bliver i det | den fjernede skærm går ud af overview | `toggle_overview` kører med den fjernede skærm som den valgte og sætter den valgte tilbage. `rebuildMonitors` i `MangoServer.swift`; `testRemovingAMonitorInOverviewLeavesTheSelectedOneAlone` |
-| Et vindue, der åbner i overview, får kun `overview_backup_surface`, ikke `overview_backup`, så `overview_restore` giver det de nulstillede kopier tilbage | en dialog, der åbner i overview, ligger i layoutet med en tom `geom`, når overview lukker | vinduet beholder sin tilstand (fx flydende) | `overview_restore` springer et vindue uden kopi over. `overviewRestore` i `OverviewMode.swift`; `testAClientMappedInTheOverviewKeepsItsState` |
+| `monitor_close` på en skærm i overview kalder `toggle_overview`, som virker på den valgte skærm | fjernes en anden skærm end den valgte, går den valgte ind i (eller ud af) overview, og den fjernede bliver i det | den fjernede skærm går ud af overview | `toggle_overview` kører med den fjernede skærm som den valgte og sætter den valgte tilbage. `monitor_close` i `manage/monitor.swift`; `testRemovingAMonitorInOverviewLeavesTheSelectedOneAlone` |
+| Et vindue, der åbner i overview, får kun `overview_backup_surface`, ikke `overview_backup`, så `overview_restore` giver det de nulstillede kopier tilbage | en dialog, der åbner i overview, ligger i layoutet med en tom `geom`, når overview lukker | vinduet beholder sin tilstand (fx flydende) | `overview_restore` springer et vindue over, som `overview_backup` ikke har kørt for (`overviewBackedUp`); `overview_backup_geom` sættes ved map, som i mango. `overviewRestore` i `OverviewMode.swift`; `testAClientMappedInTheOverviewKeepsItsState` |
 | Ved reload giver `parse_tagrule` alle vinduer master-bredden fra den sidste skærms tag, også vinduer på andre skærme, så en `tag_rule` med `monitor_name` kun virker på den sidste skærm | to skærme, 0,3 og 0,7: begge får 0,7 | hver skærms vinduer får deres egen | `c.mon === self` i `parseTagrule`; `testAReloadKeepsEachMonitorsOwnMfact` |
 | `toml_foreach_array_element` kopierer `\` og det escapede tegn, men tester bagefter, om tegnet er citattegnet, så et escapet `"` afslutter strengen; mangos egne `remove_toml_comment` og `toml_statement_complete` springer det escapede tegn over | `exec = ["notify-send \"a, b\""]` deles ved kommaet i to `exec` | én `exec`: `notify-send "a, b"` | Det escapede tegn afslutter ikke strengen, som i mangos to andre TOML-læsere. `tomlForeachArrayElement`; `testAnEscapedQuoteStaysInsideATomlString` |
 | `toml_section_begin` sætter `kind = BIND`, før den læser keymode og flag; afvises sektionen, sætter `toml_section_flush` `config->keymode` til `""` | efter `[bind.default.bogus]` får alle senere bindinger keymode `""` og virker aldrig | keymode er uændret | Kun en sektion, der ikke er afvist, sætter keymode tilbage. `tomlSectionFlush`; `testARejectedTomlBindSectionKeepsTheKeymode` |

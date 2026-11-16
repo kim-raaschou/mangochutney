@@ -126,7 +126,7 @@ package extension MangoServer {
 
     func verticalScrollAdjustFullandmax(_ c: Client, _ targetGeom: inout CGRect) {
         guard let m = c.mon else { return }
-        let w = WBox(m.screen.workArea), mm = WBox(m.screen.frame)
+        let w = WBox(m.w), mm = WBox(m.m)
         var curGappiv: Int32 = enableGaps ? m.gappiv : 0
         var curGappov: Int32 = enableGaps ? m.gappov : 0
         var curGappoh: Int32 = enableGaps ? m.gappoh : 0
@@ -157,14 +157,14 @@ package extension MangoServer {
     func verticalCheckScrollerRootInsideMon(_ c: Client?, _ geometry: inout CGRect) {
         guard let c, let m = c.mon else { return }
         if !GEOMINSIDEMON(geometry, m) {
-            let w = WBox(m.screen.workArea)
+            let w = WBox(m.w)
             geometry.origin.y = CGFloat(w.y + (w.height - Int32(geometry.height)) / 2)
         }
     }
 
     func horizontalScrollAdjustFullandmax(_ c: Client, _ targetGeom: inout CGRect) {
         guard let m = c.mon else { return }
-        let w = WBox(m.screen.workArea), mm = WBox(m.screen.frame)
+        let w = WBox(m.w), mm = WBox(m.m)
         var curGappih: Int32 = enableGaps ? m.gappih : 0
         var curGappoh: Int32 = enableGaps ? m.gappoh : 0
         var curGappov: Int32 = enableGaps ? m.gappov : 0
@@ -195,7 +195,7 @@ package extension MangoServer {
     func horizontalCheckScrollerRootInsideMon(_ c: Client?, _ geometry: inout CGRect) {
         guard let c, let m = c.mon else { return }
         if !GEOMINSIDEMON(geometry, m) {
-            let w = WBox(m.screen.workArea)
+            let w = WBox(m.w)
             geometry.origin.x = CGFloat(w.x + (w.width - Int32(geometry.width)) / 2)
         }
     }
@@ -320,7 +320,7 @@ package extension MangoServer {
         let st = ensureScrollerState(m, tag)
         let scrollerDefaultProportionSingle = m.pertag.scrollerDefaultProportionSingle[tag]
         let scrollerIgnoreProportionSingle = m.pertag.scrollerIgnoreProportionSingle[tag]
-        let w = WBox(m.screen.workArea), mm = WBox(m.screen.frame)
+        let w = WBox(m.w), mm = WBox(m.m)
         let structs = Int32(config.scrollerStructs)
 
         /* Collects all stack heads in global client list order to keep the visual
@@ -505,7 +505,7 @@ package extension MangoServer {
         let st = ensureScrollerState(m, tag)
         let scrollerDefaultProportionSingle = m.pertag.scrollerDefaultProportionSingle[tag]
         let scrollerIgnoreProportionSingle = m.pertag.scrollerIgnoreProportionSingle[tag]
-        let w = WBox(m.screen.workArea), mm = WBox(m.screen.frame)
+        let w = WBox(m.w), mm = WBox(m.m)
         let structs = Int32(config.scrollerStructs)
 
         /* Collects stack heads in global order. */

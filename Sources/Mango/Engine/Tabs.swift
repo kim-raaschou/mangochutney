@@ -1,53 +1,13 @@
 import CoreGraphics
 
 package extension MangoServer {
-    func tabLayoutIdSupported(_ id: LayoutKind) -> Bool {
-        if id == .monocle { return config.monocleTabMode }
-        if id == .deck || id == .verticalDeck { return config.deckTabMode }
-        return false
-    }
 
-    func tabLayoutEnabled(_ m: Monitor) -> Bool { tabLayoutIdSupported(m.layout) }
 
-    func tabLayoutActive(_ m: Monitor) -> Bool { !m.isoverview && tabLayoutEnabled(m) }
 
-    func tabStateOk(_ c: Client) -> Bool {
-        guard c.mon != nil, !c.isminimized else { return false }
-        return !c.isfloating && !c.isunglobal && !c.isInScratchpad
-    }
 
-    func tabIsStackCandidate(_ m: Monitor, _ target: Client) -> Bool {
-        if m.layout == .monocle { return true }
-        if m.layout != .deck && m.layout != .verticalDeck { return false }
-        return !target.ismaster
-    }
 
-    // not in mango: the tab chain of the tags in view, as tab_member_kept keeps it (mango links it per window)
-    func tabMembers(_ m: Monitor) -> [Client] {
-        guard config.tabBarHeight > 0, tabLayoutActive(m) else { return [] }
-        let members = visibleClients(m).filter { tabStateOk($0) && tabIsStackCandidate(m, $0) }
-        return members.count >= 2 ? members : []
-    }
 
-    func tabChainFocus(_ members: [Client], on m: Monitor) -> Client? {
-        let sel = members.first { $0.id == m.sel }
-        let focus = sel ?? members.first(where: { $0.isTabFocus }) ?? members.first
-        for c in members { c.isTabFocus = c === focus }
-        return focus
-    }
 
-    // not in mango: client_tile_resize's tab strip, over the frames of a layout that is pure here
-    func reserveTabStrip(_ frames: inout [ClientID: CGRect], on m: Monitor) {
-        let members = tabMembers(m)
-        guard !members.isEmpty else { return }
-        let h = CGFloat(config.tabBarHeight)
-        for c in members {
-            guard var f = frames[c.id], f.height > h else { continue }
-            f.origin.y += h
-            f.size.height -= h
-            frames[c.id] = f
-        }
-    }
 
     var barsInsideBorder: Bool {
         // Port extension: not in mango. The bars inside the border (chutney_macos_appearance).
@@ -58,16 +18,10 @@ package extension MangoServer {
         set.filled(from: mango)
     }
 
-    func topBars(_ c: Client, tabMember: Bool) -> CGFloat {
-        (clientWantsGroupBar(c) ? CGFloat(config.groupBarHeight) : 0) + (tabMember ? CGFloat(config.tabBarHeight) : 0)
-    }
 
-    func clientCheckTabNodeVisible(_ c: Client, on m: Monitor) -> Bool {
-        clientWantsGroupBar(c) && !m.isoverview && !c.isfullscreen && !c.parked && VISIBLEON(c, m)
-    }
 
     // not in mango: client_set_clip's client_draw_group_bar and client_draw_tabbar for every client at once
-    func tabRefreshBars() {
+    func drawBars() {
         guard drawsOverlays else { return }
         var strips: [TabStrip] = []
         var groups: [TabStrip] = []
@@ -77,9 +31,10 @@ package extension MangoServer {
                     groups.append(s)
                 }
             }
-            guard let f = tabChainFocus(tabMembers(m), on: m), !f.parked else { continue }   // not in mango: parked is the port's
-            if let s = clientDrawTabbar(f, computeEdgeOffsets(f)) {
-                strips.append(s)
+            for f in clients where f.mon === m && f.isTabFocus && tabIsMember(f) && !f.parked {   // not in mango: parked is the port's
+                if let s = clientDrawTabbar(f, computeEdgeOffsets(f)) {
+                    strips.append(s)
+                }
             }
         }
         var style = TabStripStyle(accent: config.focuscolor, accentWidth: CGFloat(min(3, max(1, config.borderpx))))
@@ -98,13 +53,13 @@ package extension MangoServer {
     func clipBar(_ anchor: CGRect, y: CGFloat, height: CGFloat, _ offsets: IVec2, on m: Monitor) -> CGRect {
         var tabX = anchor.minX, tabY = y, tw = anchor.width, th = height
         if offsets.y > 0 {
-            tabY = m.screen.frame.minY
+            tabY = m.m.minY
             th = height - offsets.y
         }
         if offsets.height > 0 { th = th - max(0, offsets.height - anchor.height) }
         if offsets.width > 0 { tw = tw - offsets.width }
         if offsets.x > 0 {
-            tabX = m.screen.frame.minX
+            tabX = m.m.minX
             tw = tw - offsets.x
         }
         return CGRect(x: tabX, y: tabY, width: tw, height: th)
@@ -123,39 +78,9 @@ package extension MangoServer {
         }
     }
 
-    func clientDrawTabbar(_ c: Client, _ offsets: IVec2) -> TabStrip? {
-        guard let m = c.mon, c.isTabFocus else { return nil }
-        let members = tabMembers(m)
-        guard tabLayoutActive(m), !c.isfullscreen, !c.ismaximizescreen else { return nil }
-        let count = members.count
-        if count < 2 { return nil }
-        var anchor = animationCurrent(c)
-        if c.animation.running && c.animation.action == .open {
-            anchor = c.geom
-        }
-        // Port extension: not in mango. The bars inside the border (chutney_macos_appearance).
-        let ported = barsInsideBorder
-        if ported { anchor = anchor.insetBy(dx: borderWidth(c, on: m), dy: borderWidth(c, on: m)) }
-        let groupH = clientWantsGroupBar(c) ? CGFloat(config.groupBarHeight) : 0
-        /* Tab strip sits above the group strip when both are present. */
-        let h = CGFloat(config.tabBarHeight)
-        let bar = clipBar(anchor, y: anchor.minY - h - groupH, height: h, offsets, on: m)
-        // not in mango: mango leaves the bars where they were, the port draws none
-        if bar.width <= 0 || bar.height <= 0 { return nil }
-        let radius = system.windowCornerRadius   // not in mango: the port's side
-        let under = groupH > 0 || !ported ? 0 : min(radius, anchor.height)
-        return TabStrip(
-            frame: CGRect(x: bar.minX, y: bar.minY, width: bar.width, height: bar.height + under),
-            barHeight: bar.height, cornerRadius: radius,
-            segments: zip(members, barSegments(bar, members)).map { cur, box in
-                .init(id: cur.id, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur.isTabFocus,
-                      pid: cur.pid, frame: box)
-            },
-            above: c.id, plain: !ported)
-    }
 
     func clientDrawGroupBar(_ c: Client, _ offsets: IVec2) -> TabStrip? {
-        guard let m = c.mon, clientWantsGroupBar(c) else { return nil }
+        guard let m = c.mon, config.groupBarHeight > 0, clientWantsGroupBar(c) else { return nil }   // not in mango: c->group_bar, which exists only when group_bar_height > 0
         /* Owner hidden by tab: hide the whole strip, otherwise its nodes (they are
          * not children of the window) would float over the visible window. */
         if c.isTabHidden { return nil }
@@ -185,19 +110,5 @@ package extension MangoServer {
             plain: !ported)
     }
 
-    func clientHandleDecorateClick(_ c: Client, isTab: Bool) {
-        if isTab {
-            tabFocusMember(c.id)
-        } else if !c.isGroupMember {
-            clientFocus(c, true)
-        } else {
-            clientFocusGroupMember(c)
-        }
-    }
 
-    func tabFocusMember(_ id: CGWindowID) {
-        guard let c = clientByIdAll(id), let m = c.mon else { return }
-        clientFocus(c, true)
-        arrange(m, false, false)
-    }
 }

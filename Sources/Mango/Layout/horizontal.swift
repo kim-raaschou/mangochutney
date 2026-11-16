@@ -43,7 +43,7 @@ package extension MangoServer {
         var masterNum: Int32 = 0
         var stackNum: Int32 = 0
         let tag = getMonCurtag(m)
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
 
         n = m.visibleFakeTilingClients
         masterNum = Int32(m.pertag.nmasters[tag])
@@ -127,7 +127,7 @@ package extension MangoServer {
         var masterNum: Int32 = 0
         var stackNum: Int32 = 0
         let tag = getMonCurtag(m)
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
 
         n = m.visibleFakeTilingClients
         masterNum = Int32(m.pertag.nmasters[tag])
@@ -212,7 +212,7 @@ package extension MangoServer {
         var masterNum: Int32 = 0
         var stackNum: Int32 = 0
         let tag = getMonCurtag(m)
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
 
         n = m.visibleFakeTilingClients
         masterNum = Int32(m.pertag.nmasters[tag])
@@ -409,7 +409,7 @@ package extension MangoServer {
         var mw: Int32, my: Int32
         var i: Int32, n: Int32 = 0
         let tag = getMonCurtag(m)
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
         let nmasters = Int32(m.pertag.nmasters[tag])
 
         var curGappih: Int32 = enableGaps ? m.gappih : 0
@@ -454,7 +454,7 @@ package extension MangoServer {
     }
 
     func monocleCore(_ m: Monitor, _ ctx: LayoutContext?) {
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
 
         var curGappov: Int32 = enableGaps ? m.gappov : 0
         var curGappoh: Int32 = enableGaps ? m.gappoh : 0
@@ -485,7 +485,7 @@ package extension MangoServer {
         var i: Int32, n: Int32
         var cw: Int32, ch: Int32
         var cols: Int32, rows: Int32, overcols: Int32
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
         n = 0
         let targetGappo: Int32 = enableGaps ? Int32(config.gappoh) : 0
         let targetGappi: Int32 = enableGaps ? Int32(config.gappih) : 0
@@ -634,7 +634,7 @@ package extension MangoServer {
 
     func fairCore(_ m: Monitor, _ ctx: LayoutContext?) {
         var n: Int32 = 0
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
 
         n = m.visibleFakeTilingClients
         if n == 0 { return }

@@ -29,11 +29,11 @@ final class SmallOptionTests: MangoTestCase {
         r.window(900_601, frame: CGRect(x: 100, y: 100, width: 800, height: 600))
         r.window(900_602, tags: TAG0_MASK | 1, frame: CGRect(x: 1000, y: 100, width: 400, height: 400))
         let normal = CGPoint(x: 300, y: 300), special = CGPoint(x: 1100, y: 200)
-        XCTAssertEqual(r.server.clientAtPoint(normal)?.id, 900_601)
+        XCTAssertEqual(r.server.nodeAtPoint(normal)?.id, 900_601)
         r.monitor.tagset[r.monitor.seltags] |= TAG0_MASK
-        XCTAssertTrue(r.server.isSpecialActive(r.monitor))
-        XCTAssertNil(r.server.clientAtPoint(normal), "under the dim")
-        XCTAssertEqual(r.server.clientAtPoint(special)?.id, 900_602)
+        XCTAssertTrue(isSpecialActive(r.monitor))
+        XCTAssertNil(r.server.nodeAtPoint(normal), "under the dim")
+        XCTAssertEqual(r.server.nodeAtPoint(special)?.id, 900_602)
     }
 
     func testAKeyHidesThePointerAndMovingShowsIt() {

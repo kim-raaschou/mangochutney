@@ -179,7 +179,7 @@ package extension MangoServer {
             m.specialEmptyView = false
             return false
         }
-        if !specialClients(m).isEmpty {   // not in mango: special_has_clients
+        if specialHasClients(m) {
             m.specialEmptyView = false
             return false
         }
@@ -251,19 +251,6 @@ package extension MangoServer {
         printstatus(.arrangge)
     }
 
-    /// Not in mango: tab_sync_monitor; the tab chain is the members of the view (docs/afvigelser.md §5).
-    func tabSyncMonitor(_ m: Monitor) {
-        let members = tabMembers(m)
-        let shownMember = tabChainFocus(members, on: m)
-        let tabHidden = Set(members.filter { $0 !== shownMember }.map(\.id))
-        for c in clientsAll where c.mon === m {
-            let hidden = tabHidden.contains(c.id)
-            if c.isTabHidden != hidden {
-                c.isTabHidden = hidden
-                clientUpdateVisibility(c)
-            }
-        }
-    }
 
     /// Not in mango: client_sync_layer's scene layers; the port raises the fullscreen, maximized,
     /// scratchpad and overlay clients, the selected one last.

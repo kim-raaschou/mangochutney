@@ -23,7 +23,7 @@ extension MacWindowSystem {
         c.mac.box = CGRect(x: node.x + c.bw, y: node.y + c.bw,
                            width: c.animation.current.width - 2 * c.bw, height: c.animation.current.height - 2 * c.bw)
         writeAtCommit.insert(c.id)
-        if let m = c.mon { frameClock.schedule(m) }
+        if let m = monitor(of: c) { frameClock.schedule(m) }
     }
 
     func sceneNodeSetEnabled(_ c: Client, _ enabled: Bool) {
@@ -44,7 +44,7 @@ extension MacWindowSystem {
         if c.mac.offEdge { hideEdgePlate(c.id) }
         if !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled {
             parkAtCommit.insert(c.id)
-            if let m = c.mon { frameClock.schedule(m) }
+            if let m = monitor(of: c) { frameClock.schedule(m) }
         } else {
             parkAtCommit.remove(c.id)
             if c.parked {
@@ -241,10 +241,16 @@ extension MacWindowSystem {
         server.updateBorders()
     }
 
+    /// The monitor a client's window is on: its own, or for a parked group member (mango's
+    /// client_park leaves it no monitor) the one its group is shown on (mango's client_group_active).
+    func monitor(of c: Client) -> Monitor? {
+        c.mon ?? server.clientGroupActive(c)?.mon
+    }
+
     /// The port's disabled scene node: the window out of sight in a corner of its monitor.
     func park(_ c: Client) {
         // Port extension: chutney_fullscreen_tag (leftToMacOS, fullscreenTagViewed)
-        guard !c.parked, !c.leftToMacOS, !fullscreenTagViewed(c), let m = c.mon, let q = writer(for: c.pid) else { return }
+        guard !c.parked, !c.leftToMacOS, !fullscreenTagViewed(c), let m = monitor(of: c), let q = writer(for: c.pid) else { return }
         c.mac.moving = false
         c.parked = true
         c.frame = CGRect(origin: parkedOrigin(c, on: m), size: c.frame.size)
@@ -257,7 +263,7 @@ extension MacWindowSystem {
     /// Port extension: chutney_fullscreen_tag. While an F tag is viewed the desktop's windows are in
     /// another Space: they stay where they are.
     func fullscreenTagViewed(_ c: Client) -> Bool {
-        guard let m = c.mon else { return false }
+        guard let m = monitor(of: c) else { return false }
         return FullscreenTag.isFullscreenView(m, server.config)
     }
 
@@ -269,7 +275,7 @@ extension MacWindowSystem {
 
     func parkAgainAfterScreensChanged() {
         for c in server.clientsAll where c.parked {
-            guard let m = c.mon, c.frame.origin != parkedOrigin(c, on: m) else { continue }
+            guard let m = monitor(of: c), c.frame.origin != parkedOrigin(c, on: m) else { continue }
             c.parked = false
             c.parkRetries = 0
             park(c)
@@ -277,7 +283,7 @@ extension MacWindowSystem {
     }
 
     func keepHidden(_ c: Client, seenAt actual: CGRect?) {
-        guard server.clientByIdAll(c.id) === c, c.parked, !missionControl.isActive, let m = c.mon,
+        guard server.clientByIdAll(c.id) === c, c.parked, !missionControl.isActive, let m = monitor(of: c),
               let actual = actual ?? windowServerFrame(c.id) else { return }
         if Hider.isParked(actual, in: m.screen.frame) { return }
         guard c.parkRetries < 3 else { return }

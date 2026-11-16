@@ -10,7 +10,7 @@ struct UserDrag {
 extension MacWindowSystem {
     func plainMouseDown(at p: CGPoint) {
         pressed = nil
-        guard let c = server.clientAtPoint(p), !c.parked, let f = windowServerFrame(c.id) else { return }
+        guard let c = server.nodeAtPoint(p), !c.parked, let f = windowServerFrame(c.id) else { return }
         pressed = (c, f)
     }
 

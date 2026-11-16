@@ -8,7 +8,7 @@ package extension MangoServer {
         var masterNum: Int32 = 0
         var stackNum: Int32 = 0
         let tag = getMonCurtag(m)
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
 
         n = m.visibleFakeTilingClients
         masterNum = Int32(m.pertag.nmasters[tag])
@@ -89,7 +89,7 @@ package extension MangoServer {
         var mh: Int32, mx: Int32
         var i: Int32, n: Int32 = 0
         let tag = getMonCurtag(m)
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
         let nmasters = Int32(m.pertag.nmasters[tag])
 
         var curGappiv: Int32 = enableGaps ? m.gappiv : 0
@@ -142,7 +142,7 @@ package extension MangoServer {
         var i: Int32, n: Int32
         var cw: Int32, ch: Int32
         var rows: Int32, cols: Int32, overrows: Int32
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
         let targetGappo: Int32 = enableGaps ? Int32(config.gappov) : 0
         let targetGappi: Int32 = enableGaps ? Int32(config.gappiv) : 0
         let singleWidthRatio: Float = 0.9
@@ -281,7 +281,7 @@ package extension MangoServer {
 
     func verticalFairCore(_ m: Monitor, _ ctx: LayoutContext?) {
         var n: Int32 = 0
-        let w = WBox(m.screen.workArea)
+        let w = WBox(m.w)
 
         n = m.visibleFakeTilingClients
         if n == 0 { return }

@@ -1,11 +1,8 @@
 import CoreGraphics
 
 package extension MangoServer {
-    func clientGroupHead(_ c: Client) -> Client {
-        var head = c
-        while let p = head.groupPrev { head = p }
-        return head
-    }
+
+
 
     func groupMembers(_ c: Client) -> [Client] {
         var out: [Client] = []
@@ -37,7 +34,7 @@ package extension MangoServer {
         clientGroupDetach(c)
         c.isGroupFocus = false
         c.mon = rc.mon
-        clientUnpark(c, after: rc)
+        clientUnpark(c, rc)
         focusStack.removeAll { $0 == c.id }
         let at = (focusStack.firstIndex(of: rc.id) ?? -1) + 1
         focusStack.insert(c.id, at: at)
@@ -52,136 +49,15 @@ package extension MangoServer {
         if let m = t.mon { arrange(m, false, false) }
     }
 
-    package func clientFocusGroupMember(_ c: Client) {
-        guard clientGroupSwapFocus(c) else { return }
-        clientFocus(c, true)
-        if let m = c.mon { arrange(m, false, false) }
-    }
-
-    @discardableResult
-    func clientGroupSwapFocus(_ c: Client) -> Bool {
-        guard c.isGroupMember, !c.isGroupFocus,
-              let current = groupMembers(c).first(where: { $0.isGroupFocus }), let m = current.mon,
-              !m.isoverview else { return false }
-        current.isGroupFocus = false
-        c.mon = m
-        clientReplace(c, current, isGroupChangeMember: true)
-        c.isGroupFocus = true
-        return true
-    }
-
-    func clientReplace(_ c: Client, _ w: Client, isGroupChangeMember: Bool) {
-        c.bw = w.bw
-        c.isfloating = w.isfloating
-        c.isurgent = w.isurgent
-        c.tags = w.tags
-        c.geom = w.geom
-        c.floatGeom = w.floatGeom
-        c.stackInnerPer = w.stackInnerPer
-        c.masterInnerPer = w.masterInnerPer
-        c.stackSizeWeight = w.stackSizeWeight
-        c.masterSizeWeight = w.masterSizeWeight
-        c.masterMfactPer = w.masterMfactPer
-        c.scrollerProportion = w.scrollerProportion
-        c.scrollerStackProportion = w.scrollerStackProportion
-        c.isglobal = w.isglobal
-        c.overviewBackupGeom = w.overviewBackupGeom
-        c.animation.current = w.animation.current
-        c.isfullscreen = w.isfullscreen
-        c.ismaximizescreen = w.ismaximizescreen
-        c.isInScratchpad = w.isInScratchpad
-        c.isfloatingBeforeScratchpad = w.isfloatingBeforeScratchpad
-        c.isminimized = w.isminimized
-        c.groupParked = false
-        if !isGroupChangeMember { clientGroupReplace(w, c) }
-        clientUnpark(c, after: w)
-        focusStack.removeAll { $0 == c.id }
-        focusStack.insert(c.id, at: focusStack.firstIndex(of: w.id) ?? 0)
-        if let m = w.mon {
-            let layout = m.layout
-            for i in 0..<Int(PERTAG_SLOTS) {
-                if layout == .dwindle {
-                    dwindleRemove(&m.pertag.dwindleRoot[i], c)
-                    if let dnode = dwindleFindLeaf(m.pertag.dwindleRoot[i], w) { dnode.client = c }
-                }
-
-                // scroller
-                if layout == .scroller || layout == .verticalScroller {
-                    guard let st = m.pertag.scrollerState[UInt32(i)] else { continue }
-                    if let cn = findScrollerNode(st, c) { scrollerNodeRemove(st, cn) }
-
-                    if let wn = findScrollerNode(st, w) { wn.client = c }
-                }
-            }
-
-            /* Syncs the global client fields of the currently active tag. */
-            if layout == .scroller || layout == .verticalScroller {
-                syncScrollerStateToClients(m, getClientTagIdx(w))
-            }
-        }
-        w.jumpLabelNode?.setEnabled(false)
-
-        c.tagVisible = w.tagVisible
-        w.tagVisible = false
-        clientUpdateVisibility(w)
-        clientUpdateVisibility(c)
-        clientPark(w)
-    }
-
-    func clientSetGroupConfig(_ c: Client) {
-        var cur: Client? = clientGroupHead(c)
-        while let it = cur {
-            it.jumpLabelNode?.applyConfig(mangoBarDecorationApplyConfig(config.jumplabeldata, mango: .mangoJumpLabel))
-            // not in mango: the drop area, split indicators and group bar are drawn by the port from the config
-            cur = it.groupNext
-        }
-    }
-
-    func clientAddJumpLabelNode(_ c: Client) {
-        // not in mango: the port's side (mango_jump_label_node_create)
-        c.jumpLabelNode = system.mangoJumpLabelNodeCreate(
-            c, mangoBarDecorationApplyConfig(config.jumplabeldata, mango: .mangoJumpLabel))
-        guard let label = c.jumpLabelNode else { return }
-        /* In overview, labels must be displayed above the card tree. */
-        // not in mango: the port's label is its own panel, above the overview's
-        label.setEnabled(false)
-    }
-
-    func clientGroupReplace(_ old: Client, _ new: Client) {
-        clientGroupDetach(new)
-        new.groupPrev = old.groupPrev
-        new.groupNext = old.groupNext
-        old.groupPrev?.groupNext = new
-        old.groupNext?.groupPrev = new
-        old.groupPrev = nil
-        old.groupNext = nil
-        new.isGroupFocus = old.groupParked || !new.isGroupMember ? false : old.isGroupFocus
-    }
-
-    func clientPark(_ c: Client) {
-        c.animation.running = false
-        c.groupParked = true
-        clients.removeAll { $0 === c }
-        focusStack.removeAll { $0 == c.id }
-    }
-
-    func clientUnpark(_ c: Client, after anchor: Client) {
-        c.groupParked = false
-        clients.removeAll { $0 === c }
-        let at = clients.firstIndex(where: { $0 === anchor }).map { $0 + 1 } ?? clients.count
-        clients.insert(c, at: at)
-    }
-
-    func clientGroupDetach(_ c: Client) {
-        c.groupPrev?.groupNext = c.groupNext
-        c.groupNext?.groupPrev = c.groupPrev
-        c.groupPrev = nil
-        c.groupNext = nil
-        c.isGroupFocus = false
-    }
 
 
-    func clientWantsGroupBar(_ c: Client) -> Bool {
-        config.groupBarHeight > 0 && (c.isGroupMember || config.alwaysShowGroupBar)
-    }
+
+
+
+
+
+
+
+
+
 }

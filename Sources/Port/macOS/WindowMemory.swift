@@ -32,13 +32,13 @@ final class WindowMemory {
     func returned(_ server: MangoServer, _ c: Client) {
         guard let gi = departed.groups.firstIndex(where: { $0.members.contains(c.id) }) else { return }
         let g = departed.groups[gi]
-        let present = g.members.compactMap { server.clientByIdAll($0) }.filter { $0.mon != nil }
+        let present = g.members.compactMap { server.clientByIdAll($0) }.filter { $0.mon != nil || $0.groupParked }
         if present.count == g.members.count { departed.groups.remove(at: gi) }
         guard present.count > 1, !server.monitors.contains(where: \.isoverview) else { return }
         let focus = present.first { $0.id == g.focus }
             ?? present.first { $0.isGroupFocus && !$0.groupParked } ?? present[0]
         for m in present where m.isGroupMember {
-            if m.groupParked { server.clientUnpark(m, after: focus) }
+            if m.groupParked { server.clientUnpark(m, focus) }
             server.clientGroupDetach(m)
         }
         for (i, m) in present.enumerated() {
@@ -57,7 +57,7 @@ final class WindowMemory {
     }
 
     static func isfloating(_ c: Client) -> Bool {
-        c.overviewBackupGeom != nil ? c.overviewIsfloatingbak : c.isfloating
+        c.overviewBackedUp ? c.overviewIsfloatingbak : c.isfloating
     }
 
     func currentLayout(_ server: MangoServer) -> SavedLayout {

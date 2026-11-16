@@ -117,9 +117,10 @@ final class FidelityTests: MangoTestCase {
         let right = Screen(displayID: 2, name: "Right", frame: CGRect(x: 1728, y: 0, width: 1920, height: 1080),
                            workArea: CGRect(x: 1728, y: 25, width: 1920, height: 1055), scale: 1, isMain: false)
         r.server.rebuildMonitors(screens: [r.screen, right])
-        let a = r.server.monitors[0], b = r.server.monitors[1]
-        XCTAssertTrue(r.server.monitorFromDirection(.right, from: a) === b)
-        XCTAssertTrue(r.server.monitorFromDirection(.left, from: a) === b, "round the edge")
+        let a = r.monitor, b = r.server.monitors.first { $0.screen.displayID == 2 }!
+        r.server.setSelectedMonitor(a)
+        XCTAssertTrue(r.server.monitorFromDirection(.right) === b)
+        XCTAssertTrue(r.server.monitorFromDirection(.left) === b, "round the edge")
     }
 
     func testSetLayoutSparesScrollerFullscreen() {
@@ -222,11 +223,12 @@ final class FidelityTests: MangoTestCase {
         let a = r.window(1), b = r.window(2), c = r.window(3, floating: true)
         r.arrange()
         a.isfullscreen = true
-        XCTAssertTrue(r.server.tabMembers(r.monitor).contains { $0 === a }, "fullscreen: a member")
+        r.arrange()
+        XCTAssertTrue(r.server.tabChain(r.monitor).contains { $0 === a }, "fullscreen: a member")
         r.server.clientFocus(b, true)
-        XCTAssertTrue(r.server.tabChainFocus(r.server.tabMembers(r.monitor), on: r.monitor) === b)
+        XCTAssertTrue(r.server.tabFocus(r.monitor) === b)
         r.server.clientFocus(c, true)
-        XCTAssertTrue(r.server.tabChainFocus(r.server.tabMembers(r.monitor), on: r.monitor) === b, "the one shown last")
+        XCTAssertTrue(r.server.tabFocus(r.monitor) === b, "the one shown last")
     }
 
     func testGestureFiresEveryMatch() {
@@ -252,10 +254,12 @@ final class FidelityTests: MangoTestCase {
         let a = r.window(1, floating: true)
         a.floatGeom = CGRect(x: 10, y: 50, width: 300, height: 200)
         let b = r.window(2)
-        b.mon = r.server.monitors[1]
-        b.tags = r.server.monitors[1].tagset[r.server.monitors[1].seltags]
+        let right2 = r.server.monitors.first { $0.screen.displayID == 2 }!
+        b.mon = right2
+        b.tags = right2.tagset[right2.seltags]
         r.server.clientGroupJoin(a, into: b)
-        XCTAssertTrue(a.mon === b.mon)
+        XCTAssertTrue([a, b].first { !$0.groupParked }!.mon === right2)
+        XCTAssertNil([a, b].first { $0.groupParked }!.mon, "client_park: no monitor")
         let focus = [a, b].first { $0.isGroupFocus }!
         let other = focus === a ? b : a
         r.server.clientGroupDetach(other)
@@ -285,7 +289,7 @@ final class FidelityTests: MangoTestCase {
         r.arrange()
         let g = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
         r.server.pointerEndGrabClient(g, at: CGPoint(x: 2500, y: 500))
-        let b = r.server.monitors[1]
+        let b = r.server.monitors.first { $0.screen.displayID == 2 }!
         XCTAssertTrue(c.mon === b)
         XCTAssertTrue(r.server.selectedMonitor === b)
         XCTAssertEqual(b.sel, c.id)
@@ -684,12 +688,31 @@ final class FidelityTests: MangoTestCase {
         return r.server.monitors.first { $0.screen.name == "Side" }!
     }
 
+    func testADialogOpensOnItsParentsMonitor() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        let a = r.map(1)
+        r.server.clientSetMonitor(a, side, 0, focus: false)
+        r.server.clientFocus(a, true)
+        r.server.setSelectedMonitor(r.monitor)
+        let d = r.map(2, dialog: true)
+        XCTAssertTrue(d.mon === side, "client_get_parent: the parent's monitor, not the selected one")
+        XCTAssertTrue(d.isfloating)
+    }
+
+    func testTheOverviewBackupIsTheGeomAtMap() {
+        let r = EngineRig()
+        let c = r.map(1)
+        XCTAssertGreaterThan(c.overviewBackupGeom.width, 0, "handle_client_map: overview_backup_geom = geom")
+        XCTAssertFalse(c.overviewBackedUp)
+    }
+
     func testSpecialTagCrossMonitor() {
         let r = EngineRig()
         let side = twoMonitors(r)
         let a = r.map(1)
         d(r, "tag_special_tag", [], a)
-        XCTAssertTrue(r.server.isSpecialActive(r.monitor))
+        XCTAssertTrue(isSpecialActive(r.monitor))
         XCTAssertTrue(a.mon === r.monitor)
 
         r.server.toggleSpecialTagMon(side)
@@ -700,8 +723,8 @@ final class FidelityTests: MangoTestCase {
         r.monitor.pertag.ltidxs[0] = .grid
         r.server.toggleSpecialTagMon(side)
         XCTAssertTrue(a.mon === side, "on: the special tag's windows come along")
-        XCTAssertTrue(r.server.isSpecialActive(side))
-        XCTAssertFalse(r.server.isSpecialActive(r.monitor), "the other monitor goes back to its tags")
+        XCTAssertTrue(isSpecialActive(side))
+        XCTAssertFalse(isSpecialActive(r.monitor), "the other monitor goes back to its tags")
         XCTAssertEqual(side.pertag.ltidxs[0], .grid, "with the special tag's layout")
     }
 
@@ -732,6 +755,8 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         a.tags = 1 << 1
         d(r, "tagmon", ["next", "1"], a)
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1, "one monitor: next is none, as mango's monitor_from_cycle")
+        d(r, "tagmon", [r.screen.name, "1"], a)
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 1)
     }
 

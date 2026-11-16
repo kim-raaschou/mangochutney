@@ -85,7 +85,7 @@ final class BorderResizeTests: MangoTestCase {
         motion(r, CGPoint(x: 496, y: 400), time: 1)
         XCTAssertEqual(r.monitor.sel, a.id)
         XCTAssertEqual(r.server.hoverResizeEdge, .right)
-        XCTAssertNil(r.server.clientAtPoint(CGPoint(x: 505, y: 400)), "the gap is no window's")
+        XCTAssertNil(r.server.nodeAtPoint(CGPoint(x: 505, y: 400)), "the gap is no window's")
     }
 
     func testTheTapSetsTheStripsCursorAsThePointerMoves() {

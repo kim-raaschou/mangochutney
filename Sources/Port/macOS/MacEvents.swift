@@ -34,6 +34,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.bw = CGFloat(server.config.borderpx)
         c.geom = c.geom.insetBy(dx: -c.bw, dy: -c.bw)
         c.floatGeom = c.geom
+        c.overviewBackupGeom = c.geom
     }
 
     private func mapInitial(_ c: Client) {
@@ -49,6 +50,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         let (mon, tags) = server.clientSetRules(c, mapped: false)
         server.selectedMonitor = selected
         if !c.iscustompos {
+            c.geom = frame
             c.floatGeom = frame
             if c.isfloating, !mon.screen.frame.intersects(frame) {
                 let w = mon.screen.workArea
@@ -132,7 +134,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             seatFocus = nil   // the keyboard is on a window mango does not manage
             return
         }
-        guard let m = c.mon else { return }
+        guard let m = monitor(of: c) else { return }
         wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map(String.init) ?? "none"))")
         if m.isoverview {
             if !m.isJumpMode, server.focused !== c, m === server.selectedMonitor { server.toggleOverview(tc: c) }
@@ -180,7 +182,7 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     func screensChanged() {
         frameClock.screensChanged()
-        server.handleOutputLayoutChange()
+        server.rebuildMonitors()
         parkAgainAfterScreensChanged()
     }
 

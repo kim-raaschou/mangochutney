@@ -61,8 +61,8 @@ final class Box<T>: @unchecked Sendable {
 final class IPCTests: MangoTestCase {
     var rig: EngineRig!
     var server: IPCServer!
-    var dp1: Monitor { rig.server.monitors[0] }
-    var hdmi: Monitor { rig.server.monitors[1] }
+    var dp1: Monitor { rig.server.monitors.first { $0.screen.displayID == 1 }! }
+    var hdmi: Monitor { rig.server.monitors.first { $0.screen.displayID == 2 }! }
 
     func add(_ id: CGWindowID, _ title: String, _ app: String, on m: Monitor) -> Client {
         rig.server.selectedMonitor = m
@@ -149,9 +149,9 @@ final class IPCTests: MangoTestCase {
 
     func testGetAllTags() throws {
         let line = try XCTUnwrap(query("get all-tags"))
-        XCTAssertTrue(line.hasPrefix(#"{"all_tags":[{"monitor":"DP-1","tags":[{"index":1,"is_active":true,"is_urgent":false,"layout":"T","client_count":1}"#), line)
+        XCTAssertTrue(line.hasPrefix(#"{"all_tags":[{"monitor":"HDMI-A-1","tags":[{"index":1,"is_active":true,"is_urgent":false,"layout":"T","client_count":1}"#), line)
         let all = try XCTUnwrap(object(line)["all_tags"] as? [[String: Any]])
-        XCTAssertEqual(all.map { $0["monitor"] as? String }, ["DP-1", "HDMI-A-1"])
+        XCTAssertEqual(all.map { $0["monitor"] as? String }, ["HDMI-A-1", "DP-1"], "mango's monitor list: the newest first")
         XCTAssertEqual((all[0]["tags"] as? [Any])?.count, 9)
     }
 
