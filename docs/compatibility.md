@@ -83,7 +83,6 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_macos_appearance` | bars, switcher and jump labels in the macOS style where no decorate key is set |
 | `chutney_tab_bar_decorate_icon` | the app's icon before each tab's title in the tab bar |
 | `chutney_group_bar_decorate_icon` | the app's icon before each title in the group bar |
-| `chutney_tab_bar_shortcuts` | ⌘1-9 picks a tab while a tab bar is shown |
 | `chutney_launch_or_focus` (dispatcher) | one key per app: start it, or go to its window |
 | `chutney_restart` (dispatcher) | quit, with hidden windows left hidden for the next mango (make install, mmsg service restart) |
 | `chutney_keybindings` (dispatcher) | the keybindings palette: search the bindings, move with the keys, Return runs one |

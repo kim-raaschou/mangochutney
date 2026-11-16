@@ -40,17 +40,6 @@ final class EngineInputRouterTests: MangoTestCase {
                              modifierOnlySinceDown: true))
     }
 
-    func testCmdDigitsPickTabsOnlyWhileATabBarHasThem() {
-        let r = router()
-        XCTAssertFalse(r.key(key(19, [.superKey], down: true), modifierOnlySinceDown: false), "no tab bar: ⌘2 is the app's")
-        r.publish { $0.tabShortcuts = 3 }
-        XCTAssertTrue(r.key(key(19, [.superKey], down: true), modifierOnlySinceDown: false))
-        XCTAssertTrue(r.key(key(19, [.superKey], down: false), modifierOnlySinceDown: false))
-        XCTAssertFalse(r.key(key(21, [.superKey], down: true), modifierOnlySinceDown: false), "⌘4 with three tabs")
-        XCTAssertFalse(r.key(key(19, [.superKey, .shift], down: true), modifierOnlySinceDown: false), "⇧⌘2")
-        XCTAssertFalse(r.key(key(8, [.superKey], down: true), modifierOnlySinceDown: false), "⌘C")
-    }
-
     func testUnboundKeysPassThrough() {
         let b = KeyBinding(mods: hyper, keyName: "Left", keyCodes: [123], dispatch: Dispatch(name: "focusdir", args: ["left"]))
         let r = router(binds: [b])

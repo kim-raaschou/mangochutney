@@ -87,64 +87,8 @@ final class TabStripTests: MangoTestCase {
         XCTAssertEqual(r.server.tabChainFocus(members, on: r.monitor)?.id, 900_100, "none shown yet: the first")
     }
 
-    func testCmdDigitsPickTheFocusedMonitorsTabs() {
-        let r = rig(.monocle, windows: 3)
-        XCTAssertEqual(r.server.tabBarShortcutTabs, 0, "off unless chutney_tab_bar_shortcuts")
-        r.server.config.chutneyTabBarShortcuts = true
-        XCTAssertEqual(r.server.tabBarShortcutTabs, 3)
-        r.server.tabFocusMember(number: 2)
-        XCTAssertEqual(r.monitor.sel, 900_101)
-        r.server.tabFocusMember(number: 4)
-        XCTAssertEqual(r.monitor.sel, 900_101, "no fourth tab")
-        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
-        XCTAssertEqual(r.server.tabBarShortcutTabs, 0, "no tab bar")
-    }
-
     func cmd(_ code: UInt16, modifier: Bool = false, down: Bool = true) -> KeyEvent {
         KeyEvent(keyCode: code, mods: down ? .superKey : [], isDown: down, isRepeat: false, isModifierKey: modifier)
-    }
-
-    func testHeldCmdShowsTheNumbersAndAnyOtherKeyHidesThem() {
-        let r = rig(.monocle, windows: 3)
-        r.server.config.chutneyTabBarShortcuts = true
-        r.server.mac.router.server = r.server
-        r.server.publishInputState()
-        _ = r.server.mac.router.key(cmd(55, modifier: true), modifierOnlySinceDown: true)
-        r.settle()
-        XCTAssertTrue(r.server.mac.tabNumbersShown)
-        _ = r.server.mac.router.key(cmd(8), modifierOnlySinceDown: false)
-        r.settle()
-        XCTAssertFalse(r.server.mac.tabNumbersShown)
-    }
-
-    func testTheEventTapLearnsWhenATabGoes() {
-        let r = rig(.monocle, windows: 3)
-        r.server.config.chutneyTabBarShortcuts = true
-        r.server.drawsOverlays = true
-        r.server.publishInputState()
-        XCTAssertTrue(r.server.mac.router.key(cmd(20), modifierOnlySinceDown: false))
-        r.server.mac.windowDestroyed(id: 900_102)
-        XCTAssertFalse(r.server.mac.router.key(cmd(20), modifierOnlySinceDown: false), "two tabs left: ⌘3 is the app's")
-    }
-
-    func testNoShortcutsUnderAFullscreenWindow() {
-        let r = rig(.monocle, windows: 3)
-        r.server.config.chutneyTabBarShortcuts = true
-        r.monitor.sel = 900_100
-        r.server.clientByIdAll(900_100)!.isfullscreen = true
-        XCTAssertEqual(r.server.tabBarShortcutTabs, 0)
-        r.server.tabFocusMember(number: 2)
-        XCTAssertEqual(r.monitor.sel, 900_100)
-    }
-
-    func testAUserBindOnCmdDigitWins() {
-        let r = rig(.monocle, windows: 3)
-        r.server.config.chutneyTabBarShortcuts = true
-        r.server.publishInputState()
-        r.server.mac.router.publish { $0.bindings = [KeyBinding(mods: .superKey, keyName: "2", keyCodes: [19],
-                                                        dispatch: Dispatch(name: "view", args: ["2"]))] }
-        r.server.mac.router.server = nil
-        XCTAssertTrue(r.server.mac.router.key(cmd(19), modifierOnlySinceDown: false))
     }
 
     func testTheStripSitsOnTheFocusedMemberOnly() {
@@ -283,20 +227,6 @@ final class TabStripViewTests: MangoTestCase {
         XCTAssertEqual(v.layer!.sublayers![1].frame, CGRect(x: 200, y: 0, width: 200, height: 33))
     }
 
-    func testHeldCmdShowsTheNumbersAtTheTrailingEdge() {
-        let v = TabStripView(frame: CGRect(x: 0, y: 0, width: 400, height: 40))
-        var s = strip(width: 400)
-        s.segments[1].shortcut = 2
-        v.show(s, style: TabStripStyle(accent: RGBA(r: 1, g: 0, b: 0, a: 1)))
-        let tab = v.layer!.sublayers![1]
-        let number = tab.sublayers!.first { $0.sublayers?.contains { ($0 as? CATextLayer)?.string as? String == "⌘2" } == true }
-        XCTAssertNotNil(number)
-        XCTAssertEqual(number!.frame.maxX, tab.frame.width - 6)
-        let title = tab.sublayers!.compactMap { $0 as? CATextLayer }.first { ($0.string as? String) == "b" }!
-        XCTAssertLessThanOrEqual(title.frame.maxX, number!.frame.minX)
-        XCTAssertEqual(title.frame.midX, tab.frame.width / 2, accuracy: 0.5, "still centred")
-    }
-
     func testTheSelectedTabIsRingedOnlyWhileItsWindowHasTheFocus() {
         let v = TabStripView(frame: CGRect(x: 0, y: 0, width: 400, height: 40))
         let style = TabStripStyle(accent: RGBA(r: 1, g: 0, b: 0, a: 1), accentWidth: 2)
@@ -311,16 +241,5 @@ final class TabStripViewTests: MangoTestCase {
         mango.decorate.borderColor = RGBA(r: 0, g: 0, b: 1, a: 1)
         v.show(strip(width: 400), style: mango)
         XCTAssertEqual(v.layer!.sublayers![0].borderWidth, 2, "mango's decorate keys as set")
-    }
-
-    func testATabTooNarrowForItsNumberHidesIt() {
-        let v = TabStripView(frame: CGRect(x: 0, y: 0, width: 60, height: 40))
-        var s = strip(width: 60)
-        s.segments[1].shortcut = 2
-        v.show(s, style: TabStripStyle(accent: RGBA(r: 1, g: 0, b: 0, a: 1)))
-        let number = v.layer!.sublayers![1].sublayers!.first {
-            $0.sublayers?.contains { ($0 as? CATextLayer)?.string as? String == "⌘2" } == true
-        }
-        XCTAssertEqual(number?.isHidden, true)
     }
 }

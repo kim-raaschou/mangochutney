@@ -71,7 +71,7 @@ Hos os:
 
 ## Ved siden af: HYPER+F1–F12 som fullscreen-toggle
 
-Aftalt med brugeren i en sidesession (16. november), laves mellem trinene, når trin 3 er committet:
+Lavet 16. november (sidesession):
 en ny port-dispatcher `chutney_toggle_fullscreen,N` (`Port/Extensions`, under
 `chutney_fullscreen_tag`, slået fra uden nøglen) afløser `chutney_view_fullscreen` på HYPER+Fn.
 1. Fokus på vinduet på F-tag N: det går ud af macOS-fuldskærm og tilbage på sit tag og sin plads.

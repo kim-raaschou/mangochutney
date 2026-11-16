@@ -129,8 +129,6 @@ final class TabStripView: NSView {
         var icon: CALayer?
         var text: CATextLayer
         var titleWidth: CGFloat
-        var number: CALayer?
-        var numberWidth: CGFloat = 0
     }
     private var tabs: [Tab] = []
     private var lineHeight: CGFloat = 0
@@ -208,34 +206,9 @@ final class TabStripView: NSView {
                 text.alignmentMode = .left
             }
             tab.addSublayer(text)
-            var number: CALayer?, numberWidth: CGFloat = 0
-            if let n = seg.shortcut {
-                let label = "⌘\(n)"
-                let nf = NSFont.systemFont(ofSize: font.pointSize - 1, weight: .semibold)
-                let textWidth = ceil((label as NSString).size(withAttributes: [.font: nf]).width)
-                let badgeHeight = ceil(nf.ascender - nf.descender) + 4
-                let badge = CALayer()
-                badge.backgroundColor = CGColor(red: style.accent.r, green: style.accent.g, blue: style.accent.b, alpha: 1)
-                badge.cornerRadius = badgeHeight / 2
-                badge.bounds.size = CGSize(width: textWidth + 12, height: badgeHeight)
-                let l = CATextLayer()
-                l.string = label
-                l.font = nf
-                l.fontSize = nf.pointSize
-                let a = style.accent
-                l.foregroundColor = 0.299 * a.r + 0.587 * a.g + 0.114 * a.b > 0.6 ? .black : .white
-                l.alignmentMode = .center
-                l.contentsScale = scale
-                l.frame = CGRect(x: 0, y: 2, width: textWidth + 12, height: badgeHeight - 4)
-                badge.addSublayer(l)
-                tab.addSublayer(badge)
-                number = badge
-                numberWidth = textWidth + 12
-            }
             root.addSublayer(tab)
             tabs.append(Tab(layer: tab, separator: separator, icon: iconLayer, text: text,
-                            titleWidth: ceil((seg.title as NSString).size(withAttributes: [.font: tf]).width),
-                            number: number, numberWidth: numberWidth))
+                            titleWidth: ceil((seg.title as NSString).size(withAttributes: [.font: tf]).width)))
         }
         layout(strip)
     }
@@ -266,13 +239,7 @@ final class TabStripView: NSView {
         for (t, f) in zip(tabs, frames) {
             t.layer.frame = f
             t.separator?.frame = CGRect(x: -gap / 2 - 0.5, y: f.height * 0.25, width: 1, height: f.height * 0.5)
-            let fits = t.number != nil && f.width - 2 * pad >= t.numberWidth + 12
-            t.number?.isHidden = !fits
-            let edge = fits ? 6 + t.numberWidth + 6 : pad
-            if let badge = t.number {
-                let h = badge.bounds.height
-                badge.frame = CGRect(x: f.width - 6 - t.numberWidth, y: (f.height - h) / 2, width: t.numberWidth, height: h)
-            }
+            let edge = pad
             var textRect = CGRect(x: edge, y: max(padY, (f.height - lineHeight) / 2), width: max(0, f.width - 2 * edge),
                                   height: lineHeight)
             if let icon = t.icon {

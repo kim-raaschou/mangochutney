@@ -24,7 +24,6 @@ final class InputRouter: @unchecked Sendable {
         var hyperKey = false
         var wantsMouseMoved = false
         var menuBarTags: [MenuBarTagHit] = []
-        var tabShortcuts = 0
         var cursorHideOnKeypress = false
         var hoverResizeCursor: String?
         var globalKeys: [RoutedGlobalKey] = []
@@ -40,7 +39,6 @@ final class InputRouter: @unchecked Sendable {
     var forward: (_ keyCode: UInt16, _ mods: Modifiers, _ down: Bool, _ pid: pid_t) -> Void = {
         KeyForward.post(keyCode: $0, mods: $1, down: $2, to: $3)
     }
-    private var tabNumbersShown = false
     private var axisApplyTime: CFTimeInterval = 0
     private var axisApplyDir = 0
     private var grabbing = false
@@ -93,13 +91,6 @@ final class InputRouter: @unchecked Sendable {
         ev.mods = KeyboardOptions.hyperMods(ev.mods, hyper: s.hyper, keyHeld: hyperHeld)
         if ev.isDown && !ev.isModifierKey { lock.lock(); lastKey = ev.keyCode; lock.unlock() }
         if let opening = s.launchOrFocusPicker, !ev.isModifierKey, pickerKey(ev, opening: opening) { return true }
-        let numbers = s.tabShortcuts > 0 && ev.mods.subtracting(.fn) == .superKey
-            && (ev.isModifierKey || Self.digitKeys[ev.keyCode] != nil)
-        if numbers != tabNumbersShown {
-            tabNumbersShown = numbers
-            onMain { $0.showTabNumbers(numbers) }
-        }
-
         let k = KeyInput(keyCode: ev.keyCode, mods: ev.mods, isDown: ev.isDown, isRepeat: ev.isRepeat,
                          keyModifier: ev.isModifierKey ? HotkeyMatcher.modifier(forKeyCode: ev.keyCode) : nil)
         lock.lock()
@@ -114,12 +105,6 @@ final class InputRouter: @unchecked Sendable {
         run(d.actions, ev, age: age)
         if d.handled { return d.swallow && !ev.isModifierKey }
 
-        if s.tabShortcuts > 0, ev.isDown, !ev.isModifierKey, ev.mods.subtracting(.fn) == .superKey,
-           let n = Self.digitKeys[ev.keyCode], n <= s.tabShortcuts {
-            lock.lock(); keyboard.boundKeys.insert(ev.keyCode); lock.unlock()
-            if !ev.isRepeat { onMain { $0.tabFocusMember(number: n) } }
-            return true
-        }
         lock.lock()
         let u = Keyboard.handleUnboundKey(k, state: &keyboard, jumpMode: s.jumpMode,
                                           isEscape: ev.keyCode == 53, isJumpKey: s.jumpKeys.contains(ev.keyCode),
@@ -166,7 +151,6 @@ final class InputRouter: @unchecked Sendable {
         }
     }
 
-    static let digitKeys: [UInt16: Int] = [18: 1, 19: 2, 20: 3, 21: 4, 23: 5, 22: 6, 26: 7, 28: 8, 25: 9]
 
     func cancelPendingReleaseBind() {
         lock.lock()

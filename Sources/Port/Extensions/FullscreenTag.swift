@@ -25,6 +25,8 @@ enum FullscreenTag {
         var homes: [ClientID: Home] = [:]
         var viewed: Set<CGDirectDisplayID> = []
         var anchors: [CGDirectDisplayID: SpaceAnchorWindow] = [:]
+        /// The F tag chutney_toggle_fullscreen asked for, while macOS takes the window into fullscreen.
+        var wanted: [ClientID: UInt32] = [:]
     }
 
     static let count = 12
@@ -80,11 +82,13 @@ enum FullscreenTag {
     /// The first F tag on `m` with no window but `c`'s.
     static func freeBit(_ server: MangoServer, _ c: Client, _ m: Monitor) -> UInt32? {
         let used = server.clientsAll.filter { $0 !== c && $0.mon === m }.reduce(UInt32(0)) { $0 | $1.tags }
+        if let bit = server.mac.fullscreenTag.wanted[c.id], used & bit == 0 { return bit }
         return bits(server.config).first { used & $0 == 0 }
     }
 
     static func enter(_ server: MangoServer, _ c: Client, discovered: Bool = false) -> Bool {
         guard isOn(server), let m = c.mon, let bit = freeBit(server, c, m) else { return false }
+        server.mac.fullscreenTag.wanted[c.id] = nil
         if server.selectedMonitor?.isoverview == true { _ = server.dispatch(Dispatch(name: "toggleoverview")) }
         let mac = server.mac
         let own = c.tags & ~mask(server.config)
@@ -163,6 +167,7 @@ enum FullscreenTag {
     /// After a Space change macOS has the window out of fullscreen, though it was told to go in (or in and
     /// out): it never went, or was taken out on the way. Out of mango's fullscreen too, back in its place.
     static func notTaken(_ server: MangoServer, _ c: Client) {
+        server.mac.fullscreenTag.wanted[c.id] = nil
         c.scheduledFullscreen = false
         c.fullscreenPending = false
         if c.isfullscreen {
@@ -325,6 +330,39 @@ enum FullscreenTag {
         guard let m = monitors.first(where: { window(server, on: $0, bit) != nil }) else { return nil }
         if m !== server.selectedMonitor { server.focusMonitor(m) }
         view(server, m, bit)
+        return nil
+    }
+
+    /// The dispatcher chutney_toggle_fullscreen,N: the focused window on F tag N goes out of macOS
+    /// fullscreen, back on its tag; with F tag N empty the focused window goes into it (or moves there from
+    /// another F tag); another window on F tag N is viewed; nothing focused, as chutney_view_fullscreen.
+    static func toggleDispatch(_ server: MangoServer, _ arg: String) -> String? {
+        let bits = bits(server.config)
+        guard isOn(server), let n = Int(arg.trimmingCharacters(in: .whitespaces)), n >= 1, n <= bits.count else {
+            return isOn(server) ? "chutney_toggle_fullscreen: F tag 1–\(bits.count), not \(arg)" : nil
+        }
+        let bit = bits[n - 1]
+        guard let c = server.focused, let m = c.mon else { return viewDispatch(server, arg) }
+        if let w = window(server, on: m, bit) {
+            if w === c {
+                if c.isfullscreen { _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false) }
+            } else {
+                view(server, m, bit)
+            }
+            return nil
+        }
+        if server.mac.fullscreenTag.homes[c.id] != nil {
+            server.mac.fullscreenTag.homes[c.id]?.bit = bit
+            c.tags = bit
+            view(server, m, bit)
+            return nil
+        }
+        server.mac.fullscreenTag.wanted[c.id] = bit
+        if !c.isfullscreen {
+            _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false)
+        } else {
+            notify(server, c, true)
+        }
         return nil
     }
 

@@ -60,16 +60,23 @@ extension MacWindowSystem {
     func commitFrame() {
         let writes = writeAtCommit
         writeAtCommit.removeAll()
+        var changed = false
         for id in writes {
             guard let c = server.clientByIdAll(id) else { continue }
+            let (frame, parked) = (c.frame, c.parked)
             place(c, c.mac.box)
+            changed = changed || c.frame != frame || c.parked != parked
         }
         let ids = parkAtCommit
         parkAtCommit.removeAll()
         for id in ids {
             guard let c = server.clientByIdAll(id), !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled else { continue }
+            let parked = c.parked
             park(c)
+            changed = changed || c.parked != parked
         }
+        // the borders follow the windows as they are now shown, not as the frame left them before
+        if changed { server.updateBorders() }
     }
 
     /// Where mango clips the window at its monitor's edge (client_is_ignore_output_clip is false) and

@@ -214,7 +214,9 @@ public final class AppWorker: @unchecked Sendable {
                                                      fullscreen: Self.answeredBool(el, "AXFullScreen"), appHidden: nsApp.isHidden)))
         }
         if !out.found.isEmpty { post(.discovered(out.found)) }
-        if fullscreen {
+        // The first scan reads each window's fullscreen again, as after a Space change: a window found in
+        // macOS fullscreen when mango starts may not say so while the app first answers.
+        if fullscreen || isInitialScan {
             let states = listed.compactMap { id, el in Self.answeredBool(el, "AXFullScreen").map { (id, $0) } }
             if !states.isEmpty { post(.fullscreenStates(states)) }
         }

@@ -45,7 +45,6 @@ enum PortOptions {
         t["chutney_macos_appearance"] = O.bool(\.chutneyMacOSAppearance)
         t["chutney_tab_bar_decorate_icon"] = O.bool(\.chutneyTabBarDecorateIcon)
         t["chutney_group_bar_decorate_icon"] = O.bool(\.chutneyGroupBarDecorateIcon)
-        t["chutney_tab_bar_shortcuts"] = O.bool(\.chutneyTabBarShortcuts)
         t["chutney_overlap_warning"] = O.bool(\.chutneyOverlapWarning)
         t["chutney_fullscreen_tag"] = O.bool(\.chutneyFullscreenTag)
         t["chutney_fit_layout"] = { config, value in

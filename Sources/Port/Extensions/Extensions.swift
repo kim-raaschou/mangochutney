@@ -25,6 +25,9 @@ extension MangoServer {
         portHooks.extraDispatchers["chutney_view_fullscreen"] = { server, d in
             FullscreenTag.viewDispatch(server, d.args.first ?? "")
         }
+        portHooks.extraDispatchers["chutney_toggle_fullscreen"] = { server, d in
+            FullscreenTag.toggleDispatch(server, d.args.first ?? "")
+        }
         portHooks.extraDispatchers["chutney_layout_switcher"] = { server, _ in
             LayoutPalette.shared.toggle(server)
             return nil

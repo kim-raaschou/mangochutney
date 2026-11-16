@@ -37,6 +37,20 @@ final class FullscreenTagTests: MangoTestCase {
             isminimized: false, isfullscreen: fullscreen, isAppHidden: hidden))
     }
 
+    /// At start an app may not yet say its window is in macOS fullscreen: the first scan reads it again,
+    /// and the window found as a normal one is then on its F tag.
+    func testAWindowFoundInFullscreenOnlyOnTheSecondReadIsOnItsFTag() {
+        let r = rig()
+        discover(r, 4)
+        r.settle()
+        XCTAssertEqual(r.server.clientByIdAll(4)?.tags, 1)
+        r.server.mac.windowFullscreen(id: 4, fullscreen: true)
+        r.settle()
+        let c = r.server.clientByIdAll(4)
+        XCTAssertEqual(c?.tags, f1, "on F1")
+        XCTAssertEqual(c?.nativeFullscreen, true)
+    }
+
     // MARK: in and out
 
     func testInFullscreenItIsAloneOnF1() {
@@ -331,6 +345,33 @@ final class FullscreenTagTests: MangoTestCase {
         XCTAssertNil(r.server.dispatch(Dispatch(name: "chutney_view_fullscreen", args: ["2"])), "an empty F tag: nothing")
         XCTAssertEqual(viewed(r), f1)
         XCTAssertNotNil(r.server.dispatch(Dispatch(name: "chutney_view_fullscreen", args: ["13"])))
+    }
+
+    func testTheToggleDispatcher() {
+        let r = rig()
+        let c = r.server.clientByIdAll(2)!
+        let f3 = f1 << 2, f5 = f1 << 4
+        func toggle(_ n: Int) { XCTAssertNil(r.server.dispatch(Dispatch(name: "chutney_toggle_fullscreen", args: ["\(n)"]))) }
+        r.server.clientFocus(c, true)
+        toggle(3)
+        XCTAssertTrue(c.isfullscreen, "into fullscreen")
+        fullscreen(r, 2, true)
+        XCTAssertEqual(c.tags, f3, "on the F tag asked for, not the first free")
+        toggle(5)
+        XCTAssertEqual(c.tags, f5, "moved to F5")
+        XCTAssertEqual(viewed(r), f5)
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["1"]))
+        let other = r.server.clientByIdAll(1)!
+        r.server.clientFocus(other, true)
+        toggle(5)
+        XCTAssertEqual(viewed(r), f5, "another window's F tag: viewed")
+        XCTAssertTrue(r.server.focused === c)
+        XCTAssertFalse(other.isfullscreen)
+        toggle(5)
+        XCTAssertFalse(c.isfullscreen, "its own F tag: out")
+        fullscreen(r, 2, false)
+        XCTAssertEqual(c.tags, 1, "back on its tag")
+        XCTAssertNil(home(r, 2))
     }
 
     // MARK: what the second review found

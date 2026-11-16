@@ -18,9 +18,6 @@ extension Config {
     package var chutneyGroupBarDecorateIcon: Bool {
         get { bool("chutney_group_bar_decorate_icon", false) } set { set("chutney_group_bar_decorate_icon", newValue) }
     }
-    package var chutneyTabBarShortcuts: Bool {
-        get { bool("chutney_tab_bar_shortcuts", false) } set { set("chutney_tab_bar_shortcuts", newValue) }
-    }
     package var chutneyHyperModifier: String {
         get { port["chutney_hyper_modifier"] ?? "super+ctrl+alt" } set { port["chutney_hyper_modifier"] = newValue }
     }

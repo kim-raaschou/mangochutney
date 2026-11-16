@@ -65,8 +65,6 @@ class MacWindowSystem: WindowSystem {
     func removeFitNotification() { FitNotification.shared.remove() }
     var dispatchersWarned = Set<String>()
     var pressed: (client: Client, frame: CGRect)?
-    var tabNumbersShown = false
-    var publishedTabShortcuts = 0
     let tabBars = TabBarManager()
     let groupBars = TabBarManager()
     var overviewOverlays: [ObjectIdentifier: OverviewOverlay] = [:]
@@ -279,10 +277,9 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) {
-        tabBarsChanged()
         var style = withAppIcons(style, server.config.chutneyTabBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.tabbardata, server.config)
-        tabBars.update(withTabNumbers(strips), style: style, keyFocus: server.focused?.id)
+        tabBars.update(strips, style: style, keyFocus: server.focused?.id)
     }
 
     func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) {
@@ -594,7 +591,6 @@ class MacWindowSystem: WindowSystem {
             s.cursorHideOnKeypress = state.cursorHideOnKeypress
             s.hoverResizeCursor = state.hoverResizeCursor
         }
-        tabBarsChanged()
     }
 
     func publishGlobalKeys(_ keys: [GlobalKey]) {

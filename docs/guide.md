@@ -276,6 +276,7 @@ Hyper A, then S: Safari. An app's bundle id: `osascript -e 'id of app "Safari"'`
 | `chutney_keybindings` | - | The keybindings palette. |
 | `chutney_layout_switcher` | - | The layout switcher. |
 | `chutney_fit_layout` | - | Fits the selected monitor's layout to the windows larger than their tiles, where it can (`chutney_fit_layout` below). |
+| `chutney_toggle_fullscreen` | `1`–`12` | F tag N of `chutney_fullscreen_tag` as one key. The focused window on F tag N goes out of macOS fullscreen, back on its own tag in its place. With F tag N empty, the focused window goes into macOS fullscreen onto F tag N (not the first free one); a window already in fullscreen on another F tag moves to N. Another window on F tag N is viewed and focused; nothing goes into or out of fullscreen. With nothing focused, as `chutney_view_fullscreen`. For example `bind=HYPER,F8,chutney_toggle_fullscreen,8`: HYPER+F8 puts the focused window in fullscreen on F8, HYPER+F8 again takes it back. |
 | `chutney_view_fullscreen` | `1`–`12` | Views F tag N of `chutney_fullscreen_tag`: its window in macOS fullscreen is focused and macOS goes to its Space. Nothing where no window is there. For example `bind=HYPER,F1,chutney_view_fullscreen,1`. |
 
 ## Configuration
@@ -316,7 +317,6 @@ mango's [Theming](https://mangowm.github.io/docs/visuals/theming). These are the
 | `chutney_fit_layout` | `0` | Where a tiled window's app keeps it larger than its tile and the layout has room for it on that side (its row for the width, its column for the height, beside the windows that keep their own sizes there, and those that fit at the least size their apps have kept them at while open): mango's `resizewin` on the window by what it lacks, as from the keyboard, in any of mango's layouts. Nothing where there is not room; the window goes over its neighbour, as in mango. `1`: "Fit layout" first in the menu bar's menu, where the layout can be fitted, also when the notification is gone. The dispatcher `chutney_fit_layout` works at any level. `2`: also a macOS notification when a window goes over and the layout can be fitted; its Fit button, or a click on it, fits it (macOS asks once to allow notifications). Where there is no room, a notification says so and what the window needs, with no button. `3`: also by itself, at most three times while the view of tags, layout and windows stays, never in overview or a drag; where there is no room, the same notification. Only the selected monitor. |
 | `chutney_tab_bar_decorate_icon` | `0` | In mango's tab bar (`monocle_tab_mode`, `deck_tab_mode`): the app's icon before each tab's title. |
 | `chutney_group_bar_decorate_icon` | `0` | In mango's group bar: the app's icon before each member's title. |
-| `chutney_tab_bar_shortcuts` | `0` | ⌘1–9 picks a tab while a tab bar is shown; the numbers show while ⌘ is held. |
 
 **Colours.** With `chutney_macos_appearance=1` Mango Chutney writes `chutney_theme.conf`, and again when the
 accent colour or light/dark mode changes, then reloads the config: `focus_color` and `split_color`

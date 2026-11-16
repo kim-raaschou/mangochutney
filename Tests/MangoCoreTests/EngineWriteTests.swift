@@ -212,6 +212,20 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertNil(specs.first { $0.id == f.id }?.clip, "a floating window is not clipped")
     }
 
+    /// The border is drawn where the window is shown: after the commit has written it, not where it was.
+    func testTheBorderFollowsTheWindowTheCommitWrites() {
+        let r = EngineRig()
+        r.server.renderBorder = true
+        r.server.drawsOverlays = true
+        r.server.config.borderpx = 4
+        let c = r.window(1, frame: CGRect(x: 50, y: 60, width: 300, height: 400))
+        r.server.arrange(r.monitor, false, false)
+        r.frame()
+        let spec = (r.server.system as! FakeWindowSystem).borderSpecs.first { $0.id == c.id }
+        XCTAssertEqual(spec?.frame, r.app.frames[1], "around the window where it is now")
+        XCTAssertEqual(spec?.frame, c.tile)
+    }
+
     /// wlroots shows the scene at the output commit: an arrange's resizes of one window (set_arrange_visible's,
     /// then the layout's) reach the app as one write, the last.
     func testAnArrangeWritesEachWindowOnceWhenTheFrameIsShown() {

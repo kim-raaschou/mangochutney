@@ -94,6 +94,7 @@ enum ShortcutFormatter {
         case "chutney_launch_or_focus": return "focus or open \(a0)"
         case "chutney_fit_layout": return "fit the layout to the windows"
         case "chutney_view_fullscreen": return "view fullscreen tag F\(a0)"
+        case "chutney_toggle_fullscreen": return "toggle fullscreen tag F\(a0)"
         case "overcircle": return "overview, tab mode"
         case "reload_config": return "reload config"
         case "quit": return "quit mango"

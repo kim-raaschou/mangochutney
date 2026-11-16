@@ -98,7 +98,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(c.chutneyMacOSAppearance)
         XCTAssertTrue(c.chutneyTabBarDecorateIcon)
         XCTAssertTrue(c.chutneyGroupBarDecorateIcon)
-        XCTAssertTrue(c.chutneyTabBarShortcuts)
         XCTAssertEqual(c.chutneyHyperModifier, "super+ctrl+alt")
         let hotkeys = c.keyBindings.first { $0.dispatch.name == "chutney_keybindings" }
         XCTAssertEqual(hotkeys?.mods, .hyper, "on the Hyper layer")

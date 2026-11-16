@@ -121,7 +121,6 @@ public enum MangoCompat {
         "chutney_fit_layout": "where a tiled window's app keeps it larger than its tile: where the layout has room for it on that side, mango's resizewin on it by what it lacks; 1: \"Fit layout\" in the menu bar's menu, 2: also a macOS notification with a Fit button, or one saying there is no room, 3: by itself (the dispatcher chutney_fit_layout always)",
         "chutney_tab_bar_decorate_icon": "the app's icon before each tab's title in the tab bar",
         "chutney_group_bar_decorate_icon": "the app's icon before each title in the group bar",
-        "chutney_tab_bar_shortcuts": "⌘1-9 picks a tab while a tab bar is shown",
         ]
         return t
     }()
@@ -131,6 +130,7 @@ public enum MangoCompat {
         "chutney_restart": "quit, with hidden windows left hidden for the next mango (make install, mmsg service restart)",
         "chutney_keybindings": "the keybindings palette: search the bindings, move with the keys, Return runs one",
         "chutney_fit_layout": "fit the selected monitor's layout to the windows larger than their tiles, with mango's resizewin, where the layout has room",
+        "chutney_toggle_fullscreen": "chutney_fullscreen_tag's F tag N (1–12) as a toggle: the focused window there goes out of macOS fullscreen; with F tag N empty the focused window goes into it; another window there is viewed",
         "chutney_view_fullscreen": "chutney_fullscreen_tag's F tag N (1–12): its window in macOS fullscreen focused, so macOS goes to its Space",
         "chutney_layout_switcher": "the layout switcher: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one",
     ]

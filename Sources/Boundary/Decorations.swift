@@ -27,7 +27,6 @@ public struct TabStrip: Equatable {
         public var title: String
         public var focused: Bool
         public var pid: pid_t = 0
-        public var shortcut: Int? = nil
         public var frame: CGRect = .zero
     }
     public var frame: CGRect
