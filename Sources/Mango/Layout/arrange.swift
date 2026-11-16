@@ -15,19 +15,19 @@ package struct Layout {
 @MainActor package let layouts: [Layout] = [
     // At least two are required; fewer than two cannot be removed.
     /* symbol     arrange function   name */
-    Layout(symbol: "T", arrange: { $0.layoutEngineArrange($1) }, name: "tile", id: .tile), // Tiled layout
+    Layout(symbol: "T", arrange: { $0.tile($1) }, name: "tile", id: .tile), // Tiled layout
     Layout(symbol: "S", arrange: { $0.layoutEngineArrange($1) }, name: "scroller", id: .scroller), // Scroll layout
-    Layout(symbol: "G", arrange: { $0.layoutEngineArrange($1) }, name: "grid", id: .grid), // Grid layout
-    Layout(symbol: "M", arrange: { $0.layoutEngineArrange($1) }, name: "monocle", id: .monocle), // Single layout
-    Layout(symbol: "K", arrange: { $0.layoutEngineArrange($1) }, name: "deck", id: .deck), // Card layout
-    Layout(symbol: "CT", arrange: { $0.layoutEngineArrange($1) }, name: "center_tile", id: .centerTile), // Centered layout
-    Layout(symbol: "RT", arrange: { $0.layoutEngineArrange($1) }, name: "right_tile", id: .rightTile), // Right layout
+    Layout(symbol: "G", arrange: { $0.grid($1) }, name: "grid", id: .grid), // Grid layout
+    Layout(symbol: "M", arrange: { $0.monocle($1) }, name: "monocle", id: .monocle), // Single layout
+    Layout(symbol: "K", arrange: { $0.deck($1) }, name: "deck", id: .deck), // Card layout
+    Layout(symbol: "CT", arrange: { $0.centerTile($1) }, name: "center_tile", id: .centerTile), // Centered layout
+    Layout(symbol: "RT", arrange: { $0.rightTile($1) }, name: "right_tile", id: .rightTile), // Right layout
     Layout(symbol: "VS", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_scroller", id: .verticalScroller), // Vertical scroll layout
     Layout(symbol: "VT", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_tile", id: .verticalTile), // Vertical tiled layout
     Layout(symbol: "VG", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_grid", id: .verticalGrid), // Vertical grid layout
     Layout(symbol: "VK", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_deck", id: .verticalDeck), // Vertical card layout
     Layout(symbol: "DW", arrange: { $0.layoutEngineArrange($1) }, name: "dwindle", id: .dwindle),
-    Layout(symbol: "F", arrange: { $0.layoutEngineArrange($1) }, name: "fair", id: .fair),
+    Layout(symbol: "F", arrange: { $0.fair($1) }, name: "fair", id: .fair),
     Layout(symbol: "VF", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_fair", id: .verticalFair),
 ]
 

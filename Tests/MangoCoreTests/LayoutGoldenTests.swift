@@ -250,6 +250,55 @@ final class LayoutGoldenTests: MangoTestCase {
         XCTAssertEqual(checked, 189)
     }
 
+    /// mango's layout functions themselves (layout/horizontal.c in the core), on a monitor with the C
+    /// generator's numbers, against the boxes mango's C gave.
+    @MainActor
+    func testMangosLayoutFunctionsMatchC() {
+        let shares: [Float] = [0.3, 0.7, 0.2, 0.5, 0.3, 0.4, 0.6, 0.1, 0.9]
+        let ported: Set<String> = ["tile", "right_tile", "center_tile", "grid", "fair", "monocle", "deck"]
+        var checked = 0
+        for line in Self.stateless.split(separator: "\n") {
+            let f = line.split(separator: " ")
+            var name = String(f[0]); let useShares = name.hasSuffix("+shares")
+            if useShares { name.removeLast(7) }
+            guard ported.contains(name) else { continue }
+            let p = Self.params[Int(f[1])!], n = Int(f[2])!
+            let expected = Self.rects(Array(f[3...]))
+            let area = CGRect(x: p.x, y: p.y, width: p.w, height: p.h)
+            let r = EngineRig()
+            r.server.rebuildMonitors(screens: [Screen(displayID: 1, name: "golden", frame: area, workArea: area, scale: 1, isMain: true)])
+            let m = r.monitor
+            r.server.config.centerMasterOverspread = p.overspread; r.server.config.centerWhenSingleStack = p.single
+            r.server.config.tabBarHeight = 0   // the C generator drew no tab bar
+            r.server.config.gappih = p.ih; r.server.config.gappiv = p.iv
+            r.server.config.gappoh = p.oh; r.server.config.gappov = p.ov
+            m.gappih = Int32(p.ih); m.gappiv = Int32(p.iv); m.gappoh = Int32(p.oh); m.gappov = Int32(p.ov)
+            let tag = getMonCurtag(m)
+            m.pertag.nmasters[tag] = Int32(p.nmaster)
+            m.pertag.mfacts[tag] = Float(p.mfact)
+            m.pertag.ltidxs[tag] = LayoutKind(name: name)!
+            var per = [CGFloat](repeating: 0, count: n)
+            if useShares {
+                let mc = min(n, p.nmaster)
+                var sm: Float = 0, ss: Float = 0
+                for i in 0..<n { if i < mc { sm += shares[i] } else { ss += shares[i] } }
+                for i in 0..<n { per[i] = CGFloat(shares[i] / (i < mc ? sm : ss)) }
+            }
+            let cs = (1...n).map { r.window(CGWindowID($0), frame: area) }
+            for (i, c) in cs.enumerated() {
+                c.masterInnerPer = per[i]; c.stackInnerPer = per[i]
+                c.masterMfactPer = 0; c.gridColPer = 0; c.gridRowPer = 0; c.gridColIdx = -1; c.gridRowIdx = -1
+            }
+            m.visibleFakeTilingClients = Int32(n)
+            layouts.first { $0.id == m.layout }!.arrange(r.server, m)
+            for (i, c) in cs.enumerated() {
+                XCTAssertEqual(c.geom, expected[i], "\(line.prefix(24)) client \(c.id)")
+            }
+            checked += 1
+        }
+        XCTAssertGreaterThan(checked, 100)
+    }
+
     static let scroller = """
     s m0 c0 s0 i0 n4 | 20,35,937,1060 962,35,1500,1060 2467,35,1875,1060 4347,35,937,1060 | -3365,35,937,1060 -2423,35,1500,1060 -918,35,1875,1060 962,35,937,1060 | -922,35,937,1060 20,35,1500,1060 1525,35,1875,1060 3405,35,937,1060 | -2422,35,937,1060 -1480,35,1500,1060 25,35,1875,1060 1905,35,937,1060 | 20,35,937,1060 962,35,1500,1060 2467,35,1875,1060 4347,35,937,1060 | -3365,35,937,1060 -2423,35,1500,1060 -918,35,1875,1060 962,35,937,1060
     s m0 c0 s0 i0 n6 | 20,35,937,1060 962,35,1500,1060 2467,35,1875,1060 4347,35,937,1060 5289,35,1500,1060 6794,35,562,1060 | -5437,35,937,1060 -4495,35,1500,1060 -2990,35,1875,1060 -1110,35,937,1060 -168,35,1500,1060 1337,35,562,1060 | -922,35,937,1060 20,35,1500,1060 1525,35,1875,1060 3405,35,937,1060 4347,35,1500,1060 5852,35,562,1060 | -3365,35,937,1060 -2423,35,1500,1060 -918,35,1875,1060 962,35,937,1060 1904,35,1500,1060 3409,35,562,1060 | 20,35,937,1060 962,35,1500,1060 2467,35,1875,1060 4347,35,937,1060 5289,35,1500,1060 6794,35,562,1060 | -5437,35,937,1060 -4495,35,1500,1060 -2990,35,1875,1060 -1110,35,937,1060 -168,35,1500,1060 1337,35,562,1060

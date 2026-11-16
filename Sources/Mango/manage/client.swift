@@ -23,6 +23,31 @@ package extension MangoServer {
         }
     }
 
+    func clientTileResize(_ c: Client, _ box: CGRect, _ interact: Bool, _ ctx: LayoutContext?) {
+        var geo = box
+        if let ctx, let probe = ctx.probe {
+            if c === probe { ctx.out = geo }
+            return
+        }
+
+        guard ISFAKETILED(c), let m = c.mon else { return }
+
+        if !m.isoverview && !c.isfullscreen && clientWantsGroupBar(c) {
+            geo.origin.y = geo.minY + CGFloat(config.groupBarHeight)
+            geo.size.height -= CGFloat(config.groupBarHeight)
+        }
+
+        // not in mango: c->tab_prev || c->tab_next; the tab chain is the view's members (docs/afvigelser.md §5)
+        if !m.isoverview && !c.isfullscreen && config.tabBarHeight > 0 && tabMembers(m).contains(where: { $0 === c }) {
+            geo.origin.y = geo.minY + CGFloat(config.tabBarHeight)
+            geo.size.height -= CGFloat(config.tabBarHeight)
+        }
+
+        if (!c.isfullscreen && !c.ismaximizescreen) || m.layout.isScroller {
+            resize(c, geo, ResizeOpts(interact: interact))
+        }
+    }
+
     func clientSetBounds(_ c: Client, _ bbox: CGRect) {
         /* set minimum possible */
         c.geom.size.width = max(1 + 2 * c.bw, c.geom.width)
