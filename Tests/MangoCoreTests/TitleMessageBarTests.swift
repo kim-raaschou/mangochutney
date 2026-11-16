@@ -86,7 +86,7 @@ final class TitleMessageBarTests: MangoTestCase {
         let next = try XCTUnwrap(r.monitor.sel)
         XCTAssertNotEqual(next, sel)
         XCTAssertEqual(bar.lastText, "t\(next)\ntest", "it follows the focused client")
-        r.server.leaveOverview()
+        r.server.leaveOverview(Arg())
         XCTAssertFalse(bar.enabled)
     }
 

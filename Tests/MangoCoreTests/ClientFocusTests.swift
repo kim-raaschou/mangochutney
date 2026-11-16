@@ -106,7 +106,7 @@ final class ClientFocusTests: MangoTestCase {
 
     func testAParkedGroupMemberIsNotRaised() {
         let (r, a, b) = rig()
-        r.server.clientGroupJoin(b, into: a)
+        r.server.clientGroupJoin(b, a)
         r.arrange()
         XCTAssertTrue(b.isGroupMember)
         r.settle()
@@ -120,13 +120,13 @@ final class ClientFocusTests: MangoTestCase {
 
     func testTheGroupMemberSwitchedToIsLifted() {
         let (r, a, b) = rig()
-        r.server.clientGroupJoin(b, into: a)
+        r.server.clientGroupJoin(b, a)
         r.arrange()
         r.settle()
         let shown = a.isGroupFocus ? a : b, other = shown === a ? b : a
         XCTAssertTrue(other.parked)
         fake(r).focused = []
-        r.server.groupFocus(next: shown.groupNext === other)
+        r.server.groupFocus(Arg(i: shown.groupNext === other ? NEXT : PREV))
         r.settle()
         XCTAssertEqual(r.server.focused?.id, other.id)
         XCTAssertEqual(fake(r).focused.last?.id, other.id)

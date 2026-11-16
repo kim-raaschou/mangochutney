@@ -33,7 +33,7 @@ final class LaunchOrFocusTests: MangoTestCase {
     func testLaunchOrFocusIsAKnownPortExtension() {
         XCTAssertTrue(Dispatch.isKnown("chutney_launch_or_focus"))
         XCTAssertFalse(Dispatch.knownNames.contains("chutney_launch_or_focus"))
-        guard case .success(let d) = BindingParser.parseFuncName(["chutney_launch_or_focus", "com.mitchellh.ghostty"]) else {
+        guard case .success(let d) = BindingParser.parseBindDispatch(["chutney_launch_or_focus", "com.mitchellh.ghostty"]) else {
             return XCTFail("chutney_launch_or_focus does not parse")
         }
         XCTAssertEqual(d.args, ["com.mitchellh.ghostty"])

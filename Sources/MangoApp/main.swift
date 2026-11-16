@@ -409,14 +409,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    @objc func reload() { server?.reloadConfig() }
+    @objc func reload() { server?.reloadConfig(nil) }
 
     func saveMenuChoice(_ key: String, _ value: String) {
         guard let server, let url = MenuSave.url(server.config, configURL: server.configURL) else { return }
         let now = server.config.chutneyHyperKey
         guard value != now, !(value == "none" && now.isEmpty) else { return }
         MenuSave.set(key, value, in: url)
-        server.reloadConfig()
+        server.reloadConfig(nil)
     }
     @objc func quit() { NSApp.terminate(nil) }
 

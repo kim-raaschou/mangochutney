@@ -72,23 +72,23 @@ package extension MangoServer {
     }
 
     // not in mango: nil is UNDIR
-    func isSpecialAnimationRule(_ c: Client) -> Direction? {
-        guard let m = c.mon else { return nil }
+    func isSpecialAnimationRule(_ c: Client) -> Int32 {
+        guard let m = c.mon else { return UNDIR }   // not in mango: c->mon is always set here
         let visibleTilingClients = m.visibleTilingClients
         if isScrollerLayout(m) && !c.isfloating {
-            return .down
+            return DOWN
         } else if visibleTilingClients == 1 && !c.isfloating {
-            return .down
+            return DOWN
         } else if visibleTilingClients == 2 && !c.isfloating && !config.newIsMaster && isHorizontalStackLayout(m) {
-            return .right
+            return RIGHT
         } else if !c.isfloating && config.newIsMaster && isHorizontalStackLayout(m) {
-            return .left
+            return LEFT
         } else if visibleTilingClients == 2 && !c.isfloating && !config.newIsMaster && isHorizontalRightStackLayout(m) {
-            return .left
+            return LEFT
         } else if !c.isfloating && config.newIsMaster && isHorizontalRightStackLayout(m) {
-            return .right
+            return RIGHT
         } else {
-            return nil
+            return UNDIR
         }
     }
 
@@ -125,15 +125,15 @@ package extension MangoServer {
         } else {
             guard let mon = c.mon else { return }   // not in mango: c->mon is always set here
             let m = mon.m, w = mon.w
-            let slideDirection: Direction?
+            let slideDirection: Int32
             let specialDirection = isSpecialAnimationRule(c)
             let centerX = c.geom.minX + (c.geom.width / 2).rounded(.towardZero)
             let centerY = c.geom.minY + (c.geom.height / 2).rounded(.towardZero)
-            if specialDirection == nil {
-                let horizontal: Direction = w.minX + w.width - centerX < centerX - w.minX ? .right : .left
-                let horizontalValue = horizontal == .left ? centerX - w.minX : w.minX + w.width - centerX
-                let vertical: Direction = w.minY + w.height - centerY < centerY - w.minY ? .down : .up
-                let verticalValue = vertical == .up ? centerY - w.minY : w.minY + w.height - centerY
+            if specialDirection == UNDIR {
+                let horizontal = w.minX + w.width - centerX < centerX - w.minX ? RIGHT : LEFT
+                let horizontalValue = horizontal == LEFT ? centerX - w.minX : w.minX + w.width - centerX
+                let vertical = w.minY + w.height - centerY < centerY - w.minY ? DOWN : UP
+                let verticalValue = vertical == UP ? centerY - w.minY : w.minY + w.height - centerY
                 slideDirection = horizontalValue < verticalValue ? horizontal : vertical
             } else {
                 slideDirection = specialDirection
@@ -141,16 +141,16 @@ package extension MangoServer {
             c.animainitGeom.size.width = c.geom.width
             c.animainitGeom.size.height = c.geom.height
             switch slideDirection {
-            case .up:
+            case UP:
                 c.animainitGeom.origin.x = c.geom.minX
                 c.animainitGeom.origin.y = m.minY - c.geom.height
-            case .down:
+            case DOWN:
                 c.animainitGeom.origin.x = c.geom.minX
                 c.animainitGeom.origin.y = c.geom.minY + m.height - (c.geom.minY - m.minY)
-            case .left:
+            case LEFT:
                 c.animainitGeom.origin.x = m.minX - c.geom.width
                 c.animainitGeom.origin.y = c.geom.minY
-            case .right:
+            case RIGHT:
                 c.animainitGeom.origin.x = c.geom.minX + m.width - (c.geom.minX - m.minX)
                 c.animainitGeom.origin.y = c.geom.minY
             default:

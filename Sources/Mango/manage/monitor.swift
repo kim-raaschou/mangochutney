@@ -13,10 +13,6 @@ import CoreGraphics
     return m.pertag.curtag != 0 ? m.pertag.curtag : 1
 }
 
-// not in mango: Monitor's NEXT and PREV for monitor_from_cycle
-let MON_NEXT: Int32 = 1
-let MON_PREV: Int32 = -1
-
 package extension MangoServer {
     // true if m still has a live (not minimized/destroyed) special window
     func specialHasClients(_ m: Monitor?) -> Bool {
@@ -39,16 +35,17 @@ package extension MangoServer {
     }
 
     // not in mango: wlr_output_layout_adjacent_output and _farthest_output, from the selected monitor's position
-    func monitorFromDirection(_ dir: Direction) -> Monitor? {
+    func monitorFromDirection(_ dir: Int32) -> Monitor? {
         guard let sm = selectedMonitor else { return nil }
         let ref = sm.m, p = ref.origin
-        func inDirection(_ b: CGRect, _ dirs: [Direction]) -> Bool {
+        func inDirection(_ b: CGRect, _ dirs: [Int32]) -> Bool {
             dirs.contains { d in
                 switch d {
-                case .left: return b.maxX <= ref.minX
-                case .right: return b.minX >= ref.maxX
-                case .up: return b.maxY <= ref.minY
-                case .down: return b.minY >= ref.maxY
+                case LEFT: return b.maxX <= ref.minX
+                case RIGHT: return b.minX >= ref.maxX
+                case UP: return b.maxY <= ref.minY
+                case DOWN: return b.minY >= ref.maxY
+                default: return false
                 }
             }
         }
@@ -60,7 +57,7 @@ package extension MangoServer {
         if let next = others.filter({ inDirection($0.m, [dir]) }).min(by: { distance($0.m) < distance($1.m) }) {
             return next
         }
-        let rest: [Direction] = [.left, .right, .up, .down].filter { $0 != dir }
+        let rest: [Int32] = [LEFT, RIGHT, UP, DOWN].filter { $0 != dir }
         var farthest: Monitor?, maxDistance: CGFloat = 0
         for o in others where inDirection(o.m, rest) {
             let d = distance(o.m)
@@ -258,7 +255,7 @@ package extension MangoServer {
             // not in mango: the closed monitor's overview, not the selected one's (a mango bug, docs/afvigelser.md §6)
             let keep = selectedMonitor
             selectedMonitor = m
-            toggleOverview()
+            toggleOverview(Arg())
             selectedMonitor = keep
         }
 

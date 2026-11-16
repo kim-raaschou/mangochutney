@@ -33,7 +33,7 @@ final class KeyboardOptionsTests: MangoTestCase {
         try "xkb_rules_options=caps:hyper\n".write(to: url, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: url) }
         r.server.configURL = url
-        r.server.reloadConfig()
+        r.server.reloadConfig(nil)
         XCTAssertEqual((r.server.system as! FakeWindowSystem).keyboardOptions, "caps:hyper")
     }
 

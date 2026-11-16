@@ -20,7 +20,7 @@ final class FrameClockTests: MangoTestCase {
         c.isfloating = true
         r.arrange()
         r.settle(0.3)
-        c.floatGeom = CGRect(x: 200, y: 40, width: 100, height: 100)
+        c.geom = CGRect(x: 200, y: 40, width: 100, height: 100)   // mango moves a floating client by its geom
         r.arrange()
         XCTAssertTrue(c.animation.running)
         var ran = false

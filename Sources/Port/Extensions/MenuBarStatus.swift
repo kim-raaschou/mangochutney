@@ -87,7 +87,7 @@ public enum MenuBarStatus {
     @MainActor
     public static func viewTag(_ server: MangoServer, monitor name: String, tag: Int) {
         guard tag > 0, let m = server.monitors.first(where: { $0.screen.name == name }) else { return }
-        if m !== server.selectedMonitor { server.focusMonitor(m) }
+        if m !== server.selectedMonitor { server.chutneyFocusMonitor(m) }
         if tag > server.config.tagNum { return FullscreenTag.viewTag(server, m, tag: tag) }   // Port extension: chutney_fullscreen_tag
         _ = server.dispatch(Dispatch(name: "view", args: ["\(tag)"]))
     }

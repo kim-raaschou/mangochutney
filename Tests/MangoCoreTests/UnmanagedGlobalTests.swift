@@ -19,7 +19,7 @@ final class UnmanagedGlobalTests: MangoTestCase {
         XCTAssertFalse(r.app.writes.contains { $0.id == pet }, "mango does not move it")
         XCTAssertEqual(r.app.frames[pet], petFrame)
 
-        r.server.clientViewOnMonitor(1 << 1, on: r.monitor)
+        r.server.clientViewOnMonitor(Arg(ui: 1 << 1), true, r.monitor, r.monitor === r.server.selectedMonitor)
         r.settle()
         XCTAssertTrue(VISIBLEON(u, r.monitor), "on every tag")
         XCTAssertEqual(u.tags, 1 << 1, "and reported on the tag in view, as in mango")

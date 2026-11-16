@@ -160,6 +160,14 @@ HYPER,F1–F12 i `~/.config/mango/config.conf` om (backup og diff af hele filen 
   trin 6; en flydende klients `geom` (trin 6) bestemmer `apply_window_snap`, `set_float_malposition`
   og den sidste `resize` i `handle_client_map`; `pointer_process_motion(0)` i `client_focus` og unmap
   venter på trin 7.
+- Trin 6 (16. november): `dispatch/bind.swift` er mangos `bind.c` i mangos rækkefølge, hver dispatcher
+  med `Arg`; `Config/binding_parse.swift` er `parse_func_name` og `Config/value_parse.swift` mangos
+  værdi-parsere. `dispatch(_:)` er kun indgangen: `parse_func_name` med bindingens felter og kaldet.
+  Retningerne er mangos `UP`…`ALLDIR`; `client_view_on_monitor`, `client_switch_view` og `tag_client`
+  har mangos signatur. Et flydende vindues `geom` er mangos: `pre_calculate_before_arrange` tager det
+  ikke længere fra `float_geom`, og `apply_window_snap` arbejder på `geom` og slutter med `resize`.
+  IPC splitter alle dispatchere ens, som `ipc.c`. Tilbage til trin 7: `Direction` i akse- og
+  gestus-bindingerne og `pointer_process_motion(0)`.
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter

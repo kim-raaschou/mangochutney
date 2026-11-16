@@ -1,5 +1,7 @@
 import QuartzCore
 
+let CurNormal: UInt32 = 0, CurPressed: UInt32 = 1, CurMove: UInt32 = 2, CurResize: UInt32 = 3 /* cursor */
+
 package struct Grab {
     package enum Mode { case move, resize }
     package let client: Client
@@ -77,7 +79,7 @@ package extension MangoServer {
             case .leaveOvercircle:
                 // In overcircle mode, releasing the mode key exits overview.
                 if let m = selectedMonitor, m.ovTabLayout, !m.isJumpMode, m.isoverview, m.sel != nil {
-                    toggleOverview()
+                    toggleOverview(Arg())
                 }
             case .switcherCommit:
                 switcherCommit()
@@ -90,12 +92,12 @@ package extension MangoServer {
             // not in mango: the event tap decided before the bindings ran; is_jump_mode is asked after them
             case .overviewKey(.escape):
                 if selectedMonitor?.isJumpMode == true {
-                    toggleJump()
+                    toggleJump(Arg())
                 }
             case .overviewKey(.jump(let keycode)):
                 if let m = selectedMonitor, m.isJumpMode, let target = keyboardFindJumpClient(m, keycode) {
                     clientFocus(target, true)
-                    toggleOverview(tc: target)
+                    toggleOverview(Arg(tc: target))
                 }
             case .forward:
                 break
@@ -126,7 +128,7 @@ package extension MangoServer {
                 clientFocus(c, true)
             }
             // In overview mode, left click jumps and right click closes windows.
-            if selectedMonitor.isoverview, let c, button == 0 { toggleOverview(tc: c); return true }
+            if selectedMonitor.isoverview, let c, button == 0 { toggleOverview(Arg(tc: c)); return true }
             if selectedMonitor.isoverview, let c, button == 1 { pendingKillClient(c); return true }
             if let bar, !bar.isTab, button == 0, let tc = clientByIdAll(bar.client) {
                 if bar.onClose { pendingKillClient(tc); return true }
@@ -163,7 +165,7 @@ package extension MangoServer {
             system.showDropArea(nil, color: config.dropcolor)
             g.client.isfloating = false
             g.client.floatGeom = d.floatBackup
-            clientGroupJoin(g.client, into: target)
+            clientGroupJoin(g.client, target)
             printstatus(.arrangge)
             return true
         }
@@ -288,7 +290,7 @@ package extension MangoServer {
         if config.enableHotarea && !m.isInHotarea && inHotarea {
             /* Hot-area entry: uses the normal grid layout. */
             m.ovNormalMode = true
-            toggleOverview()
+            toggleOverview(Arg())
             m.isInHotarea = true
         } else if config.enableHotarea && m.isInHotarea && !inHotarea {
             m.isInHotarea = false
@@ -354,6 +356,7 @@ package extension MangoServer {
                 let f = g.startFrame.offsetBy(dx: p.x - g.startMouse.x, dy: p.y - g.startMouse.y)
                 c.iscustomsize = true
                 c.floatGeom = f.insetBy(dx: -c.bw, dy: -c.bw)
+                c.geom = c.floatGeom
                 updateDragTile(at: p)
                 c.frame = f
                 system.setFrame(c, f, size: false)
@@ -428,6 +431,7 @@ package extension MangoServer {
 
         let f = box.insetBy(dx: bw, dy: bw)   // not in mango: the port's window frame is without the border
         gc.floatGeom = box
+        gc.geom = box
 
         gc.frame = f
         system.setFrame(gc, f, size: true)

@@ -169,7 +169,7 @@ final class TabStripTests: MangoTestCase {
     func testAGroupBarOverATabHiddenOwnerIsNotDrawn() {
         let r = rig(.monocle, windows: 3)
         let a = r.server.clientByIdAll(900_100)!, b = r.server.clientByIdAll(900_101)!
-        r.server.clientGroupJoin(b, into: a)
+        r.server.clientGroupJoin(b, a)
         let owner = [a, b].first { !$0.groupParked }!
         r.server.clientFocus(owner, false)
         r.arrange()
@@ -183,7 +183,7 @@ final class TabStripTests: MangoTestCase {
     func testAGroupBarIsFocusedOnlyWhileItsWindowIsTheSelection() {
         let r = rig(.tile, windows: 3)
         let a = r.server.clientByIdAll(900_100)!, b = r.server.clientByIdAll(900_101)!
-        r.server.clientGroupJoin(b, into: a)
+        r.server.clientGroupJoin(b, a)
         let owner = [a, b].first { !$0.groupParked }!
         r.server.clientFocus(owner, false)
         XCTAssertEqual(drawn(r).groupStrips[0].segments.filter(\.focused).map(\.id), [owner.id])

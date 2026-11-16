@@ -1,5 +1,7 @@
 import CoreGraphics
 
+let SW_CURRENT_TAG: Int32 = 0, SW_ALL_TAG: Int32 = 1, SW_ALL_MON: Int32 = 2
+
 package struct SwitcherState {
     enum Scope { case currentTag, allTags, allMonitors }
 
@@ -11,16 +13,11 @@ package struct SwitcherState {
 }
 
 package extension MangoServer {
-    func switcher(_ arg: String) {
-        let (dir, scope): (Int, SwitcherState.Scope) = switch arg {
-        case "all_next": (1, .allMonitors)
-        case "all_prev": (-1, .allMonitors)
-        case "all_tag_next": (1, .allTags)
-        case "all_tag_prev": (-1, .allTags)
-        case "prev": (-1, .currentTag)
-        default: (1, .currentTag)
-        }
-        guard selectedMonitor != nil, !selectedMonitor.isJumpMode, !monitors.contains(where: { $0.isoverview }) else { return }
+    func switcher(_ arg: Arg) -> Int32 {
+        let dir = arg.i == PREV ? -1 : 1
+        // not in mango: the scope as SwitcherState.Scope
+        let scope: SwitcherState.Scope = arg.i2 == SW_ALL_MON ? .allMonitors : arg.i2 == SW_ALL_TAG ? .allTags : .currentTag
+        guard selectedMonitor != nil, !selectedMonitor.isJumpMode, !monitors.contains(where: { $0.isoverview }) else { return 0 }
         if let sw = switcherState {
             if scope != sw.scope {
                 switcherClose()
@@ -31,6 +28,7 @@ package extension MangoServer {
         } else {
             switcherOpen(scope, dir)
         }
+        return 0
     }
 
     func switcherClientEligible(_ c: Client) -> Bool {
@@ -76,7 +74,7 @@ package extension MangoServer {
     func switcherCommitClient(_ c: Client?) {
         switcherClose()
         guard let c, switcherClientEligible(c), let cm = c.mon else { return }
-        if !VISIBLEON(c, cm) { clientViewOnMonitor(getTagsFirstTag(c.tags), on: cm) }
+        if !VISIBLEON(c, cm) { clientViewOnMonitor(Arg(ui: getTagsFirstTag(c.tags)), true, cm, true) }
         clientFocus(c, true)
     }
 

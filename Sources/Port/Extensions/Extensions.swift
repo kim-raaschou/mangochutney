@@ -49,8 +49,25 @@ extension MangoServer {
         portHooks.configLoaded.append { server in
             guard ChutneyTheme.sync(configURL: server.configURL, style: server.config.chutneyMacOSAppearance) else { return }
             mangoError(true, .info, "chutney_macos_appearance: \(ChutneyTheme.fileName) written for chutney_macos_appearance=\(server.config.chutneyMacOSAppearance ? 1 : 0)")
-            DispatchQueue.main.async { MainActor.assumeIsolated { server.reloadConfig() } }
+            DispatchQueue.main.async { MainActor.assumeIsolated { server.reloadConfig(nil) } }
         }
         observeMacOSTheme()
+    }
+}
+
+extension MangoServer {
+    /// Port extension: not in mango. focus_monitor's steps once it has the monitor, for the port's
+    /// menus, which know the monitor itself rather than its name.
+    func chutneyFocusMonitor(_ tm: Monitor) {
+        guard tm !== selectedMonitor else { return }
+        setSelectedMonitor(tm)
+        if config.warpcursor { pointerWarpToMonitor(tm) }
+        if let c = clientFocusTop(tm) {
+            clientFocus(c, true)
+        } else {
+            tm.sel = nil
+            system.keyboardNotifyClearFocus()
+            clientFocus(nil, false)
+        }
     }
 }

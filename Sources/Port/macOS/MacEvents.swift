@@ -85,6 +85,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.isminimized = d.isminimized && !d.isScratchpad
         c.isnamedscratchpad = d.isnamedscratchpad
         c.floatGeom = d.floatFrame.insetBy(dx: -c.bw, dy: -c.bw)
+        if c.isfloating { c.geom = c.floatGeom }   // mango's floating client stands at its float_geom
         if let p = d.scrollerProportion { c.scrollerProportion = Float(p) }
         c.iscustomsize = d.iscustomsize
         c.isPendingOpenAnimation = false
@@ -137,7 +138,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         guard let m = monitor(of: c) else { return }
         wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map(String.init) ?? "none"))")
         if m.isoverview {
-            if !m.isJumpMode, server.focused !== c, m === server.selectedMonitor { server.toggleOverview(tc: c) }
+            if !m.isJumpMode, server.focused !== c, m === server.selectedMonitor { server.toggleOverview(Arg(tc: c)) }
             return
         }
         if c.groupParked { server.clientFocusGroupMember(c); return }

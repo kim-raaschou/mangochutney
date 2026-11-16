@@ -304,13 +304,13 @@ final class ConfigParserTests: MangoTestCase {
     }
 
     func testParseDispatch() {
-        XCTAssertEqual(try BindingParser.parseFuncName(["view", " 1 ", "0"]).get(), Dispatch(name: "view", args: ["1", "0"]))
-        XCTAssertEqual(try BindingParser.parseFuncName(["focusdir", "left", "", "x"]).get().args, ["left"])
-        XCTAssertEqual(try BindingParser.parseFuncName(["movewin", "1", "2", "3", "4", "5", "6"]).get().args,
+        XCTAssertEqual(try BindingParser.parseBindDispatch(["view", " 1 ", "0"]).get(), Dispatch(name: "view", args: ["1", "0"]))
+        XCTAssertEqual(try BindingParser.parseBindDispatch(["focusdir", "left", "", "x"]).get().args, ["left"])
+        XCTAssertEqual(try BindingParser.parseBindDispatch(["movewin", "1", "2", "3", "4", "5", "6"]).get().args,
                        ["1", "2", "3", "4", "5,6"])
-        XCTAssertEqual(try BindingParser.parseFuncName(["dwindle_toggle_current_split"]).get().name,
+        XCTAssertEqual(try BindingParser.parseBindDispatch(["dwindle_toggle_current_split"]).get().name,
                        "dwindle_toggle_current_split")
-        guard case .failure(let msg) = BindingParser.parseFuncName(["nonsense", "1"]) else {
+        guard case .failure(let msg) = BindingParser.parseBindDispatch(["nonsense", "1"]) else {
             return XCTFail("expected failure")
         }
         XCTAssertTrue(msg.contains("nonsense"))

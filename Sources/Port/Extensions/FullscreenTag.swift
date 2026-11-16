@@ -125,7 +125,7 @@ enum FullscreenTag {
         guard let m = c.mon else { return }
         if m.tagset[m.seltags] & home.bit != 0 {
             let desktop = m.tagset[m.seltags ^ 1]
-            server.clientViewOnMonitor(c.tags, on: m)
+            server.clientViewOnMonitor(Arg(ui: c.tags), true, m, m === server.selectedMonitor)
             m.tagset[m.seltags ^ 1] = desktop & ~mask(server.config) != 0 ? desktop : m.tagset[m.seltags]
             server.clientFocus(c, true)
         } else {
@@ -202,7 +202,7 @@ enum FullscreenTag {
     static func viewDesktop(_ server: MangoServer, _ m: Monitor) {
         guard isFullscreenView(m, server.config), !m.isoverview else { return }
         server.mac.fullscreenTag.viewed.remove(m.screen.displayID)
-        server.clientViewOnMonitor(desktopView(m, server.config), on: m, changeFocus: false)
+        server.clientViewOnMonitor(Arg(ui: desktopView(m, server.config)), true, m, false)
     }
 
     /// The active Space changed: on each monitor, the F tag of the window in fullscreen on screen (the
@@ -328,7 +328,7 @@ enum FullscreenTag {
         let bit = bits[n - 1]
         let monitors = [server.selectedMonitor].compactMap { $0 } + server.monitors.filter { $0 !== server.selectedMonitor }
         guard let m = monitors.first(where: { window(server, on: $0, bit) != nil }) else { return nil }
-        if m !== server.selectedMonitor { server.focusMonitor(m) }
+        if m !== server.selectedMonitor { server.chutneyFocusMonitor(m) }
         view(server, m, bit)
         return nil
     }

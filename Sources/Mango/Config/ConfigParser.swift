@@ -535,7 +535,7 @@ public enum BindingParser {
         if !keyKnown { errors.append("Unknown key: \(mangoHighlight(keyName))") }
         let mods = Modifiers.parse(fields[0]) { errors.append($0) }
         var dispatch: Dispatch?
-        switch parseFuncName(Array(fields[2...])) {
+        switch parseBindDispatch(Array(fields[2...])) {
         case .success(let d): dispatch = d
         case .failure(let msg): errors.append(msg)
         }
@@ -553,7 +553,7 @@ public enum BindingParser {
         let mods = Modifiers.parse(fields[0]) { errors.append($0) }
         let button = parseButton(fields[1]) { errors.append($0) }
         var dispatch: Dispatch?
-        switch parseFuncName(Array(fields[2...]), in: "mousebind") {
+        switch parseBindDispatch(Array(fields[2...]), in: "mousebind") {
         case .success(let d): dispatch = d
         case .failure(let msg): errors.append(msg)
         }
@@ -571,7 +571,7 @@ public enum BindingParser {
         let dir = Direction(mangoName: fields[1])
         let undir = dir == nil && fields[1].lowercased() != "alldir"
         var dispatch: Dispatch?
-        switch parseFuncName(Array(fields[2...]), in: "axisbind") {
+        switch parseBindDispatch(Array(fields[2...]), in: "axisbind") {
         case .success(let d): dispatch = d
         case .failure(let msg): errors.append(msg)
         }
@@ -592,7 +592,7 @@ public enum BindingParser {
         let undir = dir == nil && fields[1].lowercased() != "alldir"
         let fingers = ValueParse.atoi(fields[2])
         var dispatch: Dispatch?
-        switch parseFuncName(Array(fields[3...]), in: "axisbind") {
+        switch parseBindDispatch(Array(fields[3...]), in: "axisbind") {
         case .success(let d): dispatch = d
         case .failure(let msg): errors.append(msg)
         }
@@ -602,8 +602,9 @@ public enum BindingParser {
         return b
     }
 
+    /// Not in mango: option_defs.c's sscanf fields after func_name and parse_func_name's NULL; the Arg is made at dispatch.
     // not in mango: `kind`, the keyword its "Unknown dispatch in …" names
-    public static func parseFuncName(_ fields: [String], in kind: String = "bind") -> Result<Dispatch, String> {
+    public static func parseBindDispatch(_ fields: [String], in kind: String = "bind") -> Result<Dispatch, String> {
         guard let first = fields.first else { return .failure("Missing dispatcher") }
         let name = first.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return .failure("Missing dispatcher") }

@@ -80,7 +80,7 @@ extension MangoServer {
         let changed: () -> Void = { [weak self] in
             guard let self, ChutneyTheme.sync(configURL: self.configURL) else { return }
             mangoError(true, .info, "chutney_macos_appearance: \(ChutneyTheme.fileName) written for the new accent colour or light/dark")
-            self.reloadConfig()
+            self.reloadConfig(nil)
         }
         NotificationCenter.default.addObserver(forName: NSColor.systemColorsDidChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { changed() }

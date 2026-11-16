@@ -16,6 +16,7 @@ final class RuleFieldTests: MangoTestCase {
 
         c.noForceCenter = true
         c.floatGeom = float
+        c.geom = float   // mango's center_window centres c->geom
         _ = r.server.dispatch(Dispatch(name: "centerwin", args: []), target: c)
         XCTAssertEqual(c.floatGeom, float, "mango's client_center_geometry keeps it where it is")
     }
@@ -39,8 +40,7 @@ final class RuleFieldTests: MangoTestCase {
         let c = r.window(900_302, floating: true, frame: float)
         c.floatGeom = float
         r.server.clientFocus(c, false)
-        let target = r.server.monitors.first { $0.screen.displayID == 2 }!
-        r.server.tagMonitor(c, to: target, newtags: 0)
+        _ = r.server.tagMonitor(Arg(i: UNDIR, v: "Big", tc: c))
         XCTAssertEqual(c.floatGeom.width, (600 * 2560 / r.screen.workArea.width).rounded(.down))
         XCTAssertEqual(c.floatGeom.height, (400 * 1415 / r.screen.workArea.height).rounded(.down))
         XCTAssertEqual(c.floatGeom.midX, big.workArea.midX, accuracy: 1)

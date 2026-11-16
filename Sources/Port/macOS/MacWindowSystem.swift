@@ -457,7 +457,6 @@ class MacWindowSystem: WindowSystem {
         }
     }
 
-    func keepOnDisplay(_ frame: CGRect, _ m: Monitor) -> CGRect { Self.clampToScreen(frame, m.screen.workArea) }
 
     static func clampToScreen(_ f: CGRect, _ work: CGRect) -> CGRect {
         var r = f

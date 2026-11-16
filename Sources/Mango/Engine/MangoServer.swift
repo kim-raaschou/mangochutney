@@ -283,13 +283,16 @@ public final class MangoServer {
         }
     }
 
-    public func reloadConfig() {
+    @discardableResult
+    package func reloadConfig(_ arg: Arg?) -> Int32 {
         let oldTagNum = config.tagNum
         parseConfig()
         resetTag(oldTagNum)
         resetOption()
+        // not in mango: update_seat_capabilities and apply_primary_selection (no macOS part)
         printstatus(.arrangge)
         configWatcherUpdate()
+        return 1
     }
 
     func resetTag(_ oldTagNum: Int) {
@@ -355,19 +358,6 @@ public final class MangoServer {
         guard !c.noForceCenter else { return f }
         return CGRect(x: work.midX - f.width / 2, y: work.midY - f.height / 2, width: f.width, height: f.height)
     }
-
-
-    func toggleSpecialTagMon(_ m: Monitor) {
-        guard !m.isoverview else { return }
-        selectedMonitor = m
-        if isSpecialActive(m) {
-            clientViewOnMonitor(specialTagPreviousTagset(m), on: m, changeFocus: true)
-        } else {
-            specialTagPrepareTarget(m)
-            clientViewOnMonitor(TAG0_MASK, on: m)
-        }
-    }
-
 
 
     var sceneGeometry: CGRect { monitors.map(\.m).reduce(CGRect.null) { $0.union($1) } }
@@ -445,7 +435,7 @@ public final class MangoServer {
         if m.m.contains(g) { system.warp(to: g.center) }
     }
 
-    func pointerWarpToMonitor(_ m: Monitor) {
+    package func pointerWarpToMonitor(_ m: Monitor) {
         system.warp(to: m.w.center)
     }
 

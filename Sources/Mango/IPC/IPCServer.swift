@@ -202,32 +202,8 @@ public enum IPCRequest: Equatable, Sendable {
 
         let name = nextToken() ?? ""
         var args: [String] = []
-        switch name {
-        case "spawn", "spawn_shell":
-            var parts: [String] = []
-            while parts.count < 4, let t = nextToken() { parts.append(t) }
-            if parts.count == 4, let r = remainderArg() { parts.append(r) }
-            let cmd = parts.prefix { $0 != "0" }
-            if !cmd.isEmpty { args = [cmd.joined(separator: ",")] }
-        case "spawn_on_empty":
-            if let r = remainderArg() {
-                if let c = r.lastIndex(of: ",") {
-                    let cmd = trimmed(r[..<c]), tag = trimmed(r[r.index(after: c)...])
-                    args = tag.isEmpty ? [cmd] : [cmd, tag]
-                } else {
-                    args = [r]
-                }
-            }
-        case "toggle_named_scratchpad":
-            for _ in 0..<2 {
-                guard let t = nextToken() else { break }
-                args.append(t)
-            }
-            if args.count == 2, let cmd = remainderArg() { args.append(cmd) }
-        default:
-            while args.count < 4, let t = nextToken() { args.append(t) }
-            if args.count == 4, let r = remainderArg() { args.append(r) }
-        }
+        while args.count < 4, let t = nextToken() { args.append(t) }
+        if args.count == 4, let r = remainderArg() { args.append(r) }
         let target: ClientID? = (clientID > 0 && clientID <= Int(ClientID.max)) ? ClientID(clientID) : nil
         return (Dispatch(name: name, args: args), target)
     }
@@ -537,7 +513,7 @@ public final class IPCServer {
             } else if !Dispatch.isKnown(dispatch.name) {
                 json = IPCJSON.unknownFunction
             } else {
-                _ = server.dispatch(dispatch, target: c)
+                _ = server.dispatch(dispatch, target: c, notGiven: "")
             }
             sendStaticJson(fd, json.serialized)
         case .watch, .unknown:

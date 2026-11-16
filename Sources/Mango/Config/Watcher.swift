@@ -172,7 +172,7 @@ package extension MangoServer {
             }
         }
 
-        if changed && portHooks.configWriteIsOwn?(changedPaths) != true { reloadConfig() }   // Port extension: chutney_menu_config
+        if changed && portHooks.configWriteIsOwn?(changedPaths) != true { reloadConfig(nil) }   // Port extension: chutney_menu_config
     }
 
     func configWatcherInit(_ loop: EventLoop) {

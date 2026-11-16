@@ -24,7 +24,7 @@ enum LaunchOrFocusRule: Equatable {
 extension MangoServer {
     func launchOrFocus(_ app: String, command: String) {
         let key = app.lowercased()
-        leaveOverview()
+        leaveOverview(Arg())
         let picker = LaunchOrFocusPicker.shared
         if picker.app == key { return picker.move(self, by: 1) }
         let windows = appWindowsInGridOrder(key)

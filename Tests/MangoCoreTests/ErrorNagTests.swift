@@ -17,7 +17,7 @@ final class ErrorNagTests: MangoTestCase {
         let r = EngineRig()
         let fake = try XCTUnwrap(r.server.system as? FakeWindowSystem)
         r.server.configURL = conf
-        r.server.reloadConfig()
+        r.server.reloadConfig(nil)
 
         XCTAssertEqual(fake.nagArgv, ["mangonag", "-o", "Built-in", "-t", "error", "-e", "top", "-l", "-s", "Close",
                                       "-b", "Edit", "nvim +2 '\(conf.path)'"])
@@ -28,7 +28,7 @@ final class ErrorNagTests: MangoTestCase {
         XCTAssertEqual(lines[3], "\u{2026} (+6 more lines)")
 
         try "border_px=2\n".write(to: conf, atomically: true, encoding: .utf8)
-        r.server.reloadConfig()
+        r.server.reloadConfig(nil)
         XCTAssertNil(fake.nagArgv, "no errors: the nag is gone")
     }
 
@@ -47,7 +47,7 @@ final class ErrorNagTests: MangoTestCase {
         for (e, cmd) in [("/usr/local/bin/code --wait", "/usr/local/bin/code --wait -g '\(conf.path):1'"),
                          ("hx", "hx '\(conf.path):1'"), ("subl", "subl '\(conf.path)'")] {
             setenv("EDITOR", e, 1)
-            r.server.reloadConfig()
+            r.server.reloadConfig(nil)
             XCTAssertEqual(fake.nagArgv?.last, cmd)
         }
     }
@@ -74,7 +74,7 @@ final class ConfigWatchPathTests: MangoTestCase {
     func watching(_ url: URL) -> EngineRig {
         let r = EngineRig()
         r.server.configURL = url
-        r.server.reloadConfig()
+        r.server.reloadConfig(nil)
         r.server.configWatcherInit(r.server.system.eventLoop)
         return r
     }

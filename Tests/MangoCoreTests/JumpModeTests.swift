@@ -102,7 +102,7 @@ final class JumpModeTests: MangoTestCase {
         XCTAssertFalse(r.monitor.isJumpMode, "a mango bug, docs/afvigelser.md §6: mango keeps is_jump_mode set")
         let a = r.map(1)
         r.arrange()
-        r.server.switcher("next")
+        r.server.switcher(Arg(i: NEXT, i2: SW_CURRENT_TAG))
         XCTAssertNotNil(r.server.switcherState, "the switcher is not refused afterwards")
         _ = a
     }
@@ -119,9 +119,9 @@ final class JumpModeTests: MangoTestCase {
         let (r, _) = rig()
         jump(r)
         XCTAssertFalse(r.server.isOvercircleMode(r.monitor))
-        r.server.leaveOverview()
+        r.server.leaveOverview(Arg())
         r.monitor.isJumpMode = true
-        r.server.switcher("next")
+        r.server.switcher(Arg(i: NEXT, i2: SW_CURRENT_TAG))
         XCTAssertNil(r.server.switcherState, "mango's switcher returns in jump mode")
     }
 

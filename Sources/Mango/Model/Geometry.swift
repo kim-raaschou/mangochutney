@@ -6,27 +6,9 @@ public typealias ClientID = UInt32
 public enum Direction: String, CaseIterable, Sendable {
     case left, right, up, down
 
-    /// mango parse_direction (value_parse.c)
+    /// Not in mango: parse_direction for the config's axis and gesture bindings, nil for UNDIR.
     public init?(mangoName: String) {
         self.init(rawValue: mangoName.lowercased())
-    }
-
-    public var isHorizontal: Bool { self == .left || self == .right }
-    public var opposite: Direction {
-        switch self {
-        case .left: return .right
-        case .right: return .left
-        case .up: return .down
-        case .down: return .up
-        }
-    }
-}
-
-public enum NextPrev: Sendable {
-    case next, prev
-    /// mango parse_circle_direction (value_parse.c)
-    public init(mangoArg: String) {
-        self = mangoArg.lowercased() == "next" ? .next : .prev
     }
 }
 

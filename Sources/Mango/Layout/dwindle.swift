@@ -289,7 +289,7 @@ package extension MangoServer {
     }
 
     // not in mango: nil is UNDIR, a target of no direction
-    func dwindleMoveNextTo(_ c: Client, _ target: Client?, _ ratio: Float, _ dir: Direction) {
+    func dwindleMoveNextTo(_ c: Client, _ target: Client?, _ ratio: Float, _ dir: Int32) {
         guard let cmon = c.mon, c !== target else { return }
 
         guard let target else {

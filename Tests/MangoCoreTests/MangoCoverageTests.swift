@@ -116,19 +116,37 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertEqual(Dispatch.knownNames.subtracting(mango).sorted(), [], "names the port claims mango has")
     }
 
-    func testUnsupportedDispatchersAreTheOnesWithoutACase() throws {
-        let text = Self.source("Sources/Mango/Engine/Dispatch.swift")
-        XCTAssertFalse(text.isEmpty)
-        let re = try NSRegularExpression(pattern: #"^\s*case ("[a-z_]+"(?:,\s*"[a-z_]+")*):"#, options: .anchorsMatchLines)
-        var handled = Set<String>()
-        for m in re.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
-            let labels = String(text[Range(m.range(at: 1), in: text)!])
-            for part in labels.split(separator: ",") {
-                handled.insert(part.trimmingCharacters(in: CharacterSet(charactersIn: "\" ")))
+    /// Every name in mango's parse_func_name has a function; the ones macOS cannot do (MangoCompat) are
+    /// the functions marked `not in mango` that do nothing else.
+    @MainActor
+    func testUnsupportedDispatchersAreTheMarkedFunctions() throws {
+        var arg = Arg()
+        for name in Dispatch.knownNames {
+            XCTAssertNotNil(BindingParser.parseFuncName(name, &arg, "0", "0", "0", "0", "0"), name)
+        }
+        XCTAssertNil(BindingParser.parseFuncName("frobnicate", &arg, "0", "0", "0", "0", "0"))
+
+        let parse = Self.source("Sources/Mango/Config/binding_parse.swift")
+        let functions = Self.source("Sources/Mango/dispatch/bind.swift") + Self.source("Sources/Mango/ext-protocol/hdr.swift")
+            + Self.source("Sources/Mango/Engine/MangoServer.swift") + Self.source("Sources/Mango/Engine/SwitcherMode.swift")
+        let re = try NSRegularExpression(pattern: #"funcName == "([a-z_]+)" \{\n(?:\s*/\*.*\*/\n)?\s*`func` = MangoServer\.(\w+)\(_:\)"#)
+        var withoutEffect = Set<String>()
+        let matches = re.matches(in: parse, range: NSRange(parse.startIndex..., in: parse))
+        XCTAssertEqual(matches.count, Dispatch.knownNames.count)
+        for m in matches {
+            let name = String(parse[Range(m.range(at: 1), in: parse)!])
+            let fn = String(parse[Range(m.range(at: 2), in: parse)!])
+            guard let start = functions.range(of: "func \(fn)(_ arg: Arg") else {
+                XCTFail("no function \(fn) for \(name)")
+                continue
+            }
+            let body = functions[start.upperBound...].prefix { $0 != "}" }
+            let lines = body.split(separator: "\n").dropFirst().map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+            if lines.count == 2 && lines[0].hasPrefix("// not in mango:") && lines[1].hasPrefix("return") {
+                withoutEffect.insert(name)
             }
         }
-        let withoutCase = Dispatch.knownNames.subtracting(handled)
-        XCTAssertEqual(withoutCase.sorted(), MangoCompat.unsupportedDispatchers.keys.sorted())
+        XCTAssertEqual(withoutEffect.sorted(), MangoCompat.unsupportedDispatchers.keys.sorted())
     }
 
     func testPortExtensionsAreNotMangoNames() {

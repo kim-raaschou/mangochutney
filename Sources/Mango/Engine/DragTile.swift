@@ -25,6 +25,7 @@ package extension MangoServer {
             }
         }
         c.floatGeom = c.frame.insetBy(dx: -c.bw, dy: -c.bw)
+        c.geom = c.floatGeom
         c.isfloating = true
         arrange(m, false, false)
     }
@@ -85,6 +86,7 @@ package extension MangoServer {
         system.showDropArea(nil, color: config.dropcolor)
         let c = d.client
         c.floatGeom = c.frame.insetBy(dx: -c.bw, dy: -c.bw)
+        c.geom = c.floatGeom
         c.iscustomsize = true
     }
 
@@ -97,7 +99,7 @@ package extension MangoServer {
         if let g = groupBarTargetAt(at: p, except: c) {
             c.isfloating = false
             c.floatGeom = d.floatBackup
-            clientGroupJoin(c, into: g)
+            clientGroupJoin(c, g)
             printstatus(.arrangge)
             return
         }

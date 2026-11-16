@@ -276,7 +276,7 @@ final class LayoutTests: MangoTestCase {
         dwindleStep(t, [1, 2], focus: 1)
         dwindleStep(t, [1, 2, 3], focus: 2)
         let c1 = t.server.clientByIdAll(1)!, c2 = t.server.clientByIdAll(2)!, c3 = t.server.clientByIdAll(3)!
-        t.server.dwindleMoveNextTo(c1, c3, 0.5, .right)
+        t.server.dwindleMoveNextTo(c1, c3, 0.5, RIGHT)
         let r = dwindleStep(t, [1, 2, 3], focus: 1)
         checkInvariants("dwindle after move", makeInput([1, 2, 3]), LayoutResult(frames: r))
         XCTAssertEqual(r[2]!.height, 1060)

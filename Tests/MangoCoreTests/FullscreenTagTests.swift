@@ -87,7 +87,7 @@ final class FullscreenTagTests: MangoTestCase {
     func testOutOfFullscreenWhileAnotherTagIsViewedTheViewStays() {
         let r = rig()
         fullscreen(r, 2, true)
-        r.server.clientViewOnMonitor(1 << 3, on: r.monitor)
+        r.server.clientViewOnMonitor(Arg(ui: 1 << 3), true, r.monitor, r.monitor === r.server.selectedMonitor)
         fullscreen(r, 2, false)
         XCTAssertEqual(viewed(r), 1 << 3)
         XCTAssertEqual(r.server.clientByIdAll(2)?.tags, 1)

@@ -226,7 +226,7 @@ final class IPCTests: MangoTestCase {
     }
 
     func testDispatchTargetsAParkedMemberOnlyForFocusid() throws {
-        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, into: rig.server.clientByIdAll(1)!)
+        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, rig.server.clientByIdAll(1)!)
         let parked = [1, 2].compactMap { rig.server.clientByIdAll($0) }.first { $0.groupParked }!
         XCTAssertEqual(query("dispatch togglefloating client,\(parked.id)"), #"{"error":"no client found"}"#)
         XCTAssertEqual(query("dispatch focusid client,\(parked.id)"), #"{"success":true}"#)
@@ -234,7 +234,7 @@ final class IPCTests: MangoTestCase {
     }
 
     func testAllClientsListsGroupsAsMango() throws {
-        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, into: rig.server.clientByIdAll(1)!)
+        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, rig.server.clientByIdAll(1)!)
         let clients = try XCTUnwrap(object(query("get all-clients"))["clients"] as? [[String: Any]])
         XCTAssertEqual(Set(clients.compactMap { $0["id"] as? Int }), [1, 2, 3], "the parked member is listed")
         let group = clients.filter { ($0["is_group"] as? Bool) == true }
@@ -266,13 +266,13 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(server.watcherCount, 1)
 
         server.notifyChanged(.arrangge)
-        rig.server.clientViewOnMonitor(1 << 2, on: hdmi)
+        rig.server.clientViewOnMonitor(Arg(ui: 1 << 2), true, hdmi, hdmi === rig.server.selectedMonitor)
         server.notifyChanged(.arrangge)
         let spin = expectation(description: "spin")
         DispatchQueue.main.async { spin.fulfill() }
         wait(for: [spin], timeout: 5)
 
-        rig.server.clientViewOnMonitor(1 << 1, on: dp1)
+        rig.server.clientViewOnMonitor(Arg(ui: 1 << 1), true, dp1, dp1 === rig.server.selectedMonitor)
         server.notifyChanged(.arrangge)
         wait(for: [second], timeout: 10)
         XCTAssertEqual(lines.value.count, 2)
@@ -310,13 +310,14 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(p("client,7,focusdir,left").1, 7)
         XCTAssertEqual(p("client,7,focusdir,left").0, Dispatch(name: "focusdir", args: ["left"]))
         XCTAssertNil(p("movewin,client,abc").1)
-        XCTAssertEqual(p("spawn,sh -c 'echo a,b',x").0, Dispatch(name: "spawn", args: ["sh -c 'echo a,b',x"]))
+        XCTAssertEqual(p("spawn,sh -c 'echo a,b',x").0, Dispatch(name: "spawn", args: ["sh -c 'echo a", "b'", "x"]),
+                       "ipc.c splits every dispatcher alike; parse_func_name joins spawn's fields")
         XCTAssertEqual(p("spawn_shell,echo hi").0, Dispatch(name: "spawn_shell", args: ["echo hi"]))
-        XCTAssertEqual(p("spawn,foo,0,bar").0, Dispatch(name: "spawn", args: ["foo"]))
-        XCTAssertEqual(p("spawn,a , b").0, Dispatch(name: "spawn", args: ["a,b"]))
-        XCTAssertEqual(p("spawn_on_empty,foo --a=1,2,4").0, Dispatch(name: "spawn_on_empty", args: ["foo --a=1,2", "4"]))
+        XCTAssertEqual(p("spawn,foo,0,bar").0, Dispatch(name: "spawn", args: ["foo", "0", "bar"]))
+        XCTAssertEqual(p("spawn,a , b").0, Dispatch(name: "spawn", args: ["a", "b"]))
+        XCTAssertEqual(p("spawn_on_empty,foo --a=1,2,4").0, Dispatch(name: "spawn_on_empty", args: ["foo --a=1", "2", "4"]))
         XCTAssertEqual(p("toggle_named_scratchpad,foot,none,foot -a x,y").0,
-                       Dispatch(name: "toggle_named_scratchpad", args: ["foot", "none", "foot -a x,y"]))
+                       Dispatch(name: "toggle_named_scratchpad", args: ["foot", "none", "foot -a x", "y"]))
         XCTAssertEqual(p("setoption,a,b,c,d,e,f").0, Dispatch(name: "setoption", args: ["a", "b", "c", "d", "e,f"]))
         if case .dispatch(let d, _) = IPCRequest.parse("dispatch,view,2\n") {
             XCTAssertEqual(d, Dispatch(name: "view", args: ["2"]))
@@ -381,7 +382,7 @@ final class IPCTests: MangoTestCase {
     // mango handle_watch_command lists server.clients for all-clients' first line and finds a
     // parked member for client <id>; ipc_notify_client walks server.clients, without parked members.
     func testParkedGroupMembersInWatchesAsMango() throws {
-        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, into: rig.server.clientByIdAll(1)!)
+        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, rig.server.clientByIdAll(1)!)
         let parked = try XCTUnwrap([1, 2].compactMap { rig.server.clientByIdAll($0) }.first { $0.groupParked })
 
         let (allClients, first) = watch("watch all-clients")

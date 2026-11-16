@@ -84,7 +84,6 @@ package protocol WindowSystem: AnyObject {
     func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void)
     func clientSendClose(_ c: Client)
     func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool)
-    func keepOnDisplay(_ frame: CGRect, _ m: Monitor) -> CGRect
     func grabBegan(_ c: Client)
     func grabEnded(_ c: Client)
 }

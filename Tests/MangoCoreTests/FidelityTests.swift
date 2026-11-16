@@ -86,11 +86,11 @@ final class FidelityTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1), _ = r.map(2), _ = r.map(3), d = r.map(4)
         r.server.clientFocus(d, true)
-        r.server.clientSwitchView(1 << 1)
+        r.server.clientSwitchView(Arg(ui: 1 << 1), true)
         r.server.clientFocus(r.map(5), true)
         r.server.focusStack.removeAll { $0 == a.id }
         r.server.focusStack.insert(a.id, at: 0)
-        r.server.clientSwitchView(1)
+        r.server.clientSwitchView(Arg(ui: 1), true)
         XCTAssertTrue(r.server.focused === a)
         let g = a.geom ?? .zero, w = r.monitor.screen.workArea
         XCTAssertTrue(g.minX >= w.minX && g.maxX <= w.maxX, "a in view: \(g) in \(w)")
@@ -119,18 +119,18 @@ final class FidelityTests: MangoTestCase {
         r.server.rebuildMonitors(screens: [r.screen, right])
         let a = r.monitor, b = r.server.monitors.first { $0.screen.displayID == 2 }!
         r.server.setSelectedMonitor(a)
-        XCTAssertTrue(r.server.monitorFromDirection(.right) === b)
-        XCTAssertTrue(r.server.monitorFromDirection(.left) === b, "round the edge")
+        XCTAssertTrue(r.server.monitorFromDirection(RIGHT) === b)
+        XCTAssertTrue(r.server.monitorFromDirection(LEFT) === b, "round the edge")
     }
 
     func testSetLayoutSparesScrollerFullscreen() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2, floating: true)
         a.isfullscreen = true; b.isfullscreen = true
-        r.server.setLayout(.scroller, on: r.monitor)
+        _ = r.server.setLayout(Arg(v: "scroller"))
         XCTAssertTrue(a.isfullscreen)
         XCTAssertFalse(b.isfullscreen)
-        r.server.setLayout(.tile, on: r.monitor)
+        _ = r.server.setLayout(Arg(v: "tile"))
         XCTAssertFalse(a.isfullscreen)
     }
 
@@ -188,11 +188,11 @@ final class FidelityTests: MangoTestCase {
         _ = r.window(2, floating: true, frame: CGRect(x: 400, y: 300, width: 200, height: 200))
         a.floatGeom = CGRect(x: 100, y: 300, width: 200, height: 200)
         r.server.clientByIdAll(2)!.floatGeom = CGRect(x: 400, y: 300, width: 200, height: 200)
-        r.server.smartMoveWindow(a, .right)
+        r.server.smartMoveWindow(Arg(i: RIGHT, tc: a))
         let gap = CGFloat(r.server.config.gappih)
         XCTAssertEqual(a.floatGeom.maxX, 400 - gap, accuracy: 0.5, "stopped before the other, the inner gap apart")
         let t = r.window(3)
-        r.server.smartMoveWindow(t, .left)
+        r.server.smartMoveWindow(Arg(i: LEFT, tc: t))
         XCTAssertTrue(t.isfloating)
     }
 
@@ -257,7 +257,7 @@ final class FidelityTests: MangoTestCase {
         let right2 = r.server.monitors.first { $0.screen.displayID == 2 }!
         b.mon = right2
         b.tags = right2.tagset[right2.seltags]
-        r.server.clientGroupJoin(a, into: b)
+        r.server.clientGroupJoin(a, b)
         XCTAssertTrue([a, b].first { !$0.groupParked }!.mon === right2)
         XCTAssertNil([a, b].first { $0.groupParked }!.mon, "client_park: no monitor")
         let focus = [a, b].first { $0.isGroupFocus }!
@@ -302,7 +302,7 @@ final class FidelityTests: MangoTestCase {
         let m = r.monitor
         _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         _ = r.server.dispatch(Dispatch(name: "view", args: ["3"]))
-        r.server.clientViewOnMonitor(1 << 2, on: m)
+        r.server.clientViewOnMonitor(Arg(ui: 1 << 2), true, m, m === r.server.selectedMonitor)
         XCTAssertEqual(m.tagset[m.seltags ^ 1], 1 << 2)
         _ = r.server.dispatch(Dispatch(name: "view", args: ["3"]))
         XCTAssertEqual(m.tagset[m.seltags], 1 << 1, "prevtag: tag 2")
@@ -346,9 +346,9 @@ final class FidelityTests: MangoTestCase {
         r.server.clientFocus(a, true)
         _ = r.server.dispatch(Dispatch(name: "overcircle", args: ["next"]))
         XCTAssertTrue(r.server.anyOverview)
-        r.server.overCircle("next")
+        r.server.overCircle(Arg(i: OVERCIRCLE_NEXT))
         let s1 = r.monitor.sel
-        r.server.overCircle("next")
+        r.server.overCircle(Arg(i: OVERCIRCLE_NEXT))
         XCTAssertNotEqual(r.monitor.sel, s1, "the focus moves at every step")
         XCTAssertNotNil(r.monitor.sel)
     }
@@ -595,7 +595,7 @@ final class FidelityTests: MangoTestCase {
     func testFullscreenIsRefusedInOverview() {
         let r = EngineRig()
         let a = r.map(1)
-        r.server.toggleOverview(onlyCurrent: false)
+        r.server.toggleOverview(Arg())
         XCTAssertTrue(r.server.anyOverview)
         d(r, "togglefullscreen", [], a)
         d(r, "togglemaximizescreen", [], a)
@@ -649,7 +649,7 @@ final class FidelityTests: MangoTestCase {
     func testMinimizedIsRefusedInOverview() {
         let r = EngineRig()
         let a = r.map(1)
-        r.server.toggleOverview(onlyCurrent: false)
+        r.server.toggleOverview(Arg())
         d(r, "minimized", [], a)
         XCTAssertFalse(a.isminimized)
     }
@@ -1144,8 +1144,9 @@ final class FidelityTests: MangoTestCase {
         XCTAssertTrue(a.isfloating)
         let b = r.map(2)
         b.isfloating = true
-        a.floatGeom = CGRect(x: 100, y: 200, width: 300, height: 300)
-        b.floatGeom = CGRect(x: 450, y: 250, width: 300, height: 300)
+        // mango's smart_resize_window reads the floating windows' geom
+        a.floatGeom = CGRect(x: 100, y: 200, width: 300, height: 300); a.geom = a.floatGeom
+        b.floatGeom = CGRect(x: 450, y: 250, width: 300, height: 300); b.geom = b.floatGeom
         d(r, "smartresizewin", ["right"], a)
         XCTAssertEqual(a.floatGeom.maxX, 450 - CGFloat(r.server.config.gappih))
     }
@@ -1238,7 +1239,7 @@ final class FidelityTests: MangoTestCase {
     func testAnOverviewClickOnNothingKeepsTheOverview() {
         let r = EngineRig()
         r.map(1)
-        r.server.toggleOverview(onlyCurrent: false)
+        r.server.toggleOverview(Arg())
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 1, y: 1080), mods: [])
         XCTAssertTrue(r.server.anyOverview)
     }
@@ -1263,7 +1264,7 @@ final class FidelityTests: MangoTestCase {
         r.server.selectedMonitor = side
         let a = r.map(1)
         a.tags = 1 << 2
-        r.server.toggleOverview(onlyCurrent: false)
+        r.server.toggleOverview(Arg())
         XCTAssertTrue(side.isoverview)
         r.server.rebuildMonitors(screens: [r.screen])
         XCTAssertFalse(r.server.anyOverview)
@@ -1459,7 +1460,7 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         let a = r.map(1)
         let b = r.map(2)
-        r.server.clientGroupJoin(b, into: a)
+        r.server.clientGroupJoin(b, a)
         let shown = [a, b].first { !$0.groupParked }!
         let other = shown === a ? b : a
         r.server.handleClientUnmap(shown)
@@ -1523,7 +1524,7 @@ final class FidelityTests: MangoTestCase {
         let url = dir.appendingPathComponent("config.conf")
         try "exec=FOO=1 echo a | cat\nexec_once=echo b\n".write(to: url, atomically: true, encoding: .utf8)
         r.server.configURL = url
-        r.server.reloadConfig()
+        r.server.reloadConfig(nil)
         XCTAssertEqual(fake(r).shelled, ["FOO=1 echo a | cat"], "reset_option runs exec, not exec_once")
     }
 

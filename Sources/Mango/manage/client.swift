@@ -1,4 +1,7 @@
+import Foundation
 import CoreGraphics
+
+let UP: Int32 = 0, DOWN: Int32 = 1, LEFT: Int32 = 2, RIGHT: Int32 = 3, UNDIR: Int32 = 4, ALLDIR: Int32 = 5 /* smartmovewin */
 
 package extension MangoServer {
     func getClientTagIdx(_ c: Client?) -> UInt32 {
@@ -41,6 +44,43 @@ package extension MangoServer {
         }
         if config.monocleNoBorder && ISFAKETILED(c) && !isoverview && isMonocleLayout(m) { hitNoBorder = true }
         return hitNoBorder
+    }
+
+    func getClientByIdOrTitle(_ argId: String?, _ argTitle: String?) -> Client? {
+        var targetClient: Client?
+        var argId = argId, argTitle = argTitle
+        for c in clients {
+            if !config.scratchpadCrossMonitor && c.mon !== selectedMonitor {
+                continue
+            }
+
+            // not in mango: no swallowing (c->swallowing)
+            let appid = c.appid
+            let title = c.title
+
+            if let a = argId, a.hasPrefix("none") {
+                argId = nil
+            }
+
+            if let t = argTitle, t.hasPrefix("none") {
+                argTitle = nil
+            }
+
+            // not in mango: the app's name matches the id too (macOS app ids are bundle ids)
+            func idMatch(_ id: String) -> Bool {
+                appid.range(of: id, options: .regularExpression) != nil
+                    || c.appName.range(of: id, options: .regularExpression) != nil
+            }
+            func titleMatch(_ t: String) -> Bool { title.range(of: t, options: .regularExpression) != nil }
+
+            if (argTitle.map(titleMatch) == true && argId == nil) ||
+                (argId.map(idMatch) == true && argTitle == nil) ||
+                (argId.map(idMatch) == true && argTitle.map(titleMatch) == true) {
+                targetClient = c
+                break
+            }
+        }
+        return targetClient
     }
 
     func clientCenterGeometry(_ c: Client?, _ tm: Monitor?, _ geom: CGRect, _ offsetx: Int = 0, _ offsety: Int = 0) -> CGRect {
@@ -107,7 +147,7 @@ package extension MangoServer {
         return targetC
     }
 
-    func findClientByDirection(_ tc: Client, _ dir: Direction, findFloating: Bool) -> Client? {
+    func findClientByDirection(_ tc: Client, _ arg: Arg, _ findfloating: Bool) -> Client? {
         let t = directionGeom(tc)
         let tl = Int64(t.minX.rounded()), tr = Int64(t.maxX.rounded()), tt = Int64(t.minY.rounded()), tb = Int64(t.maxY.rounded())
         let tcx = tl + (tr - tl) / 2, tcy = tt + (tb - tt) / 2
@@ -117,7 +157,7 @@ package extension MangoServer {
             if step == 1 && best != nil { break }
             for c in clients {
                 guard let cm = c.mon, c !== tc else { continue }
-                if !findFloating && c.isfloating { continue }
+                if !findfloating && c.isfloating { continue }
                 if !VISIBLEON(c, cm) || c.isunglobal { continue }
                 if !config.focusCrossMonitor && cm !== tc.mon { continue }
                 if c.tags & cm.tagset[cm.seltags] == 0 && !c.isglobal { continue }
@@ -125,21 +165,23 @@ package extension MangoServer {
                 let l = Int64(g.minX.rounded()), r = Int64(g.maxX.rounded()), tp = Int64(g.minY.rounded()), b = Int64(g.maxY.rounded())
                 let cx = l + (r - l) / 2, cy = tp + (b - tp) / 2
                 var main: Int64 = 0, orth: Int64 = 0
-                switch dir {
-                case .left:
+                switch arg.i {
+                case LEFT:
                     guard cx < tcx || (cx == tcx && l < tl) else { continue }
                     main = tl - r; orth = b < tt ? tt - b : (tp > tb ? tp - tb : 0)
-                case .right:
+                case RIGHT:
                     guard cx > tcx || (cx == tcx && l > tl) else { continue }
                     main = l - tr; orth = b < tt ? tt - b : (tp > tb ? tp - tb : 0)
-                case .up:
+                case UP:
                     guard cy < tcy || (cy == tcy && tp < tt) else { continue }
                     main = tt - b; orth = r < tl ? tl - r : (l > tr ? l - tr : 0)
-                case .down:
+                case DOWN:
                     guard cy > tcy || (cy == tcy && tp > tt) else { continue }
                     main = tp - tb; orth = r < tl ? tl - r : (l > tr ? l - tr : 0)
+                default:
+                    continue
                 }
-                let overlap = dir.isHorizontal ? (b >= tt && tp <= tb) : (r >= tl && l <= tr)
+                let overlap = arg.i == LEFT || arg.i == RIGHT ? (b >= tt && tp <= tb) : (r >= tl && l <= tr)
                 if config.focusdirOnlyZoneOverlap && !overlap { continue }
                 if step == 0 {
                     guard let m = tc.mon, cm === m else { continue }
@@ -148,7 +190,7 @@ package extension MangoServer {
                 var penalty: Int64 = 0
                 if main < 0 { penalty = 10_000_000_000; main = -main }
                 let d = penalty + main * main + orth * orth
-                let center = abs(dir.isHorizontal ? cy - tcy : cx - tcx)
+                let center = abs(arg.i == UP || arg.i == DOWN ? cx - tcx : cy - tcy)
                 if d < distance || (d == distance && center < bestCenter) {
                     distance = d; bestCenter = center; best = c
                 }
@@ -160,10 +202,20 @@ package extension MangoServer {
         return bestSame ?? best
     }
 
-    func directionSelect(_ dir: Direction, from: Client? = nil) -> Client? {
-        guard let tc = from ?? focused else { return nil }
-        if (tc.isfullscreen || tc.ismaximizescreen) && (!isScrollerLayout(selectedMonitor) || tc.isfloating) { return nil }
-        return findClientByDirection(tc, dir, findFloating: true)
+    /// Not in mango: c->geom, or the card in the overview's pictures.
+    func directionGeom(_ c: Client) -> CGRect {
+        if let m = c.mon, m.isoverview, let card = m.ovCards[c.id] { return card }
+        return c.geom
+    }
+
+    func directionSelect(_ arg: Arg) -> Client? {
+        guard let tc = arg.tc ?? selectedMonitor.sel.flatMap({ clientByIdAll($0) }) else { return nil }
+
+        if (tc.isfullscreen || tc.ismaximizescreen) && (!isScrollerLayout(selectedMonitor) || tc.isfloating) {
+            return nil
+        }
+
+        return findClientByDirection(tc, arg, true)
     }
 
     package func clientFocusTop(_ m: Monitor) -> Client? {
@@ -463,7 +515,7 @@ package extension MangoServer {
         if let cm = c.mon, !(cm === selectedMonitor && c.tags & cm.tagset[cm.seltags] != 0),
            !c.isopensilent, !c.istagsilent {
             c.animation.tagFromRule = true
-            clientViewOnMonitor(c.tags, on: cm, changeFocus: true)
+            clientViewOnMonitor(Arg(ui: c.tags), true, cm, true)
         }
 
         clientSetFullscreen(c, fullscreenStateBackup, rearrange: true)
@@ -491,17 +543,25 @@ package extension MangoServer {
     }
 
     func applyWindowSnap(_ c: Client) {
-        guard config.enableFloatingSnap, c.isfloating, let m = c.mon else { return }
-        // mango snaps the outer edge while borders are drawn, the window's edge otherwise.
-        let bw = renderBorder ? CGFloat(config.borderpx) : 0
-        func outer(_ x: Client) -> CGRect { x.noBorder || bw == 0 ? x.frame : x.frame.insetBy(dx: -bw, dy: -bw) }
-        let others = clientsAll.filter { $0 !== c && $0.isfloating && !$0.parked && VISIBLEON($0, m) }.map(outer)
-        let from = outer(c)
+        func inner(_ x: Client) -> CGRect {
+            let xbw: CGFloat = !renderBorder || x.fakeNoBorder ? x.bw : 0
+            return x.geom.insetBy(dx: xbw, dy: xbw)
+        }
+
+        guard let m = c.mon, !c.iskilling else { return }
+
+        if !c.isfloating || !config.enableFloatingSnap { return }
+
+        // not in mango: the snap distances are worked out apart (FloatingSnap), as apply_window_snap does
+        let others = clients.filter { $0.isfloating && !$0.iskilling && VISIBLEON($0, m) }.map(inner)
+        let from = inner(c)
         let to = FloatingSnap.snapped(from, others: others, monitor: m.m, workArea: m.w,
                                       distance: CGFloat(config.snapDistance))
-        guard to != from else { return }
-        c.floatGeom = c.frame.insetBy(dx: -c.bw, dy: -c.bw).offsetBy(dx: to.minX - from.minX, dy: to.minY - from.minY)
-        arrange(m, false, false)
+        c.geom.origin.x += to.minX - from.minX
+        c.geom.origin.y += to.minY - from.minY
+
+        c.floatGeom = c.geom
+        resize(c, c.geom, ResizeOpts(interact: false))
     }
 
     package func clientInsertTilingOrder(_ c: Client) {
@@ -596,7 +656,7 @@ package extension MangoServer {
 
             if let nextfocus { clientFocus(nextfocus, true) }
 
-            if nextfocus == nil && selectedMonitor.isoverview { toggleOverview() }
+            if nextfocus == nil && selectedMonitor.isoverview { toggleOverview(Arg()) }
         }
 
         // not in mango: c left clients and focus_stack above; no fade-out, swallowing or scene nodes
@@ -757,19 +817,20 @@ package extension MangoServer {
             if let m = c.mon { arrange(m, true, false) }
             return
         }
-        if let cm = c.mon { clientViewOnMonitor(getTagsFirstTag(c.tags), on: cm, changeFocus: true) }
+        let target = getTagsFirstTag(c.tags)
+        clientViewOnMonitor(Arg(ui: target), true, c.mon, true)
         clientFocus(c, true)
     }
 
-    package func clientViewOnMonitor(_ ui: UInt32, on m: Monitor, changeFocus: Bool? = nil, wantAnimation: Bool = true) {
+    package func clientViewOnMonitor(_ arg: Arg, _ wantAnimation: Bool, _ m: Monitor?, _ changefocus: Bool) {
         var wantAnimation = wantAnimation
         var tmptag: UInt32
 
-        if ui != (~0 & TAGMASK) && m.isoverview { return }
+        guard let m, !(arg.ui != (~0 & TAGMASK) && m.isoverview) else { return }
 
-        if ui == 0 { return }
+        if arg.ui == 0 { return }
 
-        if ui == UInt32.max {
+        if arg.ui == UInt32.max {
             if m.tagset[0] != m.tagset[1] {
                 m.pertag.prevtag = getTagsFirstTagNum(m.tagset[m.seltags])
                 m.seltags ^= 1 /* toggle sel tagset */
@@ -778,19 +839,19 @@ package extension MangoServer {
                 return
             }
         } else {
-            if (m.tagset[m.seltags] & ui & (TAGMASK | TAG0_MASK)) != 0 { wantAnimation = false }
+            if (m.tagset[m.seltags] & arg.ui & (TAGMASK | TAG0_MASK)) != 0 { wantAnimation = false }
 
             m.seltags ^= 1 /* toggle sel tagset */
 
-            if ui & (TAGMASK | TAG0_MASK) != 0 {
-                m.tagset[m.seltags] = ui & (TAGMASK | TAG0_MASK)
+            if arg.ui & (TAGMASK | TAG0_MASK) != 0 {
+                m.tagset[m.seltags] = arg.ui & (TAGMASK | TAG0_MASK)
                 tmptag = m.pertag.curtag
 
-                if ui & TAG0_MASK != 0 {
+                if arg.ui & TAG0_MASK != 0 {
                     m.pertag.curtag = 0
                 } else {
                     var i: UInt32 = 0
-                    while ui & (1 << i) == 0 && i < UInt32(config.tagNum) && ui != 0 { i += 1 }
+                    while arg.ui & (1 << i) == 0 && i < UInt32(config.tagNum) && arg.ui != 0 { i += 1 }
                     m.pertag.curtag = i >= UInt32(config.tagNum) ? UInt32(config.tagNum) : i + 1
                 }
 
@@ -802,34 +863,43 @@ package extension MangoServer {
             }
         }
 
-        if changeFocus ?? (m === selectedMonitor) { clientFocus(clientFocusTop(m), true) }
+        if changefocus { clientFocus(clientFocusTop(m), true) }
         arrange(m, wantAnimation, true)
         printstatus(.arrangge)
     }
 
-    func clientSwitchView(_ ui: UInt32, allMonitors: Bool = false, wantAnimation: Bool = true) {
-        clientViewOnMonitor(ui, on: selectedMonitor, changeFocus: true, wantAnimation: wantAnimation)
-        if allMonitors {
-            for mon in monitors where mon !== selectedMonitor {
-                clientViewOnMonitor(ui, on: mon, changeFocus: false, wantAnimation: wantAnimation)
+    func clientSwitchView(_ arg: Arg, _ wantAnimation: Bool) {
+        if arg.i != 0 {
+            clientViewOnMonitor(arg, wantAnimation, selectedMonitor, true)
+            // not in mango: no disabled outputs
+            for m in monitors where m !== selectedMonitor {
+                // only arrange, not change monitor focus
+                clientViewOnMonitor(arg, wantAnimation, m, false)
             }
+        } else {
+            clientViewOnMonitor(arg, wantAnimation, selectedMonitor, true)
         }
     }
 
-    func tagClient(_ target: Client?, _ ui: UInt32, allMonitors: Bool = false) {
-        let tagmask = TAGMASK
-        if let c = target, ui & (tagmask | TAG0_MASK) != 0 {
-            c.tags = ui & TAG0_MASK != 0 ? TAG0_MASK : ui & tagmask
+    func tagClient(_ arg: Arg, _ targetClient: Client?) {
+        if let targetClient, arg.ui & (TAGMASK | TAG0_MASK) != 0 {
+            targetClient.tags = arg.ui & TAG0_MASK != 0 ? TAG0_MASK : arg.ui & TAGMASK
             // not in mango: client_reparent_group (no macOS part)
 
-            for fc in clients where fc !== c && c.tags & fc.tags != 0 && ISFULLSCREEN(fc)
-                && !c.isfloating {
+            for fc in clients where fc !== targetClient && targetClient.tags & fc.tags != 0 && ISFULLSCREEN(fc)
+                && !targetClient.isfloating {
                 clearFullscreenFlag(fc)
             }
-            if ui & TAG0_MASK != 0, let cm = c.mon { arrange(cm, false, false) }
+            if arg.ui & TAG0_MASK != 0, let cm = targetClient.mon {
+                arrange(cm, false, false)
+            }
+            clientSwitchView(Arg(i: arg.i, ui: arg.ui), true)
+
+        } else {
+            clientSwitchView(arg, true)
         }
-        clientSwitchView(ui, allMonitors: allMonitors)
-        clientFocus(target, true)
+
+        clientFocus(targetClient, true)
         printstatus(.arrangge)
     }
 
@@ -839,7 +909,7 @@ package extension MangoServer {
         setSizePer(m, c)
         let target = getTagsFirstTag(c.oldtags)
         if !c.isInScratchpad {
-            tagClient(c, target)
+            tagClient(Arg(ui: target), c)
         } else {
             c.tags = m.tagset[m.seltags]
             c.isminimized = false
@@ -1390,16 +1460,16 @@ package extension MangoServer {
         }
     }
 
-    func monitorMoveDirection(_ from: Monitor, _ to: Monitor) -> Direction? {
-        guard from !== to else { return nil }
+    func monitorMoveDirection(_ from: Monitor, _ to: Monitor) -> Int32 {
+        guard from !== to else { return UNDIR }
         let dx = (Int64(to.m.minX) + Int64(to.m.width) / 2) - (Int64(from.m.minX) + Int64(from.m.width) / 2)
         let dy = (Int64(to.m.minY) + Int64(to.m.height) / 2) - (Int64(from.m.minY) + Int64(from.m.height) / 2)
         let adx = dx < 0 ? -dx : dx
         let ady = dy < 0 ? -dy : dy
 
-        if adx == 0 && ady == 0 { return nil }
-        if adx >= ady { return dx > 0 ? .right : .left }
-        return dy > 0 ? .down : .up
+        if adx == 0 && ady == 0 { return UNDIR }
+        if adx >= ady { return dx > 0 ? RIGHT : LEFT }
+        return dy > 0 ? DOWN : UP
     }
 
     func clientReassignMonitor(_ c: Client, _ m: Monitor) {
@@ -1414,7 +1484,7 @@ package extension MangoServer {
     }
 
     @discardableResult
-    func clientJumpToMonitor(_ c: Client, _ m: Monitor, _ dir: Direction) -> Bool {
+    func clientJumpToMonitor(_ c: Client, _ m: Monitor, _ dir: Int32) -> Bool {
         guard let old = c.mon, old !== m, config.exchangeCrossMonitor,
               monitorMoveDirection(old, m) == dir else { return false }
         clientReassignMonitor(c, m)
@@ -1423,7 +1493,7 @@ package extension MangoServer {
         return true
     }
 
-    func clientMoveToMonitor(_ c: Client, _ target: Client, _ dir: Direction) {
+    func clientMoveToMonitor(_ c: Client, _ target: Client, _ dir: Int32) {
         guard let src = c.mon, let dst = target.mon, c !== target, src !== dst, config.exchangeCrossMonitor,
               monitorMoveDirection(src, dst) == dir else { return }
         let layout = dst.layout
@@ -1431,12 +1501,12 @@ package extension MangoServer {
             dwindleMoveNextTo(c, target, Float(config.dwindleSplitRatio), dir)
             return
         }
-        let insertBefore = dir == .right || dir == .up
+        let insertBefore = dir == RIGHT || dir == UP
 
         clientReassignMonitor(c, dst)
 
         if layout == .scroller || layout == .verticalScroller {
-            let alongAxis = layout == .verticalScroller ? (dir == .up || dir == .down) : (dir == .left || dir == .right)
+            let alongAxis = layout == .verticalScroller ? (dir == UP || dir == DOWN) : (dir == LEFT || dir == RIGHT)
             if !alongAxis {
                 scrollerInsertStack(c, target, insertBefore)
             } else if insertBefore {
@@ -1573,6 +1643,11 @@ package extension MangoServer {
         if c.platform.sceneSurfaceEnabled != surfaceShow {
             system.sceneSurfaceSetEnabled(c, surfaceShow)   // not in mango: the port's wlr_scene_node_set_enabled
         }
+    }
+
+    func clientPendingForceKill(_ c: Client?) {
+        guard let c else { return }
+        kill(c.pid, SIGKILL)
     }
 
     func clientAddJumpLabelNode(_ c: Client) {

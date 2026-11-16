@@ -36,7 +36,7 @@ extension MacWindowSystem {
                 if !resized { server.clientBeginDragFloat(c, at: pointer) }
             }
             if resized { userDrag?.resized = true }
-            if c.isfloating { c.floatGeom = actual.insetBy(dx: -c.bw, dy: -c.bw); c.iscustomsize = true }
+            if c.isfloating { c.floatGeom = actual.insetBy(dx: -c.bw, dy: -c.bw); c.geom = c.floatGeom; c.iscustomsize = true }
             c.frame = actual
             standsAt(c, actual)
             server.updateBorders()
@@ -45,6 +45,7 @@ extension MacWindowSystem {
         }
         if c.isfloating {
             c.floatGeom = actual.insetBy(dx: -c.bw, dy: -c.bw)
+            c.geom = c.floatGeom
             c.frame = actual
             standsAt(c, actual)
             server.updateBorders()
@@ -90,6 +91,7 @@ extension MacWindowSystem {
         }
         if c.isfloating {
             c.floatGeom = actual.insetBy(dx: -c.bw, dy: -c.bw)
+            c.geom = c.floatGeom
             c.iscustomsize = true
             c.frame = actual
             if let target = server.monitorAtPoint(actual.center), target !== m {
