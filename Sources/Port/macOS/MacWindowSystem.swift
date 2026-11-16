@@ -86,6 +86,35 @@ class MacWindowSystem: WindowSystem {
         return clock
     }()
     var parkAtCommit: Set<ClientID> = []
+    lazy var edgePlates: EdgePlates = {
+        let plates = EdgePlates()
+        plates.onClick = { [weak self] id in
+            guard let self, let c = self.server.clientByIdAll(id) else { return }
+            self.server.clientFocus(c, true)
+        }
+        return plates
+    }()
+
+    /// The plate for a window parked at its monitor's edge (EdgePlates).
+    func showEdgePlate(_ c: Client, box: CGRect) {
+        guard let m = c.mon else { return }
+        edgePlates.show(c.id, pid: c.pid, box: box, monitor: m.screen.frame, border: plateBorder(c))
+    }
+
+    /// The window's border as updateBorders draws it: mango's color, width and radius, and the port's
+    /// extensions on it as on the other borders (chutney_macos_appearance).
+    func plateBorder(_ c: Client) -> EdgePlates.Border {
+        let draws = server.renderBorder && server.config.borderpx > 0
+        let width = draws ? c.bw : 0
+        let mango = server.clientNoRadiusActive(c) ? 0 : CGFloat(server.config.borderRadius)
+        let spec = BorderSpec(id: c.id, frame: c.mac.box, color: server.getBorderColor(c), width: width, radius: mango)
+        let corner = MacOSAppearance.borders([spec], server.config).first?.radius ?? mango   // Port extension
+        let col = spec.color
+        return EdgePlates.Border(color: NSColor(red: col.r, green: col.g, blue: col.b, alpha: col.a).cgColor, width: width,
+                                 radius: BorderGeometry.outerRadius(corner: corner, width: width), innerRadius: corner)
+    }
+
+    func hideEdgePlate(_ id: ClientID) { edgePlates.hide(id) }
     var writeAtCommit: Set<ClientID> = []
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
@@ -246,6 +275,7 @@ class MacWindowSystem: WindowSystem {
         // Port extension: chutney_fullscreen_tag. No border for a window in its own fullscreen Space.
         let specs = MacOSAppearance.borders(specs.filter { server.clientByIdAll($0.id)?.leftToMacOS != true }, server.config)
         if specs.isEmpty { borders.removeAll() } else { borders.update(specs) }
+        for c in server.clientsAll where c.mac.offEdge { edgePlates.setBorder(c.id, plateBorder(c)) }
     }
 
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) {
@@ -446,6 +476,7 @@ class MacWindowSystem: WindowSystem {
     func shutdown() {
         memory.save(server, final: true)
         frameClock.stop()
+        edgePlates.hideAll()
         if let user = userKeyMappings, appliedKeyMappings != user { KeyboardOptions.apply(user) }
         let restore = DispatchGroup()
         if restarting {

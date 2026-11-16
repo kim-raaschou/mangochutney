@@ -184,6 +184,13 @@ final class EngineWriteTests: MangoTestCase {
         r.server.arrangeAll(false)
         r.settle()
         XCTAssertTrue(edge.parked, "the part beyond the edge would be on the external monitor")
+        let plate = (r.server.system as! FakeWindowSystem).plates[edge.id]
+        XCTAssertEqual(plate, edge.tile.intersection(sf), "a plate where mango shows the clipped part")
+        r.server.rebuildMonitors(screens: [r.screen])
+        r.server.arrangeAll(false)
+        r.settle()
+        XCTAssertNil((r.server.system as! FakeWindowSystem).plates[edge.id], "no other monitor: the window itself again")
+        XCTAssertFalse(edge.parked)
         XCTAssertTrue(r.server.clientsAll.filter { sf.contains($0.geom) }.allSatisfy { !$0.parked })
     }
 

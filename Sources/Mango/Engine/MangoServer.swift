@@ -57,7 +57,7 @@ public final class MangoServer {
     var ipc: IPCServer?
 
     package var enableGaps = true
-    var renderBorder = true
+    package var renderBorder = true
     package var drawsOverlays = false
     package internal(set) var started = false
     public var cliDebugLog = false
@@ -149,7 +149,7 @@ public final class MangoServer {
         configErrorNagDestroy()
     }
 
-    func clientNoRadiusActive(_ c: Client) -> Bool {
+    package func clientNoRadiusActive(_ c: Client) -> Bool {
         guard let m = c.mon else { return false }
 
         if c.isfullscreen || (config.noRadiusWhenSingle && m.visibleTilingClients == 1) {
@@ -480,7 +480,7 @@ public final class MangoServer {
         abs(a.minX - b.minX) + abs(a.minY - b.minY) + abs(a.width - b.width) + abs(a.height - b.height)
     }
 
-    func getBorderColor(_ c: Client) -> RGBA {
+    package func getBorderColor(_ c: Client) -> RGBA {
         let isFocused = c.mon === selectedMonitor && selectedMonitor.sel == c.id
         if c.mon !== selectedMonitor { return config.bordercolor }
         if c.isurgent { return config.urgentcolor }

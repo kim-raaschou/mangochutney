@@ -41,6 +41,7 @@ extension MacWindowSystem {
     /// A disabled scene is parked out of sight when the frame is shown (wlroots' output commit), after
     /// the windows shown in the same frame are written; an enabled one is written where mango next puts it.
     func showOrPark(_ c: Client) {
+        if c.mac.offEdge { hideEdgePlate(c.id) }
         if !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled {
             parkAtCommit.insert(c.id)
             if let m = c.mon { frameClock.schedule(m) }
@@ -87,11 +88,13 @@ extension MacWindowSystem {
         guard !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
         if reachesAnotherMonitor(c, box) {
             if !c.parked { park(c); c.mac.offEdge = true }
+            if c.mac.offEdge { showEdgePlate(c, box: box) }
             return
         }
         if c.parked {
             guard c.mac.offEdge else { return }
             c.mac.offEdge = false
+            hideEdgePlate(c.id)
             c.parked = false
             c.parkRetries = 0
         }

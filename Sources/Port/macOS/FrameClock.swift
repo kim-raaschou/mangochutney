@@ -9,6 +9,8 @@ final class FrameClock {
     private weak var server: MangoServer?
     private var scheduled: Set<CGDirectDisplayID> = []
     private var link: CADisplayLink?
+    /// The display the link follows: gone with its screen, the link is made again on another.
+    private var linkDisplay: CGDirectDisplayID?
     private var timer: DispatchSourceTimer?
     private lazy var linkTarget = DisplayLinkTarget { [weak self] in self?.fire() }
     private var idleWaiters: [() -> Void] = []
@@ -26,7 +28,14 @@ final class FrameClock {
     /// wlr_output_schedule_frame.
     func schedule(_ m: Monitor) {
         scheduled.insert(m.screen.displayID)
-        start()
+        if let d = linkDisplay, !NSScreen.screens.contains(where: { Self.displayID($0) == d }) {
+            link?.invalidate(); link = nil; linkDisplay = nil
+        }
+        start(on: m.screen.displayID)
+    }
+
+    private static func displayID(_ s: NSScreen) -> CGDirectDisplayID? {
+        (s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }
 
     /// The body runs once no client is moving.
@@ -36,13 +45,13 @@ final class FrameClock {
 
     func screensChanged() {
         guard link != nil else { return }
-        link?.invalidate(); link = nil
-        if !scheduled.isEmpty { start() }
+        link?.invalidate(); link = nil; linkDisplay = nil
+        if let d = scheduled.first { start(on: d) }
     }
 
     func stop() {
         scheduled.removeAll()
-        link?.invalidate(); link = nil
+        link?.invalidate(); link = nil; linkDisplay = nil
         timer?.cancel(); timer = nil
     }
 
@@ -55,7 +64,7 @@ final class FrameClock {
         }
         commit?()
         guard scheduled.isEmpty else { return }
-        link?.invalidate(); link = nil
+        link?.invalidate(); link = nil; linkDisplay = nil
         timer?.cancel(); timer = nil
         if !animationsRunning && !idleWaiters.isEmpty {
             let waiters = idleWaiters
@@ -64,9 +73,10 @@ final class FrameClock {
         }
     }
 
-    private func start() {
+    private func start(on display: CGDirectDisplayID) {
         guard !manual, link == nil, timer == nil else { return }
-        if let screen = NSScreen.screens.first {
+        if let screen = NSScreen.screens.first(where: { Self.displayID($0) == display }) ?? NSScreen.screens.first {
+            linkDisplay = Self.displayID(screen)
             let l = screen.displayLink(target: linkTarget, selector: #selector(DisplayLinkTarget.fire))
             let rate = Float(fps)
             l.preferredFrameRateRange = CAFrameRateRange(minimum: rate / 2, maximum: rate, preferred: rate)

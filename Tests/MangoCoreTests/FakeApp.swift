@@ -108,6 +108,10 @@ final class FakeWindowSystem: MacWindowSystem {
     var asked = 0
     var closed: [ClientID] = []
     override func clientSendClose(_ c: Client) { closed.append(c.id) }
+    var plates: [ClientID: CGRect] = [:]
+    /// The tests draw nothing: the plate's box is kept.
+    override func showEdgePlate(_ c: Client, box: CGRect) { plates[c.id] = box.intersection(c.mon!.screen.frame) }
+    override func hideEdgePlate(_ id: ClientID) { plates[id] = nil }
     var rescans = 0
     /// The tests reach no real app: the watcher does not scan them.
     override func rescan() { rescans += 1 }

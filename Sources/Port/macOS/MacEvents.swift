@@ -119,6 +119,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func windowDestroyed(id: CGWindowID) {
+        hideEdgePlate(id)
         if away.removeValue(forKey: id) != nil {
             memory.departed.away.remove(id)
             return

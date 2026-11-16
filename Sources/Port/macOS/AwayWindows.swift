@@ -14,6 +14,7 @@ extension MacWindowSystem {
         }
         guard server.clientByIdAll(c.id) === c else { return }
         away[c.id] = (c, [reason])
+        hideEdgePlate(c.id)
         memory.departed.away.insert(c.id)
         c.parked = false
         forgetPlacement(c)
