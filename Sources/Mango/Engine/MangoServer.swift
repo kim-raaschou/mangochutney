@@ -752,7 +752,6 @@ public final class MangoServer {
             focusStack.append(c.id)
         }
 
-        layoutStateInsert(c, on: mon)
         clientSetMonitor(c, mon, newtags, focus: shouldInitGetFocus)
 
         if let cm = c.mon, !(cm === selectedMonitor && c.tags & cm.tagset[cm.seltags] != 0),
@@ -795,15 +794,9 @@ public final class MangoServer {
         if let v = r.isoverlay { c.isoverlay = v }
         if let v = r.ignoreMinimize { c.ignoreMinimize = v }
         if let v = r.isUnmanagedGlobal { c.isunglobal = v }
-        if let v = r.scrollerProportion, v > 0 { c.scrollerProportion = CGFloat(v); c.iscustomScrollerProportion = true }
-        if let v = r.scrollerProportionSingle, v > 0 { c.scrollerProportionSingle = CGFloat(v); c.iscustomScrollerProportionSingle = true }
+        if let v = r.scrollerProportion, v > 0 { c.scrollerProportion = Float(v); c.iscustomScrollerProportion = true }
+        if let v = r.scrollerProportionSingle, v > 0 { c.scrollerProportionSingle = Float(v); c.iscustomScrollerProportionSingle = true }
         if let v = r.animationTypeOpen { c.animationTypeOpen = v }
-    }
-
-    /// Not in mango: the port's per-tag layout state (scroller columns, dwindle tree) takes
-    /// a new window next to the focused one before focus moves to it.
-    package func layoutStateInsert(_ c: Client, on m: Monitor) {
-        m.pertag.scrollerState[getMonCurtag(m)].insert(c.id, afterFocused: m.sel)
     }
 
     func clientAdaptGeometryToMonitor(_ c: Client, _ oldmon: Monitor) {
@@ -1129,10 +1122,19 @@ public final class MangoServer {
             : .tile
     }
 
-/// Not in mango: the port keeps the scroller's column order in the tag's state.
     func exitScrollerStack(_ c: Client) {
         guard let m = c.mon else { return }
-        m.pertag.scrollerState[getClientTagIdx(c)].exitScrollerStack(c.id)
+
+        let tag = getClientTagIdx(c)
+        if let st = m.pertag.scrollerState[tag] {
+            if let n = findScrollerNode(st, c) {
+                c.scrollerProportion = n.scrollerProportion
+                c.scrollerProportionSingle = n.scrollerProportionSingle
+                c.scrollerStackProportion = n.scrollerStackWeight
+                scrollerNodeRemove(st, n)
+                return
+            }
+        }
     }
 
     package func clientInsertTilingOrder(_ c: Client) {
@@ -1142,9 +1144,9 @@ public final class MangoServer {
         if config.newIsMaster && !m.layout.isScroller {
             clients.insert(c, at: 0)
             return
-        } else if m.layout.isScroller && !scrollTiled.isEmpty {
-            if let sel = m.sel.flatMap({ clientById($0) }), scrollTiled.contains(where: { $0 === sel }) {
-                at = m.pertag.scrollerState[getMonCurtag(m)].column(of: sel.id).last.flatMap { clientById($0) } ?? sel
+        } else if m.layout.isScroller && m.visibleScrollTilingClients > 0 {
+            if let sel = m.sel.flatMap({ clientByIdAll($0) }), ISSCROLLTILED(sel), VISIBLEON(sel, m) {
+                at = scrollGetStackTailClient(sel)
             } else {
                 at = centerTiledSelect(m, among: scrollTiled)
             }
@@ -1182,14 +1184,9 @@ public final class MangoServer {
     package func handleClientUnmap(_ c: Client) {
         let id = c.id
         guard clientByIdAll(id) === c else { return }
-        var stackNext: Client?, stackPrev: Client?
-        if let cm = c.mon, VISIBLEON(c, cm) {
-            let col = cm.pertag.scrollerState[getMonCurtag(cm)].column(of: id)
-            if let i = col.firstIndex(of: id) {
-                stackNext = i + 1 < col.count ? clientByIdAll(col[i + 1]) : nil
-                stackPrev = i > 0 ? clientByIdAll(col[i - 1]) : nil
-            }
-        }
+        let targetNode = c.mon.flatMap { findScrollerNode($0.pertag.scrollerState[getClientTagIdx(c)], c) }
+        let stackPrev = targetNode?.prevInStack?.client
+        let stackNext = targetNode?.nextInStack?.client
         // Port extension: not in mango. Its group and its place in the order, for when the
         // window comes back (macOS reports windows gone and back around sleep).
         let group = c.isGroupMember ? groupMembers(c) : []
@@ -1207,7 +1204,10 @@ public final class MangoServer {
             }
             clientGroupDetach(c)
         }
-        if !replaced { dwindleRemoveClient(c) }
+        if !replaced {
+            scrollerRemoveClient(c)
+            dwindleRemoveClient(c)
+        }
         let order = clients.map(\.id)
         clients.removeAll { $0 === c }
         portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
@@ -1216,7 +1216,6 @@ public final class MangoServer {
         if grab?.client === c { grab = nil }
         if dragTile?.client === c { dragTile = nil; system.showDropArea(nil, color: config.dropcolor) }
         for m in monitors {
-            for st in m.pertag.scrollerState { st.scrollerNodeRemove(id) }
             if m.sel == id { m.sel = nil }
             if m.prevsel == id { m.prevsel = nil }
         }

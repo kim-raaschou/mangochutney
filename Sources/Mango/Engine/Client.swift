@@ -71,8 +71,8 @@ public final class Client {
     public var noFocus = false
     public var confinePointer = false
     public var animationTypeOpen: AnimationType?
-    public var scrollerProportion: CGFloat?
-    public var scrollerProportionSingle: CGFloat?
+    public var scrollerProportion: Float = 0
+    public var scrollerProportionSingle: Float = 0
     public var iscustomScrollerProportion = false
     public var iscustomScrollerProportionSingle = false
     public var masterSizeWeight: CGFloat = 0
@@ -81,13 +81,13 @@ public final class Client {
     public var stackInnerPer: CGFloat = 0
     public var ismaster = false
     public var isleftstack = false
-/// Not in mango: scroller_stack_weight on the window; the port's scroller state holds only the columns.
-    public var scrollerStackWeight: CGFloat = 0
+    public var scrollerStackProportion: Float = 0
+    public var scrollerOldStackProportion: Float = 0
+    package var dropDirection: DropDirection = .none
     var oldMasterMfactPer: CGFloat = 0
     var oldMasterInnerPer: CGFloat = 0
     var oldStackInnerPer: CGFloat = 0
-    var oldScrollerPproportion: CGFloat = 0
-    var scrollerOldStackProportion: CGFloat = 0
+    var oldScrollerPproportion: Double = 0
     var oldGridColPer: CGFloat = 0
     var oldGridRowPer: CGFloat = 0
     var cursorInUpperHalf = false
@@ -183,7 +183,7 @@ public final class Pertag {
     package var dwindleRoot = PertagSlots<DwindleNode?>(nil)
     public var configLtidxs = PertagSlots<LayoutKind>(.tile)
     public var ltidxs = PertagSlots<LayoutKind>(.tile)
-    public var scrollerState = PertagSlots<ScrollerState>(ScrollerState())
+    package var scrollerState = PertagSlots<TagScrollerState?>(nil)
 }
 
 @MainActor
@@ -328,7 +328,7 @@ package extension MangoServer {
         m.pertag.noRenderBorder[tag] = false
         m.pertag.openAsFloating[tag] = false
         m.pertag.dwindleRoot[tag] = nil
-        m.pertag.scrollerState[tag] = ScrollerState()
+        m.pertag.scrollerState[tag] = nil
 
         for tr in config.tagRules {
             if tr.tagRuleMatchesMonitor(m.screen) && (tr.id == nil || tr.id == Int(tag)) {
@@ -374,6 +374,21 @@ extension MangoServer {
 @MainActor public func ISNORMAL(_ a: Client?) -> Bool {
     guard let a else { return false }
     return !a.isminimized && !a.iskilling && !a.isunglobal
+}
+
+/// mango INSIDEMON (manage/monitor.h).
+@MainActor func INSIDEMON(_ a: Client) -> Bool {
+    guard let m = a.mon else { return false }
+    let g = a.geom, mm = m.screen.frame
+    return g.minX >= mm.minX && g.minY >= mm.minY && g.minX + g.width <= mm.minX + mm.width
+        && g.minY + g.height <= mm.minY + mm.height
+}
+
+/// mango GEOMINSIDEMON (manage/monitor.h).
+@MainActor func GEOMINSIDEMON(_ a: CGRect, _ m: Monitor) -> Bool {
+    let mm = m.screen.frame
+    return a.minX >= mm.minX && a.minY >= mm.minY && a.minX + a.width <= mm.minX + mm.width
+        && a.minY + a.height <= mm.minY + mm.height
 }
 
 @MainActor public func ISSCROLLTILED(_ a: Client?) -> Bool {

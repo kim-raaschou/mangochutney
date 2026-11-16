@@ -81,9 +81,9 @@ package extension MangoServer {
         c.masterInnerPer = w.masterInnerPer
         c.stackSizeWeight = w.stackSizeWeight
         c.masterSizeWeight = w.masterSizeWeight
-        c.scrollerStackWeight = w.scrollerStackWeight
         c.masterMfactPer = w.masterMfactPer
         c.scrollerProportion = w.scrollerProportion
+        c.scrollerStackProportion = w.scrollerStackProportion
         c.isglobal = w.isglobal
         c.overviewBackupGeom = w.overviewBackupGeom
         c.animation.current = w.animation.current
@@ -104,7 +104,19 @@ package extension MangoServer {
                     dwindleRemove(&m.pertag.dwindleRoot[i], c)
                     if let dnode = dwindleFindLeaf(m.pertag.dwindleRoot[i], w) { dnode.client = c }
                 }
-                if layout.isScroller { m.pertag.scrollerState[i].replace(w.id, with: c.id) }
+
+                // scroller
+                if layout == .scroller || layout == .verticalScroller {
+                    guard let st = m.pertag.scrollerState[UInt32(i)] else { continue }
+                    if let cn = findScrollerNode(st, c) { scrollerNodeRemove(st, cn) }
+
+                    if let wn = findScrollerNode(st, w) { wn.client = c }
+                }
+            }
+
+            /* Syncs the global client fields of the currently active tag. */
+            if layout == .scroller || layout == .verticalScroller {
+                syncScrollerStateToClients(m, getClientTagIdx(w))
             }
         }
         w.jumpLabelNode?.setEnabled(false)

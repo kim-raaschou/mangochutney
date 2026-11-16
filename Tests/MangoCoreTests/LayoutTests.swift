@@ -3,6 +3,7 @@ import CoreGraphics
 @testable import Mango
 @testable import Port
 
+@MainActor
 final class LayoutTests: MangoTestCase {
     let work = CGRect(x: 0, y: 25, width: 1920, height: 1080)
     let monitor = CGRect(x: 0, y: 0, width: 1920, height: 1105)
@@ -53,7 +54,8 @@ final class LayoutTests: MangoTestCase {
     func dwindleRoot(_ r: EngineRig) -> DwindleNode? { r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)] }
 
     func checkInvariants(_ name: String, _ input: LayoutInput, _ r: LayoutResult,
-                         insideWork: Bool = true, file: StaticString = #filePath, line: UInt = #line) {
+                         insideWork: Bool = true, stacked: Bool = false,
+                         file: StaticString = #filePath, line: UInt = #line) {
         for c in input.clients {
             guard let f = r.frames[c.id] else {
                 XCTFail("\(name): client \(c.id) has no frame", file: file, line: line); continue
@@ -61,11 +63,12 @@ final class LayoutTests: MangoTestCase {
             XCTAssertGreaterThanOrEqual(f.width, 1, "\(name)", file: file, line: line)
             XCTAssertGreaterThanOrEqual(f.height, 1, "\(name)", file: file, line: line)
             XCTAssertEqual(f, f.integral, "\(name): non-integral frame \(f)", file: file, line: line)
-            if insideWork && !r.hidden.contains(c.id) {
+            if insideWork {
                 XCTAssertTrue(work.contains(f), "\(name): \(c.id) \(f) outside work area", file: file, line: line)
             }
         }
-        let visible = input.clients.map(\.id).filter { !r.hidden.contains($0) }
+        if stacked { return }
+        let visible = input.clients.map(\.id)
         for (i, a) in visible.enumerated() {
             for b in visible[(i + 1)...] {
                 let fa = r.frames[a]!, fb = r.frames[b]!
@@ -79,32 +82,26 @@ final class LayoutTests: MangoTestCase {
         }
     }
 
-    typealias Layout = (LayoutInput) -> LayoutResult
-
-    var statelessLayouts: [(String, Layout)] {
-        [("tile", TileLayouts.tile), ("right_tile", TileLayouts.rightTile),
-         ("center_tile", TileLayouts.centerTile), ("vertical_tile", TileLayouts.verticalTile),
-         ("deck", TileLayouts.deck), ("vertical_deck", TileLayouts.verticalDeck),
-         ("monocle", TileLayouts.monocle), ("grid", GridLayouts.grid),
-         ("vertical_grid", GridLayouts.verticalGrid), ("fair", GridLayouts.fair),
-         ("vertical_fair", GridLayouts.verticalFair)]
+    var statelessLayouts: [LayoutKind] {
+        [.tile, .rightTile, .centerTile, .verticalTile, .deck, .verticalDeck, .monocle, .grid, .verticalGrid,
+         .fair, .verticalFair]
     }
 
     func testStatelessLayoutsInvariants() {
-        for (name, layout) in statelessLayouts {
+        for kind in statelessLayouts {
             for n in [1, 2, 3, 5] {
                 let input = makeInput(ids(n), focused: ClientID(n))
-                checkInvariants("\(name) n=\(n)", input, layout(input))
+                checkInvariants("\(kind.name) n=\(n)", input, runLayout(kind, input), stacked: kind.isMonocleLike)
             }
         }
     }
 
     func testStatelessLayoutsWithTwoMasters() {
         var pt = PertagSettings(); pt.nmaster = 2
-        for (name, layout) in statelessLayouts where !name.contains("deck") {
+        for kind in statelessLayouts where !kind.name.contains("deck") {
             for n in [1, 2, 3, 5] {
                 let input = makeInput(ids(n), pertag: pt)
-                checkInvariants("\(name) nmaster=2 n=\(n)", input, layout(input))
+                checkInvariants("\(kind.name) nmaster=2 n=\(n)", input, runLayout(kind, input), stacked: kind.isMonocleLike)
             }
         }
     }
@@ -121,109 +118,101 @@ final class LayoutTests: MangoTestCase {
     func testScrollerInvariants() {
         for vertical in [false, true] {
             for n in [1, 2, 3, 5] {
-                let s = ScrollerState()
                 let input = makeInput(ids(n), focused: 1)
-                let r = s.arrange(input, vertical: vertical)
+                let r = runLayout(vertical ? .verticalScroller : .scroller, input)
                 checkInvariants("scroller v=\(vertical) n=\(n)", input, r, insideWork: false)
                 XCTAssertTrue(work.contains(r.frames[1]!), "focused \(r.frames[1]!)")
-                for id in ids(n) where !r.hidden.contains(id) {
-                    XCTAssertTrue(r.frames[id]!.intersects(monitor))
-                }
-                for id in r.hidden { XCTAssertFalse(r.frames[id]!.intersects(monitor)) }
             }
         }
     }
 
     func testTileGeometry() {
         let input = makeInput([1, 2, 3])
-        let r = TileLayouts.tile(input)
+        let r = runLayout(.tile, input)
         XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 1053, height: 1060))
         XCTAssertEqual(r.frames[2], CGRect(x: 1068, y: 35, width: 842, height: 527))
         XCTAssertEqual(r.frames[3], CGRect(x: 1068, y: 567, width: 842, height: 528))
-        let one = TileLayouts.tile(makeInput([1]))
+        let one = runLayout(.tile, makeInput([1]))
         XCTAssertEqual(one.frames[1], CGRect(x: 10, y: 35, width: 1900, height: 1060))
     }
 
     func testRightTileMirrorsTile() {
-        let r = TileLayouts.rightTile(makeInput([1, 2]))
+        let r = runLayout(.rightTile, makeInput([1, 2]))
         XCTAssertEqual(r.frames[1], CGRect(x: 1920 - 1058 - 10 + 5, y: 35, width: 1053, height: 1060))
         XCTAssertEqual(r.frames[2], CGRect(x: 10, y: 35, width: 842, height: 1060))
     }
 
     func testCenterTile() {
-        let r = TileLayouts.centerTile(makeInput([1, 2, 3]))
+        let r = runLayout(.centerTile, makeInput([1, 2, 3]))
         let m = r.frames[1]!, a = r.frames[2]!, b = r.frames[3]!
         XCTAssertEqual(m.midX, work.midX, accuracy: 3)
         XCTAssertLessThan(a.maxX, m.minX)
         XCTAssertGreaterThan(b.minX, m.maxX)
         XCTAssertEqual(a.minX, 10)
         XCTAssertEqual(b.maxX, 1910)
-        let r2 = TileLayouts.centerTile(makeInput([1, 2]))
+        let r2 = runLayout(.centerTile, makeInput([1, 2]))
         XCTAssertEqual(r2.frames[1]!.midX, work.midX, accuracy: 3)
         XCTAssertGreaterThan(r2.frames[2]!.minX, r2.frames[1]!.maxX)
         var cfg = Config(); cfg.centerWhenSingleStack = false
-        let r3 = TileLayouts.centerTile(makeInput([1, 2], config: cfg))
+        let r3 = runLayout(.centerTile, makeInput([1, 2], config: cfg))
         XCTAssertEqual(r3.frames[1]!.minX, 10)
         XCTAssertEqual(r3.frames[2]!.maxX, 1910)
-        let r4 = TileLayouts.centerTile(makeInput([1]))
+        let r4 = runLayout(.centerTile, makeInput([1]))
         XCTAssertEqual(r4.frames[1]!.midX, work.midX, accuracy: 3)
         XCTAssertLessThan(r4.frames[1]!.width, 1900)
         cfg = Config(); cfg.centerMasterOverspread = true
-        XCTAssertEqual(TileLayouts.centerTile(makeInput([1], config: cfg)).frames[1],
+        XCTAssertEqual(runLayout(.centerTile, makeInput([1], config: cfg)).frames[1],
                        CGRect(x: 10, y: 35, width: 1900, height: 1060))
     }
 
     func testDeckAndMonocleVisibility() {
         let input = makeInput([1, 2, 3, 4], focused: 3)
-        let deck = TileLayouts.deck(input)
-        XCTAssertEqual(deck.hidden, [2, 4])
+        let deck = runLayout(.deck, input)
         XCTAssertEqual(deck.frames[2], deck.frames[3])
-        let deck2 = TileLayouts.deck(makeInput([1, 2, 3, 4], focused: 1))
-        XCTAssertEqual(deck2.hidden, [3, 4])
-        let vdeck = TileLayouts.verticalDeck(input)
-        XCTAssertEqual(vdeck.hidden, [2, 4])
+        XCTAssertEqual(deck.frames[4], deck.frames[3], "the stack one behind the other")
+        let vdeck = runLayout(.verticalDeck, input)
+        XCTAssertEqual(vdeck.frames[2], vdeck.frames[4])
         XCTAssertGreaterThan(vdeck.frames[3]!.minY, vdeck.frames[1]!.maxY)
 
-        let mono = TileLayouts.monocle(input)
-        XCTAssertEqual(mono.hidden, [1, 2, 4])
-        XCTAssertEqual(mono.frames[1], CGRect(x: 10, y: 35, width: 1900, height: 1060))
+        let mono = runLayout(.monocle, input)
+        for id: ClientID in [1, 2, 3, 4] { XCTAssertEqual(mono.frames[id], CGRect(x: 10, y: 35, width: 1900, height: 1060)) }
         var cfg = Config(); cfg.monocleNoGap = true
-        XCTAssertEqual(TileLayouts.monocle(makeInput([1], config: cfg)).frames[1], work)
+        XCTAssertEqual(runLayout(.monocle, makeInput([1], config: cfg)).frames[1], work)
     }
 
     func testFullscreenAndMaximized() {
-        var input = makeInput([1, 2, 3])
-        input.clients[1].isfullscreen = true
-        input.clients[2].isMaximized = true
-        let r = TileLayouts.tile(input)
-        XCTAssertEqual(r.frames[2], monitor)
-        XCTAssertEqual(r.frames[3], CGRect(x: 10, y: 35, width: 1900, height: 1060))
+        let s = LayoutRunner(.tile)
+        _ = s.arrange(makeInput([1, 2, 3]))
+        s.server.clientSetFullscreen(s.server.clientByIdAll(2)!, true, rearrange: true)
+        s.server.clientSetMaximizeScreen(s.server.clientByIdAll(3)!, true, rearrange: true)
+        XCTAssertEqual(s.server.clientByIdAll(2)!.geom, monitor)
+        XCTAssertEqual(s.server.clientByIdAll(3)!.geom, CGRect(x: 10, y: 35, width: 1900, height: 1060))
     }
 
     func testGridShapes() {
-        let one = GridLayouts.grid(makeInput([1]))
+        let one = runLayout(.grid, makeInput([1]))
         XCTAssertEqual(one.frames[1]!.width, CGFloat(Int(1900.0 * 0.9)))
         XCTAssertEqual(one.frames[1]!.midX, work.midX, accuracy: 1)
-        let two = GridLayouts.grid(makeInput([1, 2]))
+        let two = runLayout(.grid, makeInput([1, 2]))
         XCTAssertEqual(two.frames[1]!.height, CGFloat(Int(1060.0 * 0.65)))
         XCTAssertEqual(two.frames[1]!.minY, two.frames[2]!.minY)
-        let five = GridLayouts.grid(makeInput(ids(5)))
+        let five = runLayout(.grid, makeInput(ids(5)))
         XCTAssertEqual(five.frames[1]!.minY, five.frames[3]!.minY)
         XCTAssertEqual(five.frames[4]!.minY, five.frames[5]!.minY)
         let rowMid = (five.frames[4]!.minX + five.frames[5]!.maxX) / 2
         XCTAssertEqual(rowMid, work.midX, accuracy: 2)
-        let v = GridLayouts.verticalGrid(makeInput(ids(5)))
+        let v = runLayout(.verticalGrid, makeInput(ids(5)))
         XCTAssertEqual(v.frames[1]!.minX, v.frames[3]!.minX)
         XCTAssertEqual(v.frames[4]!.minX, v.frames[5]!.minX)
     }
 
     func testFairShapes() {
-        let r = GridLayouts.fair(makeInput(ids(5)))
+        let r = runLayout(.fair, makeInput(ids(5)))
         XCTAssertEqual(r.frames[1]!.height, 1060)
         XCTAssertEqual(r.frames[2]!.minX, r.frames[3]!.minX)
         XCTAssertEqual(r.frames[4]!.minX, r.frames[5]!.minX)
         XCTAssertEqual(r.frames[5]!.maxX, 1910)
-        let v = GridLayouts.verticalFair(makeInput(ids(5)))
+        let v = runLayout(.verticalFair, makeInput(ids(5)))
         XCTAssertEqual(v.frames[1]!.width, 1900)
         XCTAssertEqual(v.frames[2]!.minY, v.frames[3]!.minY)
     }
@@ -313,59 +302,28 @@ final class LayoutTests: MangoTestCase {
         checkInvariants("dwindle manual", makeInput([1, 2, 3], config: cfg), LayoutResult(frames: r))
     }
 
-    func testScrollerStateOperations() {
-        let s = ScrollerState()
-        s.insert(1, afterFocused: nil)
-        s.insert(2, afterFocused: 1)
-        s.insert(3, afterFocused: 1)
-        XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [3], [2]])
-        XCTAssertTrue(s.scrollerApplyStack(3, direction: .right, vertical: false, clientOrder: [1, 2, 3]))
-        XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [2, 3]])
-        XCTAssertEqual(s.column(of: 3), [2, 3])
-        XCTAssertEqual(s.position(of: 3, in: [1, 2, 3])?.column, 1)
-        XCTAssertEqual(s.position(of: 3, in: [1, 2, 3])?.row, 1)
-        XCTAssertFalse(s.scrollerApplyStack(3, direction: .up, vertical: false, clientOrder: [1, 2, 3]))
-        s.exchangeTwoScrollerClients(2, 3)
-        XCTAssertEqual(s.column(of: 2), [3, 2])
-        XCTAssertTrue(s.scrollerApplyStack(2, direction: .left, vertical: false, clientOrder: [1, 2, 3]))
-        XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [2], [3]])
-        XCTAssertFalse(s.scrollerApplyStack(1, direction: .left, vertical: false, clientOrder: [1, 2, 3]))
-        _ = s.scrollerApplyStack(3, direction: .left, vertical: false, clientOrder: [1, 2, 3])
-        XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [2, 3]])
-        s.exchangeTwoScrollerClients(1, 3)
-        XCTAssertEqual(s.columns(for: [1, 2, 3]), [[2, 3], [1]])
-        s.scrollerNodeRemove(2)
-        XCTAssertEqual(s.columns(for: [1, 3]), [[3], [1]])
-        XCTAssertFalse(s.contains(2))
-        XCTAssertTrue(s.scrollerApplyStack(1, direction: .up, vertical: true, clientOrder: [1, 3]))
-        XCTAssertEqual(s.columns(for: [1, 3]), [[3, 1]])
-        s.clearScrollerState()
-        XCTAssertFalse(s.contains(1))
-    }
-
     func testScrollerSelfHealAndGeometry() {
-        let s = ScrollerState()
-        var r = s.arrange(makeInput([1, 2, 3], focused: 1), vertical: false)
-        XCTAssertEqual(s.columns(for: [1, 2, 3]), [[1], [2], [3]])
+        let s = LayoutRunner(.scroller)
+        var r = s.arrange(makeInput([1, 2, 3], focused: 1))
+        XCTAssertEqual(s.server.scrollerStacks(s.monitor), [[1], [2], [3]])
         let input = makeInput([1, 2, 4, 3], focused: 2, frames: r.frames)
-        r = s.arrange(input, vertical: false)
-        XCTAssertEqual(s.columns(for: [1, 2, 3, 4]), [[1], [2], [4], [3]])
-        let colW = CGFloat(Int(Double(1920 - 2 * 20 - 5) * 0.9))
+        r = s.arrange(input)
+        XCTAssertEqual(s.server.scrollerStacks(s.monitor), [[1], [2], [4], [3]])
+        let colW = CGFloat(Int(Double(1920 - 2 * 20 - 5) * Double(Float(0.9))))
         XCTAssertEqual(r.frames[2]!.width, colW)
         XCTAssertEqual(r.frames[2]!.height, 1060)
         XCTAssertEqual(r.frames[4]!.minX - r.frames[2]!.maxX, 5)
         XCTAssertEqual(r.frames[2]!.minX - r.frames[1]!.maxX, 5)
-        XCTAssertTrue(r.hidden.contains(3))
-        XCTAssertNotNil(r.frames[3])
-        r = s.arrange(makeInput([1, 4], focused: 4, frames: r.frames), vertical: false)
-        XCTAssertEqual(s.columns(for: [1, 4]), [[1], [4]])
+        XCTAssertFalse(r.frames[3]!.intersects(monitor), "beyond the monitor")
+        r = s.arrange(makeInput([1, 4], focused: 4, frames: r.frames))
+        XCTAssertEqual(s.server.scrollerStacks(s.monitor), [[1], [4]])
     }
 
     func testScrollerStackGeometry() {
-        let s = ScrollerState()
-        _ = s.arrange(makeInput([1, 2], focused: 1), vertical: false)
-        _ = s.scrollerApplyStack(2, direction: .left, vertical: false, clientOrder: [1, 2])
-        let r = s.arrange(makeInput([1, 2], focused: 2), vertical: false)
+        let s = LayoutRunner(.scroller)
+        _ = s.arrange(makeInput([1, 2], focused: 1))
+        _ = s.server.dispatch(Dispatch(name: "scroller_stack", args: ["left"]), target: s.server.clientByIdAll(2))
+        let r = s.arrange(makeInput([1, 2], focused: 2))
         let a = r.frames[1]!, b = r.frames[2]!
         XCTAssertEqual(a.minX, b.minX)
         XCTAssertEqual(a.width, b.width)
@@ -376,52 +334,38 @@ final class LayoutTests: MangoTestCase {
     }
 
     func testScrollerSingleProportionAndCenter() {
-        let s = ScrollerState()
         var pt = PertagSettings(); pt.scrollerIgnoreProportionSingle = false; pt.scrollerDefaultProportionSingle = 0.5
-        let r = s.arrange(makeInput([1], pertag: pt), vertical: false)
+        let r = runLayout(.scroller, makeInput([1], pertag: pt))
         XCTAssertEqual(r.frames[1], CGRect(x: 485, y: 35, width: 950, height: 1060))
 
-        let s2 = ScrollerState()
+        let s2 = LayoutRunner(.scroller)
         var cfg = Config(); cfg.scrollerPreferOverspread = false
-        var frames: [ClientID: CGRect] = [:]
         var p = PertagSettings(); p.scrollerDefaultProportion = 0.5
-        var r2 = s2.arrange(makeInput([1, 2, 3], focused: 2, config: cfg, pertag: p), vertical: false)
-        frames = r2.frames
+        var r2 = s2.arrange(makeInput([1, 2, 3], focused: 2, config: cfg, pertag: p))
+        var frames = r2.frames
         frames[2]!.origin.x = 100
-        r2 = s2.arrange(makeInput([1, 2, 3], focused: 2, config: cfg, pertag: p, frames: frames), vertical: false)
+        r2 = s2.arrange(makeInput([1, 2, 3], focused: 2, config: cfg, pertag: p, frames: frames))
         XCTAssertEqual(r2.frames[2]!.minX, 100)
-        s2.centerWindow(2)
-        r2 = s2.arrange(makeInput([1, 2, 3], focused: 2, config: cfg, pertag: p, frames: r2.frames), vertical: false)
-        XCTAssertEqual(r2.frames[2]!.midX, work.midX, accuracy: 1)
+        _ = s2.server.dispatch(Dispatch(name: "centerwin"), target: s2.server.clientByIdAll(2))
+        XCTAssertEqual(s2.server.clientByIdAll(2)!.geom.midX, work.midX, accuracy: 1)
     }
 
     func testVerticalScroller() {
-        let s = ScrollerState()
-        let r = s.arrange(makeInput([1, 2, 3], focused: 2), vertical: true)
+        let r = runLayout(.verticalScroller, makeInput([1, 2, 3], focused: 2))
         let f = r.frames[2]!
         XCTAssertEqual(f.width, 1900)
-        XCTAssertEqual(f.height, CGFloat(Int(Double(1080 - 40 - 5) * 0.9)))
+        XCTAssertEqual(f.height, CGFloat(Int(Double(1080 - 40 - 5) * Double(Float(0.9)))))
         XCTAssertEqual(f.minX, 10)
         XCTAssertGreaterThan(r.frames[3]!.minY, f.maxY)
         XCTAssertLessThan(r.frames[1]!.maxY, f.minY)
     }
 
     func testScrollerFullscreenColumn() {
-        let s = ScrollerState()
         var input = makeInput([1, 2], focused: 1)
         input.clients[0].isfullscreen = true
-        let r = s.arrange(input, vertical: false)
+        let r = runLayout(.scroller, input)
         XCTAssertEqual(r.frames[1], monitor)
         XCTAssertGreaterThanOrEqual(r.frames[2]!.minX, monitor.maxX)
-    }
-
-    func testLayoutEngineDispatchFramesEveryClient() {
-        let state = TagLayoutState()
-        for kind in LayoutKind.allCases where kind != .dwindle {
-            let input = makeInput(ids(4), focused: 2)
-            let r = LayoutEngine.arrange(kind, input: input, state: state)
-            XCTAssertEqual(Set(r.frames.keys), Set(ids(4)), kind.name)
-        }
     }
 
     func testOverviewPack() {
@@ -452,45 +396,26 @@ final class LayoutTests: MangoTestCase {
         var off = makeInput(ids(4))
         off.gaps = .zero
         off.enableGaps = false
-        let g0 = GridLayouts.grid(off)
+        let g0 = runLayout(.grid, off)
         XCTAssertEqual(g0.frames[1], CGRect(x: 0, y: 25, width: 960, height: 540))
         XCTAssertEqual(g0.frames[4], CGRect(x: 960, y: 565, width: 960, height: 540))
-        let v0 = GridLayouts.verticalGrid(off)
+        let v0 = runLayout(.verticalGrid, off)
         XCTAssertEqual(v0.frames[1]!.minX, 0)
         XCTAssertEqual(v0.frames[1]!.minY, 25)
 
         var inc = makeInput(ids(4))
         inc.gaps = Gaps(ih: 40, iv: 40, oh: 50, ov: 50)
-        XCTAssertEqual(GridLayouts.grid(inc).frames, GridLayouts.grid(makeInput(ids(4))).frames)
+        XCTAssertEqual(runLayout(.grid, inc).frames, runLayout(.grid, makeInput(ids(4))).frames)
 
         var smart = makeInput([1])
         smart.config.smartgaps = true
         smart.gaps = .zero
-        XCTAssertEqual(GridLayouts.grid(smart).frames, GridLayouts.grid(makeInput([1])).frames)
-    }
-
-    func testNonFiniteInputsDoNotTrap() {
-        var pt = PertagSettings()
-        pt.mfact = .nan
-        pt.scrollerDefaultProportion = .infinity
-        let nan = CGFloat.nan
-        let clients = (1...4).map {
-            LayoutClient(id: ClientID($0), currentFrame: CGRect(x: nan, y: 0, width: 100, height: 100),
-                         scrollerProportion: $0 % 2 == 0 ? nan : .infinity, scrollerProportionSingle: nan, masterInnerPer: nan,
-                         stackInnerPer: nan, scrollerStackWeight: nan)
-        }
-        let input = LayoutInput(workArea: work, monitorFrame: monitor, gaps: gaps, clients: clients, focusedID: 2,
-                                prevFocusedID: 3, pertag: pt, config: Config())
-        for kind in LayoutKind.allCases where kind != .dwindle {
-            let r = LayoutEngine.arrange(kind, input: input, state: TagLayoutState())
-            XCTAssertEqual(r.frames.count, 4, kind.name)
-            for f in r.frames.values { XCTAssertTrue(f.origin.x.isFinite && f.width.isFinite && f.width >= 1, "\(kind.name) \(f)") }
-        }
+        XCTAssertEqual(runLayout(.grid, smart).frames, runLayout(.grid, makeInput([1])).frames)
     }
 
     func testRandomInputsNeverTrapOrDropClients() {
         var rng = SystemRandomNumberGenerator()
-        let states = LayoutKind.allCases.map { _ in TagLayoutState() }
+        var runners = LayoutKind.allCases.map { LayoutRunner($0) }
         for iter in 0..<300 {
             let n = Int.random(in: 0...10, using: &rng)
             let area = CGRect(x: CGFloat(Int.random(in: -2000...2000, using: &rng)), y: CGFloat(Int.random(in: -500...500, using: &rng)),
@@ -517,11 +442,11 @@ final class LayoutTests: MangoTestCase {
             let input = LayoutInput(workArea: area, monitorFrame: area, gaps: gaps, clients: clients,
                                     focusedID: ids.randomElement(using: &rng), prevFocusedID: ids.randomElement(using: &rng),
                                     pertag: pt, config: cfg, cursor: CGPoint(x: 100, y: 100))
-            for (i, kind) in LayoutKind.allCases.enumerated() where kind != .dwindle {
-                let r = LayoutEngine.arrange(kind, input: input, state: states[i])
+            for (i, kind) in LayoutKind.allCases.enumerated() {
+                let r = runners[i].arrange(input)
                 for c in clients { XCTAssertNotNil(r.frames[c.id], "\(kind.name) n=\(n) lost client \(c.id)") }
             }
-            if iter % 5 == 0 { for st in states { st.scrollerState.clearScrollerState() } }
+            if iter % 5 == 0 { runners = LayoutKind.allCases.map { LayoutRunner($0) } }
             let cards = OverviewLayout.overviewScale(clients: ids.map { ($0, CGSize(width: Double.random(in: 0...1500, using: &rng), height: Double.random(in: 0...1500, using: &rng))) },
                                             workArea: area, gapInner: CGFloat(Int.random(in: 0...100, using: &rng)), gapOuter: CGFloat(Int.random(in: 0...200, using: &rng)))
             XCTAssertTrue(cards.count == n || cards.isEmpty, "mango: all placed, or none when no scale fits")

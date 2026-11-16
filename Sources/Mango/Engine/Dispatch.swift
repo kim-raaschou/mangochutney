@@ -76,9 +76,6 @@ package extension MangoServer {
             let z = sel ?? first
             clients.removeAll { $0 === z }
             clients.insert(z, at: 0)
-            // not in mango: the port keeps the scroller's column order in its state; the
-            // column of the window put first goes first, as mango's list order makes it.
-            if let zm = z.mon, zm.layout.isScroller { zm.pertag.scrollerState[getMonCurtag(zm)].moveColumnToFront(z.id) }
             clientFocus(z, true)
             arrange(selectedMonitor, false, false)
 
@@ -116,28 +113,33 @@ package extension MangoServer {
                 setLayout(all[i], on: sm)
             }
         case "set_proportion":
-            guard let c, selectedMonitor.layout.isScroller, !selectedMonitor.isoverview,
+            guard selectedMonitor.layout.isScroller, !selectedMonitor.isoverview,
                   let f = finiteDouble(a0) else { return nil }
-            setProportion(c, CGFloat(f))
+            if selectedMonitor.visibleTilingClients == 1 && !config.scrollerIgnoreProportionSingle { return nil }
+            guard let c else { return nil }
+            setProportion(c, Float(f))
         case "switch_proportion_preset":
-            guard let c, selectedMonitor.layout.isScroller, !selectedMonitor.isoverview,
-                  !c.isfloating, !config.scrollerProportionPreset.isEmpty else { return nil }
-            let presets = config.scrollerProportionPreset.map { CGFloat($0) }
-            let cur = scrollGetStackHeadClient(c).scrollerProportion ?? CGFloat(m.pertag.scrollerDefaultProportion[getMonCurtag(m)])
-            let next: CGFloat
-            if let i = presets.firstIndex(where: { abs($0 - cur) < 0.001 }) {
-                next = presets[(i + 1) % presets.count]
-            } else {
-                next = presets[0]
+            guard !config.scrollerProportionPreset.isEmpty, selectedMonitor.layout.isScroller,
+                  !selectedMonitor.isoverview else { return nil }
+            if selectedMonitor.visibleTilingClients == 1 && !config.scrollerIgnoreProportionSingle { return nil }
+            guard let c, !c.isfloating else { return nil }
+            var targetProportion: Float = 0
+            let tc = scrollGetStackHeadClient(c)
+            guard let tm = tc.mon else { return nil }
+            let node = findScrollerNode(tm.pertag.scrollerState[getMonCurtag(tm)], tc)
+            let currentProportion = node?.scrollerProportion ?? tc.scrollerProportion
+            let presets = config.scrollerProportionPreset.map { Float($0) }
+            for i in presets.indices where presets[i] == currentProportion {
+                targetProportion = i == presets.count - 1 ? presets[0] : presets[i + 1]
+                break
             }
-            setProportion(c, next)
+            if targetProportion == 0.0 { targetProportion = presets[0] }
+            setProportion(c, targetProportion)
         case "scroller_stack":
             guard let c, c.mon != nil, !c.isfloating, selectedMonitor.layout.isScroller,
                   let dir = Direction(mangoName: a0) else { return nil }
-            let ids = tiledClients(m).map(\.id)
-            if m.pertag.scrollerState[getMonCurtag(m)].scrollerApplyStack(c.id, direction: dir, vertical: m.layout == .verticalScroller, clientOrder: ids) {
-                arrange(m, false, false)
-            }
+            let targetClient = findClientByDirection(c, dir, findFloating: false)
+            scrollerApplyStack(c, targetClient, dir)
         case "centerwin":
             guard let c, !c.isfullscreen, !c.ismaximizescreen else { return nil }
             if c.isfloating {
@@ -145,7 +147,13 @@ package extension MangoServer {
                 c.floatGeom = clientCenterGeometry(c, c.floatGeom, in: w).rounded()
                 c.iscustomsize = true
             } else if selectedMonitor.layout.isScroller {
-                m.pertag.scrollerState[getMonCurtag(m)].centerWindow(c.id)
+                let stackHead = scrollGetStackHeadClient(c)
+                let w = WBox(selectedMonitor.screen.workArea)
+                if selectedMonitor.pertag.ltidxs[getMonCurtag(selectedMonitor)] == .scroller {
+                    stackHead.geom.origin.x = CGFloat(w.x + (w.width - Int32(stackHead.geom.width)) / 2)
+                } else {
+                    stackHead.geom.origin.y = CGFloat(w.y + (w.height - Int32(stackHead.geom.height)) / 2)
+                }
             }
             arrange(m, false, false)
 
@@ -951,15 +959,74 @@ package extension MangoServer {
         printstatus(.arrangge)
     }
 
-    func setProportion(_ c: Client, _ p: CGFloat) {
-        guard let m = c.mon, !m.isoverview, m.layout.isScroller else { return }
-        if tiledClients(m).count == 1 && !config.scrollerIgnoreProportionSingle { return }
-        scrollGetStackHeadClient(c).scrollerProportion = p
+    /// not in mango: set_proportion's and switch_proportion_preset's common end (dispatch/bind.c)
+    func setProportion(_ c: Client, _ f: Float) {
+        let tc = scrollGetStackHeadClient(c)
+        guard let m = tc.mon else { return }
+        let tag = getMonCurtag(m)
+        let st = m.pertag.scrollerState[tag]
+        var node: ScrollerStackNode?
+
+        if let st { node = findScrollerNode(st, tc) }
+
+        if let node { node.scrollerProportion = f }
+        tc.scrollerProportion = f
+
+        let w = WBox(m.screen.workArea)
+        let maxClientWidth = UInt32(truncatingIfNeeded: w.width - 2 * Int32(config.scrollerStructs) - Int32(config.gappih))
+        tc.geom.size.width = CGFloat(i32(Float(maxClientWidth) * f))
+
         arrange(m, false, false)
     }
 
-    func scrollGetStackHeadClient(_ c: Client) -> Client {
-        c.mon.map { $0.pertag.scrollerState[getMonCurtag($0)] }?.column(of: c.id).first.flatMap { clientByIdAll($0) } ?? c
+    func scrollerApplyStack(_ c: Client, _ targetClient: Client?, _ direction: Direction) {
+        guard let m = c.mon, !c.isfloating, m.layout.isScroller else { return }
+
+        let tag = getClientTagIdx(c)
+
+        let isHorizontal = m.pertag.ltidxs[tag] == .scroller
+
+        if isHorizontal && (direction == .up || direction == .down) { return }
+        if !isHorizontal && (direction == .left || direction == .right) { return }
+
+        let st = ensureScrollerState(m, tag)
+
+        guard let cnode = findScrollerNode(st, c) else { return }
+
+        let tnode = targetClient.flatMap { findScrollerNode(st, $0) }
+
+        // not in mango: no UNDIR here; scroller_stack's direction is one of the four
+
+        if cnode.prevInStack != nil || cnode.nextInStack != nil {
+            let moveOutReferNode = cnode.prevInStack ?? cnode.nextInStack!
+            scrollerNodeRemove(st, cnode)
+
+            updateScrollerState(m)
+
+            let stackHead = scrollGetStackHeadClient(moveOutReferNode.client)
+            let stackTail = scrollGetStackTailClient(moveOutReferNode.client)
+
+            if direction == .left || direction == .up {
+                if c !== stackHead { wlListSafeReinsertPrev(stackHead, c) }
+            } else if direction == .right || direction == .down {
+                if c !== stackTail { wlListSafeReinsertNext(stackHead, c) }
+            }
+            syncScrollerStateToClients(m, tag)
+            arrange(m, false, false)
+            return
+        }
+
+        guard let tnode, let targetClient, targetClient.mon === c.mon else { return }
+
+        var tail = tnode
+        while let n = tail.nextInStack { tail = n }
+
+        scrollerInsertStack(c, tail.client, false)
+
+        if c !== tail.client {
+            clients.removeAll { $0 === c }
+            if let i = clients.firstIndex(where: { $0 === tail.client }) { clients.insert(c, at: i + 1) }
+        }
     }
 
     func setgaps(_ oh: Int32, _ ov: Int32, _ ih: Int32, _ iv: Int32) {
@@ -1081,11 +1148,11 @@ package extension MangoServer {
         }
         let curtag = getMonCurtag(m)
         if keepOwn {
-            if !c.iscustomScrollerProportion && (c.scrollerProportion ?? 0) <= 0 {
-                c.scrollerProportion = CGFloat(m.pertag.scrollerDefaultProportion[curtag])
+            if !c.iscustomScrollerProportion && c.scrollerProportion <= 0.0 {
+                c.scrollerProportion = m.pertag.scrollerDefaultProportion[curtag]
             }
-            if !c.iscustomScrollerProportionSingle && (c.scrollerProportionSingle ?? 0) <= 0 {
-                c.scrollerProportionSingle = CGFloat(m.pertag.scrollerDefaultProportionSingle[curtag])
+            if !c.iscustomScrollerProportionSingle && c.scrollerProportionSingle <= 0.0 {
+                c.scrollerProportionSingle = m.pertag.scrollerDefaultProportionSingle[curtag]
             }
             return
         }
@@ -1103,8 +1170,8 @@ package extension MangoServer {
         }
         c.masterInnerPer = c.masterSizeWeight
         c.stackInnerPer = c.stackSizeWeight
-        if !c.iscustomScrollerProportion { c.scrollerProportion = CGFloat(m.pertag.scrollerDefaultProportion[curtag]) }
-        if !c.iscustomScrollerProportionSingle { c.scrollerProportionSingle = CGFloat(m.pertag.scrollerDefaultProportionSingle[curtag]) }
+        if !c.iscustomScrollerProportion { c.scrollerProportion = m.pertag.scrollerDefaultProportion[curtag] }
+        if !c.iscustomScrollerProportionSingle { c.scrollerProportionSingle = m.pertag.scrollerDefaultProportionSingle[curtag] }
     }
 
     // not in mango: `fake`, the windows wl_list_for_each with VISIBLEON and ISFAKETILED finds
@@ -1280,93 +1347,167 @@ package extension MangoServer {
     }
 
     func resizeTileScroller(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint,
-                            vertical: Bool) {
+                            vertical isvertical: Bool) {
+        if gc.isfullscreen || gc.ismaximizescreen { return }
         guard let m = gc.mon else { return }
+        if m.isoverview { return }
+
         let tag = getClientTagIdx(gc)
-        let col = m.pertag.scrollerState[tag].column(of: gc.id).compactMap { clientByIdAll($0) }
-        guard let ci = col.firstIndex(where: { $0 === gc }), let head = col.first else { return }
-        func proportions() -> [Float] {
-            let raw = col.map { Float($0.scrollerStackWeight) }
-            let positive = raw.filter { $0 > 0 }
-            var w = raw
-            if positive.isEmpty { w = raw.map { _ in 1 } } else {
-                let avg = positive.reduce(0, +) / Float(positive.count)
-                for i in w.indices where w[i] <= 0 { w[i] = avg }
-            }
-            let total = w.reduce(0, +)
-            return w.map { $0 / total }
-        }
-        var props = proportions()
-        let headProportion = head.scrollerProportion ?? CGFloat(m.pertag.scrollerDefaultProportion[tag])
-        let geom = gc.geom
+        guard let st = m.pertag.scrollerState[tag] else { return }
+
+        guard let curnode = findScrollerNode(st, gc) else { return }
+
+        var headnode = curnode
+        while let p = headnode.prevInStack { headnode = p }
+
+        let stackHeadClient = headnode.client
+
+        var deltaX: Float, deltaY: Float
+        var newScrollerProportion: Float
+        var newStackProportion: Float
+        var offsetx = Int32(offsetX), offsety = Int32(offsetY)
+
         if !startDragWindow && isdrag {
-            dragBeginCursor = cursor
+            dragBeginCursor = cursor   // not in mango: the port's cursor
             startDragWindow = true
-            head.oldScrollerPproportion = headProportion
-            gc.scrollerOldStackProportion = CGFloat(props[ci])
-            gc.cursorInLeftHalf = cursor.x < geom.minX + (geom.width / 2).rounded(.towardZero)
-            gc.cursorInUpperHalf = cursor.y < geom.minY + (geom.height / 2).rounded(.towardZero)
-            gc.dragBeginGeom = geom
-            return
-        }
-        var ox = offsetX, oy = offsetY
-        if isdrag {
-            ox = cursor.x - dragBeginCursor.x
-            oy = cursor.y - dragBeginCursor.y
+
+            headnode.client.oldScrollerPproportion = Double(headnode.scrollerProportion)
+            gc.scrollerOldStackProportion = curnode.scrollerStackProportion
+
+            gc.cursorInLeftHalf = cursor.x < gc.geom.minX + (gc.geom.width / 2).rounded(.towardZero)
+            gc.cursorInUpperHalf = cursor.y < gc.geom.minY + (gc.geom.height / 2).rounded(.towardZero)
+            gc.dragBeginGeom = gc.geom
         } else {
-            gc.dragBeginGeom = geom
-            head.oldScrollerPproportion = headProportion
-            gc.scrollerOldStackProportion = CGFloat(props[ci])
-            gc.cursorInUpperHalf = false
-            gc.cursorInLeftHalf = false
-        }
-        let bw = Float(max(1, gc.dragBeginGeom.width)), bh = Float(max(1, gc.dragBeginGeom.height))
-        let oldHead = Float(head.oldScrollerPproportion), oldStack = Float(gc.scrollerOldStackProportion)
-        var dx: Float, dy: Float
-        if vertical {
-            dy = Float(oy) * oldHead / bh
-            dx = Float(ox) * oldStack / bw
-        } else {
-            dx = Float(ox) * oldHead / bw
-            dy = Float(oy) * oldStack / bh
-        }
-        let movingUp = isdrag ? cursor.y < dragBeginCursor.y : oy < 0
-        let movingDown = isdrag ? cursor.y > dragBeginCursor.y : oy > 0
-        let movingLeft = isdrag ? cursor.x < dragBeginCursor.x : ox < 0
-        let movingRight = isdrag ? cursor.x > dragBeginCursor.x : ox > 0
-        dy = (gc.cursorInUpperHalf && movingUp) || (!gc.cursorInUpperHalf && movingDown) ? abs(dy) : -abs(dy)
-        dx = (gc.cursorInLeftHalf && movingLeft) || (!gc.cursorInLeftHalf && movingRight) ? abs(dx) : -abs(dx)
-        let hasNext = ci + 1 < col.count, hasPrev = ci > 0
-        if vertical {
-            if !hasNext && hasPrev && !isdrag { dx = -dx }
-            if !hasNext && hasPrev && isdrag { dx = movingRight ? -abs(dx) : abs(dx) }
-            if !hasPrev && hasNext && isdrag { dx = movingLeft ? -abs(dx) : abs(dx) }
-            if isdrag { dy = movingUp ? -abs(dy) : abs(dy) }
-        } else {
-            if !hasNext && hasPrev && !isdrag { dy = -dy }
-            if !hasNext && hasPrev && isdrag { dy = movingDown ? -abs(dy) : abs(dy) }
-            if !hasPrev && hasNext && isdrag { dy = movingUp ? -abs(dy) : abs(dy) }
-            if isdrag { dx = movingLeft ? -abs(dx) : abs(dx) }
-        }
-        let newScroller = max(0.1, min(1, oldHead + (vertical ? dy : dx)))
-        let newStack = max(0.1, min(0.9, oldStack + (vertical ? dx : dy)))
-        if isdrag {
-            let cur = 1 - props[ci], new = 1 - newStack
-            if cur > 0.001 { for k in props.indices where k != ci { props[k] *= new / cur } }
-        } else if oldStack != 1 {
-            for k in props.indices where k != ci { props[k] = (1 - newStack) / (1 - oldStack) * props[k] }
-        }
-        props[ci] = newStack
-        let heads = m.pertag.scrollerState[tag].columns(for: tiledClients(m).map(\.id)).count
-        if heads > 1 || config.scrollerIgnoreProportionSingle {
-            head.scrollerProportion = CGFloat(newScroller)
-        }
-        for (k, c) in col.enumerated() { c.scrollerStackWeight = CGFloat(props[k]) }
-        if !isdrag {
+            if isdrag {
+                offsetx = Int32(cursor.x - dragBeginCursor.x)
+                offsety = Int32(cursor.y - dragBeginCursor.y)
+            } else {
+                gc.oldMasterMfactPer = gc.masterMfactPer
+                gc.oldMasterInnerPer = gc.masterInnerPer
+                gc.oldStackInnerPer = gc.stackInnerPer
+                gc.dragBeginGeom = gc.geom
+                stackHeadClient.oldScrollerPproportion = Double(headnode.scrollerProportion)
+                gc.scrollerOldStackProportion = curnode.scrollerStackProportion
+                gc.cursorInUpperHalf = false
+                gc.cursorInLeftHalf = false
+            }
+
+            if isvertical {
+                deltaY = Float(Double(offsety) * headnode.client.oldScrollerPproportion / Double(Int32(gc.dragBeginGeom.height)))
+                deltaX = Float(offsetx) * gc.scrollerOldStackProportion / Float(Int32(gc.dragBeginGeom.width))
+            } else {
+                deltaX = Float(Double(offsetx) * headnode.client.oldScrollerPproportion / Double(Int32(gc.dragBeginGeom.width)))
+                deltaY = Float(offsety) * gc.scrollerOldStackProportion / Float(Int32(gc.dragBeginGeom.height))
+            }
+
+            let movingUp: Bool, movingDown: Bool, movingLeft: Bool, movingRight: Bool
+            if !isdrag {
+                movingUp = offsety < 0
+                movingDown = offsety > 0
+                movingLeft = offsetx < 0
+                movingRight = offsetx > 0
+            } else {
+                movingUp = cursor.y < dragBeginCursor.y
+                movingDown = cursor.y > dragBeginCursor.y
+                movingLeft = cursor.x < dragBeginCursor.x
+                movingRight = cursor.x > dragBeginCursor.x
+            }
+
+            if (gc.cursorInUpperHalf && movingUp) || (!gc.cursorInUpperHalf && movingDown) {
+                deltaY = abs(deltaY)
+            } else {
+                deltaY = -abs(deltaY)
+            }
+
+            if (gc.cursorInLeftHalf && movingLeft) || (!gc.cursorInLeftHalf && movingRight) {
+                deltaX = abs(deltaX)
+            } else {
+                deltaX = -abs(deltaX)
+            }
+
+            if isvertical {
+                if curnode.nextInStack == nil && curnode.prevInStack != nil && !isdrag {
+                    deltaX = deltaX * -1.0
+                }
+                if curnode.nextInStack == nil && curnode.prevInStack != nil && isdrag {
+                    if movingRight { deltaX = -abs(deltaX) } else { deltaX = abs(deltaX) }
+                }
+                if curnode.prevInStack == nil && curnode.nextInStack != nil && isdrag {
+                    if movingLeft { deltaX = -abs(deltaX) } else { deltaX = abs(deltaX) }
+                }
+                if isdrag {
+                    if movingUp { deltaY = -abs(deltaY) } else { deltaY = abs(deltaY) }
+                }
+            } else {
+                if curnode.nextInStack == nil && curnode.prevInStack != nil && !isdrag {
+                    deltaY = deltaY * -1.0
+                }
+                if curnode.nextInStack == nil && curnode.prevInStack != nil && isdrag {
+                    if movingDown { deltaY = -abs(deltaY) } else { deltaY = abs(deltaY) }
+                }
+                if curnode.prevInStack == nil && curnode.nextInStack != nil && isdrag {
+                    if movingUp { deltaY = -abs(deltaY) } else { deltaY = abs(deltaY) }
+                }
+                if isdrag {
+                    if movingLeft { deltaX = -abs(deltaX) } else { deltaX = abs(deltaX) }
+                }
+            }
+
+            if isvertical {
+                newScrollerProportion = Float(headnode.client.oldScrollerPproportion + Double(deltaY))
+                newStackProportion = gc.scrollerOldStackProportion + deltaX
+            } else {
+                newScrollerProportion = Float(headnode.client.oldScrollerPproportion + Double(deltaX))
+                newStackProportion = gc.scrollerOldStackProportion + deltaY
+            }
+
+            newScrollerProportion = max(0.1, min(1.0, newScrollerProportion))
+            newStackProportion = max(0.1, min(0.9, newStackProportion))
+
+            // Keeps the sum at 1 so later arrange normalization does not swallow
+            // the offset.
+            if isdrag {
+                let currentOtherSum: Float = 1.0 - curnode.scrollerStackProportion
+                let newOtherSum: Float = 1.0 - newStackProportion
+                if currentOtherSum > 0.001 {
+                    let scale = newOtherSum / currentOtherSum
+                    var tc: ScrollerStackNode? = headnode
+                    while let n = tc {
+                        if n !== curnode { n.scrollerStackProportion *= scale }
+                        tc = n.nextInStack
+                    }
+                }
+            } else {
+                // Keyboard stepping.
+                if gc.scrollerOldStackProportion != 1.0 {
+                    var tc: ScrollerStackNode? = headnode
+                    while let n = tc {
+                        if n !== curnode {
+                            n.scrollerStackProportion = (1.0 - newStackProportion)
+                                / (1.0 - gc.scrollerOldStackProportion) * n.scrollerStackProportion
+                        }
+                        tc = n.nextInStack
+                    }
+                }
+            }
+
+            curnode.scrollerStackProportion = newStackProportion
+
+            if m.visibleScrollTilingClients > 1 || config.scrollerIgnoreProportionSingle {
+                headnode.scrollerProportion = newScrollerProportion
+            }
+
+            var stnode: ScrollerStackNode? = headnode
+            while let n = stnode {
+                n.scrollerStackWeight = n.scrollerStackProportion
+                stnode = n.nextInStack
+            }
+
+            /* Syncs back to the global fields. */
+            syncScrollerStateToClients(m, tag)
+
             arrange(m, false, false)
-            return
         }
-        arrange(m, false, false)
     }
 
     func resizeTileDwindle(_ gc: Client, isdrag: Bool, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint) {
@@ -1521,54 +1662,70 @@ package extension MangoServer {
     }
 
     func clientExchange(_ c1: Client, _ c2: Client) {
-        guard c1 !== c2, let m1 = c1.mon, let m2 = c2.mon, config.exchangeCrossMonitor || m1 === m2 else { return }
-        func swapList() {
-            guard let i = clients.firstIndex(where: { $0 === c1 }), let j = clients.firstIndex(where: { $0 === c2 }) else { return }
-            clients.swapAt(i, j)
+        guard let m1 = c1.mon, let m2 = c2.mon, config.exchangeCrossMonitor || m1 === m2 else { return }
+
+        let layout1 = m1.pertag.ltidxs[getClientTagIdx(c1)]
+        let layout2 = m2.pertag.ltidxs[getClientTagIdx(c2)]
+
+        if layout1 == .scroller || layout2 == .scroller || layout1 == .verticalScroller || layout2 == .verticalScroller {
+            exchangeTwoScrollerClients(c1, c2)
+            return
         }
-        func swapLayoutProperties() {
-            (c1.masterInnerPer, c2.masterInnerPer) = (c2.masterInnerPer, c1.masterInnerPer)
-            (c1.stackInnerPer, c2.stackInnerPer) = (c2.stackInnerPer, c1.stackInnerPer)
-            (c1.masterSizeWeight, c2.masterSizeWeight) = (c2.masterSizeWeight, c1.masterSizeWeight)
-            (c1.stackSizeWeight, c2.stackSizeWeight) = (c2.stackSizeWeight, c1.stackSizeWeight)
-            (c1.masterMfactPer, c2.masterMfactPer) = (c2.masterMfactPer, c1.masterMfactPer)
-            (c1.gridColPer, c2.gridColPer) = (c2.gridColPer, c1.gridColPer)
-            (c1.gridRowPer, c2.gridRowPer) = (c2.gridRowPer, c1.gridRowPer)
-            (c1.gridColIdx, c2.gridColIdx) = (c2.gridColIdx, c1.gridColIdx)
-            (c1.gridRowIdx, c2.gridRowIdx) = (c2.gridRowIdx, c1.gridRowIdx)
-        }
-        func swapMonitorsAndTags() {
-            (c1.mon, c2.mon) = (m2, m1)
-            (c1.tags, c2.tags) = (c2.tags, c1.tags)
-        }
-        if m1.layout.isScroller || m2.layout.isScroller {
-            let s1 = m1.pertag.scrollerState[getMonCurtag(m1)], s2 = m2.pertag.scrollerState[getMonCurtag(m2)]
-            let col1 = s1.column(of: c1.id), col2 = s2.column(of: c2.id)
-            if col1.isEmpty && col2.isEmpty { return }
-            if m1 !== m2 && (col1.count > 1 || col2.count > 1) { return }
-            swapLayoutProperties()
-            if m1 === m2 && !col1.isEmpty && !col2.isEmpty {
-                let sameStack = col1.contains(c2.id)
-                s1.exchangeTwoScrollerClients(c1.id, c2.id)
-                if sameStack { swapList() }
-            } else {
-                swapList()
-            }
-            if m1 !== m2 { swapMonitorsAndTags() }
-        } else if m1.layout == .dwindle && m2.layout == .dwindle {
-            swapLayoutProperties()
+
+        if layout1 == .dwindle && layout2 == .dwindle {
             dwindleSwapClients(c1, c2)
-            if m1 !== m2 { swapMonitorsAndTags() }
-            swapList()
-        } else {
-            swapLayoutProperties()
-            swapList()
-            if m1 !== m2 { swapMonitorsAndTags() }
+            return
         }
-        arrange(m1, false, false)
-        if m2 !== m1 { arrange(m2, false, false) }
-        focusStack.removeAll { $0 == c2.id }
-        if let i = focusStack.firstIndex(of: c1.id) { focusStack.insert(c2.id, at: i + 1) }
+
+        clientSwapLayoutProperties(c1, c2)
+
+        wlListSwap(c1, c2)
+
+        if m1 !== m2 {
+            clientSwapMonitorsAndTags(c1, c2)
+        }
+
+        finishExchangeArrangeAndFocus(c1, c2, m1, m2)
+    }
+
+    func clientSwapLayoutProperties(_ c1: Client, _ c2: Client) {
+        // grid property swap
+        (c1.gridColPer, c2.gridColPer) = (c2.gridColPer, c1.gridColPer)
+        (c1.gridRowPer, c2.gridRowPer) = (c2.gridRowPer, c1.gridRowPer)
+        (c1.gridColIdx, c2.gridColIdx) = (c2.gridColIdx, c1.gridColIdx)
+        (c1.gridRowIdx, c2.gridRowIdx) = (c2.gridRowIdx, c1.gridRowIdx)
+
+        // master / stack property swap
+        (c1.masterInnerPer, c2.masterInnerPer) = (c2.masterInnerPer, c1.masterInnerPer)
+        (c1.masterMfactPer, c2.masterMfactPer) = (c2.masterMfactPer, c1.masterMfactPer)
+        (c1.stackInnerPer, c2.stackInnerPer) = (c2.stackInnerPer, c1.stackInnerPer)
+        (c1.masterSizeWeight, c2.masterSizeWeight) = (c2.masterSizeWeight, c1.masterSizeWeight)
+        (c1.stackSizeWeight, c2.stackSizeWeight) = (c2.stackSizeWeight, c1.stackSizeWeight)
+    }
+
+    func clientSwapMonitorsAndTags(_ c1: Client, _ c2: Client) {
+        let tmpMon = c2.mon
+        let tmpTags = c2.tags
+        c2.mon = c1.mon
+        c1.mon = tmpMon
+        c2.tags = c1.tags
+        c1.tags = tmpTags
+    }
+
+    func finishExchangeArrangeAndFocus(_ c1: Client, _ c2: Client, _ m1: Monitor, _ m2: Monitor) {
+        if m1 !== m2 {
+            if let cm = c1.mon { arrange(cm, false, false) }
+            if let cm = c2.mon { arrange(cm, false, false) }
+        } else {
+            if let cm = c1.mon { arrange(cm, false, false) }
+        }
+
+        // not in mango: wl_list_safe_reinsert_next on the focus stack, which holds ids here
+        if let i = focusStack.firstIndex(of: c1.id), !(i + 1 < focusStack.count && focusStack[i + 1] == c2.id), c1 !== c2 {
+            focusStack.removeAll { $0 == c2.id }
+            focusStack.insert(c2.id, at: focusStack.firstIndex(of: c1.id)! + 1)
+        }
+
         if config.warpcursor { pointerWarpToClient(c1) }
     }
 
@@ -1710,12 +1867,16 @@ package extension MangoServer {
         case .monocle:
             return !tc.isTabHidden
         case .scroller, .verticalScroller:
-            func head(_ c: Client) -> ClientID? {
-                guard let cm = c.mon else { return nil }
-                return cm.pertag.scrollerState[getMonCurtag(cm)].column(of: c.id).first ?? c.id
+            let sourceStackHead = scrollGetStackHeadClient(sc)
+            let targetStackHead = scrollGetStackHeadClient(tc)
+            let fcHead = fc.map { scrollGetStackHeadClient($0) }
+
+            if fc != nil && fcHead === sourceStackHead { return false }
+            if sourceStackHead === targetStackHead {
+                return true
+            } else {
+                return false
             }
-            if let fc, head(fc) == head(sc) { return false }
-            return head(sc) == head(tc)
         case .tile, .verticalTile, .deck, .verticalDeck, .rightTile:
             if tabMembers(m).contains(where: { $0 === tc }) { return !tc.isTabHidden }
             if tc.ismaster != sc.ismaster { return false }
@@ -1817,7 +1978,6 @@ package extension MangoServer {
         guard let old = c.mon, old !== m else { return }
         if old.sel == c.id { old.sel = nil }
         if old.prevsel == c.id { old.prevsel = nil }
-        old.pertag.scrollerState[getClientTagIdx(c)].scrollerNodeRemove(c.id)
         c.mon = m
         c.parked = false   // not in mango: the system places it on the new display
         if !VISIBLEON(c, m) { clientResetMonTags(c, m, 0) }
@@ -1844,24 +2004,24 @@ package extension MangoServer {
             return
         }
         let insertBefore = dir == .right || dir == .up
+
         clientReassignMonitor(c, dst)
-        func inOrder(beside t: Client, before: Bool) {
-            clients.removeAll { $0 === c }
-            guard let i = clients.firstIndex(where: { $0 === t }) else { clients.append(c); return }
-            clients.insert(c, at: before ? i : i + 1)
-        }
-        if layout.isScroller {
-            let alongAxis = layout == .verticalScroller ? !dir.isHorizontal : dir.isHorizontal
-            let st = dst.pertag.scrollerState[getMonCurtag(dst)]
+
+        if layout == .scroller || layout == .verticalScroller {
+            let alongAxis = layout == .verticalScroller ? (dir == .up || dir == .down) : (dir == .left || dir == .right)
             if !alongAxis {
-                st.scrollerDropTile(c.id, onto: target.id, intoStack: true, before: insertBefore)
+                scrollerInsertStack(c, target, insertBefore)
+            } else if insertBefore {
+                let head = scrollGetStackHeadClient(target)
+                wlListSafeReinsertPrev(head, c)
             } else {
-// not in mango: the port's scroller columns
-                st.scrollerDropTile(c.id, onto: target.id, intoStack: false, before: insertBefore)
+                let tail = scrollGetStackTailClient(target)
+                wlListSafeReinsertNext(tail, c)
             }
-            inOrder(beside: target, before: insertBefore)
+        } else if insertBefore {
+            wlListSafeReinsertPrev(target, c)
         } else {
-            inOrder(beside: target, before: insertBefore)
+            wlListSafeReinsertNext(target, c)
         }
         arrange(src, false, false)
         arrange(dst, false, false)

@@ -55,7 +55,6 @@ extension MacWindowSystem: AppWatcherDelegate {
                 c.floatGeom = CGRect(x: w.midX - frame.width / 2, y: w.midY - frame.height / 2, width: frame.width, height: frame.height)
             }
         }
-        server.layoutStateInsert(c, on: mon)
         c.mon = mon
         server.clientResetMonTags(c, mon, tags)
         server.checkMatchTagFloatingRule(c, mon)
@@ -84,10 +83,9 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.isminimized = d.isminimized && !d.isScratchpad
         c.isnamedscratchpad = d.isnamedscratchpad
         c.floatGeom = d.floatFrame.insetBy(dx: -c.bw, dy: -c.bw)
-        c.scrollerProportion = d.scrollerProportion
+        if let p = d.scrollerProportion { c.scrollerProportion = Float(p) }
         c.iscustomsize = d.iscustomsize
         c.isPendingOpenAnimation = false
-        server.layoutStateInsert(c, on: mon)
         c.mon = mon
         c.tags = d.tags
         wlrLog(.info, "\(c.appName): window \(c.id) is back; restored its tag and place")

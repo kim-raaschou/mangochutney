@@ -100,11 +100,10 @@ final class FidelityTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1), _ = r.map(2), c = r.map(3)
-        let st = r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)]
-        _ = st.scrollerApplyStack(c.id, direction: .left, vertical: false, clientOrder: r.server.clients.map(\.id))
-        let col = st.column(of: c.id)
+        _ = r.server.dispatch(Dispatch(name: "scroller_stack", args: ["left"]), target: c)
+        let col = r.server.scrollerStack(of: c.id)
         guard col.count >= 2, let i = col.firstIndex(of: c.id), i + 1 < col.count || i > 0 else {
-            return XCTFail("no stack to test with: \(st.column(of: a.id)) \(col)")
+            return XCTFail("no stack to test with: \(r.server.scrollerStack(of: a.id)) \(col)")
         }
         let expected = i + 1 < col.count ? col[i + 1] : col[i - 1]
         XCTAssertNotEqual(expected, a.id, "the focused window is outside the stack")
@@ -140,15 +139,14 @@ final class FidelityTests: MangoTestCase {
         r.server.config.scrollerIgnoreProportionSingle = false
         let a = r.map(1)
         _ = r.server.dispatch(Dispatch(name: "set_proportion", args: ["0.5"]), target: a)
-        XCTAssertEqual(a.scrollerProportion ?? 0, CGFloat(Float(0.9)), "one window: refused")
+        XCTAssertEqual(a.scrollerProportion, Float(0.9), "one window: refused")
         let b = r.map(2)
-        let st = r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)]
-        st.scrollerApplyStack(b.id, direction: .left, vertical: false, clientOrder: r.server.clients.map(\.id))
-        let head = st.column(of: b.id).first!
+        _ = r.server.dispatch(Dispatch(name: "scroller_stack", args: ["left"]), target: b)
+        let head = r.server.scrollerStack(of: b.id).first!
         let other = head == a.id ? b : a
         _ = r.server.dispatch(Dispatch(name: "set_proportion", args: ["0.5"]), target: other)
         XCTAssertEqual(r.server.clientByIdAll(head)?.scrollerProportion, 0.5)
-        XCTAssertEqual(other.scrollerProportion ?? 0, CGFloat(Float(0.9)), "only the head")
+        XCTAssertEqual(other.scrollerProportion, Float(0.9), "only the head")
     }
 
     func testToggleScratchpadOneAtATime() {
@@ -269,12 +267,12 @@ final class FidelityTests: MangoTestCase {
         let a = r.window(1), b = r.window(2)
         a.stackInnerPer = 0.7
         a.stackSizeWeight = 0.6
-        a.scrollerStackWeight = 0.5
+        a.scrollerStackProportion = 0.5
         a.overviewBackupGeom = CGRect(x: 1, y: 2, width: 3, height: 4)
         r.server.clientReplace(b, a, isGroupChangeMember: true)
         XCTAssertEqual(b.stackInnerPer, 0.7)
         XCTAssertEqual(b.stackSizeWeight, 0.6)
-        XCTAssertEqual(b.scrollerStackWeight, 0.5)
+        XCTAssertEqual(b.scrollerStackProportion, 0.5)
         XCTAssertEqual(b.overviewBackupGeom, CGRect(x: 1, y: 2, width: 3, height: 4))
     }
 
@@ -845,7 +843,7 @@ final class FidelityTests: MangoTestCase {
         let w = r.monitor.screen.workArea
         let top = [a, b].compactMap(\.geom).min { $0.minY < $1.minY }!
         let bottom = [a, b].compactMap(\.geom).max { $0.minY < $1.minY }!
-        XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].column(of: a.id).count, 2)
+        XCTAssertEqual(r.server.scrollerStack(of: a.id).count, 2)
         XCTAssertEqual(top.minY, w.minY, "no outer gap")
         XCTAssertEqual(bottom.minY - top.maxY, CGFloat(r.server.config.gappiv), "the stack gap stays")
     }
@@ -911,7 +909,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         r.arrange()
         d(r, "resizewin", ["+100", "0"], a)
-        XCTAssertEqual(a.scrollerProportion ?? 0, CGFloat(Float(0.9)), "the tag's default (a float), as set_size_per copied it")
+        XCTAssertEqual(a.scrollerProportion, Float(0.9), "the tag's default, as set_size_per copied it")
     }
 
     func testTagEndsFullscreenOnTheTargetTag() {
@@ -1161,7 +1159,7 @@ final class FidelityTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         let a = r.map(1)
         r.map(2)
-        a.scrollerProportion = 0.8
+        d(r, "set_proportion", ["0.8"], a)
         d(r, "switch_proportion_preset", [], a)
         XCTAssertEqual(a.scrollerProportion, 0.5)
         d(r, "switch_proportion_preset", ["prev"], a)
@@ -1459,7 +1457,7 @@ final class FidelityTests: MangoTestCase {
         d(r, "scroller_stack", ["left"], c)
         r.arrange()
         let hs = [a, b, c].map { $0.geom.height }
-        XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].column(of: a.id).count, 3)
+        XCTAssertEqual(r.server.scrollerStack(of: a.id).count, 3)
         XCTAssertLessThanOrEqual(hs.max()! - hs.min()!, 0.5, "\(hs)")
     }
 
@@ -1472,8 +1470,7 @@ final class FidelityTests: MangoTestCase {
         d(r, "togglefloating", [], b)
         r.server.clientFocus(c, true)
         d(r, "togglefloating", [], b)
-        let ids = [a, b, c].map(\.id)
-        XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].columns(for: ids), [[a.id], [b.id], [c.id]])
+        XCTAssertEqual(r.server.scrollerStacks(r.monitor), [[a.id], [b.id], [c.id]])
     }
 
     func testDwindleNewcomersSplitTheFocusedLeaf() {

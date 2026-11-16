@@ -233,6 +233,9 @@ final class EngineRig {
         let c = Client(window: w, monitor: monitor, tags: tags)
         c.isfloating = floating
         c.isPendingOpenAnimation = false
+        // the scroller's proportions as set_size_per gives a mapped window
+        c.scrollerProportion = monitor.pertag.scrollerDefaultProportion[getMonCurtag(monitor)]
+        c.scrollerProportionSingle = monitor.pertag.scrollerDefaultProportionSingle[getMonCurtag(monitor)]
         app.frames[id] = frame
         server.clients.append(c)
         server.focusStack.insert(id, at: 0)

@@ -8,21 +8,19 @@ package struct Layout {
     package let id: LayoutKind
 }
 
-// not in mango: until the layouts are mango's (docs/plan-struktur.md trin 4), each one is the layout
-// engine's boxes, placed with resize
 @MainActor package let overviewlayout = Layout(symbol: "󰃇", arrange: { $0.overview($1) }, name: "overview", id: .grid)
 
 @MainActor package let layouts: [Layout] = [
     // At least two are required; fewer than two cannot be removed.
     /* symbol     arrange function   name */
     Layout(symbol: "T", arrange: { $0.tile($1) }, name: "tile", id: .tile), // Tiled layout
-    Layout(symbol: "S", arrange: { $0.layoutEngineArrange($1) }, name: "scroller", id: .scroller), // Scroll layout
+    Layout(symbol: "S", arrange: { $0.scroller($1) }, name: "scroller", id: .scroller), // Scroll layout
     Layout(symbol: "G", arrange: { $0.grid($1) }, name: "grid", id: .grid), // Grid layout
     Layout(symbol: "M", arrange: { $0.monocle($1) }, name: "monocle", id: .monocle), // Single layout
     Layout(symbol: "K", arrange: { $0.deck($1) }, name: "deck", id: .deck), // Card layout
     Layout(symbol: "CT", arrange: { $0.centerTile($1) }, name: "center_tile", id: .centerTile), // Centered layout
     Layout(symbol: "RT", arrange: { $0.rightTile($1) }, name: "right_tile", id: .rightTile), // Right layout
-    Layout(symbol: "VS", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_scroller", id: .verticalScroller), // Vertical scroll layout
+    Layout(symbol: "VS", arrange: { $0.verticalScroller($1) }, name: "vertical_scroller", id: .verticalScroller), // Vertical scroll layout
     Layout(symbol: "VT", arrange: { $0.verticalTile($1) }, name: "vertical_tile", id: .verticalTile), // Vertical tiled layout
     Layout(symbol: "VG", arrange: { $0.verticalGrid($1) }, name: "vertical_grid", id: .verticalGrid), // Vertical grid layout
     Layout(symbol: "VK", arrange: { $0.verticalDeck($1) }, name: "vertical_deck", id: .verticalDeck), // Vertical card layout
@@ -55,7 +53,13 @@ package extension MangoServer {
         m.visibleFakeTilingClients = 0
         m.hideClients = 0
 
-        // not in mango: update_scroller_state is the layout engine's (trin 4)
+        let tag = getMonCurtag(m)
+        let st = m.pertag.scrollerState[tag]
+
+        let curLayout = m.pertag.ltidxs[tag]
+        if curLayout == .scroller || curLayout == .verticalScroller {
+            updateScrollerState(m)
+        }
 
         for c in clients {
             if fromView && (c.isglobal || c.isunglobal) {
@@ -87,8 +91,14 @@ package extension MangoServer {
                     m.visibleTilingClients += 1
 
                     /* Updates the visible scroll-client count. */
-                    // not in mango: the scroller's stacks are the layout engine's columns (trin 4)
-                    if ISSCROLLTILED(c) { m.visibleScrollTilingClients += 1 }
+                    if let st {
+                        let n = findScrollerNode(st, c)
+                        if let n, n.prevInStack == nil { /* Is a stack head. */
+                            m.visibleScrollTilingClients += 1
+                        }
+                    } else if ISSCROLLTILED(c) {
+                        m.visibleScrollTilingClients += 1
+                    }
                 }
 
                 if ISFAKETILED(c) {
@@ -270,69 +280,5 @@ package extension MangoServer {
             system.raise(c)
         }
         if let sel, raise.contains(where: { $0 === sel }) { system.raise(sel) }
-    }
-
-    /// Not in mango: the layouts until trin 4 (docs/plan-struktur.md): the layout engine's boxes,
-    /// each placed with resize as mango's layouts do.
-    func layoutEngineArrange(_ m: Monitor) {
-        let visible = visibleClients(m)
-        let tiled = tiledClients(m)
-        let work = m.screen.workArea
-        let gaps = enableGaps ? Gaps(ih: CGFloat(m.gappih), iv: CGFloat(m.gappiv), oh: CGFloat(m.gappoh), ov: CGFloat(m.gappov)) : .zero
-        let fakeTiled = visible.filter { !$0.isfloating && !$0.isminimized && !$0.isunglobal }
-        let members = tabMembers(m)
-        let strips = Set(members.map(\.id))
-        func tile(_ c: Client) -> CGRect {
-            var f = c.geom
-            let top = topBars(c, tabMember: strips.contains(c.id))
-            f.origin.y -= top
-            f.size.height += top
-            return f
-        }
-        let layoutClients = fakeTiled.map { c in
-            LayoutClient(id: c.id, currentFrame: tile(c), isfullscreen: c.isfullscreen, isMaximized: c.ismaximizescreen,
-                         scrollerProportion: c.scrollerProportion, scrollerProportionSingle: c.scrollerProportionSingle,
-                         masterInnerPer: c.masterInnerPer, stackInnerPer: c.stackInnerPer,
-                         scrollerStackWeight: c.scrollerStackWeight, masterMfactPer: c.masterMfactPer,
-                         gridColPer: c.gridColPer, gridRowPer: c.gridRowPer,
-                         gridColIdx: c.gridColIdx, gridRowIdx: c.gridRowIdx)
-        }
-        let kind = m.layout
-        let curtag = getMonCurtag(m)
-        let settings = PertagSettings(nmaster: Int(m.pertag.nmasters[curtag]), mfact: CGFloat(m.pertag.mfacts[curtag]),
-                                      scrollerDefaultProportion: CGFloat(m.pertag.scrollerDefaultProportion[curtag]),
-                                      scrollerDefaultProportionSingle: CGFloat(m.pertag.scrollerDefaultProportionSingle[curtag]),
-                                      scrollerIgnoreProportionSingle: m.pertag.scrollerIgnoreProportionSingle[curtag])
-        let state = TagLayoutState()
-        state.scrollerState = m.pertag.scrollerState[curtag]
-        var input = LayoutInput(workArea: work, monitorFrame: m.screen.frame, gaps: gaps, clients: layoutClients,
-                                focusedID: m.sel, prevFocusedID: m.prevsel, pertag: settings,
-                                config: config, cursor: system.pointer)
-        input.enableGaps = enableGaps
-        input.startDragWindow = startDragWindow
-        if let p = m.prevsel.flatMap({ clientByIdAll($0) }) {
-            input.prevFocusedScroll = (!p.isfloating && !p.isminimized && !p.isunglobal,
-                                       p.scrollerProportion ?? CGFloat(m.pertag.scrollerDefaultProportion[curtag]))
-        }
-        input.fullscreenInView = Set(visible.filter { $0.isfullscreen || $0.ismaximizescreen }.map(\.id))
-        var result = LayoutEngine.arrange(kind, input: input, state: state)
-        for (id, p) in result.gridPlaces {
-            guard let c = clientByIdAll(id) else { continue }
-            c.gridColPer = p.colPer; c.gridRowPer = p.rowPer; c.gridColIdx = p.colIdx; c.gridRowIdx = p.rowIdx
-        }
-        reserveTabStrip(&result.frames, on: m)
-        for c in tiled where clientWantsGroupBar(c) {
-            let h = CGFloat(config.groupBarHeight)
-            guard var f = result.frames[c.id], f.height > h else { continue }
-            f.origin.y += h
-            f.size.height -= h
-            result.frames[c.id] = f
-        }
-
-        // the scroller places its fullscreen and maximized clients too
-        for c in fakeTiled where dragTile?.client !== c && (ISTILED(c) || kind.isScroller) {
-            guard let box = result.frames[c.id] else { continue }
-            resize(c, box, ResizeOpts())
-        }
     }
 }

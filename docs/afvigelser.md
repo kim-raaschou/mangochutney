@@ -121,13 +121,15 @@ Hvor koden står, når den ikke står som i mango.
   kommentarer eller mærker om, hvor vi afviger (CLAUDE.md regel 8). En funktion med andet navn
   end mangos har én linje `/// mango <funktion> (<fil>)`; der er 14 tilbage: tastaturets tråd,
   cursor-timeren, `Log` og nogle få, der allerede har mangos navn.
-- **Bevidst i kernen, mærket:** `c.parked` (portens slukkede scene-node) læses nogle steder, scrollerens
-  kolonner i tag-tilstanden (mango bruger `ScrollerStackNode` i klientlisten), overview med
+- **Bevidst i kernen, mærket:** `c.parked` (portens slukkede scene-node) læses nogle steder, overview med
   billeder (`Monitor.ovThumbnails`, `ovCards`), drag-tile delt med appens eget træk, `parse_option` som en tabel,
-  og `resize_tile_master` i begge retninger i én funktion.
+  og `resize_tile_master` i begge retninger i én funktion. I scrolleren: `set_proportion` og
+  `switch_proportion_preset` deler deres slutning (`setProportion`), `scroller_apply_stack` har ingen
+  `UNDIR`-gren (portens retning er altid en af de fire), og drag-tile sætter `drop_direction` på det
+  nærmeste vindue ved slippet (portens drag-tile, trin 7).
 - **Mærket i kernen, som at skrive mangos C i Swift:** `f32` (en værdi, mango har i et
-  float-felt, afrundet som C) og `LayoutInput.sanitized()` (C laver et tal, der ikke er
-  endeligt, om til et heltal uden videre; Swift stopper programmet), og `1 << (prevtag - 1)` med
+  float-felt, afrundet som C), `i32` (C's omregning af et kommatal til `int32_t`), `wl_list`-hjælperne
+  i `common/util.swift` på klientlistens array, og `1 << (prevtag - 1)` med
   `prevtag` 0 i tag-animationerne regnes som intet tag (C's skift er udefineret; Swift stopper
   programmet). En klippeboks' bredde læses som `size.width`, for `CGRect.width` er aldrig
   negativ, og `wlr_box`'s kan være det (`clip_to_hide`). `oldmonname` holder
@@ -171,12 +173,12 @@ Hvor koden står, når den ikke står som i mango.
   `find_animation_curve_at` løser kurven i stedet for at bage den; CLOSE-, FOCUS- og fade-kurverne
   bruges ikke.
 - **`arrange` (`Layout/arrange.swift`):** mangos `arrange`, `pre_calculate_before_arrange`,
-  `special_handle_empty_view` og tabellen `layouts[]`. Indtil layouterne er mangos (trin 4), er hver
-  tabelplads layout-motorens bokse, placeret med `resize`. Mærket i koden: overview kommer før
+  `special_handle_empty_view` og tabellen `layouts[]`, der kalder mangos layouts
+  (`horizontal.swift`, `vertical.swift`, `dwindle.swift`, `scroll.swift`). Mærket i koden: overview kommer før
   `pre_calculate_before_arrange` (kortene er portens billeder); en flydende klients `geom` tages fra
   `float_geom` i `pre_calculate_before_arrange`, til dispatcherne er mangos (trin 6);
   `tab_sync_monitor` er vores fanekæde; `client_sync_layer` er portens løft til sidst;
-  `update_scroller_state`, `special_sync_top_layer`, `pointer_process_motion` og
+  `special_sync_top_layer`, `pointer_process_motion` og
   `check_idle_inhibitor` har ingen macOS-del; `ltidxs` holder layoutets id.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
   subrole); appens egne flyt under et træk tager porten ud (`grabBegan`, `grabEnded`).
@@ -245,7 +247,7 @@ aftalt, rettet så lidt som muligt, mærket `a mango bug` i koden og låst med e
 
 | Fejl i mango | mango | Hos os | Rettelse |
 |---|---|---|---|
-| `tile`, `right_tile` og `vertical_tile` giver gruppens sidste vindue sin andel afrundet ned, så kolonnen kan mangle en pixel nederst (eller til højre). Andelen er `double`, forholdet `float`, og de to går ikke op. Det sker i omkring halvdelen af skærmhøjderne med lige store vinduer | 600 px på tre vinduer: 200, 199, 200 | 200, 200, 200 | Det sidste vindue får resten, som mangos egen `center_tile` gør (`if (r == 1) h = m->w.height - my - cur_gappov`). `Layout/horizontal.swift` (`TileLayouts.swift` for `vertical_tile`), `LayoutGoldenTests` |
+| `tile`, `right_tile` og `vertical_tile` giver gruppens sidste vindue sin andel afrundet ned, så kolonnen kan mangle en pixel nederst (eller til højre). Andelen er `double`, forholdet `float`, og de to går ikke op. Det sker i omkring halvdelen af skærmhøjderne med lige store vinduer | 600 px på tre vinduer: 200, 199, 200 | 200, 200, 200 | Det sidste vindue får resten, som mangos egen `center_tile` gør (`if (r == 1) h = m->w.height - my - cur_gappov`). `Layout/horizontal.swift`, `Layout/vertical.swift`, `LayoutGoldenTests` |
 | Værnet mod en `source`, der læser sig selv (direkte eller gennem en anden fil): mango læser den igen og igen, til stakken løber tør | går ned | filen læses én gang, og det meldes (én linje uden `[Index]`) | `includeStack` i `ConfigParser.swift`; `testASourceCycleIsReadOnce` |
 | Et træk i `fair`, `vertical_fair`, `grid` og `vertical_grid` vælger naboen på den side af vinduet, man trækker i (`cursor_in_left_half`), og overskriver straks valget med tastaturets (*"Keyboard hotkey logic unchanged"*): naboen til højre, og kun for den yderste kolonne til højre den til venstre | tre kolonner, træk i midterste vindues venstre kant: dens højre kant flytter sig | venstre kant flytter sig | Tastaturets valg bruges kun ved tastaturet (`!isdrag`), og trækkets valg, som mango selv udregner, står. `resizeTileGridFair` i `Dispatch.swift`; `testAGridDragMovesTheEdgeItGrabs` |
 | `focus_direction` sender venstre og højre gennem `focus_stack`, når tagget er monocle, også i overview, hvor kortene ligger i et gitter; samme funktion springer stakken over i overview tre linjer længere nede (`if (!isoverview)`) | overview fra et monocle-tag: venstre/højre følger vinduernes rækkefølge, ikke kortene | venstre/højre går til kortet ved siden af | Monocle-grenen gælder ikke i overview, som mangos egen `!isoverview`. `focusDirection` i `Dispatch.swift`; `testMonocleInTheOverviewGoesByTheCards` |

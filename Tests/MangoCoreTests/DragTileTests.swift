@@ -68,7 +68,7 @@ final class DragTileTests: MangoTestCase {
         let f = frame(r, 900_500)
         r.server.clientBeginDragFloat(r.server.clientByIdAll(900_502)!, at: CGPoint(x: 1, y: 1))
         r.server.dropDraggedTile(at: CGPoint(x: f.midX, y: f.maxY - 5))
-        XCTAssertEqual(r.monitor.pertag.scrollerState[getMonCurtag(r.monitor)].column(of: 900_500), [900_500, 900_502], "nearest edge the bottom: below it, in its stack")
+        XCTAssertEqual(r.server.scrollerStack(of: 900_500), [900_500, 900_502], "nearest edge the bottom: below it, in its stack")
     }
 
     func testAPickedUpTileShrinksAroundThePointer() {

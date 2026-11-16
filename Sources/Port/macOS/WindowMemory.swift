@@ -23,7 +23,7 @@ final class WindowMemory {
             tags: c.tags, displayID: c.mon?.screen.displayID, isfloating: Self.isfloating(c), isglobal: c.isglobal,
             isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: SCRATCHPAD_SHOWN(c),
             isnamedscratchpad: c.isnamedscratchpad, floatFrame: c.floatGeom.insetBy(dx: c.bw, dy: c.bw),
-            scrollerProportion: c.scrollerProportion, orderSnapshot: snapshot, at: CACurrentMediaTime(),
+            scrollerProportion: CGFloat(c.scrollerProportion), orderSnapshot: snapshot, at: CACurrentMediaTime(),
             bundleId: c.bundleId, homeDisplayID: c.oldmonname,
             iscustomsize: c.iscustomsize))
         departed.rememberGroup(DepartedGroup(members: group, focus: groupFocus))
@@ -67,7 +67,7 @@ final class WindowMemory {
                                homeDisplayID: c.oldmonname, isfloating: Self.isfloating(c), isglobal: c.isglobal,
                                isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: SCRATCHPAD_SHOWN(c),
                                isnamedscratchpad: c.isnamedscratchpad, floatFrame: c.floatGeom.insetBy(dx: c.bw, dy: c.bw),
-                               scrollerProportion: c.scrollerProportion, orderSnapshot: nil,
+                               scrollerProportion: CGFloat(c.scrollerProportion), orderSnapshot: nil,
                                iscustomsize: c.iscustomsize)
         }
         for (id, d) in departed.entries where server.clientByIdAll(id) == nil {

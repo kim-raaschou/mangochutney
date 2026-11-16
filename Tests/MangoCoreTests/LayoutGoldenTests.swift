@@ -214,42 +214,6 @@ final class LayoutGoldenTests: MangoTestCase {
     vertical_fair 4 8 10,48,485,220 505,48,485,220 10,278,320,220 340,278,320,220 670,278,320,220 10,508,320,220 340,508,320,220 670,508,320,220
     """
 
-    func testMasterStackGridAndFairMatchC() {
-        let shares: [Float] = [0.3, 0.7, 0.2, 0.5, 0.3, 0.4, 0.6, 0.1, 0.9]
-        var checked = 0
-        for line in Self.stateless.split(separator: "\n") {
-            let f = line.split(separator: " ")
-            var name = String(f[0]); let useShares = name.hasSuffix("+shares")
-            if useShares { name.removeLast(7) }
-            let p = Self.params[Int(f[1])!], n = Int(f[2])!
-            let expected = Self.rects(Array(f[3...]))
-            var cfg = Config()
-            cfg.centerMasterOverspread = p.overspread; cfg.centerWhenSingleStack = p.single
-            cfg.gappih = p.ih; cfg.gappiv = p.iv
-            cfg.gappoh = p.oh; cfg.gappov = p.ov
-            var pt = PertagSettings(); pt.nmaster = p.nmaster; pt.mfact = CGFloat(p.mfact)
-            let area = CGRect(x: p.x, y: p.y, width: p.w, height: p.h)
-            var per = [CGFloat](repeating: 0, count: n)
-            if useShares {
-                let mc = min(n, p.nmaster)
-                var sm: Float = 0, ss: Float = 0
-                for i in 0..<n { if i < mc { sm += shares[i] } else { ss += shares[i] } }
-                for i in 0..<n { per[i] = CGFloat(shares[i] / (i < mc ? sm : ss)) }
-            }
-            let ids = (1...n).map { ClientID($0) }
-            let clients = ids.enumerated().map { LayoutClient(id: $1, currentFrame: area, masterInnerPer: per[$0], stackInnerPer: per[$0]) }
-            let input = LayoutInput(workArea: area, monitorFrame: area,
-                                    gaps: Gaps(ih: CGFloat(p.ih), iv: CGFloat(p.iv), oh: CGFloat(p.oh), ov: CGFloat(p.ov)),
-                                    clients: clients, focusedID: 1, prevFocusedID: nil, pertag: pt, config: cfg)
-            let r = LayoutEngine.arrange(LayoutKind(name: name)!, input: input, state: TagLayoutState())
-            for (i, id) in ids.enumerated() {
-                XCTAssertEqual(r.frames[id], expected[i], "\(line.prefix(24)) client \(id)")
-            }
-            checked += 1
-        }
-        XCTAssertEqual(checked, 189)
-    }
-
     /// mango's layout functions themselves (layout/horizontal.c and vertical.c in the core), on a monitor with the C
     /// generator's numbers, against the boxes mango's C gave.
     @MainActor
@@ -339,13 +303,16 @@ final class LayoutGoldenTests: MangoTestCase {
     vs m1 c3 s2 i0 n4 | -1908,0,373,512 -1520,0,933,512 -572,0,560,512 -1908,527,1896,512 | -1908,-343,373,512 -1520,-343,933,512 -572,-343,560,512 -1908,184,1896,512 | -1908,184,373,512 -1520,184,933,512 -572,184,560,512 -1908,711,1896,512 | -1908,184,373,512 -1520,184,933,512 -572,184,560,512 -1908,711,1896,512 | -1908,184,373,512 -1520,184,933,512 -572,184,560,512 -1908,711,1896,512 | -1908,-343,373,512 -1520,-343,933,512 -572,-343,560,512 -1908,184,1896,512
     """
 
+    /// mango's scroller (layout/scroll.c) on a rig: the stacks built as the C run built them, the focus
+    /// and the one before it set step by step, each window's box where the last step left it.
+    @MainActor
     func testScrollerMatchesC() throws {
         let mons: [(x: Int, y: Int, w: Int, h: Int, ih: Int, iv: Int, oh: Int, ov: Int)] = [
             (0, 25, 1920, 1080, 5, 5, 10, 10), (-1920, -100, 1920, 1080, 15, 15, 12, 12), (0, 0, 1437, 899, 7, 3, 11, 13)]
         let cfgs: [(structs: Int, over: Bool, fc: Bool, pc: Bool)] =
             [(20, true, false, false), (20, true, false, true), (0, false, false, false), (20, false, true, false), (30, true, false, true)]
-        let props: [CGFloat] = [0.5, 0.8, 1.0, 0.5, 0.8, 0.3, 0.9]
-        let weights: [CGFloat] = [0.2, 0.5, 0.3]
+        let props: [Float] = [0.5, 0.8, 1.0, 0.5, 0.8, 0.3, 0.9]
+        let weights: [Float] = [0.2, 0.5, 0.3]
         var checked = 0
         for line in Self.scroller.split(separator: "\n") {
             let parts = line.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -355,32 +322,43 @@ final class LayoutGoldenTests: MangoTestCase {
             let stackMode = Int(head[3].dropFirst())!, ignore = Int(head[4].dropFirst())! == 1
             let n = Int(head[5].dropFirst())!
             var cfg = Config()
+            cfg.animations = false
             cfg.scrollerStructs = c.structs; cfg.scrollerPreferOverspread = c.over
             cfg.scrollerFocusCenter = c.fc; cfg.scrollerPreferCenter = c.pc
-            var pt = PertagSettings(); pt.scrollerDefaultProportionSingle = 0.8; pt.scrollerIgnoreProportionSingle = ignore
             let area = CGRect(x: m.x, y: m.y, width: m.w, height: m.h)
+            let r = EngineRig()
+            r.server.rebuildMonitors(screens: [Screen(displayID: 1, name: "golden", frame: area, workArea: area,
+                                                      scale: 1, isMain: true)])
+            r.server.config = cfg
+            let mon = r.monitor, tag = getMonCurtag(mon)
+            mon.gappih = Int32(m.ih); mon.gappiv = Int32(m.iv); mon.gappoh = Int32(m.oh); mon.gappov = Int32(m.ov)
+            mon.pertag.ltidxs[tag] = vertical ? .verticalScroller : .scroller
+            mon.pertag.scrollerDefaultProportionSingle[tag] = 0.8
+            mon.pertag.scrollerIgnoreProportionSingle[tag] = ignore
             let ids = (1...n).map { ClientID($0) }
-            let state = ScrollerState()
-            let dir: Direction = vertical ? .up : .left
-            if stackMode >= 1 { _ = state.scrollerApplyStack(2, direction: dir, vertical: vertical, clientOrder: ids) }
-            if stackMode == 2 { _ = state.scrollerApplyStack(3, direction: dir, vertical: vertical, clientOrder: ids) }
-            var frames: [ClientID: CGRect] = [:]
+            let cs = ids.map { r.window($0) }
+            r.server.clients = cs
+            for (i, cl) in cs.enumerated() {
+                cl.scrollerProportion = props[i]
+                cl.iscustomScrollerProportion = true
+                cl.scrollerStackProportion = stackMode == 2 && i < 3 ? weights[i] : 0
+                cl.geom = .zero
+            }
+            r.server.updateScrollerState(mon)
+            let st = try XCTUnwrap(mon.pertag.scrollerState[tag])
+            func node(_ i: Int) -> ScrollerStackNode { r.server.findScrollerNode(st, cs[i])! }
+            if stackMode >= 1 { node(0).nextInStack = node(1); node(1).prevInStack = node(0) }
+            if stackMode == 2 { node(1).nextInStack = node(2); node(2).prevInStack = node(1) }
             var prev: ClientID?
             let seq = [0, n - 1, 1 % n, n / 2, 0, n - 1]
             for step in 0..<6 {
                 let expected = Self.rects(parts[1 + step].split(separator: " "))
                 let focus = ids[seq[step]]
-                let clients = ids.enumerated().map {
-                    LayoutClient(id: $1, currentFrame: frames[$1] ?? .zero, scrollerProportion: props[$0],
-                                 scrollerStackWeight: stackMode == 2 && $0 < 3 ? weights[$0] : 0)
-                }
-                let input = LayoutInput(workArea: area, monitorFrame: area,
-                                        gaps: Gaps(ih: CGFloat(m.ih), iv: CGFloat(m.iv), oh: CGFloat(m.oh), ov: CGFloat(m.ov)),
-                                        clients: clients, focusedID: focus, prevFocusedID: prev, pertag: pt, config: cfg)
-                let r = state.arrange(input, vertical: vertical)
-                for (i, id) in ids.enumerated() {
-                    XCTAssertEqual(r.frames[id], expected[i], "\(parts[0]) step \(step) client \(id)")
-                    frames[id] = r.frames[id]
+                mon.sel = focus
+                mon.prevsel = prev
+                r.arrange()
+                for (i, cl) in cs.enumerated() {
+                    XCTAssertEqual(cl.geom, expected[i], "\(parts[0]) step \(step) client \(cl.id)")
                 }
                 prev = focus
             }

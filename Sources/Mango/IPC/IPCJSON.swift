@@ -192,7 +192,7 @@ package extension MangoServer {
             ("y", .int(Int(f.minY))),
             ("width", .int(Int(f.width))),
             ("height", .int(Int(f.height))),
-            ("scroller_proportion", .double(Double(Float(c.scrollerProportion ?? c.mon.map { CGFloat($0.pertag.scrollerDefaultProportion[getMonCurtag($0)]) } ?? 0)))),
+            ("scroller_proportion", .double(Double(c.scrollerProportion))),
         ])
     }
 

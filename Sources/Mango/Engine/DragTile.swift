@@ -10,6 +10,7 @@ package extension MangoServer {
         guard dragTile == nil, !c.isfloating, let m = c.mon,
               tiledClients(m).contains(where: { $0 === c }) else { return }
         dragTile = DragTile(client: c, floatBackup: c.floatGeom)
+        exitScrollerStack(c)
         setSizePer(m, c)
         if config.dragTileToTile, config.dragTileSmall {
             let small = CGRect(x: p.x.rounded() - 150, y: p.y.rounded() - 150, width: 300, height: 300)
@@ -117,10 +118,8 @@ package extension MangoServer {
             if direction == .none { inOrder(before: true) } else {
                 switch m.layout {
                 case .scroller, .verticalScroller:
-                    let vertical = m.layout == .verticalScroller
-                    let along: Bool = vertical ? (direction == .left || direction == .right) : (direction == .up || direction == .down)
-                    m.pertag.scrollerState[getMonCurtag(m)].scrollerDropTile(c.id, onto: t.id, intoStack: along,
-                                                  before: direction == .left || direction == .up)
+                    t.dropDirection = direction   // not in mango: client_set_drop_area set it on the closest client
+                    scrollerDropTile(c, t, m.layout == .verticalScroller)
                 case .dwindle:
                     let tag = getClientTagIdx(c)
                     let insertBefore = direction == .left || direction == .up

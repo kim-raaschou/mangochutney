@@ -130,6 +130,21 @@ HYPER,F1–F12 i `~/.config/mango/config.conf` om (backup og diff af hele filen 
   tællere. Porten skriver vinduernes rammer ved billedets commit. Tilbage til trin 4: layouterne
   selv (tabellens pladser kalder layout-motoren), `update_scroller_state` og
   `LayoutResult.hidden`; til trin 6: `float_geom` i `pre_calculate` for dispatcherne.
+- Trin 4 (16. november): layouterne er mangos funktioner og kalder `client_tile_resize`:
+  `Layout/horizontal.swift` (tile, right_tile, center_tile, deck, monocle, grid, fair),
+  `vertical.swift` (vertical_tile, vertical_deck, vertical_grid, vertical_fair), `dwindle.swift`
+  (mangos `DwindleNode`-træ pr. tag, indsæt, fjern, træk og skridt, byt, flyt ved siden af,
+  delingens dispatchere) og `scroll.swift` (mangos `ScrollerStackNode` og `TagScrollerState`;
+  kolonnernes rækkefølge er klientlistens, `update_scroller_state`, `scroller_insert_stack`,
+  `scroller_drop_tile`, `exchange_two_scroller_clients`, `exit_scroller_stack`,
+  `resize_tile_scroller`, `scroller_apply_stack`). `client_exchange` er delt i mangos hjælpere
+  (`client_swap_layout_properties`, `client_swap_monitors_and_tags`,
+  `finish_exchange_arrange_and_focus`), og `wl_list`-hjælperne står i `common/util.swift`.
+  Klienten har mangos `float`-felter til scrolleren og `drop_direction`. Den gamle layout-motor
+  (`LayoutEngine`, `TileLayouts`, `GridLayouts`, `ScrollerState`, `LayoutResult`) er væk;
+  testene beskriver en kørsel med deres egne typer og kører mangos layout på en rig
+  (`LayoutRunner`), og de gyldne tests kører mangos funktioner mod mangos C. Layout-ikonerne
+  (udvidelse) har deres bokse som en tabel. Overview er ikke skrevet om (trin 8).
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter
