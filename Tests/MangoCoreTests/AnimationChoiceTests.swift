@@ -22,6 +22,7 @@ final class AnimationChoiceTests: MangoTestCase {
     func testOpen() {
         let (r, c) = rig()
         let m = r.screen.frame
+        r.server.preCalculateBeforeArrange(r.monitor, false, false, true)
         c.isPendingOpenAnimation = true
         r.server.resize(c, target, ResizeOpts())
         XCTAssertEqual(c.animation.action, .open)
@@ -62,6 +63,7 @@ final class AnimationChoiceTests: MangoTestCase {
         let m = r.screen.frame
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
         let d = r.window(2)
+        r.server.preCalculateBeforeArrange(r.monitor, false, false, true)
         func from() -> CGRect {
             d.isPendingOpenAnimation = true
             d.animation.running = false
@@ -178,7 +180,7 @@ final class AnimationChoiceTests: MangoTestCase {
 
     func testLeavingATagSlidesOut() {
         let (r, c) = rig()
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         XCTAssertFalse(c.isPendingOpenAnimation)
         _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         XCTAssertTrue(c.animation.tagouting, "sliding out")
@@ -214,7 +216,7 @@ final class AnimationChoiceTests: MangoTestCase {
 
     func testAScratchpadPutAwaySlidesOutAtTheTop() {
         let (r, c) = rig()
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         _ = r.server.dispatch(Dispatch(name: "minimized"), target: c)
         XCTAssertTrue(c.isInScratchpad && c.isminimized)
         XCTAssertTrue(c.animation.tagouting, "sliding out")
@@ -229,13 +231,13 @@ final class AnimationChoiceTests: MangoTestCase {
         defer { nowInMsOverride = nil }
         r.server.resize(c, target, ResizeOpts())
         clock += UInt32(r.server.config.animationDurationMove / 2)
-        r.server.handleOutputFrame(r.monitor)
+        r.frame()
         XCTAssertTrue(c.animation.running)
         XCTAssertNotEqual(c.animation.current, now)
         XCTAssertNotEqual(c.animation.current, target)
         XCTAssertEqual(r.app.frames[1], c.animation.current, "the window is written where the frame puts it")
         clock += UInt32(r.server.config.animationDurationMove)
-        r.server.handleOutputFrame(r.monitor)
+        r.frame()
         XCTAssertFalse(c.animation.running)
         XCTAssertEqual(c.animation.current, target)
         XCTAssertEqual(r.app.frames[1], target)

@@ -152,12 +152,11 @@ public final class MangoServer {
     func clientNoRadiusActive(_ c: Client) -> Bool {
         guard let m = c.mon else { return false }
 
-        if c.isfullscreen || (config.noRadiusWhenSingle && tiledClients(m).count == 1) {
+        if c.isfullscreen || (config.noRadiusWhenSingle && m.visibleTilingClients == 1) {
             return true
         }
 
-        return config.monocleNoRadius && !c.isfloating && !c.isminimized && !c.isunglobal
-            && !m.isoverview && m.layout == .monocle
+        return config.monocleNoRadius && ISFAKETILED(c) && !m.isoverview && m.layout == .monocle
     }
 
     // not in mango: the server's side of parse_config, the config read, its errors and the nag
@@ -405,178 +404,6 @@ public final class MangoServer {
         for m in monitors { arrange(m, wantAnimation, false) }
     }
 
-    package func arrange(_ m: Monitor, _ wantAnimation: Bool, _ fromView: Bool) {
-        guard started else { return }
-        // not in mango: pre_calculate_before_arrange's hide_clients, here before the overview
-        m.hideClients = 0
-        for c in clients where c.isminimized { m.hideClients += 1 }
-        if m.isoverview {
-            overview(m)
-            return
-        }
-        if m.sel == nil { m.sel = clientFocusTop(m)?.id }
-        if isSpecialActive(m) && specialClients(m).isEmpty {
-            if fromView { m.specialEmptyView = true }
-            else if !m.specialEmptyView { toggleSpecialTagMon(m); return }
-        } else {
-            m.specialEmptyView = false
-        }
-        for c in clientsAll where c.mon === m && (c.isglobal || c.isunglobal) { c.tags = m.tagset[m.seltags] }
-
-        let visible = visibleClients(m)
-        let tiled = tiledClients(m)
-        let work = m.screen.workArea
-        // not in mango: the layout engine's gaps, from the monitor's
-        let monGaps = isSpecialActive(m)
-            ? Gaps(ih: CGFloat(m.specialGappih), iv: CGFloat(m.specialGappiv), oh: CGFloat(m.specialGappoh), ov: CGFloat(m.specialGappov))
-            : Gaps(ih: CGFloat(m.gappih), iv: CGFloat(m.gappiv), oh: CGFloat(m.gappoh), ov: CGFloat(m.gappov))
-        let gaps = enableGaps ? monGaps : .zero
-        let fakeTiled = visible.filter { !$0.isfloating && !$0.isminimized && !$0.isunglobal }
-
-        // not in mango: pre_calculate_before_arrange's weights, here in arrange
-        let nmasters = Int(m.pertag.nmasters[getMonCurtag(m)])
-        var totalMaster: CGFloat = 0, totalStack: CGFloat = 0, totalLeft: CGFloat = 0, totalRight: CGFloat = 0
-        var masterNum = 0, stackNum = 0
-        for (i, c) in fakeTiled.enumerated() {
-            if c.masterSizeWeight <= 0 { c.masterSizeWeight = 1 }
-            if c.stackSizeWeight <= 0 { c.stackSizeWeight = 1 }
-            if i < nmasters {
-                masterNum += 1
-                totalMaster += c.masterSizeWeight
-            } else {
-                stackNum += 1
-                totalStack += c.stackSizeWeight
-                let stackIndex = i - nmasters
-                if (stackIndex % 2 == 1) != (tiled.count % 2 == 0) {
-                    c.isleftstack = false
-                    totalRight += c.stackSizeWeight
-                } else {
-                    c.isleftstack = true
-                    totalLeft += c.stackSizeWeight
-                }
-            }
-        }
-        resetSizePerMon(m, fakeTiled, totalLeftStackWeight: totalLeft, totalRightStackWeight: totalRight,
-                        totalStackWeight: totalStack, totalMasterWeight: totalMaster, masterNum: masterNum, stackNum: stackNum)
-
-        let members = tabMembers(m)
-        let strips = Set(members.map(\.id))
-        let shownMember = tabChainFocus(members, on: m)
-        let tabHidden = Set(members.filter { $0 !== shownMember }.map(\.id))
-        for c in clientsAll where c.mon === m { c.isTabHidden = tabHidden.contains(c.id) }
-        func tile(_ c: Client) -> CGRect {
-            var f = c.geom   // not in mango: the layout engine's input
-            let top = topBars(c, tabMember: strips.contains(c.id))
-            f.origin.y -= top
-            f.size.height += top
-            return f
-        }
-        var layoutClients = fakeTiled.map { c in
-            LayoutClient(id: c.id, currentFrame: tile(c), isfullscreen: c.isfullscreen, isMaximized: c.ismaximizescreen,
-                         scrollerProportion: c.scrollerProportion, scrollerProportionSingle: c.scrollerProportionSingle,
-                         masterInnerPer: c.masterInnerPer, stackInnerPer: c.stackInnerPer,
-                         scrollerStackWeight: c.scrollerStackWeight, masterMfactPer: c.masterMfactPer,
-                         gridColPer: c.gridColPer, gridRowPer: c.gridRowPer,
-                         gridColIdx: c.gridColIdx, gridRowIdx: c.gridRowIdx)
-        }
-        let kind = m.layout
-        let curtag = getMonCurtag(m)
-        // not in mango: the layout engine's pertag settings and state, from the slot's
-        var settings = PertagSettings(nmaster: Int(m.pertag.nmasters[curtag]), mfact: CGFloat(m.pertag.mfacts[curtag]),
-                                      scrollerDefaultProportion: CGFloat(m.pertag.scrollerDefaultProportion[curtag]),
-                                      scrollerDefaultProportionSingle: CGFloat(m.pertag.scrollerDefaultProportionSingle[curtag]),
-                                      scrollerIgnoreProportionSingle: m.pertag.scrollerIgnoreProportionSingle[curtag])
-        let state = TagLayoutState()
-        state.scrollerState = m.pertag.scrollerState[curtag]
-        state.dwindleRoot = m.pertag.dwindleRoot[curtag]
-        var input = LayoutInput(workArea: work, monitorFrame: m.screen.frame, gaps: gaps, clients: layoutClients,
-                                focusedID: m.sel, prevFocusedID: m.prevsel, pertag: settings,
-                                config: config, cursor: system.pointer)
-        input.enableGaps = enableGaps
-        input.startDragWindow = startDragWindow
-        if let p = m.prevsel.flatMap({ clientByIdAll($0) }) {
-            input.prevFocusedScroll = (!p.isfloating && !p.isminimized && !p.isunglobal,
-                                       p.scrollerProportion ?? CGFloat(m.pertag.scrollerDefaultProportion[getMonCurtag(m)]))
-        }
-        input.fullscreenInView = Set(visible.filter { $0.isfullscreen || $0.ismaximizescreen }.map(\.id))
-        var result = LayoutEngine.arrange(kind, input: input, state: state)
-        for (id, p) in result.gridPlaces {
-            guard let c = clientByIdAll(id) else { continue }
-            c.gridColPer = p.colPer; c.gridRowPer = p.rowPer; c.gridColIdx = p.colIdx; c.gridRowIdx = p.rowIdx
-        }
-        reserveTabStrip(&result.frames, on: m)
-        for c in tiled where clientWantsGroupBar(c) {
-            let h = CGFloat(config.groupBarHeight)
-            guard var f = result.frames[c.id], f.height > h else { continue }
-            f.origin.y += h
-            f.size.height -= h
-            result.frames[c.id] = f
-        }
-
-        var raise: [Client] = []
-        // not in mango: the boxes mango's setfloating, setfullscreen, setmaximizescreen and
-        // reset_maximizescreen_size leave in c->geom, set here; our floatGeom is kept apart
-        for c in visible where !c.isunglobal && dragTile?.client !== c {
-            let bw = borderWidth(c, on: m)
-            if SCRATCHPAD_SHOWN(c) {
-                c.geom = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m).insetBy(dx: -bw, dy: -bw)   // not in mango: the port's side
-                raise.append(c)
-            } else if c.isfullscreen {
-                c.geom = m.screen.frame
-                raise.append(c)
-            } else if c.ismaximizescreen {
-                let noGap = config.monocleNoGap && kind == .monocle
-                var box = work.insetBy(horizontal: noGap ? 0 : CGFloat(config.gappoh),
-                                       vertical: noGap ? 0 : CGFloat(config.gappov))
-                if clientWantsGroupBar(c) {
-                    box.origin.y += CGFloat(config.groupBarHeight)
-                    box.size.height -= CGFloat(config.groupBarHeight)
-                }
-                c.geom = box
-                raise.append(c)
-            } else if c.isfloating {
-                c.geom = system.keepOnDisplay(clientSetBounds(c, c.floatGeom, sceneGeometry), m).insetBy(dx: -bw, dy: -bw)   // not in mango: the port's side
-                if c.isoverlay { raise.append(c) }
-            } else if c.isoverlay {
-                raise.append(c)
-            }
-        }
-
-        // pre_calculate_before_arrange's set_arrange_visible and set_arrange_hidden
-        for c in clients where !c.iskilling && c.mon === m {
-            if VISIBLEON(c, m) {
-                if !c.isunglobal && dragTile?.client !== c { setArrangeVisible(m, c, wantAnimation) }   // not in mango: the tile being dragged stays where it is
-            } else if specialKeepBgClient(m, c) {
-                c.tagVisible = true
-                clientUpdateVisibility(c)
-                c.animation.running = false
-                c.animation.tagining = false
-                c.animation.tagouting = false
-            } else if c !== grab?.client {
-                setArrangeHidden(m, c, wantAnimation)
-            }
-        }
-
-        // the layout's resize of each tiled client
-        for c in visible where !c.isunglobal && dragTile?.client !== c && !c.isfloating && !c.isfullscreen
-            && !c.ismaximizescreen && !SCRATCHPAD_SHOWN(c) {
-            guard let box = result.frames[c.id] else { continue }
-            resize(c, box, ResizeOpts())
-        }
-        if kind.isMonocleLike, let s = m.sel.flatMap({ clientByIdAll($0) }), !s.isfloating { raise.insert(s, at: 0) }
-
-        let sel = m.sel.flatMap { clientByIdAll($0) }
-        for c in raise where c !== sel {
-            if let sel, sel.pid == c.pid { continue }
-            system.raise(c)
-        }
-        if let sel, raise.contains(where: { $0 === sel }) { system.raise(sel) }
-
-        specialUpdateDim(m)
-        updateBorders()
-        if config.tagGather { tagGatherApply(m) }
-    }
-
     func clientCenterGeometry(_ c: Client?, _ tm: Monitor?, _ geom: CGRect, _ offsetX: Int = 0, _ offsetY: Int = 0) -> CGRect {
         let m: Monitor = tm ?? selectedMonitor
         let w = m.screen.workArea, full = m.screen.frame
@@ -604,12 +431,6 @@ public final class MangoServer {
     func clientCenterGeometry(_ c: Client, _ f: CGRect, in work: CGRect) -> CGRect {
         guard !c.noForceCenter else { return f }
         return CGRect(x: work.midX - f.width / 2, y: work.midY - f.height / 2, width: f.width, height: f.height)
-    }
-
-    func specialKeepBgClient(_ m: Monitor, _ c: Client) -> Bool {
-        guard isSpecialActive(m), !c.isminimized, c.mon === m else { return false }
-        return (m.pertag.prevtag > 0 && c.tags & (1 << UInt32(m.pertag.prevtag - 1)) != 0)
-            || c.tags & (m.tagset[m.seltags ^ 1] & ~TAG0_MASK) != 0
     }
 
     func getMonitorActiveTagset(_ m: Monitor) -> UInt32 {
@@ -677,15 +498,11 @@ public final class MangoServer {
         var hitNoBorder = false
         if !renderBorder { hitNoBorder = true }
         if !isoverview && m.pertag.noRenderBorder[getClientTagIdx(c)] { hitNoBorder = true }
-        if config.noBorderWhenSingle {
-            let shown = visibleClients(m)
-            let visible = shown.filter { !$0.isunglobal }.count
-            let fakeTiling = shown.filter { !$0.isfloating && !$0.isminimized && !$0.isunglobal }.count
-            if (!c.isfloating && !c.isminimized && !c.isunglobal && fakeTiling == 1) || visible == 1 {
-                hitNoBorder = true
-            }
+        if config.noBorderWhenSingle
+            && ((ISSCROLLTILED(c) && m.visibleFakeTilingClients == 1) || m.visibleClients == 1) {
+            hitNoBorder = true
         }
-        if config.monocleNoBorder && !c.isfloating && !isoverview && m.layout == .monocle { hitNoBorder = true }
+        if config.monocleNoBorder && ISFAKETILED(c) && !isoverview && m.layout == .monocle { hitNoBorder = true }
         return hitNoBorder
     }
 
@@ -715,8 +532,10 @@ public final class MangoServer {
                     : (c === strip ? CGFloat(config.tabBarHeight) : 0) + (clientCheckTabNodeVisible(c, on: m) ? CGFloat(config.groupBarHeight) : 0)
                 f = CGRect(x: f.minX, y: f.minY - top, width: f.width, height: f.height + top)
                 let radius = clientNoRadiusActive(c) ? 0 : CGFloat(config.borderRadius)
+                // compute_edge_offsets: the border is cut at the monitor's edge
                 specs.append(BorderSpec(id: c.id, frame: f, color: getBorderColor(c), width: width, radius: radius,
-                                        split: clientDrawSplitBorder(c, on: m)))
+                                        split: clientDrawSplitBorder(c, on: m),
+                                        clip: clientIsIgnoreOutputClip(c) ? nil : m.screen.frame))
             }
         }
         if drawsOverlays { system.drawBorders(specs) }
@@ -853,6 +672,12 @@ public final class MangoServer {
 
     package func handleClientMap(_ c: Client) {
         guard clientByIdAll(c.id) == nil else { return }
+        c.bw = CGFloat(config.borderpx)
+
+        // init client geom
+        c.geom.size.width += 2 * c.bw
+        c.geom.size.height += 2 * c.bw
+        c.floatGeom = c.geom
         clientAddJumpLabelNode(c)
         c.mon = nil
         clientInsertTilingOrder(c)
@@ -1076,54 +901,107 @@ public final class MangoServer {
         }
     }
 
-    func clientSetFloating(_ c: Client, _ floating: Bool) {
+    func clientSetFloating(_ c: Client, _ floating: Bool, _ wantAnimation: Bool = false) {
         let oldFloatingState = c.isfloating
         c.isfloating = floating
-        guard let m = c.mon else { return }
-        if floating && grab?.client !== c {
-            if c.isfullscreen { system.clientNotifyFullscreen(c, false) }
-            c.isfullscreen = false
-            c.ismaximizescreen = false
+        var windowSizeOutofrange = false
+
+        guard let m = c.mon, !c.iskilling else { return }
+
+        var targetBox = c.geom
+
+        if floating && c !== grab?.client {
+            if c.isfullscreen {
+                clientPendingFullscreenState(c, false)
+                system.clientNotifyFullscreen(c, false)
+            }
+
+            clientPendingMaximizedState(c, false)
             exitScrollerStack(c)
-            let w = m.screen.workArea
-            var outOfRange = false
-            if c.floatGeom.width >= w.width - CGFloat(config.gappoh) {
-                c.floatGeom.size.width = (w.width * 0.9).rounded(.towardZero)
-                outOfRange = true
+
+            // Recomputes the centered coordinates.
+            if !c.iscustompos {
+                targetBox = clientCenterGeometry(c, m, targetBox, 0, 0)
+            } else {
+                targetBox = c.geom
             }
-            if c.floatGeom.height >= w.height - CGFloat(config.gappov) {
-                c.floatGeom.size.height = (w.height * 0.9).rounded(.towardZero)
-                outOfRange = true
+
+            // restore to the memeroy geom
+            if c.floatGeom.width > 0 && c.floatGeom.height > 0 {
+                if c.floatGeom.width >= m.screen.workArea.width - CGFloat(config.gappoh) {
+                    c.floatGeom.size.width = (m.screen.workArea.width * 0.9).rounded(.towardZero)
+                    windowSizeOutofrange = true
+                }
+                if c.floatGeom.height >= m.screen.workArea.height - CGFloat(config.gappov) {
+                    c.floatGeom.size.height = (m.screen.workArea.height * 0.9).rounded(.towardZero)
+                    windowSizeOutofrange = true
+                }
+                if windowSizeOutofrange {
+                    c.floatGeom = clientCenterGeometry(c, m, c.floatGeom, 0, 0)
+                }
+                // not in mango: a floating place off the monitor (a window that was there when
+                // mango started, parked or on a display that went away) is centred on it
+                if !m.screen.workArea.intersects(c.floatGeom) { c.floatGeom = clientCenterGeometry(c, m, c.floatGeom) }
+                resize(c, c.floatGeom, ResizeOpts(interact: false))
+            } else {
+                resize(c, targetBox, ResizeOpts(interact: false))
             }
-            if outOfRange { c.floatGeom = clientCenterGeometry(c, m, c.floatGeom) }
-            // Not in mango: a floating place off the monitor (a window that was there when
-            // mango started, parked or on a display that went away) is centred on it.
-            if !w.intersects(c.floatGeom) { c.floatGeom = clientCenterGeometry(c, m, c.floatGeom) }
-        } else if !floating {
+        } else if c.isfloating && c === grab?.client {
+            // not in mango: no need_float_size_reduce (no X11 size hints)
+        } else {
             c.isInScratchpad = false
             c.isnamedscratchpad = false
             setSizePer(m, c)
+            // Makes fullscreen windows on the current tag exit fullscreen so they
+            // join tiling.
             for fc in clients where fc !== c && VISIBLEON(fc, m) && c.tags & fc.tags != 0
-                && (fc.isfullscreen || fc.ismaximizescreen) && oldFloatingState {
+                && ISFULLSCREEN(fc) && oldFloatingState {
                 clearFullscreenFlag(fc)
             }
         }
-        arrange(m, false, false)
+
+        // not in mango: client_reparent_group, client_set_maximized and client_sync_tiled_hint (no macOS part)
+
+        arrange(m, wantAnimation, false)
+
+        if !c.isfloating {
+            c.oldMasterInnerPer = c.masterInnerPer
+            c.oldStackInnerPer = c.stackInnerPer
+        }
+
+        bordersDirty = true   // not in mango: client_update_border_color; the port draws the borders at once
         printstatus(.arrangge)
     }
 
     func clientSetFullscreen(_ c: Client, _ fullscreen: Bool, rearrange: Bool) {
-        guard let m = c.mon, grab?.client !== c else { return }
+        guard let m = c.mon, !c.iskilling, c !== grab?.client else { return }
+
         if m.isoverview { return }
+
         c.isfullscreen = fullscreen
+
         system.clientNotifyFullscreen(c, fullscreen)
+        clientPendingFullscreenState(c, fullscreen)
+
         if fullscreen {
-            c.ismaximizescreen = false
+            // not in mango: client_set_maximized (no macOS part)
+
+            clientPendingMaximizedState(c, false)
+
             exitScrollerStack(c)
             c.isfakefullscreen = false
-        } else if c.isfloating {
-            clientSetFloating(c, true)
+
+            c.bw = 0
+            if !m.layout.isScroller || c.isfloating {
+                resize(c, m.screen.frame, ResizeOpts(interact: true))
+            }
+        } else {
+            c.bw = c.noBorder ? 0 : CGFloat(config.borderpx)
+            if c.isfloating { clientSetFloating(c, true, false) }
         }
+
+        // not in mango: client_reparent_group, check_vrr_enable and check_keep_idle_inhibit (no macOS part)
+
         if rearrange { arrange(m, false, false) }
     }
 
@@ -1133,18 +1011,77 @@ public final class MangoServer {
         if c.isfullscreen { clientSetFullscreen(c, false, rearrange: true) }
     }
 
-    func clientSetMaximizeScreen(_ c: Client, _ maximizescreen: Bool, rearrange: Bool) {
-        guard let m = c.mon, grab?.client !== c else { return }
-        if m.isoverview { return }
-        c.ismaximizescreen = maximizescreen
-        if maximizescreen {
-            if c.isfullscreen { system.clientNotifyFullscreen(c, false) }
-            c.isfullscreen = false
-            exitScrollerStack(c)
-        } else if c.isfloating {
-            clientSetFloating(c, true)
+    func maximizeScreenGaps(_ c: Client) -> (gappoh: CGFloat, gappov: CGFloat) {
+        var gappoh = CGFloat(config.gappoh), gappov = CGFloat(config.gappov)
+        if config.monocleNoGap, let m = c.mon, !m.isoverview, m.layout == .monocle {
+            gappoh = 0
+            gappov = 0
         }
+        return (gappoh, gappov)
+    }
+
+    func clientSetMaximizeScreen(_ c: Client, _ maximizescreen: Bool, rearrange: Bool) {
+        guard let m = c.mon, !c.iskilling, c !== grab?.client else { return }
+
+        if m.isoverview { return }
+
+        clientPendingMaximizedState(c, maximizescreen)
+
+        if maximizescreen {
+            if c.isfullscreen {
+                clientPendingFullscreenState(c, false)
+                system.clientNotifyFullscreen(c, false)
+            }
+
+            exitScrollerStack(c)
+
+            let (gappoh, gappov) = maximizeScreenGaps(c)
+
+            let w = m.screen.workArea
+            var maximizescreenBox = CGRect(x: w.minX + gappoh, y: w.minY + gappov,
+                                           width: w.width - 2 * gappoh, height: w.height - 2 * gappov)
+
+            if clientWantsGroupBar(c) {
+                maximizescreenBox.size.height -= CGFloat(config.groupBarHeight)
+                maximizescreenBox.origin.y += CGFloat(config.groupBarHeight)
+            }
+
+            if !m.layout.isScroller || c.isfloating {
+                resize(c, maximizescreenBox, ResizeOpts(interact: false))
+            }
+        } else {
+            c.bw = c.noBorder ? 0 : CGFloat(config.borderpx)
+            if c.isfloating { clientSetFloating(c, true, false) }
+        }
+
+        // not in mango: client_reparent_group and client_set_maximized (no macOS part)
+
         if rearrange { arrange(m, false, false) }
+    }
+
+    func resetMaximizescreenSize(_ c: Client) {
+        guard let m = c.mon else { return }   // not in mango: c->mon is always set here
+        let (gappoh, gappov) = maximizeScreenGaps(c)
+
+        let w = m.screen.workArea
+        var geom = CGRect(x: w.minX + gappoh, y: w.minY + gappov, width: w.width - 2 * gappoh, height: w.height - 2 * gappov)
+
+        if clientWantsGroupBar(c) {
+            geom.size.height -= CGFloat(config.groupBarHeight)
+            geom.origin.y += CGFloat(config.groupBarHeight)
+        }
+
+        resize(c, geom, ResizeOpts(interact: false))
+    }
+
+    func clientPendingFullscreenState(_ c: Client, _ isfullscreen: Bool) {
+        c.isfullscreen = isfullscreen
+        // not in mango: no foreign toplevel
+    }
+
+    func clientPendingMaximizedState(_ c: Client, _ ismaximized: Bool) {
+        c.ismaximizescreen = ismaximized
+        // not in mango: no foreign toplevel
     }
 
     // scene layer a client belongs to; only clients actually tagged with tag 0

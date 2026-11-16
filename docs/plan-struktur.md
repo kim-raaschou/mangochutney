@@ -69,6 +69,21 @@ Hos os:
 - Udvidelserne (`Port/Extensions`) kobler sig stadig kun på via `PortHooks`.
 - Det, macOS ikke kan, står stadig i `MangoCompat` og `docs/afvigelser.md`.
 
+## Ved siden af: HYPER+F1–F12 som fullscreen-toggle
+
+Aftalt med brugeren i en sidesession (16. november), laves mellem trinene, når trin 3 er committet:
+en ny port-dispatcher `chutney_toggle_fullscreen,N` (`Port/Extensions`, under
+`chutney_fullscreen_tag`, slået fra uden nøglen) afløser `chutney_view_fullscreen` på HYPER+Fn.
+1. Fokus på vinduet på F-tag N: det går ud af macOS-fuldskærm og tilbage på sit tag og sin plads.
+2. F-tag N tomt og et vindue i fokus: det går i macOS-fuldskærm på F-tag N (ikke første ledige);
+   ligger det i fuldskærm på et andet F-tag, flytter det til N.
+3. F-tag N har en anden app end den fokuserede: gå til den, og den får fokus; intet ind eller ud.
+4. F-tag N tomt og intet i fokus: ingenting.
+
+`chutney_view_fullscreen` bliver som dispatcher. Ingen timere, ingen nye taster. Til sidst bindes
+HYPER,F1–F12 i `~/.config/mango/config.conf` om (backup og diff af hele filen før og efter), og
+`docs/guide.md`, `docs/afvigelser.md` §1 og tests opdateres.
+
 ## Status
 
 - 15. november: gennemgangen er færdig. Rettelserne til IPC (gennemgangens I) og config-parsing
@@ -105,6 +120,16 @@ Hos os:
   resten af `arrange` (pre_calculate, layouts via tabellen) er trin 3. `LayoutResult.hidden`
   bruges ikke længere af kernen (mangos `clip_to_hide` skjuler scrollerens kolonner) og går med
   trin 4. `floatGeom` er stadig uden kanten.
+- Trin 3 (16. november): `arrange`, `pre_calculate_before_arrange` (med skærmens
+  `visible_clients`, `visible_tiling_clients`, `visible_scroll_tiling_clients`,
+  `visible_fake_tiling_clients`), `special_handle_empty_view` og `layouts[]` står i
+  `Layout/arrange.swift`; `client_set_floating`, `client_set_fullscreen`,
+  `client_set_maximize_screen`, `reset_maximizescreen_size` og `maximize_screen_gaps` kalder
+  `resize` som mangos; `float_geom` har kanten, og `handle_client_map` sætter `bw` og `geom`.
+  `check_hit_no_border`, `client_no_radius_active` og `is_special_animation_rule` læser skærmens
+  tællere. Porten skriver vinduernes rammer ved billedets commit. Tilbage til trin 4: layouterne
+  selv (tabellens pladser kalder layout-motoren), `update_scroller_state` og
+  `LayoutResult.hidden`; til trin 6: `float_geom` i `pre_calculate` for dispatcherne.
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter

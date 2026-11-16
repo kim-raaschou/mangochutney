@@ -12,7 +12,7 @@ final class FullscreenNotifyTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.chutneyFullscreenTag = on
         for id: CGWindowID in 1...3 { r.window(id) }
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle(1)
         return r
     }

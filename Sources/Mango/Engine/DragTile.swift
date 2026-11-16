@@ -23,7 +23,7 @@ package extension MangoServer {
                 self.updateBorders()
             }
         }
-        c.floatGeom = c.frame
+        c.floatGeom = c.frame.insetBy(dx: -c.bw, dy: -c.bw)
         c.isfloating = true
         arrange(m, false, false)
     }
@@ -83,7 +83,7 @@ package extension MangoServer {
         dragTile = nil
         system.showDropArea(nil, color: config.dropcolor)
         let c = d.client
-        c.floatGeom = c.frame
+        c.floatGeom = c.frame.insetBy(dx: -c.bw, dy: -c.bw)
         c.iscustomsize = true
     }
 

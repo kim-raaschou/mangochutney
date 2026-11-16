@@ -33,7 +33,7 @@ final class EngineBorderTests: MangoTestCase {
 final class BorderInsideTheTileTests: MangoTestCase {
     func frames(_ r: EngineRig, borders: Bool) -> [CGWindowID: CGRect] {
         r.server.renderBorder = borders
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         return Dictionary(uniqueKeysWithValues: r.server.clientsAll.map { ($0.id, $0.tile) })
     }
 
@@ -100,8 +100,8 @@ final class BorderInsideTheTileTests: MangoTestCase {
             let r = rig(3, layout: layout)
             r.monitor.sel = 900_501
             let first = frames(r, borders: true)
-            r.server.arrange(r.monitor, false, false)
-            r.server.arrange(r.monitor, false, false)
+            r.arrange()
+            r.arrange()
             XCTAssertEqual(Dictionary(uniqueKeysWithValues: r.server.clientsAll.map { ($0.id, $0.tile) }), first, "\(layout)")
         }
     }

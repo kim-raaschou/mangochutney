@@ -82,10 +82,11 @@ class MacWindowSystem: WindowSystem {
     let watcher = AppWatcher()
     lazy var frameClock: FrameClock = {
         let clock = FrameClock(server)
-        clock.commit = { [unowned self] in commitFrame() }
+        clock.commit = { [weak self] in self?.commitFrame() }
         return clock
     }()
     var parkAtCommit: Set<ClientID> = []
+    var writeAtCommit: Set<ClientID> = []
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
     var writerOverride: ((pid_t) -> (any WindowWriter)?)?
@@ -455,14 +456,14 @@ class MacWindowSystem: WindowSystem {
         }
         for c in server.clientsAll {
             guard let m = c.mon, c.parked || Hider.isParked(c.frame, in: m.screen.frame) else { continue }
-            let f = c.isfloating ? c.floatGeom : c.tile
+            let f = c.isfloating ? c.floatGeom.insetBy(dx: c.bw, dy: c.bw) : c.tile
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         for (c, _) in away.values {
             guard let m = c.mon ?? server.monitors.first else { continue }
             let real = windowServerFrame(c.id) ?? c.frame
             guard c.parked || Hider.isParked(real, in: m.screen.frame) else { continue }
-            let f = c.isfloating ? c.floatGeom : c.tile
+            let f = c.isfloating ? c.floatGeom.insetBy(dx: c.bw, dy: c.bw) : c.tile
             writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         restoreAppSettings(restore)

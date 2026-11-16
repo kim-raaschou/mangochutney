@@ -12,7 +12,7 @@ final class FitLayoutTests: MangoTestCase {
         for id: CGWindowID in 1...windows { r.window(id) }
         for c in r.server.tiledClients(r.monitor) { r.server.setSizePer(r.monitor, c) }   // as mango maps a window
         for (id, size) in min { r.app.minSize[id] = size }
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle(1.5)
         return r
     }
@@ -124,7 +124,7 @@ final class FitLayoutTests: MangoTestCase {
         for c in r.server.tiledClients(r.monitor) { r.server.setSizePer(r.monitor, c) }
         r.app.minSize[2] = CGSize(width: 1600, height: 0)
         r.server.clientFocus(r.server.clientByIdAll(2)!, true)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle(1.5)
         XCTAssertEqual(over(r), [2])
         XCTAssertNotNil(FitLayout.plan(r.server, r.monitor))
@@ -141,7 +141,7 @@ final class FitLayoutTests: MangoTestCase {
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
         r.monitor.sel = 3
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle(1.5)
         XCTAssertEqual(over(r), [3])
         XCTAssertNil(FitLayout.plan(r.server, r.monitor))
@@ -272,7 +272,7 @@ final class FitLayoutTests: MangoTestCase {
         r.server.onStateChange = { told += 1 }
         for id: CGWindowID in 1...2 { r.window(id) }
         r.app.minSize[1] = CGSize(width: 1100, height: 0)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         told = 0
         r.settle(1.5)
         XCTAssertGreaterThan(told, 0)
@@ -285,7 +285,7 @@ final class FitLayoutTests: MangoTestCase {
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
         r.monitor.sel = 1
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle(1.5)
         XCTAssertNotNil(r.server.clientByIdAll(3)!.refusedSize, "larger than the screen")
         XCTAssertEqual(FitLayout.shown(r.server, r.monitor).map(\.id), [1], "under the one shown")

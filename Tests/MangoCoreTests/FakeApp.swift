@@ -108,6 +108,9 @@ final class FakeWindowSystem: MacWindowSystem {
     var asked = 0
     var closed: [ClientID] = []
     override func clientSendClose(_ c: Client) { closed.append(c.id) }
+    var rescans = 0
+    /// The tests reach no real app: the watcher does not scan them.
+    override func rescan() { rescans += 1 }
     override var pointer: CGPoint { fakePointer }
     override func keyboardHardModifiers() -> Modifiers { fakeModifiers }
     override var mouseButtons: Int { 0 }
@@ -240,6 +243,15 @@ final class EngineRig {
             subrole: "AXStandardWindow", isDialog: false, frame: frame, isminimized: false,
             isfullscreen: false, isAppHidden: false))
         return server.clientByIdAll(id)!
+    }
+
+    /// One output frame: what mango changed in the scene is shown (the tests' display link).
+    func frame() { server.mac.frameClock.fire() }
+
+    /// mango's arrange, and the frame that shows it.
+    func arrange() {
+        server.arrange(monitor, false, false)
+        frame()
     }
 
     /// The run loop for `seconds`, with an output frame every 16 ms (the tests' display link).

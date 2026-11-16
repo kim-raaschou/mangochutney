@@ -18,10 +18,10 @@ final class FrameClockTests: MangoTestCase {
         r.server.config.animationDurationMove = 60
         let c = r.window(900_010, frame: CGRect(x: 0, y: 40, width: 100, height: 100))
         c.isfloating = true
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle(0.3)
         c.floatGeom = CGRect(x: 200, y: 40, width: 100, height: 100)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         XCTAssertTrue(c.animation.running)
         var ran = false
         r.server.mac.frameClock.whenIdle { ran = true }

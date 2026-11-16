@@ -8,7 +8,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .dwindle
         for i in 0..<windows { r.window(CGWindowID(900_400 + i)) }
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         return r
     }
 
@@ -131,7 +131,7 @@ final class TiledDragStaysFiniteTests: MangoTestCase {
                 r.server.renderBorder = true
                 r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = kind
                 for i in 0..<count { r.window(900_600 + CGWindowID(i)) }
-                r.server.arrange(r.monitor, false, false)
+                r.arrange()
                 for c in r.server.clientsAll {
                     let resize = MouseBinding(mods: [.superKey], button: .right, dispatch: Dispatch(name: "moveresize", args: ["curresize"]))
                     let g = c.geom

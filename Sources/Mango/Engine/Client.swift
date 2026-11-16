@@ -94,7 +94,6 @@ public final class Client {
     var cursorInLeftHalf = false
     var dragBeginGeom: CGRect = .zero
 
-/// Not in mango: without the border (mango's box includes it).
     public var floatGeom: CGRect
     public var geom: CGRect
     public var pending: CGRect
@@ -216,6 +215,10 @@ public final class Monitor {
     public var ovTabLayout = false  /* Uses the centered tab layout when entering via
                                        overcircle. */
     public var specialEmptyView = false // user intentionally opened the empty special view
+    public var visibleClients: Int32 = 0
+    public var visibleTilingClients: Int32 = 0
+    public var visibleScrollTilingClients: Int32 = 0
+    public var visibleFakeTilingClients: Int32 = 0
     public var hideClients: UInt32 = 0
     package var titleMessageBar: MangoBarDecoration?
     public var carouselAnimDir = 0

@@ -38,7 +38,7 @@ package extension MangoServer {
         let to = FloatingSnap.snapped(from, others: others, monitor: m.screen.frame, workArea: m.screen.workArea,
                                       distance: CGFloat(config.snapDistance))
         guard to != from else { return }
-        c.floatGeom = c.frame.offsetBy(dx: to.minX - from.minX, dy: to.minY - from.minY)
+        c.floatGeom = c.frame.insetBy(dx: -c.bw, dy: -c.bw).offsetBy(dx: to.minX - from.minX, dy: to.minY - from.minY)
         arrange(m, false, false)
     }
 }

@@ -29,7 +29,15 @@ extension MacWindowSystem: AppWatcherDelegate {
         }
     }
 
+    /// handle_client_map's border and geom, around the window where it stands.
+    func initClientGeom(_ c: Client) {
+        c.bw = CGFloat(server.config.borderpx)
+        c.geom = c.geom.insetBy(dx: -c.bw, dy: -c.bw)
+        c.floatGeom = c.geom
+    }
+
     private func mapInitial(_ c: Client) {
+        initClientGeom(c)
         c.isPendingOpenAnimation = false
         server.clientAddJumpLabelNode(c)
         c.mon = nil
@@ -56,6 +64,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func mapBack(_ c: Client, _ d: DepartedWindow, initial: Bool) {
+        initClientGeom(c)
         server.clientAddJumpLabelNode(c)
         c.mon = nil
         server.clients.insert(c, at: DepartedWindow.insertionIndex(of: c.id, snapshot: d.orderSnapshot,
@@ -74,7 +83,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.isInScratchpad = d.isminimized
         c.isminimized = d.isminimized && !d.isScratchpad
         c.isnamedscratchpad = d.isnamedscratchpad
-        c.floatGeom = d.floatFrame
+        c.floatGeom = d.floatFrame.insetBy(dx: -c.bw, dy: -c.bw)
         c.scrollerProportion = d.scrollerProportion
         c.iscustomsize = d.iscustomsize
         c.isPendingOpenAnimation = false

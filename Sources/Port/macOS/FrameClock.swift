@@ -6,7 +6,7 @@ import Mango
 /// refresh, not a timer (a timer stands in where there is no screen).
 @MainActor
 final class FrameClock {
-    private unowned let server: MangoServer
+    private weak var server: MangoServer?
     private var scheduled: Set<CGDirectDisplayID> = []
     private var link: CADisplayLink?
     private var timer: DispatchSourceTimer?
@@ -21,7 +21,7 @@ final class FrameClock {
     init(_ server: MangoServer) { self.server = server }
 
     /// Whether a client is moving: mango's c->animation.running.
-    var animationsRunning: Bool { server.clientsAll.contains { $0.animation.running } }
+    var animationsRunning: Bool { server?.clientsAll.contains { $0.animation.running } ?? false }
 
     /// wlr_output_schedule_frame.
     func schedule(_ m: Monitor) {
@@ -47,6 +47,7 @@ final class FrameClock {
     }
 
     func fire() {
+        guard let server else { stop(); return }
         let due = scheduled
         scheduled.removeAll()
         for m in server.monitors where due.contains(m.screen.displayID) {

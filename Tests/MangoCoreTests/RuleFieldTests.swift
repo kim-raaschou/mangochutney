@@ -153,6 +153,6 @@ final class DragCornerTests: MangoTestCase {
         XCTAssertGreaterThan(bw, 0)
         XCTAssertEqual(r.server.grab?.startMouse, CGPoint(x: 800 + bw, y: 600 + bw))
         r.server.pointerProcessMotion(CGPoint(x: 850 + bw, y: 640 + bw), time: 0)
-        XCTAssertEqual(c.floatGeom, CGRect(x: 200, y: 200, width: 650, height: 440))
+        XCTAssertEqual(c.floatGeom, CGRect(x: 200, y: 200, width: 650, height: 440).insetBy(dx: -bw, dy: -bw), "float_geom has the border")
     }
 }

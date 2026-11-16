@@ -7,15 +7,17 @@ public struct BorderSpec: Equatable {
     public var width: CGFloat
     public var radius: CGFloat
     public var split: (side: SplitSide, color: RGBA)?
+    /// compute_edge_offsets' cut: the monitor's box the border is drawn within, nil where it is not cut.
+    public var clip: CGRect?
     public enum SplitSide: Equatable { case bottom, right }
     public init(id: CGWindowID, frame: CGRect, color: RGBA, width: CGFloat, radius: CGFloat,
-                split: (side: SplitSide, color: RGBA)? = nil) {
+                split: (side: SplitSide, color: RGBA)? = nil, clip: CGRect? = nil) {
         self.id = id; self.frame = frame; self.color = color; self.width = width; self.radius = radius
-        self.split = split
+        self.split = split; self.clip = clip
     }
     public static func == (a: BorderSpec, b: BorderSpec) -> Bool {
         a.id == b.id && a.frame == b.frame && a.color == b.color && a.width == b.width && a.radius == b.radius
-            && a.split?.side == b.split?.side && a.split?.color == b.split?.color
+            && a.split?.side == b.split?.side && a.split?.color == b.split?.color && a.clip == b.clip
     }
 }
 

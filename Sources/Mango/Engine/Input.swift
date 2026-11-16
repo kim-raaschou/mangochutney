@@ -370,7 +370,7 @@ package extension MangoServer {
             case .move:
                 let f = g.startFrame.offsetBy(dx: p.x - g.startMouse.x, dy: p.y - g.startMouse.y)
                 c.iscustomsize = true
-                c.floatGeom = f
+                c.floatGeom = f.insetBy(dx: -c.bw, dy: -c.bw)
                 updateDragTile(at: p)
                 c.frame = f
                 system.setFrame(c, f, size: false)
@@ -443,8 +443,8 @@ package extension MangoServer {
             }
         }
 
-        let f = box.insetBy(dx: bw, dy: bw)   // not in mango: our frame is without the border
-        gc.floatGeom = f
+        let f = box.insetBy(dx: bw, dy: bw)   // not in mango: the port's window frame is without the border
+        gc.floatGeom = box
 
         gc.frame = f
         system.setFrame(gc, f, size: true)

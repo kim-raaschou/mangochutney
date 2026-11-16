@@ -15,11 +15,15 @@ extension MacWindowSystem {
     }
 
     /// macOS cannot clip another app's window: it is drawn whole, at the size of mango's box without the
-    /// border, where the scene node stands (docs/afvigelser.md).
+    /// border, where the scene node stands, and written when the frame is shown. Where mango's clip would
+    /// cut it at its monitor's edge and the rest would land on another monitor, it is parked instead
+    /// (docs/afvigelser.md).
     func sceneSubsurfaceTreeSetClip(_ c: Client, _ clip: CGRect) {
         let node = c.mac.nodePosition
-        place(c, CGRect(x: node.x + c.bw, y: node.y + c.bw,
-                        width: c.animation.current.width - 2 * c.bw, height: c.animation.current.height - 2 * c.bw))
+        c.mac.box = CGRect(x: node.x + c.bw, y: node.y + c.bw,
+                           width: c.animation.current.width - 2 * c.bw, height: c.animation.current.height - 2 * c.bw)
+        writeAtCommit.insert(c.id)
+        if let m = c.mon { frameClock.schedule(m) }
     }
 
     func sceneNodeSetEnabled(_ c: Client, _ enabled: Bool) {
@@ -45,12 +49,20 @@ extension MacWindowSystem {
             if c.parked {
                 c.parked = false
                 c.parkRetries = 0
+                c.mac.offEdge = false
             }
         }
     }
 
-    /// wlroots' output commit: the windows whose scene the frame disabled are parked.
+    /// wlroots' output commit: the scene as the frame left it is shown. The windows are written where
+    /// mango last put them, then the ones whose scene the frame disabled are parked.
     func commitFrame() {
+        let writes = writeAtCommit
+        writeAtCommit.removeAll()
+        for id in writes {
+            guard let c = server.clientByIdAll(id) else { continue }
+            place(c, c.mac.box)
+        }
         let ids = parkAtCommit
         parkAtCommit.removeAll()
         for id in ids {
@@ -59,11 +71,30 @@ extension MacWindowSystem {
         }
     }
 
+    /// Where mango clips the window at its monitor's edge (client_is_ignore_output_clip is false) and
+    /// the part beyond would be drawn on another monitor.
+    func reachesAnotherMonitor(_ c: Client, _ box: CGRect) -> Bool {
+        guard let m = c.mon, !server.clientIsIgnoreOutputClip(c), !m.screen.frame.contains(box) else { return false }
+        return server.monitors.contains { o in
+            o !== m && !o.screen.frame.intersection(box).isEmpty
+        }
+    }
+
     /// Writes the window's frame: each step of an animation, and at its end the frame it is to keep.
     func place(_ c: Client, _ box: CGRect) {
         c.mac.box = box
-        guard c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled, !c.parked else { return }
+        guard c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled else { return }
         guard !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
+        if reachesAnotherMonitor(c, box) {
+            if !c.parked { park(c); c.mac.offEdge = true }
+            return
+        }
+        if c.parked {
+            guard c.mac.offEdge else { return }
+            c.mac.offEdge = false
+            c.parked = false
+            c.parkRetries = 0
+        }
         guard let q = writer(for: c.pid) else { return }
         var target = box.rounded()
         let final = !c.animation.running
@@ -131,7 +162,7 @@ extension MacWindowSystem {
         DispatchQueue.main.asyncAfter(deadline: .now() + wait + 0.05) { [weak self] in
             MainActor.assumeIsolated {
                 c.deferredRetryPending = false
-                guard let self, self.server.clientByIdAll(c.id) === c, c.tile == target, !c.parked,
+                guard let self, self.server.clientByIdAll(c.id) === c, c.mac.box == target, !c.parked,
                       !c.animation.running, let q = self.writer(for: c.pid) else { return }
                 self.readBack(c, q)
             }
@@ -155,20 +186,20 @@ extension MacWindowSystem {
               !c.animation.running, server.grab?.client !== c else { return }
         let refused = c.refusedSize
         defer { if c.refusedSize != refused { server.onStateChange?() } }
-        if MangoServer.frameDistance(actual, c.tile) <= 0.5 { c.retryCount = 0; c.refusedSize = nil }
+        if MangoServer.frameDistance(actual, c.mac.box) <= 0.5 { c.retryCount = 0; c.refusedSize = nil }
         if let rs = c.refusedSize, actual.width < rs.width - 0.5 || actual.height < rs.height - 0.5 {
-            let t = c.tile
+            let t = c.mac.box
             c.refusedSize = actual.width > t.width + 0.5 || actual.height > t.height + 0.5 ? actual.size : nil
         }
         let d = abs(actual.minX - c.frame.minX) + abs(actual.minY - c.frame.minY)
             + abs(actual.width - c.frame.width) + abs(actual.height - c.frame.height)
         let offLayout = !c.isfloating && !SCRATCHPAD_SHOWN(c)
-            && MangoServer.frameDistance(actual, c.tile) > 0.5
+            && MangoServer.frameDistance(actual, c.mac.box) > 0.5
         guard d > 0.5 || offLayout else { return }
         if c.isfloating { userMoved(c, to: actual, resized: false, dragging: false); return }
         c.frame = actual
         let now = CACurrentMediaTime()
-        let target = c.tile
+        let target = c.mac.box
         if !c.isfloating, !SCRATCHPAD_SHOWN(c), MangoServer.frameDistance(actual, target) > 0.5 {
             let larger = actual.width > target.width + 0.5 || actual.height > target.height + 0.5
             let inward = larger && c.mon != nil ? Self.inwardOrigin(target, size: actual.size, in: layoutBounds(c.mon!)) : target.origin

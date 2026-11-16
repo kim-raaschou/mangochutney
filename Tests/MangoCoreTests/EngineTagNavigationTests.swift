@@ -85,11 +85,12 @@ final class TagToCurrentTagTests: MangoTestCase {
         let r = EngineRig()
         let c = r.window(900_950, tags: TAG0_MASK)
         r.window(900_951)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle()
         XCTAssertTrue(c.parked, "on the special tag, out of view")
         _ = r.server.dispatch(Dispatch(name: "tag", args: ["1"]), target: c)
+        r.frame()
         XCTAssertFalse(c.parked)
-        XCTAssertEqual(r.app.frames[900_950], c.geom, "in its tile")
+        XCTAssertEqual(r.app.frames[900_950], c.tile, "in its tile")
     }
 }

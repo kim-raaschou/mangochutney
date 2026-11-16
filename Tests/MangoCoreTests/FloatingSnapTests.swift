@@ -45,7 +45,7 @@ final class EngineSnapAndSmallDragTests: MangoTestCase {
         r.server.config.enableFloatingSnap = true
         r.server.config.borderpx = 0
         let c = r.window(1, floating: true, frame: CGRect(x: 15, y: 300, width: 500, height: 400))
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle()
         r.server.applyWindowSnap(c)
         r.settle()
@@ -64,7 +64,7 @@ final class EngineSnapAndSmallDragTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1)
         r.window(2)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle()
         let tile = a.geom
         r.monitor.sel = a.id

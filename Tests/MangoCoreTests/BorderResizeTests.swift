@@ -123,7 +123,7 @@ final class BorderResizeTests: MangoTestCase {
 
     func testDraggingAFloatingEdgeChangesOnlyThatEdge() {
         let (r, c) = floating()
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         let before = c.frame
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: before.maxX - 2, y: before.midY), mods: [])
         XCTAssertEqual(r.server.grab?.resizeEdge, .right)
@@ -162,7 +162,7 @@ final class BorderResizeTests: MangoTestCase {
         let r = EngineRig()
         r.server.renderBorder = true
         let w1 = r.map(1), w2 = r.map(2)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         let (a, b) = try XCTUnwrap(w1.geom).minX < XCTUnwrap(w2.geom).minX ? (w1, w2) : (w2, w1)
         let ga = try XCTUnwrap(a.geom), gb = try XCTUnwrap(b.geom)
         XCTAssertLessThan(ga.maxX, gb.minX, "a left of b")

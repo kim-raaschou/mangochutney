@@ -8,7 +8,7 @@ final class FullscreenAwayTests: MangoTestCase {
     func rig() -> EngineRig {
         let r = EngineRig()
         for id: CGWindowID in 1...3 { r.window(id) }
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle(1)
         return r
     }

@@ -74,7 +74,7 @@ package extension MangoServer {
     // not in mango: nil is UNDIR
     func isSpecialAnimationRule(_ c: Client) -> Direction? {
         guard let m = c.mon else { return nil }
-        let visibleTilingClients = tiledClients(m).count   // not in mango: c->mon->visible_tiling_clients
+        let visibleTilingClients = m.visibleTilingClients
         if m.layout.isScroller && !c.isfloating {
             return .down
         } else if visibleTilingClients == 1 && !c.isfloating {
@@ -188,7 +188,8 @@ package extension MangoServer {
             clipBox.size.height -= offset.height
         }
 
-        if (clipBox.width + bw <= 0 || clipBox.height + bw <= 0)
+        // not in mango: size.width, as CGRect's width is never negative and wlr_box's is
+        if (clipBox.size.width + bw <= 0 || clipBox.size.height + bw <= 0)
             && (ISSCROLLTILED(c) || c.animation.tagouting || c.animation.tagining) {
             c.isClipToHide = true
             clientUpdateVisibility(c)
@@ -225,7 +226,7 @@ package extension MangoServer {
 
             bordersDirty = true   // not in mango: client_draw_border … client_draw_dim; the port draws them all at once
 
-            shouldRenderClientSurface = clipBox.width > 0 && clipBox.height > 0
+            shouldRenderClientSurface = clipBox.size.width > 0 && clipBox.size.height > 0
             c.isSurfaceHidden = !shouldRenderClientSurface
             clientUpdateVisibility(c)
 
@@ -244,7 +245,7 @@ package extension MangoServer {
 
         bordersDirty = true   // not in mango: client_draw_border … client_draw_blur; the port draws them all at once
 
-        shouldRenderClientSurface = clipBox.width > 0 && clipBox.height > 0
+        shouldRenderClientSurface = clipBox.size.width > 0 && clipBox.size.height > 0
         c.isSurfaceHidden = !shouldRenderClientSurface
         clientUpdateVisibility(c)
 

@@ -54,7 +54,7 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
     func testTheKeyAgainMovesAndReturnGoes() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2), c = r.window(3)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.server.clientActive(b)
         r.server.clientActive(a)
         let picker = LaunchOrFocusPicker.shared
@@ -74,7 +74,7 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
         let r = EngineRig()
         let a = r.window(1)
         r.window(2); r.window(3)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.server.clientActive(a)
         let picker = LaunchOrFocusPicker.shared
         defer { picker.close(r.server) }
@@ -90,7 +90,7 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
     func testAClickGoesAsInMangosSwitcher() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2), c = r.window(3)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.server.clientActive(a)
         let picker = LaunchOrFocusPicker.shared
         defer { picker.close(r.server) }
@@ -118,7 +118,7 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
     func testTwoWindowsInTheAppStillToggle() {
         let r = EngineRig()
         let a = r.window(1), b = r.window(2)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.server.clientActive(a)
         r.server.launchOrFocus("test", command: "")
         XCTAssertFalse(LaunchOrFocusPicker.shared.isOpen)

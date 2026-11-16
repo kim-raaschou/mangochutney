@@ -11,7 +11,7 @@ final class SwipeDriveTests: MangoTestCase {
         if windows {
             r.map(1)
             r.map(2).tags = 2
-            r.server.arrange(r.monitor, false, false)
+            r.arrange()
             r.settle(0.2)
         }
         r.server.config.gestureSwipeMinSpeedToForce = minSpeed
@@ -23,8 +23,9 @@ final class SwipeDriveTests: MangoTestCase {
     func begin(_ r: EngineRig) { r.server.handleCursorSwipeBegin(4) }
     func move(_ r: EngineRig, _ dx: Double, _ dy: Double = 0, _ t: UInt32) {
         r.server.handleCursorSwipeUpdate(Swipe(dx: dx, dy: dy, fingers: 4), time: t)
+        r.frame()
     }
-    func end(_ r: EngineRig) { r.server.handleCursorSwipeEnd() }
+    func end(_ r: EngineRig) { r.server.handleCursorSwipeEnd(); r.frame() }
     func viewed(_ r: EngineRig) -> UInt32 { r.monitor.tagset[r.monitor.seltags] }
 
     /// Slowly to `total` along x, 10 units a step, 100 ms apart.
@@ -58,12 +59,14 @@ final class SwipeDriveTests: MangoTestCase {
     func testTheTransitionFollowsTheFingersInAStraightLine() {
         let r = rig()
         begin(r)
+        let c = r.server.clientByIdAll(2)!
         move(r, 20, 0, 0)
-        let start = r.app.frames[2]!
+        let start = c.animation.current   // wholly off the monitor at first: hidden, not written
         move(r, 134, 0, 10)   // axis 154: half of the 300 from the base at 4
-        let half = r.app.frames[2]!
+        let half = c.animation.current
+        XCTAssertEqual(r.app.frames[2], half.insetBy(dx: c.bw, dy: c.bw), "written whole where it is")
         move(r, 150, 0, 20)
-        let to = r.app.frames[2]!
+        let to = c.animation.current
         XCTAssertNotEqual(start, to)
         let mid = CGRect(x: (start.minX + to.minX) / 2, y: (start.minY + to.minY) / 2,
                          width: (start.width + to.width) / 2, height: (start.height + to.height) / 2)
@@ -179,7 +182,7 @@ final class SwipeDriveTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         r.map(1); r.map(2); r.map(3)
         r.server.clientFocus(r.server.clientByIdAll(2), true)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle(0.2)
         r.server.config.gestureBindings = [GestureBinding(mods: [], direction: nil, fingers: 4,
                                                           dispatch: Dispatch(name: "focusdir", args: ["right"]))]

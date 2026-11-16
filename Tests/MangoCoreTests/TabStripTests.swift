@@ -15,10 +15,10 @@ final class TabStripTests: MangoTestCase {
     func testMonocleWindowsMakeRoomForTheStrip() {
         let r = rig(.monocle, windows: 3)
         r.server.config.monocleTabMode = false
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         let plain = r.server.clientByIdAll(900_100)!.geom
         r.server.config.monocleTabMode = true
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         let tabbed = r.server.clientByIdAll(900_100)!.geom
         XCTAssertEqual(r.server.tabMembers(r.monitor).count, 3)
         XCTAssertEqual(tabbed.minY, plain.minY + 33)
@@ -28,7 +28,7 @@ final class TabStripTests: MangoTestCase {
     func testMembersOtherThanTheFocusedOneAreHidden() {
         let r = rig(.monocle, windows: 3)
         r.server.clientFocus(r.server.clientByIdAll(900_101)!, false)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle()
         let parked = { (id: CGWindowID) in r.server.clientByIdAll(id)!.parked }
         XCTAssertEqual([parked(900_100), parked(900_101), parked(900_102)], [true, false, true])
@@ -49,14 +49,14 @@ final class TabStripTests: MangoTestCase {
     func testWithoutTabModeNoMonocleWindowIsHidden() {
         let r = rig(.monocle, windows: 3)
         r.server.config.monocleTabMode = false
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         XCTAssertFalse(r.server.clientsAll.contains { $0.parked })
     }
 
     func testTheDeckHidesItsStackButTheFocusedMember() {
         let r = rig(.deck, windows: 4)
         r.server.clientFocus(r.server.clientByIdAll(900_102)!, false)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.settle()
         let parked = (0..<4).map { r.server.clientByIdAll(CGWindowID(900_100 + $0))!.parked }
         XCTAssertEqual(parked, [false, true, false, true])
@@ -71,7 +71,7 @@ final class TabStripTests: MangoTestCase {
 
     func testTheDeckTabsItsStackNotItsMaster() {
         let r = rig(.deck, windows: 3)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         let ids = r.server.tabMembers(r.monitor).map(\.id)
         XCTAssertEqual(ids, [900_101, 900_102], "the master (first) is not a member")
     }
@@ -182,7 +182,7 @@ final class TabStripTests: MangoTestCase {
 
     func testTheTabBarsAreMangosBoxesSideBySide() {
         let r = rig(.monocle, windows: 3)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         let s = drawn(r).tabStrips[0]
         let tw = Int(s.frame.width)
         XCTAssertEqual(s.segments.map { Int($0.frame.width) }, (0..<3).map { tw / 3 + ($0 < tw % 3 ? 1 : 0) })
@@ -194,7 +194,7 @@ final class TabStripTests: MangoTestCase {
 
     func testTheTabBarIsClippedAtTheMonitorEdge() {
         let r = rig(.monocle, windows: 2)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         let f = focus(r)
         var shown = f.tile
         shown.origin.x = r.screen.frame.maxX - 100
@@ -207,7 +207,7 @@ final class TabStripTests: MangoTestCase {
 
     func testDuringTheOpenAnimationTheTabBarSitsWhereTheWindowGoes() {
         let r = rig(.monocle, windows: 2)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         let f = focus(r)
         let bw = r.server.borderWidth(f, on: r.monitor)
         let shown = f.tile.insetBy(dx: 100, dy: 100)
@@ -223,10 +223,10 @@ final class TabStripTests: MangoTestCase {
         r.server.clientGroupJoin(b, into: a)
         let owner = [a, b].first { !$0.groupParked }!
         r.server.clientFocus(owner, false)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         XCTAssertEqual(drawn(r).groupStrips.map(\.above), [owner.id])
         r.server.clientFocus(r.server.clientByIdAll(900_102)!, false)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         XCTAssertTrue(owner.isTabHidden)
         XCTAssertTrue(drawn(r).groupStrips.isEmpty)
     }

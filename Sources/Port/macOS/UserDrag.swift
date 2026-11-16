@@ -36,7 +36,7 @@ extension MacWindowSystem {
                 if !resized { server.clientBeginDragFloat(c, at: pointer) }
             }
             if resized { userDrag?.resized = true }
-            if c.isfloating { c.floatGeom = actual; c.iscustomsize = true }
+            if c.isfloating { c.floatGeom = actual.insetBy(dx: -c.bw, dy: -c.bw); c.iscustomsize = true }
             c.frame = actual
             standsAt(c, actual)
             server.updateBorders()
@@ -44,14 +44,14 @@ extension MacWindowSystem {
             return
         }
         if c.isfloating {
-            c.floatGeom = actual
+            c.floatGeom = actual.insetBy(dx: -c.bw, dy: -c.bw)
             c.frame = actual
             standsAt(c, actual)
             server.updateBorders()
             return
         }
         c.frame = actual
-        let target = c.tile
+        let target = c.mac.box
         if MangoServer.frameDistance(actual, target) > 0.5 {
             wlrLog(.debug, "\(c.appName): window \(c.id) moved to \(actual) by the app; its tile is \(target)")
             keepPlaced(c, at: target)
@@ -89,7 +89,7 @@ extension MacWindowSystem {
             return
         }
         if c.isfloating {
-            c.floatGeom = actual
+            c.floatGeom = actual.insetBy(dx: -c.bw, dy: -c.bw)
             c.iscustomsize = true
             c.frame = actual
             if let target = server.monitorAtPoint(actual.center), target !== m {

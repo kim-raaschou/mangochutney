@@ -78,7 +78,11 @@ public final class BorderManager {
                 win.isReleasedWhenClosed = false
                 win.animationBehavior = .none
                 let view = BorderView(frame: .zero)
-                win.contentView = view
+                let content = NSView(frame: .zero)
+                content.wantsLayer = true
+                content.layer?.masksToBounds = true
+                content.addSubview(view)
+                win.contentView = content
                 apply(spec, to: win, view: view)
                 win.orderFrontRegardless()
                 win.order(.above, relativeTo: Int(spec.id))
@@ -107,14 +111,28 @@ public final class BorderManager {
         abs(a.minX - b.minX) + abs(a.minY - b.minY) + abs(a.width - b.width) + abs(a.height - b.height)
     }
 
+    /// The overlay: the border's box, cut at the monitor's edge where mango cuts it.
     private static func appKitFrame(_ spec: BorderSpec) -> CGRect {
-        let h = Screens.primaryHeight
         let outer = BorderGeometry.overlayFrame(window: spec.frame, width: spec.width)
-        return CGRect(x: outer.minX, y: h - outer.maxY, width: outer.width, height: outer.height)
+        return appKit(spec.clip.map { outer.intersection($0) } ?? outer)
+    }
+
+    private static func appKit(_ r: CGRect) -> CGRect {
+        let h = Screens.primaryHeight
+        return CGRect(x: r.minX, y: h - r.maxY, width: r.width, height: r.height)
     }
 
     private func apply(_ spec: BorderSpec, to win: NSWindow, view: BorderView) {
-        win.setFrame(Self.appKitFrame(spec), display: false)
+        let frame = Self.appKitFrame(spec)
+        if frame.isNull || frame.isEmpty {
+            win.orderOut(nil)
+        } else if !win.isVisible {
+            win.orderFrontRegardless()
+            win.order(.above, relativeTo: Int(spec.id))
+        }
+        win.setFrame(frame.isNull ? .zero : frame, display: false)
+        let outer = Self.appKit(BorderGeometry.overlayFrame(window: spec.frame, width: spec.width))
+        view.frame = CGRect(x: outer.minX - frame.minX, y: outer.minY - frame.minY, width: outer.width, height: outer.height)
         func ns(_ c: RGBA) -> NSColor { NSColor(red: c.r, green: c.g, blue: c.b, alpha: c.a) }
         view.set(color: ns(spec.color), width: spec.width,
                  radius: BorderGeometry.outerRadius(corner: spec.radius, width: spec.width),

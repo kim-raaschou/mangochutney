@@ -131,7 +131,8 @@ final class SavedLayoutTests: MangoTestCase {
         let c = discover("com.example", savedAs: "com.example")
         XCTAssertEqual(c?.tags, 1 << 8)
         XCTAssertEqual(c?.isfloating, true)
-        XCTAssertEqual(c?.floatGeom, CGRect(x: 10, y: 20, width: 300, height: 200))
+        XCTAssertEqual(c.map { $0.floatGeom.insetBy(dx: $0.bw, dy: $0.bw) }, CGRect(x: 10, y: 20, width: 300, height: 200),
+                       "the window's frame, inside float_geom's border")
         XCTAssertEqual(c?.oldmonname, 2)
     }
 

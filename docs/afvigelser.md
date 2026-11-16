@@ -68,7 +68,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Mangos lag (`client_target_layer`) holdes, når mango giver fokus, men et klik med musen løfter altid vinduet; en app, der selv lægger sit vindue frem, når den bliver aktiv eller får sit nøglevindue (fx Arc, IntelliJ), kommer øverst alligevel; og et vindue, der får fokus under et højere lag, løftes heller ikke over sine naboer i sit eget lag | Klikket når macOS, før mango ser det; tastaturfokus kræver, at appen er aktiv, og en aktiv app ordner selv sine vinduer; porten kan lade være med at løfte et vindue, men ikke lægge et andet programs vindue over det aktive |
 | Layoutet holder menulinjen og Dock'en fri | De svarer til mangos bjælker med eksklusiv zone |
 | Ingen skygge, blur, dæmpning, gennemsigtighed eller runde hjørner fra mango; ingen luk- og fade-animationer | macOS tegner andre apps' vinduer; gennemsigtighed kræver SIP slået fra |
-| Et vindue, der glider over skærmkanten (tag-skift, scroller), tegnes helt, til mango slukker det, og parkeres så; under en animation skifter vinduet størrelse billede for billede, hvor mango skalerer sin buffer | Andre apps' vinduer kan ikke klippes eller skaleres |
+| Et vindue, som mango klipper ved sin skærms kant (scroller, tag-skift), tegnes helt; ligger der en anden skærm ud over kanten, parkeres det i stedet, så intet af det når nabo-skærmen (mango viser den klippede del). Det parkeres også, når mango slukker det. Under en animation skifter vinduet størrelse billede for billede, hvor mango skalerer sin buffer | Andre apps' vinduer kan ikke klippes eller skaleres |
 | Animationer skrives via Accessibility (højst 60 Hz) | Ingen compositor |
 | En flydende resize med musen sker højst én gang pr. skærmens opdateringsinterval; mango én gang pr. tegnet billede (`frame_serial`, 09828ec) | Kernen får ingen billedbegivenheder fra macOS |
 | Overview og switcher viser billeder (Skærmoptagelse), stillbilleder taget ved åbning; de rigtige vinduer bliver under dem, så `warp_cursor` sætter markøren på kortet (mangos `geom` i overview) | Andre apps' vinduer kan ikke skaleres; en strøm pr. vindue koster meget |
@@ -130,7 +130,8 @@ Hvor koden står, når den ikke står som i mango.
   float-felt, afrundet som C) og `LayoutInput.sanitized()` (C laver et tal, der ikke er
   endeligt, om til et heltal uden videre; Swift stopper programmet), og `1 << (prevtag - 1)` med
   `prevtag` 0 i tag-animationerne regnes som intet tag (C's skift er udefineret; Swift stopper
-  programmet). `oldmonname` holder
+  programmet). En klippeboks' bredde læses som `size.width`, for `CGRect.width` er aldrig
+  negativ, og `wlr_box`'s kan være det (`clip_to_hide`). `oldmonname` holder
   skærmens display-ID, ikke navnet, for to skærme kan have samme navn.
 - **Faner:** fanekæden holdes for de tags, der er i visning, som `tab_member_kept` holder den;
   mango kæder den pr. vindue (`Tabs.swift`).
@@ -157,20 +158,27 @@ Hvor koden står, når den ikke står som i mango.
   (display link) kalder `handleOutputFrame` for hver skærm med et planlagt billede
   (`wlr_output_schedule_frame`), og `wlr_scene_node_set_position` og
   `wlr_scene_subsurface_tree_set_clip` skriver vinduets ramme. macOS kan ikke klippe et andet
-  programs vindue: det tegnes helt, i animationens størrelse uden kanten, og parkeres, når mangos
-  synlighed (`client_should_visible`, også `clip_to_hide`) slukker det. Parkeringen sker, når
-  billedet afleveres (wlroots' output commit), efter at billedets synlige vinduer er skrevet, så
-  intet hul viser skrivebordet, når et vindue afløser et andet (monocle, faner). Uden macOS-del, mærket i
+  programs vindue: det tegnes helt og parkeres, hvor den klippede del ville nå en anden skærm, og når mangos
+  synlighed (`client_should_visible`, også `clip_to_hide`) slukker det. Rammerne skrives og de
+  slukkede vinduer parkeres, når billedet afleveres (wlroots' output commit): et `arrange`s
+  `resize` af ét vindue (`set_arrange_visible`s og layoutets) når appen som én skrivning, og et
+  vindue parkeres først, når billedets synlige vinduer er skrevet, så intet hul viser skrivebordet,
+  når et vindue afløser et andet (monocle, faner). Uden macOS-del, mærket i
   koden: buffer-effekter, fokus-opacitet (`client_set_focus_opacity` giver false), pointer-enter ved
   animationens slut, `force_render`, frame-skip mens klienter skifter størrelse
   (`resizing_count_pending`), swallowing, størrelses-hints (`client_set_size_bound` får ingen fra
   macOS) og kortene i overviewet (`ov_card_tree`). Kanter og bjælker tegnes for alle vinduer på
   én gang efter billedet (`bordersDirty`), hvor mango tegner dem pr. vindue i `client_set_clip`.
   `find_animation_curve_at` løser kurven i stedet for at bage den; CLOSE-, FOCUS- og fade-kurverne
-  bruges ikke. `floatGeom` er stadig uden kanten.
-- **`arrange` indtil trin 3:** `set_arrange_visible` og `set_arrange_hidden` kaldes fra `arrange`
-  før layoutets `resize`, og en flydende, fuldskærms- eller maksimeret klients `geom` sættes i
-  `arrange`, hvor mango sætter den i `setfloating`, `setfullscreen` og `setmaximizescreen`.
+  bruges ikke.
+- **`arrange` (`Layout/arrange.swift`):** mangos `arrange`, `pre_calculate_before_arrange`,
+  `special_handle_empty_view` og tabellen `layouts[]`. Indtil layouterne er mangos (trin 4), er hver
+  tabelplads layout-motorens bokse, placeret med `resize`. Mærket i koden: overview kommer før
+  `pre_calculate_before_arrange` (kortene er portens billeder); en flydende klients `geom` tages fra
+  `float_geom` i `pre_calculate_before_arrange`, til dispatcherne er mangos (trin 6);
+  `tab_sync_monitor` er vores fanekæde; `client_sync_layer` er portens løft til sidst;
+  `update_scroller_state`, `special_sync_top_layer`, `pointer_process_motion` og
+  `check_idle_inhibitor` har ingen macOS-del; `ltidxs` holder layoutets id.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
   subrole); appens egne flyt under et træk tager porten ud (`grabBegan`, `grabEnded`).
 - **Logning:** mangos `common/log.c` i kernen (`mangoError`, `mangoLogInit`) og wlroots'

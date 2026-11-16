@@ -8,7 +8,7 @@ final class GroupTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .tile
         for i in 0..<3 { r.window(CGWindowID(900_700 + i)) }
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.server.clientFocus(r.server.clientByIdAll(900_701)!, false)
         return r
     }

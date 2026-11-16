@@ -662,10 +662,6 @@ package extension MangoServer {
             }
         }
 
-        // not in mango: arrange's view-change resets (set_size_per), here until arrange is mango's (docs/plan-struktur.md)
-        for c in clients where VISIBLEON(c, m) && (c.isglobal || c.isunglobal || (c.tags & ~TAG0_MASK).nonzeroBitCount > 1) {
-            setSizePer(m, c, resetProportion: true)
-        }
         if changeFocus ?? (m === selectedMonitor) { clientFocus(clientFocusTop(m), true) }
         arrange(m, wantAnimation, true)
         printstatus(.arrangge)
@@ -1021,13 +1017,10 @@ package extension MangoServer {
     func smartMoveWindow(_ c: Client, _ dir: Direction) {
         guard let m = c.mon, !c.isfullscreen else { return }
         if !c.isfloating { clientSetFloating(c, true) }
-        let bw = borderWidth(c, on: m)
-        let g = c.floatGeom.insetBy(dx: -bw, dy: -bw)
+        let g = c.floatGeom
         let w = m.screen.workArea
         let ih = CGFloat(config.gappih), iv = CGFloat(config.gappiv)
-        let others = clients.filter { $0 !== c && $0.isfloating && VISIBLEON($0, selectedMonitor) }.map { o in
-            o.floatGeom.insetBy(dx: -borderWidth(o, on: m), dy: -borderWidth(o, on: m))
-        }
+        let others = clients.filter { $0 !== c && $0.isfloating && VISIBLEON($0, selectedMonitor) }.map(\.floatGeom)
         var nx = g.minX, ny = g.minY
         switch dir {
         case .up:
@@ -1067,7 +1060,7 @@ package extension MangoServer {
             if tar != .infinity { nx = tar }
             nx = min(nx, w.maxX - g.width - CGFloat(m.gappoh))
         }
-        c.floatGeom = CGRect(x: nx, y: ny, width: g.width, height: g.height).insetBy(dx: bw, dy: bw)
+        c.floatGeom = CGRect(x: nx, y: ny, width: g.width, height: g.height)
         c.iscustomsize = true
         arrange(m, false, false)
     }

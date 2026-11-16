@@ -11,7 +11,7 @@ final class JumpModeTests: MangoTestCase {
     func rig(_ n: Int = 3) -> (EngineRig, [Client]) {
         let r = EngineRig()
         let cs = (1...n).map { r.map(CGWindowID($0)) }
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         return (r, cs)
     }
 
@@ -101,7 +101,7 @@ final class JumpModeTests: MangoTestCase {
         XCTAssertFalse(r.server.anyOverview, "no windows: no overview")
         XCTAssertFalse(r.monitor.isJumpMode, "a mango bug, docs/afvigelser.md §6: mango keeps is_jump_mode set")
         let a = r.map(1)
-        r.server.arrange(r.monitor, false, false)
+        r.arrange()
         r.server.switcher("next")
         XCTAssertNotNil(r.server.switcherState, "the switcher is not refused afterwards")
         _ = a

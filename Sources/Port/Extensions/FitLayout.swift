@@ -220,6 +220,7 @@ enum FitLayout {
     static func fit(_ server: MangoServer) {
         guard let m = server.selectedMonitor, let plan = plan(server, m) else { return }
         apply(server, plan)
+        statusChanged(server)   // what is left to fit, now that the sides that did not grow are known
     }
 
     /// mango's status changed (printstatus): the notification (2) or the fit by itself (3), for the
@@ -247,7 +248,8 @@ enum FitLayout {
         let windows = shown(server, m).map { c in
             "\(c.id):\(c.tile):\(c.refusedSize.map { "\($0)" } ?? "")"
         }
-        let seen = "\(level)|\(!m.isoverview)|\(server.grab == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel ?? 0)|\(windows.joined(separator: ","))"
+        // the sides no fit can grow are part of what is seen: the plan changes with them
+        let seen = "\(level)|\(!m.isoverview)|\(server.grab == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel ?? 0)|\(windows.joined(separator: ","))|\(mac.fitState.stuck.sorted().joined(separator: ","))"
         guard mac.fitState.seen != seen else { return }
         mac.fitState.seen = seen
         let plan = plan(server, m)
