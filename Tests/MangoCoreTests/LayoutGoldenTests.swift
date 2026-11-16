@@ -250,12 +250,13 @@ final class LayoutGoldenTests: MangoTestCase {
         XCTAssertEqual(checked, 189)
     }
 
-    /// mango's layout functions themselves (layout/horizontal.c in the core), on a monitor with the C
+    /// mango's layout functions themselves (layout/horizontal.c and vertical.c in the core), on a monitor with the C
     /// generator's numbers, against the boxes mango's C gave.
     @MainActor
     func testMangosLayoutFunctionsMatchC() {
         let shares: [Float] = [0.3, 0.7, 0.2, 0.5, 0.3, 0.4, 0.6, 0.1, 0.9]
-        let ported: Set<String> = ["tile", "right_tile", "center_tile", "grid", "fair", "monocle", "deck"]
+        let ported: Set<String> = ["tile", "right_tile", "center_tile", "grid", "fair", "monocle", "deck",
+                                    "vertical_tile", "vertical_grid", "vertical_fair", "vertical_deck"]
         var checked = 0
         for line in Self.stateless.split(separator: "\n") {
             let f = line.split(separator: " ")

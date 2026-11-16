@@ -23,12 +23,12 @@ package struct Layout {
     Layout(symbol: "CT", arrange: { $0.centerTile($1) }, name: "center_tile", id: .centerTile), // Centered layout
     Layout(symbol: "RT", arrange: { $0.rightTile($1) }, name: "right_tile", id: .rightTile), // Right layout
     Layout(symbol: "VS", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_scroller", id: .verticalScroller), // Vertical scroll layout
-    Layout(symbol: "VT", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_tile", id: .verticalTile), // Vertical tiled layout
-    Layout(symbol: "VG", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_grid", id: .verticalGrid), // Vertical grid layout
-    Layout(symbol: "VK", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_deck", id: .verticalDeck), // Vertical card layout
+    Layout(symbol: "VT", arrange: { $0.verticalTile($1) }, name: "vertical_tile", id: .verticalTile), // Vertical tiled layout
+    Layout(symbol: "VG", arrange: { $0.verticalGrid($1) }, name: "vertical_grid", id: .verticalGrid), // Vertical grid layout
+    Layout(symbol: "VK", arrange: { $0.verticalDeck($1) }, name: "vertical_deck", id: .verticalDeck), // Vertical card layout
     Layout(symbol: "DW", arrange: { $0.layoutEngineArrange($1) }, name: "dwindle", id: .dwindle),
     Layout(symbol: "F", arrange: { $0.fair($1) }, name: "fair", id: .fair),
-    Layout(symbol: "VF", arrange: { $0.layoutEngineArrange($1) }, name: "vertical_fair", id: .verticalFair),
+    Layout(symbol: "VF", arrange: { $0.verticalFair($1) }, name: "vertical_fair", id: .verticalFair),
 ]
 
 package extension MangoServer {
