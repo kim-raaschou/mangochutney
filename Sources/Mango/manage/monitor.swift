@@ -351,6 +351,8 @@ package extension MangoServer {
     func handleOutputFrame(_ m: Monitor) {
         var needMoreFrames = false
 
+        m.frameSerial &+= 1
+
         // not in mango: no layers and no fade-out clients to draw (macOS draws them)
 
         for c in clientsAll {

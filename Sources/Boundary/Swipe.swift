@@ -7,5 +7,5 @@ package struct Swipe: Equatable {
 
 package enum SwipeEvent: Equatable {
     case update(Swipe)
-    case end(Swipe)
+    case end(Swipe, cancelled: Bool)
 }

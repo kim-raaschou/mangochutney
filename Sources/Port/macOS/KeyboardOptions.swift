@@ -74,10 +74,13 @@ package enum KeyboardOptions {
         let h = hyperSet(config)
         guard !h.isEmpty else { return [] }
         func dead(_ m: Modifiers) -> Bool { !m.contains(.hyper) && m.isSuperset(of: h) }
-        return config.keyBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.keyName)" }
-            + config.mouseBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.button)" }
-            + config.axisBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.direction?.rawValue ?? "alldir")" }
-            + config.gestureBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.fingers) fingers" }
+        let keys: [String] = config.keyBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.keyName)" }
+        let buttons: [String] = config.mouseBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.button)" }
+        let axes: [String] = config.axisBindings.filter { dead($0.mods) }.map {
+            "\($0.mods.mangoDescription),\(ShortcutFormatter.directionName($0.dir, all: "alldir"))"
+        }
+        let gestures: [String] = config.gestureBindings.filter { dead($0.mods) }.map { "\($0.mods.mangoDescription),\($0.fingersCount) fingers" }
+        return keys + buttons + axes + gestures
     }
 
     /// The modifiers held, as mango sees them: the hyper set held is HYPER, and so is the Hyper key.

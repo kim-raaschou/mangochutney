@@ -5,7 +5,7 @@ import XCTest
 /// mango's swipe drive (trackpad.c): the fingers drive the transition the binding starts.
 @MainActor
 final class SwipeDriveTests: MangoTestCase {
-    func rig(_ name: String = "viewtoright", _ direction: Direction? = .right, args: [String] = [],
+    func rig(_ name: String = "viewtoright", _ motion: UInt32 = SWIPE_RIGHT, args: [String] = [],
              minSpeed: Double = 50, windows: Bool = true) -> EngineRig {
         let r = EngineRig()
         if windows {
@@ -15,7 +15,7 @@ final class SwipeDriveTests: MangoTestCase {
             r.settle(0.2)
         }
         r.server.config.gestureSwipeMinSpeedToForce = minSpeed
-        r.server.config.gestureBindings = [GestureBinding(mods: [], direction: direction, fingers: 4,
+        r.server.config.gestureBindings = [GestureBinding(mods: [], motion: motion, fingersCount: 4,
                                                           dispatch: Dispatch(name: name, args: args))]
         return r
     }
@@ -125,7 +125,7 @@ final class SwipeDriveTests: MangoTestCase {
     }
 
     func testOverviewIsAlwaysFinished() {
-        let r = rig("toggleoverview", .up)
+        let r = rig("toggleoverview", SWIPE_UP)
         begin(r)
         move(r, 0, -20, 0)
         move(r, 0, -10, 1000)
@@ -144,7 +144,7 @@ final class SwipeDriveTests: MangoTestCase {
     }
 
     func testADragMovesTheWindowWithTheFingers() {
-        let r = rig("moveresize", nil, args: ["curmove"])
+        let r = rig("moveresize", UInt32(ALLDIR), args: ["curmove"])
         let c = r.server.clientByIdAll(1)!
         _ = r.server.dispatch(Dispatch(name: "togglefloating"), target: c)
         r.server.clientFocus(c, true)
@@ -159,12 +159,12 @@ final class SwipeDriveTests: MangoTestCase {
         let dx = 30 * r.monitor.screen.workArea.width / 300
         XCTAssertEqual(c.frame.minX - before.minX, dx, accuracy: 1)
         end(r)
-        XCTAssertNil(r.server.grab)
+        XCTAssertNil(r.server.grabClient)
         XCTAssertFalse(r.server.trackpadGestureDragActive())
     }
 
     func testADragWithNoDistanceDoesNotMove() {
-        let r = rig("moveresize", nil, args: ["curmove"])
+        let r = rig("moveresize", UInt32(ALLDIR), args: ["curmove"])
         r.server.config.gestureSwipeDistance = 0
         let c = r.server.clientByIdAll(1)!
         _ = r.server.dispatch(Dispatch(name: "togglefloating"), target: c)
@@ -184,7 +184,7 @@ final class SwipeDriveTests: MangoTestCase {
         r.server.clientFocus(r.server.clientByIdAll(2), true)
         r.arrange()
         r.settle(0.2)
-        r.server.config.gestureBindings = [GestureBinding(mods: [], direction: nil, fingers: 4,
+        r.server.config.gestureBindings = [GestureBinding(mods: [], motion: UInt32(ALLDIR), fingersCount: 4,
                                                           dispatch: Dispatch(name: "focusdir", args: ["right"]))]
         let sel = r.monitor.sel
         begin(r)

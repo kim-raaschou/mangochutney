@@ -27,7 +27,8 @@ struct SwipeTracker {
             }
             return .update(swipe)
         }
-        let ended: SwipeEvent? = fingers >= 3 && count < fingers && began ? .end(swipe) : nil
+        // libinput cancels a swipe when a finger is added, and ends it when one is lifted
+        let ended: SwipeEvent? = fingers >= 3 && count != fingers && began ? .end(swipe, cancelled: count > fingers) : nil
         if count >= 3 {
             fingers = count
             start = centre

@@ -646,8 +646,8 @@ package extension MangoServer {
                         i += 1
                     }
 
-                    // not in mango: the unmanaged global client and the tile being dragged stay where they are
-                    if !onlyCalculate && !c.isunglobal && dragTile?.client !== c {
+                    // not in mango: the unmanaged global client stays where it is
+                    if !onlyCalculate && !c.isunglobal {
                         setArrangeVisible(m, c, wantAnimation)
                     }
                 } else if specialKeepBgClient(m, c) {
@@ -656,7 +656,7 @@ package extension MangoServer {
                     c.animation.running = false
                     c.animation.tagining = false
                     c.animation.tagouting = false
-                } else if !onlyCalculate && c !== grab?.client {
+                } else if !onlyCalculate && c !== grabClient {
                     setArrangeHidden(m, c, wantAnimation)
                 }
 
@@ -817,7 +817,10 @@ package extension MangoServer {
             tagGatherApply(m)
         }
 
-        // not in mango: pointer_process_motion(0, …) and check_idle_inhibitor (macOS moves the pointer's focus)
+        if !startDragWindow {
+            pointerProcessMotion(0, 0, 0)
+            // not in mango: no check_idle_inhibitor (macOS's)
+        }
 
         printstatus(.arrangge)
     }
@@ -827,7 +830,7 @@ package extension MangoServer {
     /// scratchpad and overlay clients, the selected one last.
     func clientRaiseLayers(_ m: Monitor) {
         var raise: [Client] = []
-        for c in visibleClients(m) where !c.isunglobal && dragTile?.client !== c {
+        for c in visibleClients(m) where !c.isunglobal && !c.dragToTile {
             if SCRATCHPAD_SHOWN(c) || c.isfullscreen || c.ismaximizescreen || c.isoverlay { raise.append(c) }
         }
         if m.layout.isMonocleLike, let s = m.sel.flatMap({ clientByIdAll($0) }), !s.isfloating { raise.insert(s, at: 0) }

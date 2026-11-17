@@ -325,7 +325,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     func moved(_ c: Client, to actual: CGRect, resized: Bool) {
         guard !missionControl.isActive, !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
         if c.animation.running { return }
-        if server.grab?.client === c { return }
+        if server.grabClient === c && (server.cursorMode == CurMove || server.cursorMode == CurResize) { return }
         if c.parked { keepHidden(c, seenAt: actual); return }
         if CACurrentMediaTime() < c.ignoreMovesUntil {
             if actual != c.frame {

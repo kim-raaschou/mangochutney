@@ -270,22 +270,19 @@ package struct ParserState {
                 if let mode = modeOf(mice[i].mode, mice[j].mode) { report("mousebind", mode, mouseLocs[i], mouseLocs[j]) }
             }
         }
-        // not in mango: ALLDIR is a nil direction that is not isUndir, UNDIR a nil one that is
-        func sameDir(_ a: Direction?, _ aUndir: Bool, _ b: Direction?, _ bUndir: Bool) -> Bool {
-            (a == nil && !aUndir) || (b == nil && !bUndir) || (a == b && aUndir == bUndir)
-        }
         let axes = config.axisBindings
         for i in axes.indices {
             for j in axes.indices where j > i && axes[i].mods == axes[j].mods
-                && sameDir(axes[i].direction, axes[i].isUndir, axes[j].direction, axes[j].isUndir) {
+                && (axes[i].dir == UInt32(ALLDIR) || axes[j].dir == UInt32(ALLDIR) || axes[i].dir == axes[j].dir) {
                 if let mode = modeOf(axes[i].mode, axes[j].mode) { report("axisbind", mode, axisLocs[i], axisLocs[j]) }
             }
         }
         let gestures = config.gestureBindings
         for i in gestures.indices {
             for j in gestures.indices where j > i && gestures[i].mods == gestures[j].mods
-                && gestures[i].fingers == gestures[j].fingers
-                && sameDir(gestures[i].direction, gestures[i].isUndir, gestures[j].direction, gestures[j].isUndir) {
+                && gestures[i].fingersCount == gestures[j].fingersCount
+                && (gestures[i].motion == UInt32(ALLDIR) || gestures[j].motion == UInt32(ALLDIR)
+                    || gestures[i].motion == gestures[j].motion) {
                 if let mode = modeOf(gestures[i].mode, gestures[j].mode) {
                     report("gesturebind", mode, gestureLocs[i], gestureLocs[j])
                 }
@@ -568,17 +565,14 @@ public enum BindingParser {
         }
         let fields = splitFields(value)
         let mods = Modifiers.parse(fields[0]) { errors.append($0) }
-        let dir = Direction(mangoName: fields[1])
-        let undir = dir == nil && fields[1].lowercased() != "alldir"
+        let dir = UInt32(bitPattern: ValueParse.parseDirection(fields[1]))
         var dispatch: Dispatch?
         switch parseBindDispatch(Array(fields[2...]), in: "axisbind") {
         case .success(let d): dispatch = d
         case .failure(let msg): errors.append(msg)
         }
         guard let mods, let dispatch else { return nil }
-        var b = AxisBinding(mode: mode, mods: mods, direction: dir, dispatch: dispatch)
-        b.isUndir = undir
-        return b
+        return AxisBinding(mode: mode, mods: mods, dir: dir, dispatch: dispatch)
     }
 
     static func parseGestureBinding(value: String, mode: String, errors: inout [String]) -> GestureBinding? {
@@ -588,18 +582,15 @@ public enum BindingParser {
         }
         let fields = splitFields(value)
         let mods = Modifiers.parse(fields[0]) { errors.append($0) }
-        let dir = Direction(mangoName: fields[1])
-        let undir = dir == nil && fields[1].lowercased() != "alldir"
-        let fingers = ValueParse.atoi(fields[2])
+        let motion = UInt32(bitPattern: ValueParse.parseDirection(fields[1]))
+        let fingersCount = UInt32(truncatingIfNeeded: ValueParse.atoi(fields[2]))
         var dispatch: Dispatch?
         switch parseBindDispatch(Array(fields[3...]), in: "axisbind") {
         case .success(let d): dispatch = d
         case .failure(let msg): errors.append(msg)
         }
         guard let mods, let dispatch else { return nil }
-        var b = GestureBinding(mode: mode, mods: mods, direction: dir, fingers: fingers, dispatch: dispatch)
-        b.isUndir = undir
-        return b
+        return GestureBinding(mode: mode, mods: mods, motion: motion, fingersCount: fingersCount, dispatch: dispatch)
     }
 
     /// Not in mango: option_defs.c's sscanf fields after func_name and parse_func_name's NULL; the Arg is made at dispatch.

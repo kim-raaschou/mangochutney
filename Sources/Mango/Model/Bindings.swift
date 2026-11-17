@@ -160,23 +160,21 @@ public struct MouseBinding: Equatable, Hashable, Sendable {
 public struct AxisBinding: Equatable, Hashable, Sendable {
     public var mode: String
     public var mods: Modifiers
-    public var direction: Direction?
-    public var isUndir = false
+    public var dir: UInt32
     public var dispatch: Dispatch
-    public init(mode: String = "default", mods: Modifiers, direction: Direction?, dispatch: Dispatch) {
-        self.mode = mode; self.mods = mods; self.direction = direction; self.dispatch = dispatch
+    public init(mode: String = "default", mods: Modifiers, dir: UInt32, dispatch: Dispatch) {
+        self.mode = mode; self.mods = mods; self.dir = dir; self.dispatch = dispatch
     }
 }
 
 public struct GestureBinding: Equatable, Hashable, Sendable {
     public var mode: String
     public var mods: Modifiers
-    public var direction: Direction?
-    public var isUndir = false
-    public var fingers: Int
+    public var motion: UInt32
+    public var fingersCount: UInt32
     public var dispatch: Dispatch
-    public init(mode: String = "default", mods: Modifiers, direction: Direction?, fingers: Int, dispatch: Dispatch) {
-        self.mode = mode; self.mods = mods; self.direction = direction; self.fingers = fingers; self.dispatch = dispatch
+    public init(mode: String = "default", mods: Modifiers, motion: UInt32, fingersCount: UInt32, dispatch: Dispatch) {
+        self.mode = mode; self.mods = mods; self.motion = motion; self.fingersCount = fingersCount; self.dispatch = dispatch
     }
 }
 

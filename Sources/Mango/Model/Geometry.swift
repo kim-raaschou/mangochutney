@@ -3,15 +3,6 @@ import CoreGraphics
 
 public typealias ClientID = UInt32
 
-public enum Direction: String, CaseIterable, Sendable {
-    case left, right, up, down
-
-    /// Not in mango: parse_direction for the config's axis and gesture bindings, nil for UNDIR.
-    public init?(mangoName: String) {
-        self.init(rawValue: mangoName.lowercased())
-    }
-}
-
 public extension CGRect {
     var center: CGPoint { CGPoint(x: midX, y: midY) }
     var topLeft: CGPoint { CGPoint(x: minX, y: minY) }

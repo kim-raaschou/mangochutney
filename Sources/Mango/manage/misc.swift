@@ -19,10 +19,12 @@ package extension MangoServer {
         return vis.first { clientGeom($0).contains(p) }
     }
 
-    /// Not in mango: the surface of mango's node_at_point; the border is a node, not a surface.
+    /// Not in mango: the surface of mango's node_at_point: the window under the point, or the client's own
+    /// on its border (a rect node); the port's own windows (bars, overview) are none.
     func surfaceAt(_ c: Client?, _ p: CGPoint) -> ClientID? {
-        guard let c, c.frame.contains(p) else { return nil }
-        return system.surfaceAt(p)
+        if let s = system.surfaceAt(p) { return s }
+        if let c, c.geom.contains(p) { return c.id }
+        return nil
     }
 
     /// Not in mango: mango's geom, with the border (our frame is without it).

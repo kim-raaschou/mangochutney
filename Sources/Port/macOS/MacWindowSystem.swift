@@ -58,6 +58,7 @@ class MacWindowSystem: WindowSystem {
     let memory = WindowMemory()
     var onStatusChange: (() -> Void)?
     var userDrag: UserDrag?
+    var seatPointerFocus: ClientID?
     var restarting = false
     var opacityWarned = false
     var fitState = FitLayout.State()   // Port extension: chutney_fit_layout
@@ -231,6 +232,11 @@ class MacWindowSystem: WindowSystem {
         NativeFocus.warpCursor(to: p)
     }
 
+    /// The seat's pointer focus is only remembered: on macOS the apps get the pointer from the system.
+    var pointerFocusedSurface: ClientID? { seatPointerFocus }
+    func seatPointerNotifyEnter(_ surface: ClientID) { seatPointerFocus = surface }
+    func seatPointerClearFocus() { seatPointerFocus = nil }
+
     func restack() { restack(pid: server.focused?.pid) }
 
     func barPress(_ id: ClientID, isTab: Bool, right: Bool, onClose: Bool) {
@@ -280,12 +286,16 @@ class MacWindowSystem: WindowSystem {
         var style = withAppIcons(style, server.config.chutneyTabBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.tabbardata, server.config)
         tabBars.update(strips, style: style, keyFocus: server.focused?.id)
+        let frames = strips.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: $0.frame.width, height: $0.barHeight) }
+        router.publish { $0.tabBarFrames = frames }
     }
 
     func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) {
         var style = withAppIcons(style, server.config.chutneyGroupBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.groupbardata, server.config)
         groupBars.update(strips, style: style, keyFocus: server.focused?.id)
+        let frames = strips.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: $0.frame.width, height: $0.barHeight) }
+        router.publish { $0.groupBarFrames = frames }
     }
 
     var windowCornerRadius: CGFloat { BorderGeometry.cornerRadius }
@@ -523,10 +533,10 @@ class MacWindowSystem: WindowSystem {
         server.handleCursorSwipeUpdate(Swipe(dx: s.dx - sent.dx, dy: s.dy - sent.dy, fingers: s.fingers), time: time)
     }
 
-    func swipeEnd() {
+    func swipeEnd(cancelled: Bool) {
         guard swipeSent != nil else { return }
         swipeSent = nil
-        server.handleCursorSwipeEnd()
+        server.handleCursorSwipeEnd(cancelled: cancelled)
     }
 
     func startInput() {
@@ -543,7 +553,7 @@ class MacWindowSystem: WindowSystem {
             MainActor.assumeIsolated {
                 switch event {
                 case .update(let s): self?.swipeUpdate(s, time)
-                case .end: self?.swipeEnd()
+                case .end(_, let cancelled): self?.swipeEnd(cancelled: cancelled)
                 }
             }
         }
@@ -577,7 +587,7 @@ class MacWindowSystem: WindowSystem {
             s.bindings = state.bindings
             s.mouseBindings = state.mouseBindings
             s.axisBindings = state.axisBindings
-            s.axisTimeout = state.axisTimeout
+            s.axisBindApplyTimeout = state.axisBindApplyTimeout
             s.overviewFrame = state.overviewFrame
             s.jumpMode = state.jumpMode
             s.jumpKeys = state.jumpKeycodes
@@ -601,10 +611,26 @@ class MacWindowSystem: WindowSystem {
         if hidden { CursorHider.hide() } else { CursorHider.show() }
     }
 
-    func setCursor(_ name: String?) { CursorHider.setCursor(name) }
+    func setCursor(_ name: String?) {
+        // mango's default cursor where no client is: the port's own windows (its panels) set their own
+        if name == "default" && NSApp.isActive { return }
+        CursorHider.setCursor(name)
+    }
 
     func surfaceAt(_ p: CGPoint) -> ClientID? { CursorHider.windowAt(p) }
 
+
+    /// A managed window is its own client; another window of an app (a menu, a popup) belongs to the
+    /// app's window that had the focus last, as a popup belongs to its toplevel.
+    func toplevelFromWlrSurface(_ surface: ClientID) -> Client? {
+        if let c = server.clientByIdAll(surface) { return c }
+        guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], CGWindowID(surface)) as? [[String: Any]])?.first,
+              let pid = info[kCGWindowOwnerPID as String] as? pid_t else { return nil }
+        for id in server.focusStack {
+            if let c = server.clientByIdAll(id), c.pid == pid, c.mon != nil { return c }
+        }
+        return nil
+    }
 
     /// macOS has no parent toplevel: a dialog's parent is its app's window that had the focus last.
     func clientGetParent(_ c: Client) -> Client? {

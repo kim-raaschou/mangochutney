@@ -327,7 +327,7 @@ final class ConfigParserTests: MangoTestCase {
         """)
         XCTAssertEqual(parsed.config.keyBindings.count, 0)
         XCTAssertEqual(parsed.errors.map(\.line), [1, 2, 3, 4])
-        XCTAssertEqual(parsed.config.axisBindings.first?.isUndir, true)
+        XCTAssertEqual(parsed.config.axisBindings.first?.dir, UInt32(UNDIR))
         XCTAssertTrue(parsed.errors[0].message.contains("Unknown dispatch"))
         XCTAssertTrue(parsed.errors[1].message.contains("Unknown key"))
     }
@@ -416,9 +416,9 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(c.mouseBindings[0].dispatch, Dispatch(name: "moveresize", args: ["curresize"]))
         XCTAssertEqual(c.mouseBindings[1].button, .middle)
         XCTAssertEqual(c.axisBindings[0].mods, [.superKey, .shift])
-        XCTAssertEqual(c.axisBindings[0].direction, .down)
-        XCTAssertEqual(c.gestureBindings[0].fingers, 3)
-        XCTAssertEqual(c.gestureBindings[0].direction, .up)
+        XCTAssertEqual(c.axisBindings[0].dir, UInt32(DOWN))
+        XCTAssertEqual(c.gestureBindings[0].fingersCount, 3)
+        XCTAssertEqual(c.gestureBindings[0].motion, SWIPE_UP)
     }
 
     func testWindowRule() {

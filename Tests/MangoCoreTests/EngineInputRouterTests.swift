@@ -15,7 +15,7 @@ final class EngineInputRouterTests: MangoTestCase {
             s.overviewFrame = overview
             s.jumpMode = jump
             s.jumpKeys = jumpKeys
-            s.axisTimeout = 0.1
+            s.axisBindApplyTimeout = 100
         }
         return r
     }
@@ -91,12 +91,12 @@ final class EngineInputRouterTests: MangoTestCase {
     }
 
     func testScrollBindingAndDebounce() {
-        let a = AxisBinding(mods: hyper, direction: .up, dispatch: Dispatch(name: "viewtoleft_have_client"))
+        let a = AxisBinding(mods: hyper, dir: UInt32(UP), dispatch: Dispatch(name: "viewtoleft_have_client"))
         let r = router(axis: [a])
-        XCTAssertFalse(r.scroll(ScrollEvent(direction: .up, mods: [], location: .zero)))
-        XCTAssertTrue(r.scroll(ScrollEvent(direction: .up, mods: hyper, location: .zero)))
-        XCTAssertTrue(r.scroll(ScrollEvent(direction: .up, mods: hyper, location: .zero)))
-        XCTAssertFalse(r.scroll(ScrollEvent(direction: .up, mods: [], location: .zero)))
+        XCTAssertFalse(r.scroll(ScrollEvent(vertical: true, delta: -1, mods: [], location: .zero)))
+        XCTAssertTrue(r.scroll(ScrollEvent(vertical: true, delta: -1, mods: hyper, location: .zero)))
+        XCTAssertTrue(r.scroll(ScrollEvent(vertical: true, delta: -1, mods: hyper, location: .zero)))
+        XCTAssertFalse(r.scroll(ScrollEvent(vertical: true, delta: -1, mods: [], location: .zero)))
     }
 
     func testDecisionsWorkOffTheMainThread() {
@@ -131,9 +131,9 @@ final class MangoInputStateTests: MangoTestCase {
     func key(_ code: UInt16, _ mods: Modifiers, down: Bool) -> KeyEvent {
         KeyEvent(keyCode: code, mods: mods, isDown: down, isRepeat: false, isModifierKey: false)
     }
-    func router(_ binds: [KeyBinding] = [], axis: [AxisBinding] = [], timeout: TimeInterval = 0.1) -> InputRouter {
+    func router(_ binds: [KeyBinding] = [], axis: [AxisBinding] = [], timeout: UInt32 = 100) -> InputRouter {
         let r = InputRouter()
-        r.publish { s in s.bindings = binds; s.axisBindings = axis; s.axisTimeout = timeout }
+        r.publish { s in s.bindings = binds; s.axisBindings = axis; s.axisBindApplyTimeout = timeout }
         return r
     }
 
@@ -166,24 +166,24 @@ final class MangoInputStateTests: MangoTestCase {
 
     func testAContinuousScrollFiresOnce() {
         let rig = EngineRig()
-        let a = AxisBinding(mods: hyper, direction: .down, dispatch: Dispatch(name: "viewtoright"))
-        let r = router(axis: [a], timeout: 0.06)
+        let a = AxisBinding(mods: hyper, dir: UInt32(DOWN), dispatch: Dispatch(name: "viewtoright"))
+        let r = router(axis: [a], timeout: 60)
         r.server = rig.server
         for _ in 0..<8 {
-            XCTAssertTrue(r.scroll(ScrollEvent(direction: .down, mods: hyper, location: .zero)))
+            XCTAssertTrue(r.scroll(ScrollEvent(vertical: true, delta: 1, mods: hyper, location: .zero)))
             Thread.sleep(forTimeInterval: 0.02)
         }
         rig.settle()
         XCTAssertEqual(rig.monitor.tagset[rig.monitor.seltags], 1 << 1, "one step")
         Thread.sleep(forTimeInterval: 0.1)
-        _ = r.scroll(ScrollEvent(direction: .down, mods: hyper, location: .zero))
+        _ = r.scroll(ScrollEvent(vertical: true, delta: 1, mods: hyper, location: .zero))
         rig.settle()
         XCTAssertEqual(rig.monitor.tagset[rig.monitor.seltags], 1 << 2, "after a pause")
     }
 
     func testAxisbindAlldir() {
         let c = ConfigParser.parse(text: "axisbind=SUPER,alldir,viewtoright", baseDirectory: nil, fileName: "t")
-        XCTAssertEqual(c.config.axisBindings.first?.direction, nil)
+        XCTAssertEqual(c.config.axisBindings.first?.dir, UInt32(ALLDIR))
         XCTAssertEqual(c.config.axisBindings.count, 1)
     }
 

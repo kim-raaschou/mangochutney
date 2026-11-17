@@ -1,6 +1,9 @@
 import CoreGraphics
 import Mango
 
+/// An app's own move of its window by its title bar: not in mango, which has no client-driven move. A tiled
+/// window the app moves is a grab the app drives: mango's grab_client and client_begin_drag_float while the
+/// button is down, the drop area of pointer_process_motion, and the drop of pointer_end_grab_client.
 struct UserDrag {
     let client: Client
     let startFrame: CGRect
@@ -33,14 +36,14 @@ extension MacWindowSystem {
         if dragging {
             if userDrag == nil || userDrag?.client !== c {
                 userDrag = UserDrag(client: c, startFrame: c.frame, resized: resized)
-                if !resized { server.clientBeginDragFloat(c, at: pointer) }
+                if !resized { beginAppDrag(c) }
             }
             if resized { userDrag?.resized = true }
             if c.isfloating { c.floatGeom = actual.insetBy(dx: -c.bw, dy: -c.bw); c.geom = c.floatGeom; c.iscustomsize = true }
             c.frame = actual
             standsAt(c, actual)
             server.updateBorders()
-            if server.dragTile?.client === c { server.updateDragTile(at: pointer) }
+            if c.dragToTile { appDragDropArea(c) }
             return
         }
         if c.isfloating {
@@ -58,6 +61,66 @@ extension MacWindowSystem {
             keepPlaced(c, at: target)
         }
         server.updateBorders()
+    }
+
+    /// pointer_begin_move_resize's grab and client_begin_drag_float for a tiled window the app moves.
+    func beginAppDrag(_ c: Client) {
+        guard !c.isfloating, server.grabClient == nil, c.mon != nil, !c.isfullscreen, !c.ismaximizescreen else { return }
+        server.grabClient = c
+        server.clientBeginDragFloat(c)
+        if server.config.dragTileToTile && server.config.dragTileSmall {
+            let p = pointer
+            c.geom = CGRect(x: p.x.rounded() - 150, y: p.y.rounded() - 150, width: 300, height: 300)
+            server.resize(c, c.geom, ResizeOpts(interact: true))
+        }
+    }
+
+    /// pointer_process_motion's drop area (CurMove) for the window the app moves.
+    func appDragDropArea(_ c: Client) {
+        let p = pointer
+        let target = server.groupBarTargetAt(p.x, p.y, c)
+        server.dropToGroup = target != nil
+        let closet = server.config.dragTileToTile ? (target ?? server.findClosestTiledClient(c)) : target
+        if let closet, let dc = server.dropClient, closet !== dc {
+            dc.enableDropAreaDraw = false
+            server.clientSetDropArea(dc)
+            server.dropClient = closet
+            closet.enableDropAreaDraw = true
+            server.clientSetDropArea(closet)
+        } else if let closet {
+            server.dropClient = closet
+            closet.enableDropAreaDraw = true
+            server.clientSetDropArea(closet)
+        } else {
+            dropAreaOff()
+        }
+    }
+
+    func dropAreaOff() {
+        guard let dc = server.dropClient else { return }
+        dc.enableDropAreaDraw = false
+        server.clientSetDropArea(dc)
+        server.dropClient = nil
+    }
+
+    /// The button's release (a group bar under the pointer) and pointer_end_grab_client's drop, for the
+    /// window the app moved.
+    func finishAppDrag(_ c: Client) {
+        let p = pointer
+        server.dropToGroup = false
+        if let target = server.groupBarTargetAt(p.x, p.y, c) {
+            if server.grabClient === c { server.grabClient = nil }
+            c.dragToTile = false
+            dropAreaOff()
+            server.clientGroupJoin(c, target)
+            return
+        }
+        // The app's own drag ends as mango's move grab does: pointer_end_grab_client.
+        server.grabClient = c
+        server.cursorMode = CurMove
+        server.pointerEndGrabClient(true)
+        dropAreaOff()
+        server.printstatus(.arrangge)
     }
 
     /// The user or the app moved the window: mango's box stands where it is, as an interactive move
@@ -79,14 +142,9 @@ extension MacWindowSystem {
     func completeUserDrag(_ d: UserDrag, actual: CGRect, at p: CGPoint) {
         let c = d.client
         guard server.clientByIdAll(c.id) === c, let m = c.mon else { return }
-        if server.dragTile?.client === c {
+        if c.dragToTile {
             c.frame = actual
-            server.dropDraggedTile(at: p)
-            if !server.config.dragTileToTile {
-                if let cm = c.mon { server.arrange(cm, false, false) }
-                server.applyWindowSnap(c)
-                server.printstatus(.arrangge)
-            }
+            finishAppDrag(c)
             return
         }
         if c.isfloating {

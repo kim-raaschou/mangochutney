@@ -24,8 +24,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
 
     /// The pointer moved there (macOS moves it before the event comes), then the motion.
     func motion(_ r: EngineRig, _ p: CGPoint, time: UInt32) {
-        (r.server.system as! FakeWindowSystem).fakePointer = p
-        _ = r.server.pointerProcessMotion(p, time: time)
+        r.server.motion(to: p, time: time)
     }
 
     func testADragMovesTheSplitLineWithThePointer() {
@@ -46,9 +45,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let width = dragRight(r, by: 100)
         motion(r, CGPoint(x: 0, y: 0), time: 1110)
         XCTAssertNotEqual(r.server.clientByIdAll(900_400)!.geom.width, width, "1 ms later: laid out")
-        XCTAssertEqual(r.server.dragRefreshIntervalMs(r.monitor), 16)
-        r.monitor.screen.refresh = 120_000
-        XCTAssertEqual(r.server.dragRefreshIntervalMs(r.monitor), 8)
     }
 
     func testTheSplitIndicatorShowsTheNextSplitsSide() {
@@ -87,10 +83,11 @@ final class DwindleScrollerOptionTests: MangoTestCase {
     func move(_ r: EngineRig, to id: CGWindowID, speed: CGFloat) {
         for (wid, frame) in r.app.frames where wid >= 900_410 && wid <= 900_412 {
             r.server.clientByIdAll(wid)!.frame = startFrames[wid] ?? frame
+            r.server.clientByIdAll(wid)!.geom = startFrames[wid] ?? frame
             r.server.clientByIdAll(wid)!.parked = false
         }
         let f = r.server.clientByIdAll(id)!.frame
-        r.server.handleCursorMotion(CGPoint(x: f.minX + 50, y: f.midY), time: 1, speed: speed)
+        r.server.cursorMotion(to: CGPoint(x: f.minX + 50, y: f.midY), time: 1, dx: Double(speed))
     }
 
     func testAWindowOffTheEdgeTakesTheFocusByDefault() {
@@ -150,7 +147,7 @@ final class TiledDragStaysFiniteTests: MangoTestCase {
                     for s in steps {
                         p = CGPoint(x: p.x + s.x, y: p.y + s.y)
                         t &+= 1
-                        r.server.pointerProcessMotion(p, time: t)
+                        r.server.motion(to: p, time: t)
                         for w in r.server.clientsAll {
                             let f = w.geom ?? w.frame
                             XCTAssertTrue(f.minX.isFinite && f.minY.isFinite && f.width.isFinite && f.height.isFinite,
@@ -161,7 +158,7 @@ final class TiledDragStaysFiniteTests: MangoTestCase {
                                            "\(kind) \(count): border \(b.id) at \(b.frame)")
                         }
                     }
-                    if let g = r.server.grab { r.server.pointerEndGrabClient(g, at: p) }
+                    if r.server.grabClient != nil { r.server.fake.fakePointer = p; r.server.pointerEndGrabClient(true) }
                 }
             }
         }

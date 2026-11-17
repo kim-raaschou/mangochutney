@@ -45,14 +45,28 @@ final class GroupTests: MangoTestCase {
         let fake = r.server.system as! FakeWindowSystem
         fake.fakePointer = CGPoint(x: 500, y: 300)
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_702, isTab: false, onClose: false))
-        r.server.pointerProcessMotion(CGPoint(x: 502, y: 301), time: 1)
-        XCTAssertNotNil(r.server.groupBarDrag, "the bar's motion")
+        r.server.motion(to: CGPoint(x: 502, y: 301), time: 1)
+        XCTAssertTrue(r.server.groupBarDragPending, "the bar's motion")
         XCTAssertTrue(c(r, 900_702).isGroupMember, "not yet 5 px")
-        XCTAssertNil(r.server.grab)
-        r.server.pointerProcessMotion(CGPoint(x: 510, y: 300), time: 2)
+        XCTAssertNil(r.server.grabClient)
+        r.server.motion(to: CGPoint(x: 510, y: 300), time: 2)
         XCTAssertFalse(c(r, 900_702).isGroupMember, "out of the group")
-        XCTAssertTrue(r.server.grab?.client === c(r, 900_702), "moved with the pointer")
-        XCTAssertNil(r.server.groupBarDrag, "the press is over")
+        XCTAssertTrue(r.server.grabClient === c(r, 900_702), "moved with the pointer")
+        XCTAssertFalse(r.server.groupBarDragPending, "the press is over")
+    }
+
+    func testAGroupBarPressOnAWindowThatClosesIsLetGo() {
+        let r = rig()
+        run(r, "groupjoin", "down")
+        let fake = r.server.system as! FakeWindowSystem
+        fake.fakePointer = CGPoint(x: 500, y: 300)
+        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_702, isTab: false, onClose: false))
+        let gone = c(r, 900_702)
+        r.server.handleClientUnmap(gone)
+        XCTAssertFalse(r.server.groupBarDragPending, "a mango bug: mango keeps the closed window (docs/afvigelser.md §6)")
+        XCTAssertNil(r.server.groupBarDragClient)
+        r.server.motion(to: CGPoint(x: 510, y: 300), time: 2)
+        XCTAssertNil(r.server.grabClient)
     }
 
     func testARightClickOnATab() {
@@ -162,8 +176,12 @@ final class GroupTests: MangoTestCase {
         let r = rig()
         run(r, "groupjoin", "down")
         let shown = c(r, 900_701).frame
-        r.server.clientBeginDragFloat(c(r, 900_700), at: CGPoint(x: 1, y: 1))
-        r.server.dropDraggedTile(at: CGPoint(x: shown.midX, y: shown.minY - 10))
+        let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
+        let f = c(r, 900_700).geom
+        r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
+        let bar = CGPoint(x: shown.midX, y: shown.minY - 10)
+        r.server.motion(to: bar, time: 1)
+        r.server.release(at: bar)
         XCTAssertEqual(Set(r.server.groupMembers(c(r, 900_700)).map(\.id)), [900_700, 900_701, 900_702])
         XCTAssertEqual(tiled(r), [900_700])
     }

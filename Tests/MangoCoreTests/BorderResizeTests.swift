@@ -9,6 +9,8 @@ final class BorderResizeTests: MangoTestCase {
         r.server.renderBorder = true
         let a = r.window(1, frame: CGRect(x: 100, y: 100, width: 400, height: 600))
         let b = r.window(2, frame: CGRect(x: 510, y: 100, width: 400, height: 600))
+        bordered(r, a)
+        bordered(r, b)
         return (r, a, b)
     }
 
@@ -16,14 +18,25 @@ final class BorderResizeTests: MangoTestCase {
         let r = EngineRig()
         r.server.renderBorder = true
         let c = r.window(1, floating: true, frame: CGRect(x: 100, y: 100, width: 400, height: 300))
+        bordered(r, c)
         return (r, c)
     }
 
+    /// mango's geom and bw as resize leaves them: the box with the border.
+    func bordered(_ r: EngineRig, _ c: Client) {
+        c.bw = CGFloat(r.server.config.borderpx)
+        c.geom = c.frame.insetBy(dx: -c.bw, dy: -c.bw)
+        c.floatGeom = c.isfloating ? c.geom : c.floatGeom
+        c.animation.current = c.geom
+        c.current = c.geom
+        c.pending = c.geom
+    }
+
     func fake(_ r: EngineRig) -> FakeWindowSystem { r.server.system as! FakeWindowSystem }
-    /// The pointer moved, as wlroots' cursor is before mango hears of it.
+    /// The pointer moved, as wlroots' cursor is before mango hears of it, and the frame that shows it.
     func motion(_ r: EngineRig, _ p: CGPoint, time: UInt32) {
-        fake(r).fakePointer = p
-        r.server.handleCursorMotion(p, time: time)
+        r.server.cursorMotion(to: p, time: time)
+        r.frame()
     }
 
     func testATiledWindowHasAStripOnlyWhereItFacesATiledNeighbour() {
@@ -42,9 +55,9 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(s.clientResizeEdgeAt(c, nil, 97, 97), [.left, .top])
         XCTAssertEqual(s.clientResizeEdgeAt(c, c.id, 498, 398), [.right, .bottom])
         XCTAssertEqual(s.clientResizeEdgeAt(c, c.id, 300, 98), [.top])
-        XCTAssertEqual(s.resizeCursorName([.left, .top], floating: true), "nw-resize")
-        XCTAssertEqual(s.resizeCursorName([.right], floating: false), "col-resize")
-        XCTAssertEqual(s.resizeCursorName([.bottom], floating: false), "row-resize")
+        XCTAssertEqual(s.resizeCursorName([.left, .top], true), "nw-resize")
+        XCTAssertEqual(s.resizeCursorName([.right], false), "col-resize")
+        XCTAssertEqual(s.resizeCursorName([.bottom], false), "row-resize")
     }
 
     func testAnotherSurfaceOnTheStripKeepsItsInput() {
@@ -105,37 +118,38 @@ final class BorderResizeTests: MangoTestCase {
         r.server.config.enableBorderResize = false
         motion(r, CGPoint(x: 496, y: 400), time: 1)
         XCTAssertEqual(r.server.hoverResizeEdge, [])
-        XCTAssertFalse(r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 496, y: 400), mods: []))
-        XCTAssertNil(r.server.grab)
+        XCTAssertFalse(r.server.press(at: CGPoint(x: 496, y: 400), mods: []))
+        XCTAssertNil(r.server.grabClient)
     }
 
     func testAPressOnTheStripBeginsABorderResize() throws {
         let (r, a, _) = sideBySide()
-        XCTAssertTrue(r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 496, y: 400), mods: []))
-        let g = try XCTUnwrap(r.server.grab)
-        XCTAssertTrue(g.client === a)
-        XCTAssertEqual(g.mode, .resize)
-        XCTAssertTrue(g.isBorderResize)
+        XCTAssertTrue(r.server.press(at: CGPoint(x: 496, y: 400), mods: []))
+        XCTAssertTrue(try XCTUnwrap(r.server.grabClient) === a)
+        XCTAssertEqual(r.server.cursorMode, CurResize)
+        XCTAssertTrue(r.server.grabIsBorderResize)
         XCTAssertEqual(fake(r).cursorName, .some("col-resize"))
-        r.server.pointerProcessButtonPress(button: 0, pressed: false, at: CGPoint(x: 496, y: 400), mods: [])
-        XCTAssertNil(r.server.grab)
+        r.server.release(at: CGPoint(x: 496, y: 400), mods: [])
+        XCTAssertNil(r.server.grabClient)
     }
 
     func testDraggingAFloatingEdgeChangesOnlyThatEdge() {
         let (r, c) = floating()
         r.arrange()
         let before = c.frame
-        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: before.maxX - 2, y: before.midY), mods: [])
-        XCTAssertEqual(r.server.grab?.resizeEdge, .right)
+        r.server.press(at: CGPoint(x: before.maxX - 2, y: before.midY), mods: [])
+        XCTAssertNotNil(r.server.grabClient)
+        XCTAssertEqual(r.server.resizeEdge, .right)
         motion(r, CGPoint(x: before.maxX + 48, y: before.midY + 30), time: 100)
         XCTAssertEqual(c.frame.width, before.width + 50, accuracy: 1)
         XCTAssertEqual(c.frame.height, before.height)
         XCTAssertEqual(c.frame.minX, before.minX)
-        r.server.pointerProcessButtonPress(button: 0, pressed: false, at: CGPoint(x: before.maxX + 48, y: before.midY + 30), mods: [])
+        r.server.release(at: CGPoint(x: before.maxX + 48, y: before.midY + 30), mods: [])
 
         let f = c.frame
-        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: f.minX + 2, y: f.midY), mods: [])
-        XCTAssertEqual(r.server.grab?.resizeEdge, .left)
+        r.server.press(at: CGPoint(x: f.minX + 2, y: f.midY), mods: [])
+        XCTAssertNotNil(r.server.grabClient)
+        XCTAssertEqual(r.server.resizeEdge, .left)
         motion(r, CGPoint(x: f.minX + 32, y: f.midY), time: 200)
         XCTAssertEqual(c.frame.maxX, f.maxX, accuracy: 1, "the right side stays")
         XCTAssertEqual(c.frame.width, f.width - 30, accuracy: 1)
@@ -145,17 +159,17 @@ final class BorderResizeTests: MangoTestCase {
         let (r, c) = floating()
         r.server.config.enableFloatingSnap = true
         c.frame = CGRect(x: 20, y: 300, width: 400, height: 300)
-        c.floatGeom = c.frame
         r.app.frames[c.id] = c.frame
+        bordered(r, c)
         let strip = CGPoint(x: c.frame.maxX - 2, y: c.frame.midY)
-        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: strip, mods: [])
-        r.server.pointerProcessButtonPress(button: 0, pressed: false, at: strip, mods: [])
-        XCTAssertEqual(c.floatGeom.minX, 20, "a plain click: no snap")
-        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: strip, mods: [])
+        r.server.press(at: strip, mods: [])
+        r.server.release(at: strip, mods: [])
+        XCTAssertEqual(c.floatGeom.minX, 20 - c.bw, "a plain click: no snap")
+        r.server.press(at: strip, mods: [])
         let moved = CGPoint(x: strip.x + 10, y: strip.y)
         motion(r, moved, time: 100)
-        r.server.pointerProcessButtonPress(button: 0, pressed: false, at: moved, mods: [])
-        XCTAssertLessThan(c.floatGeom.minX, 20, "moved: the window snaps to the screen's edge")
+        r.server.release(at: moved, mods: [])
+        XCTAssertLessThan(c.floatGeom.minX, 20 - c.bw, "moved: the window snaps to the screen's edge")
     }
 
     func testDraggingATiledStripMovesTheSplit() throws {
@@ -167,21 +181,21 @@ final class BorderResizeTests: MangoTestCase {
         let ga = try XCTUnwrap(a.geom), gb = try XCTUnwrap(b.geom)
         XCTAssertLessThan(ga.maxX, gb.minX, "a left of b")
         let strip = CGPoint(x: a.frame.maxX - 2, y: a.frame.midY)
-        XCTAssertTrue(r.server.pointerProcessButtonPress(button: 0, pressed: true, at: strip, mods: []))
+        XCTAssertTrue(r.server.press(at: strip, mods: []))
         XCTAssertEqual(fake(r).cursorName, .some("col-resize"))
         motion(r, strip, time: 1)
         motion(r, CGPoint(x: strip.x + 120, y: strip.y), time: 100)
-        r.server.pointerProcessButtonPress(button: 0, pressed: false, at: CGPoint(x: strip.x + 120, y: strip.y), mods: [])
+        r.server.release(at: CGPoint(x: strip.x + 120, y: strip.y), mods: [])
         XCTAssertGreaterThan(try XCTUnwrap(a.geom).width, ga.width + 60, "the split moved right")
         XCTAssertLessThan(try XCTUnwrap(b.geom).width, gb.width - 60)
-        XCTAssertNil(r.server.grab)
+        XCTAssertNil(r.server.grabClient)
     }
 
     func testAPressTheTapLetThroughIsTheApps() {
         let (r, _, _) = sideBySide()
-        XCTAssertFalse(r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 496, y: 400), mods: [],
+        XCTAssertFalse(r.server.press(at: CGPoint(x: 496, y: 400), mods: [],
                                                           borderResizeTaken: false))
-        XCTAssertNil(r.server.grab)
+        XCTAssertNil(r.server.grabClient)
     }
 
     func testNoStripCursorDuringAGrab() {
@@ -192,7 +206,7 @@ final class BorderResizeTests: MangoTestCase {
         motion(r, CGPoint(x: 496, y: 400), time: 1)
         router.mouseMoved(CGPoint(x: 496, y: 401))
         XCTAssertEqual(set, ["col-resize"])
-        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: CGPoint(x: 496, y: 400), mods: [])
+        r.server.press(at: CGPoint(x: 496, y: 400), mods: [])
         router.mouseMoved(CGPoint(x: 497, y: 401))
         XCTAssertEqual(set, ["col-resize"], "not during the grab")
     }

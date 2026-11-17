@@ -13,9 +13,17 @@ package protocol WindowSystem: AnyObject {
     func clientActivateSurface(_ c: Client, _ activated: Bool)
     /// client_get_parent: the client this one is a child of.
     func clientGetParent(_ c: Client) -> Client?
+    /// toplevel_from_wlr_surface: the client a surface (a window, or a popup over one) belongs to.
+    func toplevelFromWlrSurface(_ surface: ClientID) -> Client?
     /// wlr_seat_keyboard_notify_clear_focus.
     func keyboardNotifyClearFocus()
     func warp(to p: CGPoint)
+    /// wlroots' seat->pointer_state.focused_surface: the surface mango last gave the pointer.
+    var pointerFocusedSurface: ClientID? { get }
+    /// wlr_seat_pointer_notify_enter.
+    func seatPointerNotifyEnter(_ surface: ClientID)
+    /// wlr_seat_pointer_notify_clear_focus and wlr_seat_pointer_clear_focus.
+    func seatPointerClearFocus()
     func restack()
     func drawBorders(_ specs: [BorderSpec])
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle)

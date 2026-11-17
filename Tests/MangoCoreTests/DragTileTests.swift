@@ -6,22 +6,45 @@ import XCTest
 final class DragTileTests: MangoTestCase {
     let tile = CGRect(x: 100, y: 100, width: 400, height: 200)
 
-    func area(_ layout: LayoutKind, _ p: CGPoint, master: Bool = false, tiled: Int = 3,
-              simple: Bool = true) -> (DropDirection, CGRect) {
-        DropArea.clientSetDropArea(layout: layout, target: tile, at: p, ismaster: master, tiled: tiled,
-                         dwindleSimpleSplit: simple, dwindleSplitRatio: 0.5)
+    /// client_set_drop_area on a tile with no border: its direction and the area the port is given.
+    func area(_ layout: LayoutKind, _ p: CGPoint, master: Bool = false, tiled: Int32 = 3,
+              simple: Bool = true) -> (Int32, CGRect?) {
+        let r = EngineRig()
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = layout
+        r.server.config.dwindleDropSimpleSplit = simple
+        r.server.config.dwindleSplitRatio = 0.5
+        let c = r.window(900_499, frame: tile)
+        c.bw = 0
+        c.geom = tile
+        c.ismaster = master
+        r.monitor.visibleTilingClients = tiled
+        r.server.fake.fakePointer = p
+        c.enableDropAreaDraw = true
+        r.server.clientSetDropArea(c)
+        return (c.dropDirection, r.server.fake.shownDropArea)
     }
 
     func testTheDirectionsAndAreasAreMangos() {
-        XCTAssertEqual(area(.tile, CGPoint(x: 150, y: 150), master: true).0, DropDirection.none)
+        XCTAssertEqual(area(.tile, CGPoint(x: 150, y: 150), master: true).0, UNDIR)
         XCTAssertEqual(area(.tile, CGPoint(x: 150, y: 150), master: true, tiled: 1).1, CGRect(x: 100, y: 100, width: 200, height: 200))
-        XCTAssertEqual(area(.tile, CGPoint(x: 150, y: 150)).0, .up)
+        XCTAssertEqual(area(.tile, CGPoint(x: 150, y: 150)).0, UP)
         XCTAssertEqual(area(.tile, CGPoint(x: 150, y: 250)).1, CGRect(x: 100, y: 200, width: 400, height: 100))
-        XCTAssertEqual(area(.verticalTile, CGPoint(x: 450, y: 150)).0, .right)
-        XCTAssertEqual(area(.grid, CGPoint(x: 110, y: 200)).0, .left)
-        XCTAssertEqual(area(.grid, CGPoint(x: 300, y: 295)).0, .down)
-        XCTAssertEqual(area(.dwindle, CGPoint(x: 400, y: 110)).0, .right, "wide: left or right")
-        XCTAssertEqual(area(.dwindle, CGPoint(x: 400, y: 110), simple: false).0, .up)
+        XCTAssertEqual(area(.verticalTile, CGPoint(x: 450, y: 150)).0, RIGHT)
+        XCTAssertEqual(area(.grid, CGPoint(x: 110, y: 200)).0, LEFT)
+        XCTAssertEqual(area(.grid, CGPoint(x: 300, y: 295)).0, DOWN)
+        XCTAssertEqual(area(.dwindle, CGPoint(x: 400, y: 110)).0, RIGHT, "wide: left or right")
+        XCTAssertEqual(area(.dwindle, CGPoint(x: 400, y: 110), simple: false).0, UP)
+    }
+
+    func testTheDropAreaGoesOffWithTheDropClient() {
+        let r = EngineRig()
+        let c = r.window(900_499, frame: tile)
+        c.enableDropAreaDraw = true
+        r.server.clientSetDropArea(c)
+        XCTAssertNotNil(r.server.fake.shownDropArea)
+        c.enableDropAreaDraw = false
+        r.server.clientSetDropArea(c)
+        XCTAssertNil(r.server.fake.shownDropArea)
     }
 
     func rig(_ layout: LayoutKind = .tile) -> EngineRig {
@@ -39,7 +62,7 @@ final class DragTileTests: MangoTestCase {
         let f = frame(r, id)
         r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
         XCTAssertTrue(r.server.clientByIdAll(id)!.isfloating, "it floats while it is dragged")
-        r.server.pointerProcessMotion(p, time: 0)
+        r.server.motion(to: p, time: 1)
         r.server.buttonReleased(at: p)
     }
 
@@ -66,17 +89,25 @@ final class DragTileTests: MangoTestCase {
         r.server.clientFocus(r.server.clientByIdAll(900_500)!, false)
         r.arrange()
         let f = frame(r, 900_500)
-        r.server.clientBeginDragFloat(r.server.clientByIdAll(900_502)!, at: CGPoint(x: 1, y: 1))
-        r.server.dropDraggedTile(at: CGPoint(x: f.midX, y: f.maxY - 5))
+        let c = r.server.clientByIdAll(900_502)!
+        r.server.fake.fakePointer = CGPoint(x: 1, y: 1)
+        XCTAssertTrue(r.server.pointerBeginMoveResize(c, CurMove, 1, 1, []))
+        let p = CGPoint(x: f.midX, y: f.maxY - 5)
+        r.server.motion(to: p, time: 1)
+        r.server.buttonReleased(at: p)
         XCTAssertEqual(r.server.scrollerStack(of: 900_500), [900_500, 900_502], "nearest edge the bottom: below it, in its stack")
     }
 
     func testAPickedUpTileShrinksAroundThePointer() {
         let r = rig()
         r.app.writes.removeAll()
-        r.server.clientBeginDragFloat(r.server.clientByIdAll(900_501)!, at: CGPoint(x: 500, y: 400))
-        XCTAssertEqual(r.server.clientByIdAll(900_501)!.frame, CGRect(x: 350, y: 250, width: 300, height: 300))
-        XCTAssertEqual(r.app.writes.first { $0.id == 900_501 }?.frame, CGRect(x: 350, y: 250, width: 300, height: 300))
+        let c = r.server.clientByIdAll(900_501)!
+        r.server.fake.fakePointer = CGPoint(x: 500, y: 400)
+        r.server.pointerBeginMoveResize(c, CurMove, 500, 400, [])
+        r.frame()
+        XCTAssertEqual(c.geom, CGRect(x: 350, y: 250, width: 300, height: 300), "pointer_begin_move_resize's 300 by 300")
+        let inside = c.geom.insetBy(dx: c.bw, dy: c.bw)
+        XCTAssertEqual(r.app.writes.last { $0.id == 900_501 }?.frame, inside)
     }
 
     func testWithoutDragTileToTileItStaysFloating() {

@@ -12,15 +12,15 @@ final class SmallOptionTests: MangoTestCase {
         let f = r.monitor.screen.frame
         let corner = CGPoint(x: f.minX + 2, y: f.maxY - 2), away = CGPoint(x: f.midX, y: f.midY)
         c.isfullscreen = true
-        r.server.toggleHotarea(corner)
+        r.server.hotarea(corner)
         XCTAssertFalse(r.server.anyOverview, "under a fullscreen window: quiet")
         c.isfullscreen = false
-        r.server.toggleHotarea(corner)
+        r.server.hotarea(corner)
         XCTAssertTrue(r.server.anyOverview, "entering the corner opens it")
-        r.server.toggleHotarea(corner)
+        r.server.hotarea(corner)
         XCTAssertTrue(r.server.anyOverview, "staying in it does not toggle it again")
-        r.server.toggleHotarea(away)
-        r.server.toggleHotarea(corner)
+        r.server.hotarea(away)
+        r.server.hotarea(corner)
         XCTAssertFalse(r.server.anyOverview, "left and entered again: toggled")
     }
 

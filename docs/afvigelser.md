@@ -50,7 +50,6 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Layout-paletten viser alle 14 layouts i et 5×3-gitter, når `circle_layout` mangler | `layouts[]`-rækkefølgen | Palettens opstilling | `switch_layout` følger mangos rækkefølge |
 | Den medfølgende config (`Resources/config.conf`) er mangos `assets/config.conf` med mangos værdier; hvert sted, den ikke er det, står i en region mærket `# not mango default` (til `# end not mango default` eller filens slutning) med mangos linje nævnt: tasterne på Hyper, rofi og mangos midterklik udeladt, portens `chutney_*`-blok og Escape, der lukker overview (`bindp=NONE,Escape,leaveoverview`). | `assets/config.conf` | Tasterne må ikke tage macOS' og apps' genveje; portens nøgler | Brug mangos linjer i stedet for regionerne |
 | `error_nag` tjekker for fejl, når `setup` er færdig, ikke på en timer på 1 ms | `config_error_nag_init`s timer | Porten er klar, når `setup` er færdig | Ingen |
-| Efter et greb kører kun den del af `pointer_process_motion(0, …)`, der sætter kantgrebets markør, ikke resten (sloppy focus, hot area) | Hele `pointer_process_motion` | Den var aldrig med; markøren skulle med for kantgrebet | Ingen synlig: næste bevægelse gør resten |
 | `watch`-linjerne sendes én gang pr. tur, efter de ventende begivenheder, med typerne fra turens `printstatus`-kald samlet | `handle_print_status` med det samme | Ikke alle mangos `printstatus`-kald står hos os endnu (mangos `arrange` slutter med `printstatus(IPC_WATCH_ARRANGGE)`); samlet pr. tur får en watcher altid turens sidste tilstand | En tilstand, der kun findes mellem to `printstatus` i samme tur, sendes ikke |
 
 ## 3. Tvunget af macOS
@@ -69,7 +68,6 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Ingen skygge, blur, dæmpning, gennemsigtighed eller runde hjørner fra mango; ingen luk- og fade-animationer | macOS tegner andre apps' vinduer; gennemsigtighed kræver SIP slået fra |
 | Et vindue, som mango klipper ved sin skærms kant (scroller, tag-skift), tegnes helt; ligger der en anden skærm ud over kanten, parkeres det i stedet, så intet af det når nabo-skærmen, og hvor mango viser den klippede del, viser porten en plade: et stillbillede af vinduet taget ved parkeringen, klippet ved kanten (appens ikon uden Skærmoptagelse); pladen har vinduets kant, klippet ved kanten med den, og et klik fokuserer vinduet. Det parkeres også, når mango slukker det. Under en animation skifter vinduet størrelse billede for billede, hvor mango skalerer sin buffer | Andre apps' vinduer kan ikke klippes eller skaleres |
 | Animationer skrives via Accessibility (højst 60 Hz) | Ingen compositor |
-| En flydende resize med musen sker højst én gang pr. skærmens opdateringsinterval; mango én gang pr. tegnet billede (`frame_serial`, 09828ec) | Kernen får ingen billedbegivenheder fra macOS |
 | Overview og switcher viser billeder (Skærmoptagelse), stillbilleder taget ved åbning; de rigtige vinduer bliver under dem, så `warp_cursor` sætter markøren på kortet (mangos `geom` i overview) | Andre apps' vinduer kan ikke skaleres; en strøm pr. vindue koster meget |
 | Kantgrebet (`enable_border_resize`) tager kun et klik, som event tap'en har taget fra appen; den afgør det ud fra mangos `hover_resize_edge` ved forrige bevægelse. Er markøren lige kommet på eller af striben, kan det ene klik gå til appen, eller gå tabt | Tap'en skal afgøre klikket med det samme, før appen får det, og kan ikke vente på mango |
 | `mangonag` er ikke et eget program: dens kode (`Sources/Mango/mangonag`, 1:1) kører i mangos proces, og porten står for dens Wayland-side (`NagDisplay`): bjælken tegnes med AppKit (mangonags farver, skrift, fire linjer, ANSI-farver og knapper) og står under menulinjen (eller over Dock'en); `-y` (lag) gør intet, bjælken står over vinduerne; tilvalgene læses med macOS' `getopt`, som ikke flytter tilvalg efter et løst argument frem, som glibc's gør | mangonag er en Wayland-klient på en layer surface, tegnet med cairo og pango; et program at kalde selv har en Mac ikke brug for (macOS' notifikationer) |
@@ -86,16 +84,15 @@ Gælder for alle. Står i koden mærket "not in mango".
 | `app_id` i en vinduesregel og i `toggle_named_scratchpad` matcher også appens navn (`Safari`), ikke kun bundle id'et (`com.apple.Safari`) | macOS har intet `app_id`; bundle id'et er det nærmeste, navnet det, man kender |
 | `monitor_name` i regler og skærmnavnene i IPC er macOS' navn for skærmen (`BenQ RD280U`), ikke udgangen (`DP-1`) | macOS navngiver ikke udgange |
 | `tag_rule`s `monitor_make` er skærmens PNP-id (`BNQ`), ikke fabrikantens navn (wlroots: `BenQ Corporation`); `monitor_model` og `monitor_serial` er EDID'ens som hos wlroots. En skærm, macOS ikke har dem for, matcher ikke (som en skærm uden EDID hos mango), og to ens skærme uden serienummer får intet | macOS har EDID'ens felter i IORegistry (Apple silicon), men ingen PNP-navnetabel |
-| Et klik fokuserer ikke det vindue, der allerede har fokus, og intet i overview; mangos `buttonpress` kalder `focusclient` hver gang | macOS har fokuseret vinduet med klikket; i overview er kortene billeder |
 | `last_open_surface` (i `get` og `watch`) er altid tom | Den sættes, når en layer-shell-flade åbner; macOS har ingen layer shell |
 | `confine_pointer` sætter markøren tilbage, når den er nået over kanten | macOS flytter markøren, før mango ser bevægelsen |
 | `xkb_rules_options`: kun de muligheder, der flytter taster, med macOS' egen omlægning | macOS har ingen xkb |
 | Systemets trackpad-gestures konkurrerer med `gesturebind` | macOS ejer dem |
-| Swipe: porten giver mangos `handle_cursor_swipe_begin` og hvert trin ud fra den samlede afstand, macOS' multitouch melder; et swipe er aldrig `cancelled` | macOS' private multitouch-ramme har ingen begin-, trin- eller annulleringshændelser, kun fingrenes positioner |
+| Swipe: porten giver mangos `handle_cursor_swipe_begin` og hvert trin ud fra den samlede afstand, macOS' multitouch melder; kommer en finger til, er swipet `cancelled`, løftes en, slutter det, som libinput gør. Et klik under et træk med en gestus når appen | macOS' private multitouch-ramme har ingen begin-, trin- eller annulleringshændelser, kun fingrenes positioner, og event tappet kender ikke gestussens træk |
 | IPC: Unix-socket `/tmp/mango-<bruger>.sock`, kun brugerens (0600), og en anden kørende mangos socket overtages ikke; `mmsg` bruger den, når `MANGO_INSTANCE_SIGNATURE` mangler (mango: fejl), og `SO_NOSIGPIPE` for `MSG_NOSIGNAL`; `get tag` tager tallet som sidste felt; sende-bufferen er 1 MB | Ingen `XDG_RUNTIME_DIR`; et program, Dock'en eller Terminal starter, er ikke mangos barn; skærmnavne har mellemrum; macOS' buffer er 8 KB, og et svar sendes uden at vente |
 | `source=` med relativ sti læses fra config-mappen; ingen `/etc/mango`-fallback | Under launchd er arbejdsmappen `/`; macOS har ingen `/etc`-config |
 | Første start skriver `Resources/config.conf` som `config.conf`: mangos config med mangos taster på Hyper (en tast, brugeren vælger som i Raycasts Hyper Key: Caps Lock, en venstre/højre modifier eller F1–F12; `chutney_hyper_key`), ikke mangos egne taster, og de første linjer at prøve nær slutningen. Også et velkomstvindue, der åbner Getting Started | mango læser `/etc/mango/config.conf`, når brugeren ingen har; en Mac-app har ingen `/etc`-config. mangos taster (⌘M, ⌘N, ⌥+bogstav, ⌃+pile) er macOS' og appernes genveje |
-| Input besluttes på event tappets tråd; `setkeymode` og `chvt` stopper søgningen efter bindinger | macOS vil have svaret med det samme; dispatcherens svar kendes først på hovedtråden |
+| Input besluttes på event tappets tråd; `setkeymode`, `chvt`, `reload_config` og `load_config_file` stopper søgningen efter bindinger | macOS vil have svaret med det samme; dispatcherens svar kendes først på hovedtråden |
 | Timere: cursor-skjul (som mangos), billedurets reserve-timer (kun uden skærm), 0,4 s ekstra genstabling efter fokus, sen genlæsning af vinduets ramme, ét forsøg pr. sekund på at sætte et vindue tilbage, samling af skærm- (0,3 s) og config-ændringer (0,15 s, som mangos), appens egne rapporter lige efter et træk (0,4 s), 0,05 s efter menuen, ventetid ved genstart og `mmsg service`, hovedtrådens vagt, mangonags `-T` (kun når den er sat; config-fejlenes bjælke har ingen) | macOS melder ikke alt som en begivenhed |
 | `get all-devices` lister macOS' HID-enheder (IOKit): tastaturer, mus, trackpads, touchskærme og tablets; grænseflader på samme sted (USB-port, Bluetooth-enhed) er én enhed. `vendor`/`product` er IOKits (0 for Macens indbyggede), og `matched` er altid `false` | macOS har ingen libinput; `device_rule` virker ikke på macOS |
 | `watch all-devices` sender kun sin første linje (`{"name":null,"type":null}`); `ipc_notify_device_event` sendes aldrig | macOS' tastatur- og musehændelser (CGEvent) siger ikke, hvilken enhed de kom fra |
@@ -119,14 +116,12 @@ Hvor koden står, når den ikke står som i mango.
   hjælpen står i `Sources/Port/mmsg` og kobles på med én mærket linje hver.
 - **Kernen (`Sources/Mango`)** har mangos funktioner med mangos navne og kun mangos egne
   kommentarer eller mærker om, hvor vi afviger (CLAUDE.md regel 8). En funktion med andet navn
-  end mangos har én linje `/// mango <funktion> (<fil>)`; der er 14 tilbage: tastaturets tråd,
-  cursor-timeren, `Log` og nogle få, der allerede har mangos navn.
+  end mangos har én linje `/// mango <funktion> (<fil>)` (41 i alt, mest typer og hjælpere fra
+  mangos headere og funktioner delt i to, fordi portens tråde kalder dem hver for sig).
 - **Bevidst i kernen, mærket:** `c.parked` (portens slukkede scene-node) læses nogle steder, overview med
-  billeder (`Monitor.ovThumbnails`, `ovCards`), drag-tile delt med appens eget træk, `parse_option` som en tabel,
+  billeder (`Monitor.ovThumbnails`, `ovCards`), `parse_option` som en tabel,
   og `resize_tile_master` i begge retninger i én funktion. I scrolleren: `set_proportion` og
-  `switch_proportion_preset` deler deres slutning (`setProportion`), `scroller_apply_stack` har ingen
-  `UNDIR`-gren (portens retning er altid en af de fire), og drag-tile sætter `drop_direction` på det
-  nærmeste vindue ved slippet (portens drag-tile, trin 7).
+  `switch_proportion_preset` deler deres slutning (`setProportion`).
 - **Mærket i kernen, som at skrive mangos C i Swift:** `f32` (en værdi, mango har i et
   float-felt, afrundet som C), `i32` (C's omregning af et kommatal til `int32_t`), `wl_list`-hjælperne
   i `common/util.swift` på klientlistens array, og `1 << (prevtag - 1)` med
@@ -165,8 +160,21 @@ Hvor koden står, når den ikke står som i mango.
   kører den, når konfigurationen læses. Et felt, bindingen ikke giver, er `0` fra en nøglebinding og
   tomt fra IPC, som i mango. Ingen macOS-del (markerede funktioner, der ingen ting gør): `chvt`,
   virtuelle outputs, `togglehdr`, `toggle_trackpad_enable`, `switch_keyboard_layout` og
-  `*_monitor`. Retningerne er mangos tal (`UP`…`ALLDIR`); `Direction` bruges kun af akse- og
-  gestus-bindingerne (trin 7).
+  `*_monitor`. Retningerne er mangos tal (`UP`…`ALLDIR`, `SWIPE_*`), også i akse- og
+  gestus-bindingerne.
+- **Input:** mangos `input/pointer.c`, `keyboard.c` og `trackpad.c` står i kernen
+  (`input/pointer.swift`, `keyboard.swift`, `trackpad.swift`) i mangos rækkefølge, med mangos greb
+  (`cursor_mode`, `grab_client`), træk-til-tile (`client_begin_drag_float`, `pointer_place_drag_tile`,
+  `client_set_drop_area`) og `pointer_focus`: fokus ved markøren kun med en tid og kun når markøren
+  går ind i en ny flade. Grænsen har seatets pointerfokus (`pointerFocusedSurface`,
+  `seatPointerNotifyEnter`, `seatPointerClearFocus`); fladen under markøren er vinduet under
+  punktet, og portens egne vinduer (kanter, bjælker, overview) giver ingen. macOS flytter markøren,
+  før mango ser bevægelsen, så der er ingen `wlr_cursor_move`; `dx`/`dy` er forskellen fra portens
+  forrige hændelse. Når appen selv trækker et vindue i titelbjælken, gør porten mangos træk
+  (`Port/macOS/UserDrag.swift`). Tastaturets bindinger matcher på portens taster, ikke keysyms (ingen
+  tabel). Ingen macOS-del: constraints, cursorbilleder, libinput, drag-and-drop, virtuelle enheder,
+  keymaps, `keyboard_repeat`, shortcut-inhibitor, pinch og hold, `device.c`, `switch.c`, `tablet.c`,
+  `touch.c`. `resize_tile_client` mangler endnu mangos samling pr. billede (`frame_serial`).
 - **Klienter:** mangos `manage/client.c` står i kernen (`manage/client.swift`) i mangos
   rækkefølge. `client_park` giver medlemmet `mon` nil, som mango, og `client_is_parked` er
   listemedlemskab; `groupParked` er portens mærke (`clientsAll`), og porten parkerer et parkeret
@@ -210,8 +218,7 @@ Hvor koden står, når den ikke står som i mango.
   (`horizontal.swift`, `vertical.swift`, `dwindle.swift`, `scroll.swift`). Mærket i koden: overview kommer før
   `pre_calculate_before_arrange` (kortene er portens billeder);
   `client_sync_layer` er portens løft til sidst;
-  `special_sync_top_layer`, `pointer_process_motion` og
-  `check_idle_inhibitor` har ingen macOS-del; `ltidxs` holder layoutets id.
+  `special_sync_top_layer` og `check_idle_inhibitor` har ingen macOS-del; `ltidxs` holder layoutets id.
 - **Kald over grænsen, mærket:** `client_is_float_type` er `platform.isFloatType` (en dialogs
   subrole); appens egne flyt under et træk tager porten ud (`grabBegan`, `grabEnded`).
 - **Logning:** mangos `common/log.c` i kernen (`mangoError`, `mangoLogInit`) og wlroots'
@@ -227,7 +234,7 @@ Hvor koden står, når den ikke står som i mango.
   macOS-del: `session_locked`, `isfocusing` og opacity,
   `client_check_tab_node_visible` (porten tegner bjælkerne ud fra `sel`), idle inhibit, vrr, foreign
   toplevel, løkken over de andre skærme, `exclusive_focus` (layer shell), `client_wants_focus` (X11) og
-  pointer constraints. Af `pointer_process_motion(0, …)` kun markørens resize-billede. Uden klient
+  pointer constraints. Uden klient
   kommer `printstatus` efter, at `sel` er ryddet, for portens status læser den med det samme.
 - **Title message bar:** mangos `draw/title_message_bar.c` står i kernen (`Engine/TitleMessageBar.swift`),
   én bar pr. skærm (`Monitor.titleMessageBar`); baren selv (`MangoBarDecoration`, mangos `text-node.c`
@@ -293,3 +300,4 @@ aftalt, rettet så lidt som muligt, mærket `a mango bug` i koden og låst med e
 | `toml_section_begin` sætter `kind = BIND`, før den læser keymode og flag; afvises sektionen, sætter `toml_section_flush` `config->keymode` til `""` | efter `[bind.default.bogus]` får alle senere bindinger keymode `""` og virker aldrig | keymode er uændret | Kun en sektion, der ikke er afvist, sætter keymode tilbage. `tomlSectionFlush`; `testARejectedTomlBindSectionKeepsTheKeymode` |
 | `increase_gaps` lægger tallet til de normale mellemrum, også på special-tagget, og `setgaps` skriver dem så som special-tagets | `incgaps,5` på special-tagget giver special-mellemrummene de normales + 5 | special-tagets egne + 5 | `increase_gaps` regner fra special-mellemrummene, når special-tagget er aktivt. `increaseGaps` i `dispatch/bind.swift`; `testIncgapsOnTheSpecialTagChangesTheSpecialGaps` |
 | `parse_func_name` samler `setoption`'s felt 2–5 med komma og springer kun tomme felter over, men nøglebindingens parser giver de manglende felter `0` | `bind=…,setoption,circle_layout,tile,scroller` sætter `circle_layout` til `tile,scroller,0,0` | `tile,scroller` | felterne samles efter `combine_args_until_empty`'s regel, mangos egen for `spawn`: til det første tomme eller `0`. `parseFuncName` i `Config/binding_parse.swift`; `testSetoptionSkipsTheBindingsUngivenFields` |
+| `handle_client_unmap` rydder `drop_client`, men ikke `group_bar_drag_client` | lukkes et vindue, mens et træk fra dets gruppebjælke venter, peger mango videre på det lukkede vindue | trækket slippes | unmap rydder `group_bar_drag_client` og `group_bar_drag_pending`, som `drop_client`. `handleClientUnmap` i `manage/client.swift`; `testAGroupBarPressOnAWindowThatClosesIsLetGo` |

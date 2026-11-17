@@ -41,7 +41,7 @@ package extension MangoServer {
     }
 
     func clientIsIgnoreOutputClip(_ c: Client) -> Bool {
-        c === grab?.client || (!ISSCROLLTILED(c) && !c.animation.tagining && !c.animation.tagouting)
+        c === grabClient || (!ISSCROLLTILED(c) && !c.animation.tagining && !c.animation.tagouting)
     }
 
     func computeEdgeOffsets(_ c: Client) -> IVec2 {
@@ -199,6 +199,151 @@ package extension MangoServer {
         }
 
         return offset
+    }
+
+    func clientSetDropArea(_ c: Client?) {
+        var firstDraw = false
+        var dropDirection = UNDIR
+
+        guard let c, let mon = c.mon else { return }
+
+        if !c.enableDropAreaDraw && !c.dropareaEnabled { return }
+
+        if !c.enableDropAreaDraw && c.dropareaEnabled {
+            c.dropareaEnabled = false
+            system.showDropArea(nil, color: config.dropcolor)   // not in mango: the port's droparea node
+            return
+        } else if c.enableDropAreaDraw && !c.dropareaEnabled {
+            c.dropareaEnabled = true
+            firstDraw = true
+        }
+
+        let bw = Int32(c.bw)
+        let clientWidth = Int32(c.geom.width) - 2 * bw
+        let clientHeight = Int32(c.geom.height) - 2 * bw
+
+        // not in mango: the port's droparea node, set where mango sets its position and size
+        func dropArea(_ x: Int32, _ y: Int32, _ width: Int32, _ height: Int32) {
+            system.showDropArea(CGRect(x: c.geom.minX + CGFloat(x), y: c.geom.minY + CGFloat(y),
+                                       width: CGFloat(width), height: CGFloat(height)), color: config.dropcolor)
+        }
+
+        if clientWidth <= 0 || clientHeight <= 0 {
+            c.dropareaEnabled = false
+            system.showDropArea(nil, color: config.dropcolor)   // not in mango: the port's droparea node
+            return
+        }
+
+        if dropToGroup && dropClient === c {
+            if !firstDraw && c.dropDirection == UNDIR { return }
+            c.dropDirection = UNDIR
+            dropArea(bw, bw, clientWidth, clientHeight)
+            return
+        }
+
+        let cursor = system.pointer
+        let relX = Double(cursor.x - c.geom.minX) - Double(bw)
+        let relY = Double(cursor.y - c.geom.minY) - Double(bw)
+
+        var dropBox = (x: Int32(0), y: Int32(0), width: Int32(0), height: Int32(0))
+        let curLayout = mon.pertag.ltidxs[getClientTagIdx(c)]
+        let dwindleFamiliar = curLayout == .dwindle && config.dwindleDropSimpleSplit
+
+        if dwindleFamiliar {
+            let splitH = c.geom.width >= c.geom.height
+            let ratio = Float(config.dwindleSplitRatio)
+            if splitH {
+                if relX < Double(clientWidth) * 0.5 {
+                    dropDirection = LEFT
+                    dropBox = (bw, bw, Int32(Float(clientWidth) * ratio), clientHeight)
+                } else {
+                    dropDirection = RIGHT
+                    dropBox = (bw + Int32(Float(clientWidth) * ratio), bw,
+                               clientWidth - Int32(Float(clientWidth) * ratio), clientHeight)
+                }
+            } else {
+                if relY < Double(clientHeight) * 0.5 {
+                    dropDirection = UP
+                    dropBox = (bw, bw, clientWidth, Int32(Float(clientHeight) * ratio))
+                } else {
+                    dropDirection = DOWN
+                    dropBox = (bw, bw + Int32(Float(clientHeight) * ratio),
+                               clientWidth, clientHeight - Int32(Float(clientHeight) * ratio))
+                }
+            }
+        } else if curLayout == .tile || curLayout == .deck ||
+                    curLayout == .centerTile || curLayout == .rightTile {
+            if c.ismaster {
+                if mon.visibleTilingClients == 1 {
+                    if relX < Double(clientWidth) * 0.5 {
+                        dropDirection = LEFT
+                        dropBox = (bw, bw, clientWidth / 2, clientHeight)
+                    } else {
+                        dropDirection = RIGHT
+                        dropBox = (bw + clientWidth / 2, bw, clientWidth / 2, clientHeight)
+                    }
+                } else {
+                    dropBox = (bw, bw, clientWidth, clientHeight)
+                    dropDirection = UNDIR
+                }
+            } else {
+                if relY < Double(clientHeight) * 0.5 {
+                    dropDirection = UP
+                    dropBox = (bw, bw, clientWidth, clientHeight / 2)
+                } else {
+                    dropDirection = DOWN
+                    dropBox = (bw, bw + clientHeight / 2, clientWidth, clientHeight / 2)
+                }
+            }
+        } else if curLayout == .verticalTile || curLayout == .verticalDeck {
+            if c.ismaster {
+                if mon.visibleTilingClients == 1 {
+                    if relY < Double(clientHeight) * 0.5 {
+                        dropDirection = UP
+                        dropBox = (bw, bw, clientWidth, clientHeight / 2)
+                    } else {
+                        dropDirection = DOWN
+                        dropBox = (bw, bw + clientHeight / 2, clientWidth, clientHeight / 2)
+                    }
+                } else {
+                    dropBox = (bw, bw, clientWidth, clientHeight)
+                    dropDirection = UNDIR
+                }
+            } else {
+                if relX < Double(clientWidth) * 0.5 {
+                    dropDirection = LEFT
+                    dropBox = (bw, bw, clientWidth / 2, clientHeight)
+                } else {
+                    dropDirection = RIGHT
+                    dropBox = (bw + clientWidth / 2, bw, clientWidth / 2, clientHeight)
+                }
+            }
+        } else {
+            let distLeft = relX
+            let distRight = Double(clientWidth) - relX
+            let distTop = relY
+            let distBottom = Double(clientHeight) - relY
+
+            if distLeft <= distRight && distLeft <= distTop &&
+                distLeft <= distBottom {
+                dropDirection = LEFT
+                dropBox = (bw, bw, clientWidth / 2, clientHeight)
+            } else if distRight <= distTop && distRight <= distBottom {
+                dropDirection = RIGHT
+                dropBox = (bw + clientWidth / 2, bw, clientWidth / 2, clientHeight)
+            } else if distTop <= distBottom {
+                dropDirection = UP
+                dropBox = (bw, bw, clientWidth, clientHeight / 2)
+            } else {
+                dropDirection = DOWN
+                dropBox = (bw, bw + clientHeight / 2, clientWidth, clientHeight / 2)
+            }
+        }
+
+        if !firstDraw && c.dropDirection == dropDirection { return }
+        c.dropDirection = dropDirection
+
+        dropArea(dropBox.x, dropBox.y, dropBox.width, dropBox.height)
     }
 
     func clientSetClip(_ c: Client, _ factor: Double) {
@@ -391,7 +536,7 @@ package extension MangoServer {
             /* Overview enter animation: force start after setting the zoom; not
              * forced during pre-arrangement to avoid jitter. */
             c.animation.shouldAnimate = true
-        } else if c === grab?.client || (!c.isPendingOpenAnimation && c.current == c.pending) {
+        } else if c === grabClient || (!c.isPendingOpenAnimation && c.current == c.pending) {
             c.animation.shouldAnimate = false
         } else {
             c.animation.shouldAnimate = true
@@ -423,7 +568,7 @@ package extension MangoServer {
 
         let bbox = opts.interact || c.isfloating || c.isfullscreen ? sceneGeometry : mon.w
 
-        if isScrollerLayout(mon) && (!c.isfloating || c === grab?.client) {
+        if isScrollerLayout(mon) && (!c.isfloating || c === grabClient) {
             c.geom = geo
             c.geom.size.width = max(1 + 2 * c.bw, c.geom.width)
             c.geom.size.height = max(1 + 2 * c.bw, c.geom.height)
@@ -494,7 +639,7 @@ package extension MangoServer {
 
         // not in mango: no resizing_count_pending; the port's configure serial is always 0
 
-        if c === grab?.client {
+        if c === grabClient {
             let offsets = computeEdgeOffsets(c)
 
             c.animation.running = false

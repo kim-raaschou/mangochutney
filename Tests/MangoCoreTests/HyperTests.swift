@@ -59,8 +59,8 @@ final class HyperTests: MangoTestCase {
         }
         for b in c.axisBindings {
             let held = before(b.mods)
-            XCTAssertEqual(c.axisBindings.filter { $0.direction == b.direction && $0.mods == KeyboardOptions.hyperMods(held, hyper: h, keyHeld: false) }.map(\.dispatch),
-                           c.axisBindings.filter { $0.direction == b.direction && before($0.mods) == held }.map(\.dispatch), "\(name): axis")
+            XCTAssertEqual(c.axisBindings.filter { $0.dir == b.dir && $0.mods == KeyboardOptions.hyperMods(held, hyper: h, keyHeld: false) }.map(\.dispatch),
+                           c.axisBindings.filter { $0.dir == b.dir && before($0.mods) == held }.map(\.dispatch), "\(name): axis")
         }
         XCTAssertEqual(KeyboardOptions.unreachable(c), [], "\(name): no binding the hyper set hides")
     }

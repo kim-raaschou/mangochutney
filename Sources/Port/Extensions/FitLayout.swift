@@ -71,7 +71,7 @@ enum FitLayout {
     /// on each side the largest seen, for as long as the window is open.
     static func learn(_ server: MangoServer, _ m: Monitor) {
         let mac = server.mac
-        guard server.grab == nil, !mac.animationsRunning else { return }
+        guard server.grabClient == nil, !mac.animationsRunning else { return }
         let open = Set(server.clientsAll.map(\.id))
         mac.fitState.minimum = mac.fitState.minimum.filter { open.contains($0.key) }
         for c in shown(server, m) {
@@ -235,7 +235,7 @@ enum FitLayout {
             return
         }
         // Not while windows move: the sizes between are not the layout's.
-        guard server.grab == nil, !mac.animationsRunning else {
+        guard server.grabClient == nil, !mac.animationsRunning else {
             if mac.animationsRunning && !mac.fitState.waiting {
                 mac.fitState.waiting = true
                 mac.whenAnimationsIdle {
@@ -249,7 +249,7 @@ enum FitLayout {
             "\(c.id):\(c.tile):\(c.refusedSize.map { "\($0)" } ?? "")"
         }
         // the sides no fit can grow are part of what is seen: the plan changes with them
-        let seen = "\(level)|\(!m.isoverview)|\(server.grab == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel ?? 0)|\(windows.joined(separator: ","))|\(mac.fitState.stuck.sorted().joined(separator: ","))"
+        let seen = "\(level)|\(!m.isoverview)|\(server.grabClient == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel ?? 0)|\(windows.joined(separator: ","))|\(mac.fitState.stuck.sorted().joined(separator: ","))"
         guard mac.fitState.seen != seen else { return }
         mac.fitState.seen = seen
         let plan = plan(server, m)
@@ -311,7 +311,7 @@ enum FitLayout {
             mac.fitState.notified = nil
             return
         }
-        guard !server.monitors.contains(where: \.isoverview), server.grab == nil else { return }
+        guard !server.monitors.contains(where: \.isoverview), server.grabClient == nil else { return }
         guard mac.fitState.notified != note.title + note.body else { return }
         mac.fitState.notified = note.title + note.body
         mac.postFitNotification(title: note.title, body: note.body, fit: note.fit)
@@ -321,7 +321,7 @@ enum FitLayout {
     /// view (tags, layout, windows) stays, so two windows that take each other's room cannot go on.
     /// The fit runs after this turn of the main queue (not a timer), out of Placement's reading.
     static func auto(_ server: MangoServer, _ m: Monitor, _ plan: Plan) {
-        guard !server.monitors.contains(where: \.isoverview), server.grab == nil else { return }
+        guard !server.monitors.contains(where: \.isoverview), server.grabClient == nil else { return }
         let key = view(server, m)
         let mac = server.mac
         if mac.fitState.autoView != key {

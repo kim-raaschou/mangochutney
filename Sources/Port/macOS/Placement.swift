@@ -193,7 +193,7 @@ extension MacWindowSystem {
 
     func reconcileFrame(_ c: Client, _ actual: CGRect?, settled: Bool = false) {
         guard let actual = actual ?? windowServerFrame(c.id), server.clientByIdAll(c.id) === c, !c.parked,
-              !c.animation.running, server.grab?.client !== c else { return }
+              !c.animation.running, server.grabClient !== c else { return }
         let refused = c.refusedSize
         defer { if c.refusedSize != refused { server.onStateChange?() } }
         if MangoServer.frameDistance(actual, c.mac.box) <= 0.5 { c.retryCount = 0; c.refusedSize = nil }

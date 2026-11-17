@@ -5,7 +5,7 @@ package struct InputState {
     package var bindings: [KeyBinding] = []
     package var mouseBindings: [MouseBinding] = []
     package var axisBindings: [AxisBinding] = []
-    package var axisTimeout: Double = 0.1
+    package var axisBindApplyTimeout: UInt32 = 100
     package var overviewFrame: CGRect?
     /// mango's is_jump_mode on the selected monitor, and the jump_keycodes of its clients.
     package var jumpMode = false

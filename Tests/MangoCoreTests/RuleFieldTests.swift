@@ -123,8 +123,8 @@ final class DragCornerTests: MangoTestCase {
     func testTheDefaultPullsTheBottomRightCornerFromTheCorner() {
         let r = EngineRig()
         let c = grab(r, at: CGPoint(x: 300, y: 300))
-        XCTAssertEqual(r.server.grab?.startMouse, CGPoint(x: 800, y: 600), "drag_warp_cursor: the pointer goes to the corner")
-        r.server.pointerProcessMotion(CGPoint(x: 850, y: 640), time: 0)
+        XCTAssertEqual(CGPoint(x: r.server.grabOffsetX, y: r.server.grabOffsetY), CGPoint(x: 800, y: 600), "drag_warp_cursor: the pointer goes to the corner")
+        r.server.motion(to: CGPoint(x: 850, y: 640), time: 0)
         XCTAssertEqual(c.floatGeom, CGRect(x: 200, y: 200, width: 650, height: 440))
     }
 
@@ -133,7 +133,7 @@ final class DragCornerTests: MangoTestCase {
         r.server.config.dragCorner = 0
         r.server.config.dragWarpCursor = false
         let c = grab(r, at: CGPoint(x: 700, y: 500))
-        r.server.pointerProcessMotion(CGPoint(x: 650, y: 470), time: 0)
+        r.server.motion(to: CGPoint(x: 650, y: 470), time: 0)
         XCTAssertEqual(c.floatGeom, CGRect(x: 150, y: 170, width: 650, height: 430), "the bottom right stays")
     }
 
@@ -141,18 +141,22 @@ final class DragCornerTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.dragCorner = 4
         _ = grab(r, at: CGPoint(x: 750, y: 250))
-        XCTAssertEqual(r.server.grab?.resizeEdge, [.right, .top])
-        XCTAssertEqual(r.server.grab?.startMouse, CGPoint(x: 800, y: 200))
+        XCTAssertEqual(r.server.resizeEdge, [.right, .top])
+        XCTAssertEqual(CGPoint(x: r.server.grabOffsetX, y: r.server.grabOffsetY), CGPoint(x: 800, y: 200))
     }
 
     func testTheWarpGoesToTheBordersOuterCorner() {
         let r = EngineRig()
         r.server.renderBorder = true
-        let c = grab(r, at: CGPoint(x: 300, y: 300))
+        let c = r.window(900_320, floating: true, frame: start)
         let bw = r.server.borderWidth(c, on: r.monitor)
+        c.bw = bw
+        c.geom = start.insetBy(dx: -bw, dy: -bw)
+        c.floatGeom = c.geom
+        r.server.mousebind(resize, at: CGPoint(x: 300, y: 300))
         XCTAssertGreaterThan(bw, 0)
-        XCTAssertEqual(r.server.grab?.startMouse, CGPoint(x: 800 + bw, y: 600 + bw))
-        r.server.pointerProcessMotion(CGPoint(x: 850 + bw, y: 640 + bw), time: 0)
+        XCTAssertEqual(CGPoint(x: r.server.grabOffsetX, y: r.server.grabOffsetY), CGPoint(x: 800 + bw, y: 600 + bw))
+        r.server.motion(to: CGPoint(x: 850 + bw, y: 640 + bw), time: 0)
         XCTAssertEqual(c.floatGeom, CGRect(x: 200, y: 200, width: 650, height: 440).insetBy(dx: -bw, dy: -bw), "float_geom has the border")
     }
 }

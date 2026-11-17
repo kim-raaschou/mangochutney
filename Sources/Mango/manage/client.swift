@@ -1,7 +1,7 @@
 import Foundation
 import CoreGraphics
 
-let UP: Int32 = 0, DOWN: Int32 = 1, LEFT: Int32 = 2, RIGHT: Int32 = 3, UNDIR: Int32 = 4, ALLDIR: Int32 = 5 /* smartmovewin */
+package let UP: Int32 = 0, DOWN: Int32 = 1, LEFT: Int32 = 2, RIGHT: Int32 = 3, UNDIR: Int32 = 4, ALLDIR: Int32 = 5 /* smartmovewin */
 
 package extension MangoServer {
     func getClientTagIdx(_ c: Client?) -> UInt32 {
@@ -643,8 +643,27 @@ package extension MangoServer {
         portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
         focusStack.removeAll { $0 == id }
         switcherRemoveClient(id)
-        if grab?.client === c { grab = nil }
-        if dragTile?.client === c { dragTile = nil; system.showDropArea(nil, color: config.dropcolor) }
+        if c === grabClient {
+            cursorMode = CurNormal
+            grabClient = nil
+            if let dc = dropClient {
+                dc.enableDropAreaDraw = false
+                clientSetDropArea(dc)
+                dropClient = nil
+            }
+        }
+
+        if c === dropClient {
+            dropClient = nil
+            system.showDropArea(nil, color: config.dropcolor)   // not in mango: the port's one drop area, mango's goes with the client's scene
+        }
+
+        // not in mango: the pending group-bar drag lets go of it, as of drop_client (a mango bug, docs/afvigelser.md §6)
+        if c === groupBarDragClient {
+            groupBarDragPending = false
+            groupBarDragClient = nil
+        }
+
         for m in monitors {
             if m.sel == id { m.sel = nil }
             if m.prevsel == id { m.prevsel = nil }
@@ -662,10 +681,12 @@ package extension MangoServer {
         // not in mango: c left clients and focus_stack above; no fade-out, swallowing or scene nodes
         clientSetMonitor(c, nil, 0, focus: true)
 
-        // not in mango: of init_client_properties only iskilling; the port keeps an away window's state
+        // not in mango: of init_client_properties only iskilling and drag_to_tile; the port keeps an away window's state
         c.iskilling = false
+        c.dragToTile = false
 
         printstatus(.arrangge)
+        pointerProcessMotion(0, 0, 0)
     }
 
     package func handleClientDestroy(_ c: Client) {
@@ -778,10 +799,7 @@ package extension MangoServer {
         }
 
         /* Change cursor surface */
-        // not in mango: of pointer_process_motion(0, …) only its resize cursor
-        let p = system.pointer
-        let pointed = nodeAtPoint(p)
-        pointerUpdateResizeCursor(pointed, surfaceAt(pointed, p), p)
+        pointerProcessMotion(0, 0, 0)
 
         /* Have a client, so focus its top-level wlr_surface */
         system.clientNotifyEnter(c)
@@ -1021,7 +1039,7 @@ package extension MangoServer {
 
         var targetBox = c.geom
 
-        if floating && c !== grab?.client {
+        if floating && c !== grabClient {
             if c.isfullscreen {
                 clientPendingFullscreenState(c, false)
                 system.clientNotifyFullscreen(c, false)
@@ -1054,7 +1072,7 @@ package extension MangoServer {
             } else {
                 resize(c, targetBox, ResizeOpts(interact: false))
             }
-        } else if c.isfloating && c === grab?.client {
+        } else if c.isfloating && c === grabClient {
             // not in mango: no need_float_size_reduce (no X11 size hints)
         } else {
             c.isInScratchpad = false
@@ -1082,7 +1100,7 @@ package extension MangoServer {
     }
 
     func clientSetFullscreen(_ c: Client, _ fullscreen: Bool, rearrange: Bool) {
-        guard let m = c.mon, !c.iskilling, c !== grab?.client else { return }
+        guard let m = c.mon, !c.iskilling, c !== grabClient else { return }
 
         if m.isoverview { return }
 
@@ -1131,7 +1149,7 @@ package extension MangoServer {
     }
 
     func clientSetMaximizeScreen(_ c: Client, _ maximizescreen: Bool, rearrange: Bool) {
-        guard let m = c.mon, !c.iskilling, c !== grab?.client else { return }
+        guard let m = c.mon, !c.iskilling, c !== grabClient else { return }
 
         if m.isoverview { return }
 
@@ -1185,7 +1203,7 @@ package extension MangoServer {
     }
 
     func setMinimized(_ c: Client) {
-        guard let m = c.mon, grab?.client !== c else { return }
+        guard let m = c.mon, grabClient !== c else { return }
 
         if !c.isInScratchpad {
             c.isfloatingBeforeScratchpad = c.isfloating

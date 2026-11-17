@@ -748,31 +748,31 @@ package extension MangoServer {
         let stackTail = scrollGetStackTailClient(closest)
 
         if vertical {
-            if closest.dropDirection == .left {
+            if closest.dropDirection == LEFT {
                 clientSetFloating(c, false, false)
                 scrollerInsertStack(c, closest, true)
                 return
-            } else if closest.dropDirection == .right {
+            } else if closest.dropDirection == RIGHT {
                 clientSetFloating(c, false, false)
                 scrollerInsertStack(c, closest, false)
                 return
-            } else if closest.dropDirection == .up {
+            } else if closest.dropDirection == UP {
                 if c !== stackHead { wlListSafeReinsertPrev(stackHead, c) }
-            } else if closest.dropDirection == .down {
+            } else if closest.dropDirection == DOWN {
                 if c !== stackTail { wlListSafeReinsertNext(stackHead, c) }
             }
         } else {
-            if closest.dropDirection == .up {
+            if closest.dropDirection == UP {
                 clientSetFloating(c, false, false)
                 scrollerInsertStack(c, closest, true)
                 return
-            } else if closest.dropDirection == .down {
+            } else if closest.dropDirection == DOWN {
                 clientSetFloating(c, false, false)
                 scrollerInsertStack(c, closest, false)
                 return
-            } else if closest.dropDirection == .left {
+            } else if closest.dropDirection == LEFT {
                 if c !== stackHead { wlListSafeReinsertPrev(stackHead, c) }
-            } else if closest.dropDirection == .right {
+            } else if closest.dropDirection == RIGHT {
                 if c !== stackTail { wlListSafeReinsertNext(stackHead, c) }
             }
         }

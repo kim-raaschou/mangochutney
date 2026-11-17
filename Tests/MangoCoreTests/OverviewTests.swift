@@ -125,7 +125,7 @@ final class OverviewTests: MangoTestCase {
         r.map(1)
         r.map(2)
         let f = r.monitor.screen.frame
-        r.server.toggleHotarea(CGPoint(x: f.minX + 2, y: f.maxY - 2))
+        r.server.hotarea(CGPoint(x: f.minX + 2, y: f.maxY - 2))
         XCTAssertTrue(r.monitor.isoverview)
         XCTAssertTrue(r.monitor.ovNormalMode, "the hot area's overview is the grid")
         XCTAssertFalse(r.server.isOvercircleMode(r.monitor))
@@ -140,7 +140,7 @@ final class OverviewTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.enableHotarea = true
         let f = r.monitor.screen.frame
-        r.server.toggleHotarea(CGPoint(x: f.minX + 2, y: f.maxY - 2))
+        r.server.hotarea(CGPoint(x: f.minX + 2, y: f.maxY - 2))
         XCTAssertFalse(r.monitor.isoverview)
         XCTAssertFalse(r.monitor.ovNormalMode)
     }

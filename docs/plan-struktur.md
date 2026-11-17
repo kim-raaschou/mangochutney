@@ -168,6 +168,11 @@ HYPER,F1–F12 i `~/.config/mango/config.conf` om (backup og diff af hele filen 
   ikke længere fra `float_geom`, og `apply_window_snap` arbejder på `geom` og slutter med `resize`.
   IPC splitter alle dispatchere ens, som `ipc.c`. Tilbage til trin 7: `Direction` i akse- og
   gestus-bindingerne og `pointer_process_motion(0)`.
+- Trin 7 (16. november): `input/pointer.swift`, `keyboard.swift` og `trackpad.swift` er mangos
+  `pointer.c`, `keyboard.c` og `trackpad.c` i mangos rækkefølge: mangos greb og træk-til-tile,
+  `pointer_focus` (fokus kun med en tid og ved indgang i en ny flade), `pointer_process_motion(0)`
+  dér, hvor mango kalder den, og swipe drive med `SWIPE_*`. `Direction` er væk. Tastaturet matcher
+  på portens taster (ingen keysym-tabel, efter aftale).
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter

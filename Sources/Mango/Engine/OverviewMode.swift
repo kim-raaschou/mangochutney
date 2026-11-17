@@ -188,23 +188,6 @@ package extension MangoServer {
         multiKc = system.findKeycodesForKeysym(cChar)   // not in mango: the port's side (xkb's keymap)
     }
 
-    /// mango keyboard_find_jump_client (input/keyboard.c)
-    func keyboardFindJumpClient(_ m: Monitor, _ keycode: UInt16) -> Client? {
-        for c in clients {
-            if c.mon !== m {
-                continue
-            }
-
-            if keycode == c.jumpKeycodes.keycode1 ||
-                keycode == c.jumpKeycodes.keycode2 ||
-                keycode == c.jumpKeycodes.keycode3 {
-                return c
-            }
-        }
-
-        return nil
-    }
-
     // Saves the window old state when switching from the normal view to overview.
     func overviewBackup(_ c: Client) {
         c.overviewIsfloatingbak = c.isfloating

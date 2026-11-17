@@ -66,29 +66,36 @@ public final class MangoServer {
     package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
     var switcherState: SwitcherState? { didSet { publishInputState() } }
     var publishedGlobalKeys = false
-    package var grab: Grab? {
-        didSet { if (oldValue == nil) != (grab == nil) { publishInputState() } }   // not in mango: the event tap's snapshot
+    package var cursorMode = CurNormal
+    package var grabClient: Client? {
+        didSet { if (oldValue == nil) != (grabClient == nil) { publishInputState() } }   // not in mango: the event tap's snapshot
     }
+    var grabOffsetX: CGFloat = 0, grabOffsetY: CGFloat = 0
+    var grabPointerX: CGFloat = 0, grabPointerY: CGFloat = 0
+    var grabIsBorderResize = false
+    var resizeEdge: WlrEdges = []
+    package var dropClient: Client?
+    package var dropToGroup = false
     var startDragWindow = false
-    var confinePointerLast: ClientID?
+    var confinePointerLast: Client?
     var dragBeginCursor: CGPoint = .zero
-    package var dragTile: DragTile?
     package var system: WindowSystem!
     /// Port extension: not in mango. Where the port's extensions join (PortHooks.swift).
     package var portHooks = PortHooks()
-    package var groupBarDrag: (client: Client, start: CGPoint)?
+    package var groupBarDragPending = false
+    var groupBarDragClient: Client?
+    var groupBarDragX: CGFloat = 0, groupBarDragY: CGFloat = 0
     var cursorHidden = false
+    var hideCursorSource: EventSource?
     package var hoverResizeEdge: WlrEdges = []
     var hoverResizeFloating = false
-    var cursorHideTimerArmed = false
-    var lastPointerActivity: CFTimeInterval = 0
     var swipeDrive = SwipeDrive()
     var swipeActive = false
     var swipeLocked = false
     var swipeHorizontal = false
     var swipeDx = 0.0
     var swipeDy = 0.0
-    var swipeFingers = 0
+    var swipeFingers: UInt32 = 0
     var gestureDriveMon: Monitor?
     var gestureDriveActive = false
     // mango's static locked_horizontal_node and locked_vertical_node (layout/dwindle.c)
@@ -128,6 +135,7 @@ public final class MangoServer {
         system.startInput()   // not in mango: the port's side
         system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side
 
+        hideCursorSource = system.eventLoop.addTimer { [weak self] in self?.pointerHideCursor() }
         let server = IPCServer(server: self, loop: system.eventLoop)
         do { try server.ipcInit(); ipc = server } catch { wlrLog(.error, "IPC server failed: \(error)") }   // not in mango: ipc_init's failures thrown
         configWatcherInit(system.eventLoop)
@@ -254,15 +262,10 @@ public final class MangoServer {
         }
     }
 
-    func resetKeyboardLayout() {
-        system.setKeyboardOptions(config.xkbRulesOptions)   // not in mango: xkb_keymap_new_from_names, the port's side
-    }
-
     func reapplyCursorStyle() {
-        // not in mango: no xcursor manager, macOS draws the cursor (MangoCompat)
+        // not in mango: no xcursor manager and no new timer, macOS draws the cursor (MangoCompat)
         if !cursorHidden {
-            lastPointerActivity = CACurrentMediaTime()
-            armCursorHideTimer()
+            hideCursorSource?.timerUpdate(Int32(config.cursorHideTimeout * 1000))
         }
     }
 
@@ -338,14 +341,6 @@ public final class MangoServer {
 
     package var focused: Client? { selectedMonitor.sel.flatMap { clientByIdAll($0) } }
 
-
-    // not in mango: a frame's length, for frame_serial (mango 0.18.2's drag_refresh_interval_ms)
-    func dragRefreshIntervalMs(_ m: Monitor?) -> UInt32 {
-        var refreshMhz = m?.screen.refresh ?? 0
-        if refreshMhz <= 0 { refreshMhz = 60000 }
-        let ms = Int32(1000.0 / (Double(refreshMhz) / 1000.0))
-        return ms > 0 ? UInt32(ms) : 1
-    }
 
     /// Not in mango: arrange on every monitor.
     package func arrangeAll(_ wantAnimation: Bool) {
@@ -427,17 +422,6 @@ public final class MangoServer {
 
 
 
-
-    func pointerWarpToClient(_ c: Client) {
-        guard let m = c.mon else { return }
-        // not in mango: in the overview mango's geom is the card; ours is the window under it
-        let g = (m.isoverview ? m.ovCards[c.id] : nil) ?? c.geom
-        if m.m.contains(g) { system.warp(to: g.center) }
-    }
-
-    package func pointerWarpToMonitor(_ m: Monitor) {
-        system.warp(to: m.w.center)
-    }
 
     package func printstatus(_ type: IPCWatchType) {
         publishGlobalKeys()

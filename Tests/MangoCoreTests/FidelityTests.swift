@@ -241,7 +241,7 @@ final class FidelityTests: MangoTestCase {
         r.server.config.gestureBindings = parsed.config.gestureBindings
         XCTAssertEqual(r.server.config.gestureBindings.count, 3)
         let gaps = r.server.enableGaps
-        XCTAssertTrue(r.server.fireGestureMotion(.left, 3))
+        XCTAssertTrue(r.server.fireGestureMotion(SWIPE_LEFT, 3))
         XCTAssertEqual(r.monitor.layout, .monocle)
         XCTAssertNotEqual(r.server.enableGaps, gaps, "alldir fired too")
     }
@@ -287,8 +287,10 @@ final class FidelityTests: MangoTestCase {
         r.server.rebuildMonitors(screens: [r.screen, right])
         let c = r.window(1)
         r.arrange()
-        let g = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
-        r.server.pointerEndGrabClient(g, at: CGPoint(x: 2500, y: 500))
+        r.server.grabClient = c
+        r.server.cursorMode = CurMove
+        r.server.fake.fakePointer = CGPoint(x: 2500, y: 500)
+        r.server.pointerEndGrabClient(true)
         let b = r.server.monitors.first { $0.screen.displayID == 2 }!
         XCTAssertTrue(c.mon === b)
         XCTAssertTrue(r.server.selectedMonitor === b)
@@ -820,7 +822,7 @@ final class FidelityTests: MangoTestCase {
         let f = a.geom ?? a.frame
         r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
         let p = CGPoint(x: side.screen.frame.midX, y: side.screen.frame.midY)
-        r.server.pointerProcessMotion(p, time: 0)
+        r.server.motion(to: p, time: 0)
         r.server.buttonReleased(at: p)
         XCTAssertTrue(a.mon === side)
         XCTAssertTrue(a.isfloating)
@@ -1283,7 +1285,7 @@ final class FidelityTests: MangoTestCase {
         let f = b.geom ?? b.frame
         r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
         let bar = CGPoint(x: a.frame.midX, y: a.frame.minY - CGFloat(r.server.config.groupBarHeight) / 2)
-        guard r.server.groupBarTargetAt(at: bar, except: b) === a else {
+        guard r.server.groupBarTargetAt(bar.x, bar.y, b) === a else {
             return XCTFail("no group bar over a: \(a.frame)")
         }
         r.server.buttonReleased(at: bar)
@@ -1421,9 +1423,10 @@ final class FidelityTests: MangoTestCase {
         let fake = r.server.system as! FakeWindowSystem
         let a = r.map(1)
         XCTAssertTrue(a.confinePointer)
-        XCTAssertEqual(fake.warps.last, CGPoint(x: a.frame.midX, y: a.frame.midY))
-        r.server.handleCursorMotion(CGPoint(x: a.frame.maxX + 50, y: a.frame.midY), time: 1)
-        XCTAssertEqual(fake.warps.last, CGPoint(x: a.frame.maxX - 6, y: a.frame.midY))
+        let box = a.geom
+        XCTAssertEqual(fake.warps.last, CGPoint(x: box.midX, y: box.midY), "pointer_check_confine_client: to the middle of its box")
+        r.server.cursorMotion(to: CGPoint(x: box.maxX + 50, y: box.midY), time: 1)
+        XCTAssertEqual(fake.warps.last, CGPoint(x: box.maxX - a.bw - 6, y: box.midY), "CONFINE_POINTER_MARGIN inside the border")
     }
 
     func testOverviewViewsEveryTagAndLeavesOnTheSelectedWindowsTag() {
@@ -1541,14 +1544,14 @@ final class FidelityTests: MangoTestCase {
     func testOverviewNotWhileGrabbed() {
         let r = EngineRig()
         let c = r.map(1)
-        r.server.grab = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
+        r.server.grabClient = c; r.server.cursorMode = CurMove
         for name in ["toggleoverview", "enteroverview", "togglejump"] { d(r, name) }
         XCTAssertFalse(r.server.anyOverview)
         XCTAssertFalse(r.monitor.isJumpMode, "a mango bug, docs/afvigelser.md §6: no jump mode left on")
-        r.server.grab = nil
+        r.server.grabClient = nil; r.server.cursorMode = CurNormal
         d(r, "toggleoverview")
         XCTAssertTrue(r.server.anyOverview)
-        r.server.grab = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
+        r.server.grabClient = c; r.server.cursorMode = CurMove
         d(r, "leaveoverview")
         XCTAssertTrue(r.server.anyOverview, "leave_overview: nothing while grabbed")
     }
@@ -1648,9 +1651,10 @@ final class FidelityTests: MangoTestCase {
     func testUnmapEndsTheGrab() {
         let r = EngineRig()
         let c = r.map(1)
-        r.server.grab = Grab(client: c, mode: .move, startMouse: .zero, startFrame: c.frame)
+        r.server.grabClient = c; r.server.cursorMode = CurMove
         r.server.handleClientUnmap(c)
-        XCTAssertNil(r.server.grab)
+        XCTAssertNil(r.server.grabClient)
+        XCTAssertEqual(r.server.cursorMode, CurNormal)
     }
 
     func testFocusstackAndFocusidTakeTheTarget() {

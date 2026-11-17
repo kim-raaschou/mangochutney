@@ -147,15 +147,27 @@ enum ShortcutFormatter {
         }
         for b in c.axisBindings {
             let p = mods(held(b.mods, c))
-            rows.append(ShortcutRow(mode: b.mode, keys: (p.isEmpty ? "" : "\(p) + ") + "scroll \(b.direction?.rawValue ?? "alldir")",
+            rows.append(ShortcutRow(mode: b.mode, keys: (p.isEmpty ? "" : "\(p) + ") + "scroll \(directionName(b.dir, all: "alldir"))",
                                     action: action(b.dispatch), dispatch: b.dispatch.name, args: b.dispatch.args))
         }
         for b in c.gestureBindings {
             let p = mods(held(b.mods, c))
-            rows.append(ShortcutRow(mode: b.mode, keys: (p.isEmpty ? "" : "\(p) + ") + "\(b.fingers)-finger swipe \(b.direction?.rawValue ?? "any direction")",
+            rows.append(ShortcutRow(mode: b.mode, keys: (p.isEmpty ? "" : "\(p) + ") + "\(b.fingersCount)-finger swipe \(directionName(b.motion, all: "any direction"))",
                                     action: action(b.dispatch), dispatch: b.dispatch.name, args: b.dispatch.args))
         }
         return rows
+    }
+
+    /// parse_direction's value as its name.
+    static func directionName(_ dir: UInt32, all: String) -> String {
+        switch Int32(bitPattern: dir) {
+        case UP: return "up"
+        case DOWN: return "down"
+        case LEFT: return "left"
+        case RIGHT: return "right"
+        case ALLDIR: return all
+        default: return "undir"
+        }
     }
 }
 

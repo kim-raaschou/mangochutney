@@ -86,7 +86,11 @@ public final class Client {
     public var isleftstack = false
     public var scrollerStackProportion: Float = 0
     public var scrollerOldStackProportion: Float = 0
-    package var dropDirection: DropDirection = .none
+    package var dropDirection: Int32 = UP
+    package var dragToTile = false
+    package var dragTileFloatBackupGeom: CGRect = .zero
+    package var enableDropAreaDraw = false
+    var dropareaEnabled = false   // not in mango: c->droparea's node.enabled (the port draws the area)
     var oldMasterMfactPer: CGFloat = 0
     var oldMasterInnerPer: CGFloat = 0
     var oldStackInnerPer: CGFloat = 0
@@ -197,7 +201,8 @@ public final class Monitor {
     public var w: CGRect      /* window area, layout-relative */
     public var seltags = 0
     public var tagset: [UInt32] = [1, 1]
-    var lastResizeTime: UInt32 = 0   // not in mango: last_resize_frame, as the time of that frame
+    var frameSerial: UInt32 = 1
+    var lastResizeFrame: UInt32 = 0
 
     public var gappih: Int32 /* horizontal gap between windows */
     public var gappiv: Int32 /* vertical gap between windows */

@@ -418,7 +418,7 @@ package extension MangoServer {
      * order and rearranges.
      */
     func overCircle(_ arg: Arg) -> Int32 {
-        guard let m = selectedMonitor, grab == nil else { return 0 }
+        guard let m = selectedMonitor, grabClient == nil else { return 0 }
 
         let sel = arg.tc ?? focused
 
@@ -574,13 +574,13 @@ package extension MangoServer {
     }
 
     func moveResize(_ arg: Arg) -> Int32 {
-        // not in mango: cursor_mode is the port's grab, which pointer_begin_move_resize refuses while one runs
+        if cursorMode != CurNormal && cursorMode != CurPressed {
+            return 0
+        }
+
         let p = system.pointer
         let c = nodeAtPoint(p)   // not in mango: no group bar under the cursor (the port's bars take their own clicks)
-        // not in mango: pointer_begin_move_resize's mode check, with the mode as the port's Grab.Mode
-        if arg.ui == CurMove || arg.ui == CurResize {
-            pointerBeginMoveResize(c, arg.ui == CurMove ? .move : .resize, at: p)
-        }
+        pointerBeginMoveResize(c, arg.ui, p.x, p.y, [])
         return 0
     }
 
@@ -1358,7 +1358,7 @@ package extension MangoServer {
     }
 
     func toggleFloating(_ arg: Arg) -> Int32 {
-        if selectedMonitor == nil || grab != nil { return 0 }
+        if selectedMonitor == nil || grabClient != nil { return 0 }
 
         let sel = arg.tc ?? clientFocusTop(selectedMonitor)
 
@@ -1900,7 +1900,7 @@ package extension MangoServer {
 
     @discardableResult
     func toggleOverview(_ arg: Arg) -> Int32 {
-        guard let m = selectedMonitor, grab == nil else { return 0 }
+        guard let m = selectedMonitor, grabClient == nil else { return 0 }
 
         setOverview(arg, !m.isoverview)
         return 0
@@ -1908,7 +1908,7 @@ package extension MangoServer {
 
     @discardableResult
     func enterOverview(_ arg: Arg) -> Int32 {
-        guard let m = selectedMonitor, grab == nil, !m.isoverview else { return 0 }
+        guard let m = selectedMonitor, grabClient == nil, !m.isoverview else { return 0 }
 
         setOverview(arg, true)
         return 0
@@ -1916,7 +1916,7 @@ package extension MangoServer {
 
     @discardableResult
     func leaveOverview(_ arg: Arg) -> Int32 {
-        guard let m = selectedMonitor, grab == nil, m.isoverview else { return 0 }
+        guard let m = selectedMonitor, grabClient == nil, m.isoverview else { return 0 }
 
         setOverview(arg, false)
         return 0
@@ -1926,7 +1926,7 @@ package extension MangoServer {
     func toggleJump(_ arg: Arg) -> Int32 {
         guard let m = selectedMonitor else { return 0 }
         // not in mango: begin_jump_mode stays on when toggle_overview refuses a grab (a mango bug, docs/afvigelser.md §6)
-        if grab != nil { return 0 }
+        if grabClient != nil { return 0 }
 
         if !m.isoverview {
             beginJumpMode(m)

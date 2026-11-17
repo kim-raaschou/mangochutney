@@ -33,14 +33,18 @@ final class InputDecisionTests: MangoTestCase {
     }
 
     func testHandleCursorAxis() {
-        let ab = AxisBinding(mode: "default", mods: .superKey, direction: .down, dispatch: Dispatch(name: "viewtoright"))
-        func axis(_ d: Direction, now: Double, at: Double, dir: Int) -> (AxisBinding, Bool, Int)? {
-            Pointer.handleCursorAxis(direction: d, mods: .superKey, now: now, applyTime: at, applyDir: dir,
-                                     axisBindings: [ab], mode: "default", timeout: 0.1).map { ($0.binding, $0.fires, $0.dir) }
+        let ab = AxisBinding(mode: "default", mods: .superKey, dir: UInt32(DOWN), dispatch: Dispatch(name: "viewtoright"))
+        func axis(vertical: Bool = true, _ delta: Double, now: UInt32, at: UInt32, dir: Int32) -> (AxisBinding, Bool)? {
+            var applyTime = at, applyDir = dir
+            return Pointer.handleCursorAxis(vertical: vertical, delta: delta, timeMsec: now, mods: .superKey,
+                                            axisBindings: [ab], mode: "default", axisBindApplyTimeout: 100,
+                                            axisApplyTime: &applyTime, axisApplyDir: &applyDir).map { ($0.binding, $0.fires) }
         }
-        XCTAssertEqual(axis(.down, now: 1, at: 0, dir: 0)?.1, true, "older than the timeout")
-        XCTAssertEqual(axis(.down, now: 1.05, at: 1, dir: 1)?.1, false, "within it, the same way")
-        XCTAssertNil(axis(.up, now: 1, at: 0, dir: 0), "no binding for up")
+        XCTAssertEqual(axis(1, now: 1000, at: 0, dir: 0)?.1, true, "older than the timeout")
+        XCTAssertEqual(axis(1, now: 1050, at: 1000, dir: 1)?.1, false, "within it, the same way")
+        XCTAssertEqual(axis(1, now: 1050, at: 1000, dir: -1)?.1, true, "within it, the other way")
+        XCTAssertNil(axis(-1, now: 1000, at: 0, dir: 0), "no binding for up")
+        XCTAssertNil(axis(vertical: false, 1, now: 1000, at: 0, dir: 0), "nor for right")
     }
 
     func key(_ code: UInt16, _ mods: Modifiers = .superKey, down: Bool = true, modifier: Modifiers? = nil) -> KeyInput {
@@ -62,7 +66,7 @@ final class InputDecisionTests: MangoTestCase {
         XCTAssertEqual(release.0, [], "no binding on the release")
         XCTAssertTrue(release.1 && release.2, "but handled and swallowed: its press was (mango handled = 1)")
         XCTAssertEqual(run(key(55, [], down: false, modifier: .superKey), switcher: true, combo: true).0,
-                       [.endTagCombo, .switcherCommit])
+                       [.switcherCommit, .endTagCombo], "mango's order: the switcher, then tag_combo")
     }
 
     func testHandleUnboundKey() {

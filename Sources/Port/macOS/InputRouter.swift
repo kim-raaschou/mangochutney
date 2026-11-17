@@ -13,7 +13,7 @@ final class InputRouter: @unchecked Sendable {
         var bindings: [KeyBinding] = []
         var mouseBindings: [MouseBinding] = []
         var axisBindings: [AxisBinding] = []
-        var axisTimeout: TimeInterval = 0.1
+        var axisBindApplyTimeout: UInt32 = 100
         var overviewFrame: CGRect?
         var jumpMode = false
         var jumpKeys: Set<UInt16> = []
@@ -24,6 +24,8 @@ final class InputRouter: @unchecked Sendable {
         var hyperKey = false
         var wantsMouseMoved = false
         var menuBarTags: [MenuBarTagHit] = []
+        var tabBarFrames: [CGRect] = []
+        var groupBarFrames: [CGRect] = []
         var cursorHideOnKeypress = false
         var hoverResizeCursor: String?
         var globalKeys: [RoutedGlobalKey] = []
@@ -39,15 +41,15 @@ final class InputRouter: @unchecked Sendable {
     var forward: (_ keyCode: UInt16, _ mods: Modifiers, _ down: Bool, _ pid: pid_t) -> Void = {
         KeyForward.post(keyCode: $0, mods: $1, down: $2, to: $3)
     }
-    private var axisApplyTime: CFTimeInterval = 0
-    private var axisApplyDir = 0
+    private var axisApplyTime: UInt32 = 0
+    private var axisApplyDir: Int32 = 0
     private var grabbing = false
     private var pressing = false
     private var menuBarPress = false
     private var pickerPress = false   // Port extension: a click taken by chutney_launch_or_focus's picture
 
-    private var pendingDrag: (point: CGPoint, time: UInt32)?
-    private var pendingMove: (point: CGPoint, speed: CGFloat)?
+    private var pendingDrag: (dx: Double, dy: Double, time: UInt32)?
+    private var pendingMove: (dx: Double, dy: Double, time: UInt32)?
     private(set) var repeatQueued: Set<UInt16> = []
     private var lastMovePoint: CGPoint?
 
@@ -184,6 +186,10 @@ final class InputRouter: @unchecked Sendable {
             pickerPress = false
             return true
         }
+        // node_at_point gives a press on a bar to the bar: its panel takes it (barPress), not the window under it
+        if ev.isDown, (s.tabBarFrames + s.groupBarFrames).contains(where: { $0.contains(p) }) {
+            return false
+        }
         if ev.isDown {
             let decision = Pointer.pointerProcessButtonPress(button: button, at: p, mods: ev.mods, switcherActive: s.switcherActive,
                                                              overviewFrame: s.overviewFrame, mouseBindings: s.mouseBindings,
@@ -217,11 +223,19 @@ final class InputRouter: @unchecked Sendable {
         max(1, UInt32((CACurrentMediaTime() * 1000).truncatingRemainder(dividingBy: Double(UInt32.max))))
     }
 
+    /// The motion's delta, as wlroots' motion event gives it: from the event before (macOS has moved the pointer).
+    private func motionDelta(_ p: CGPoint) -> (dx: Double, dy: Double) {
+        defer { lastMovePoint = p }
+        guard let last = lastMovePoint else { return (0, 0) }
+        return (Double(p.x - last.x), Double(p.y - last.y))
+    }
+
     func dragged(_ p: CGPoint) {
+        let d = motionDelta(p)
         guard grabbing || pressing else { return }
         lock.lock()
         let schedule = pendingDrag == nil
-        pendingDrag = (p, Self.eventTime())
+        pendingDrag = (d.dx, d.dy, Self.eventTime())
         lock.unlock()
         guard schedule else { return }
         DispatchQueue.main.async { [weak self] in
@@ -232,22 +246,21 @@ final class InputRouter: @unchecked Sendable {
             self.lock.unlock()
             MainActor.assumeIsolated {
                 guard let latest, let server = self.server else { return }
-                let mangos = server.grab != nil || server.groupBarDrag != nil
-                server.handleCursorMotion(latest.point, time: latest.time)
+                let mangos = server.cursorMode == CurMove || server.cursorMode == CurResize || server.groupBarDragPending
+                server.handleCursorMotion(latest.time, latest.dx, latest.dy)
                 if !mangos { server.mac.followUserDrag() }
             }
         }
     }
 
     func mouseMoved(_ p: CGPoint) {
-        let speed = lastMovePoint.map { hypot(p.x - $0.x, p.y - $0.y) } ?? 0
-        lastMovePoint = p
+        let d = motionDelta(p)
         let s = snapshot
         if let name = s.hoverResizeCursor { setCursor(name) }
         guard s.wantsMouseMoved else { return }
         lock.lock()
         let schedule = pendingMove == nil
-        pendingMove = (p, speed)
+        pendingMove = (d.dx, d.dy, Self.eventTime())
         lock.unlock()
         guard schedule else { return }
         DispatchQueue.main.async { [weak self] in
@@ -257,27 +270,27 @@ final class InputRouter: @unchecked Sendable {
             self.pendingMove = nil
             self.lock.unlock()
             MainActor.assumeIsolated {
-                if let latest, let server = self.server { server.handleCursorMotion(latest.point, time: Self.eventTime(), speed: latest.speed) }
+                if let latest, let server = self.server { server.handleCursorMotion(latest.time, latest.dx, latest.dy) }
             }
         }
     }
 
     func scroll(_ event: ScrollEvent) -> Bool {
         let s = snapshot
+        // handle_cursor_axis's pointer_cursor_activity: the hidden cursor comes back and its timer restarts
+        if s.wantsMouseMoved { onMain { $0.pointerCursorActivity() } }
         var ev = event
         ev.mods = KeyboardOptions.hyperMods(ev.mods, hyper: s.hyper, keyHeld: hyperHeld)
-        let now = CACurrentMediaTime()
-        guard let axis = Pointer.handleCursorAxis(direction: ev.direction, mods: ev.mods, now: now,
-                                                  applyTime: axisApplyTime, applyDir: axisApplyDir,
-                                                  axisBindings: s.axisBindings, mode: s.keymode,
-                                                  timeout: s.axisTimeout) else { return false }
+        guard let axis = Pointer.handleCursorAxis(vertical: ev.vertical, delta: ev.delta, timeMsec: Self.eventTime(),
+                                                  mods: ev.mods, axisBindings: s.axisBindings, mode: s.keymode,
+                                                  axisBindApplyTimeout: s.axisBindApplyTimeout,
+                                                  axisApplyTime: &axisApplyTime, axisApplyDir: &axisApplyDir)
+        else { return false }
         cancelPendingReleaseBind()
         if axis.fires {
             let d = axis.binding.dispatch
             onMain { _ = $0.dispatch(d) }
         }
-        axisApplyTime = now
-        axisApplyDir = axis.dir
         return true
     }
 }

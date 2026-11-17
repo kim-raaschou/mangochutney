@@ -33,8 +33,10 @@ public struct MouseButtonEvent {
     public var location: CGPoint
 }
 
+/// wlroots' axis event: its orientation and its delta, positive down and right.
 public struct ScrollEvent {
-    public var direction: Direction
+    public var vertical: Bool
+    public var delta: Double
     public var mods: Modifiers
     public var location: CGPoint
 }
@@ -158,10 +160,10 @@ public final class EventTap: @unchecked Sendable {
             guard let onScroll else { return false }
             let dy = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1)
             let dx = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
-            let dir: Direction
-            if abs(dy) >= abs(dx) { dir = dy > 0 ? .up : .down } else { dir = dx > 0 ? .left : .right }
             if dx == 0 && dy == 0 { return false }
-            return onScroll(ScrollEvent(direction: dir, mods: mods, location: loc))
+            // macOS's deltas are positive up and left
+            let vertical = abs(dy) >= abs(dx)
+            return onScroll(ScrollEvent(vertical: vertical, delta: vertical ? -dy : -dx, mods: mods, location: loc))
         default:
             return false
         }
