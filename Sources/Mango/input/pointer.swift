@@ -822,19 +822,15 @@ package extension MangoServer {
             cursorMode = CurPressed
             if let m = monitorAtPoint(p) { setSelectedMonitor(m) }   // not in mango: the pointer is always on a monitor
 
-            if switcherState != nil && (button == 0 || button == 1) {
-                // not in mango: switcher_client_at's lookup (switcher.c)
-                let switcherC = switcherState.flatMap { sw in
-                    sw.layout.tiles.firstIndex { $0.contains(p) }.flatMap { clientByIdAll(sw.tiles[$0]) }
-                }
-                if let switcherC {
-                    if button == 0 {
-                        switcherCommitClient(switcherC)
-                    } else {
-                        pendingKillClient(switcherC)
-                    }
-                } else {
+            if switcherIsActive() && (button == 0 || button == 1) {
+                let switcherC =
+                    switcherClientAt(p.x, p.y)
+                if switcherC == nil {
                     switcherClose()
+                } else if button == 0 {
+                    switcherCommitClient(switcherC!)
+                } else {
+                    pendingKillClient(switcherC!)
                 }
                 system.seatPointerClearFocus()
                 return true

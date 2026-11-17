@@ -75,6 +75,13 @@ extension MacWindowSystem {
             park(c)
             changed = changed || c.parked != parked
         }
+        // A disabled scene the port could not park when it was disabled (macOS had the window in
+        // fullscreen, or an F tag was viewed) is parked at the first frame that can.
+        for c in server.clientsAll where !c.parked && (!c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled)
+            && !c.leftToMacOS && !fullscreenTagViewed(c) && !ids.contains(c.id) {
+            park(c)
+            changed = changed || c.parked
+        }
         // the borders follow the windows as they are now shown, not as the frame left them before
         if changed { server.updateBorders() }
     }

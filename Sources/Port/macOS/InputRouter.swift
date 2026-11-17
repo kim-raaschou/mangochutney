@@ -134,6 +134,11 @@ final class InputRouter: @unchecked Sendable {
             main.append(a)
         }
         guard !main.isEmpty else { return }
+        if wlrLogGetVerbosity() == .debug {
+            for case .binding(let b, let held) in main {
+                wlrLog(.debug, "key: \(b.dispatch.name) \(b.dispatch.args.joined(separator: ","))\(held ? " (held)" : "")")
+            }
+        }
         let repeatKey = ev.isRepeat ? ev.keyCode : nil
         if let k = repeatKey {
             lock.lock()

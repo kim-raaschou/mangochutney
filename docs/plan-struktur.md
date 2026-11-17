@@ -173,6 +173,12 @@ HYPER,F1–F12 i `~/.config/mango/config.conf` om (backup og diff af hele filen 
   `pointer_focus` (fokus kun med en tid og ved indgang i en ny flade), `pointer_process_motion(0)`
   dér, hvor mango kalder den, og swipe drive med `SWIPE_*`. `Direction` er væk. Tastaturet matcher
   på portens taster (ingen keysym-tabel, efter aftale).
+- Trin 8 (17. november): `overview/overview.swift` (overview.c), `Layout/layout-overview.swift`
+  (layout/overview.c), `switcher/switcher.swift` (switcher.c) og `draw/title_message_bar.swift` står i
+  mangos rækkefølge; `text-node.c` og `dim-node.c` er portens tegning (kun config-fletningen er i
+  kernen). Kortene og switcherens felter er stadig portens billeder, gemt via `client_tile_resize`;
+  logikken omkring dem er mangos. `arrange` kører mangos trin også i overview, et vindue uden kort fra
+  layoutet får sit kort, hvor det står, og kortet gør klienten synlig som mangos `ov_card_tree`.
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter

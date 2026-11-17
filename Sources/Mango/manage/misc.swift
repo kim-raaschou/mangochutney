@@ -11,7 +11,9 @@ package extension MangoServer {
         let mon = m ?? monitorAtPoint(p)
         guard let mon else { return nil }
         if mon.isoverview {
-            return mon.ovCards.first { $0.value.contains(p) }.flatMap { clientByIdAll($0.key) }
+            // not in mango: a card where it stands (a floating client's) lies over the grid
+            let hits = mon.ovCards.filter { $0.value.contains(p) }.compactMap { clientByIdAll($0.key) }
+            return hits.first { $0.isfloating } ?? hits.first
         }
         let vis = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon)).filter { !$0.parked }
         if let f = vis.first(where: { ($0.isfloating || SCRATCHPAD_SHOWN($0)) && clientGeom($0).contains(p) }) { return f }

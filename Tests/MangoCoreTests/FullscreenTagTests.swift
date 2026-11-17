@@ -84,6 +84,124 @@ final class FullscreenTagTests: MangoTestCase {
         XCTAssertNil(home(r, 2))
     }
 
+    /// As macOS does it: the window fills the screen in fullscreen and comes out where macOS puts it.
+    func macOSFullscreen(_ r: EngineRig, _ id: ClientID, _ on: Bool, outAt: CGRect = CGRect(x: 300, y: 200, width: 700, height: 500)) {
+        let f = on ? r.monitor.screen.frame : outAt
+        r.app.frames[id] = f
+        r.server.mac.windowGeometryChanged(id: id, frame: f, resized: true, isfullscreen: on)
+        r.settle(1)
+    }
+
+    func testOutOfMacOSFullscreenItFallsIntoItsTile() {
+        let r = rig()
+        let tile = r.server.clientByIdAll(2)!.geom.insetBy(dx: r.server.clientByIdAll(2)!.bw, dy: r.server.clientByIdAll(2)!.bw)
+        macOSFullscreen(r, 2, true)
+        r.server.mac.spaceChanged()
+        r.settle(1)
+        macOSFullscreen(r, 2, false)
+        r.server.mac.spaceChanged()
+        r.settle(1)
+        XCTAssertEqual(r.app.frames[2], tile, "back on its tile")
+    }
+
+    func testOutOfMacOSFullscreenOnATagNotViewedItIsParked() {
+        let r = rig()
+        macOSFullscreen(r, 2, true)
+        r.server.mac.spaceChanged()
+        r.settle(1)
+        r.server.clientViewOnMonitor(Arg(ui: 1 << 3), true, r.monitor, true)
+        r.settle(1)
+        macOSFullscreen(r, 2, false)
+        r.server.mac.spaceChanged()
+        r.settle(1)
+        XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame), "hidden on a tag not viewed: \(r.app.frames[2]!)")
+    }
+
+    func testParkedBeforeMacOSFullscreenIsParkedAgainAfter() {
+        let r = rig()
+        r.server.clientViewOnMonitor(Arg(ui: 1 << 3), true, r.monitor, true)
+        r.settle(1)
+        XCTAssertTrue(r.server.clientByIdAll(2)!.parked, "on a tag not viewed")
+        macOSFullscreen(r, 2, true)
+        r.server.mac.spaceChanged()
+        r.settle(1)
+        r.server.clientViewOnMonitor(Arg(ui: 1 << 3), true, r.monitor, true)
+        r.settle(1)
+        macOSFullscreen(r, 2, false, outAt: CGRect(x: 20, y: 50, width: 1600, height: 1000))
+        r.app.frames[2] = CGRect(x: 20, y: 50, width: 1600, height: 1000)   // macOS puts it back when its Space change ends
+        r.server.mac.spaceChanged()
+        r.settle(1)
+        XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame), "parked again: \(r.app.frames[2]!)")
+    }
+
+    /// macOS may be done with the Space change before the window says it is out of fullscreen, and then
+    /// moves it back to where it stood: seen in view, it is parked again.
+    func testOutOfMacOSFullscreenAfterItsSpaceChangeIsParkedWhereMacOSPutsIt() {
+        let r = rig()
+        macOSFullscreen(r, 2, true)
+        r.server.mac.spaceChanged()
+        r.settle(1)
+        r.server.clientViewOnMonitor(Arg(ui: 1 << 3), true, r.monitor, true)
+        r.settle(1)
+        fake(r).onScreen = { $0 != 2 }   // macOS shows the desktop's Space
+        r.server.mac.spaceChanged()
+        r.settle(0.1)
+        XCTAssertEqual(viewed(r), 1 << 3)
+        macOSFullscreen(r, 2, false)
+        XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame), "parked as it comes out: \(r.app.frames[2]!)")
+        let back = CGRect(x: 20, y: 50, width: 1600, height: 1000)
+        r.app.frames[2] = back   // macOS puts it back where it stood before fullscreen
+        r.server.mac.windowGeometryChanged(id: 2, frame: back, resized: false, isfullscreen: nil)
+        r.settle(1)
+        XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame), "parked again: \(r.app.frames[2]!)")
+    }
+
+    /// macOS drops what it is told while it moves a window between Spaces: told to go out as it went in,
+    /// the window stays in macOS fullscreen. Once the Space change is done mango's fullscreen is macOS's
+    /// again, and the key takes it out.
+    func testToldToGoOutWhileMacOSTookItInIsToldAgainByTheKey() {
+        let r = rig()
+        let c = r.server.clientByIdAll(2)!
+        func toggle() { XCTAssertNil(r.server.dispatch(Dispatch(name: "chutney_toggle_fullscreen", args: ["1"]))) }
+        r.server.clientFocus(c, true)
+        toggle()
+        macOSFullscreen(r, 2, true)
+        toggle()   // macOS is on its way in: it drops this
+        XCTAssertEqual(fake(r).fullscreenWrites.map(\.1), [true, false])
+        r.server.mac.spaceChanged()
+        r.server.mac.windowFullscreen(id: 2, fullscreen: true)
+        r.settle(1)
+        XCTAssertEqual(c.tags, f1, "still on its F tag: macOS has it in fullscreen")
+        toggle()
+        XCTAssertEqual(fake(r).fullscreenWrites.map(\.1), [true, false, false], "the key tells it again")
+        macOSFullscreen(r, 2, false)
+        XCTAssertEqual(c.tags, 1)
+        XCTAssertFalse(c.isfullscreen)
+        XCTAssertFalse(c.fullscreenPending)
+    }
+
+    /// Told to go out, and macOS takes it out after its Space change: out, as macOS has it.
+    func testToldToGoOutAndTakenOutAfterTheSpaceChange() {
+        let r = rig()
+        let c = r.server.clientByIdAll(2)!
+        r.server.clientFocus(c, true)
+        _ = r.server.dispatch(Dispatch(name: "chutney_toggle_fullscreen", args: ["1"]))
+        macOSFullscreen(r, 2, true)
+        _ = r.server.dispatch(Dispatch(name: "chutney_toggle_fullscreen", args: ["1"]))
+        r.server.mac.spaceChanged()
+        r.server.mac.windowFullscreen(id: 2, fullscreen: true)   // macOS still on its way out
+        r.settle(1)
+        XCTAssertFalse(c.isfullscreen, "not judged while macOS may still be on its way out")
+        macOSFullscreen(r, 2, false)
+        r.server.mac.spaceChanged()
+        r.settle(1)
+        XCTAssertEqual(c.tags, 1)
+        XCTAssertFalse(c.isfullscreen)
+        XCTAssertFalse(c.scheduledFullscreen)
+        XCTAssertNil(home(r, 2))
+        XCTAssertEqual(fake(r).fullscreenWrites.map(\.1), [true, false], "macOS is not told again")
+    }
+
     func testOutOfFullscreenWhileAnotherTagIsViewedTheViewStays() {
         let r = rig()
         fullscreen(r, 2, true)
@@ -233,6 +351,20 @@ final class FullscreenTagTests: MangoTestCase {
         discover(r, 9)
         XCTAssertEqual(r.server.clientByIdAll(9)?.tags, 1, "F1 is its window's alone")
         XCTAssertEqual(r.server.clientByIdAll(2)?.tags, f1)
+    }
+
+    func testAWindowOpenedOnAnotherTagMeanwhileIsParkedBackOnTheDesktop() {
+        let r = rig()
+        fullscreen(r, 2, true)
+        XCTAssertEqual(viewed(r), f1)
+        discover(r, 9)
+        let c = r.server.clientByIdAll(9)!
+        c.tags = 1 << 2   // a rule's tag, not the one the desktop views
+        r.server.arrange(r.monitor, false, false)
+        r.settle(1)
+        FullscreenTag.viewDesktop(r.server, r.monitor)
+        r.settle(1)
+        XCTAssertTrue(Hider.isParked(r.app.frames[9]!, in: r.screen.frame), "parked once the desktop is viewed: \(r.app.frames[9]!)")
     }
 
     // MARK: leaving mango

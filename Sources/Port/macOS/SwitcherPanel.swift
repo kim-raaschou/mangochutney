@@ -22,7 +22,8 @@ final class SwitcherPanel {
         }
     }
 
-    static let mangoPanelColor = CGColor(red: 0.09, green: 0.09, blue: 0.11, alpha: 0.92)
+    static let mangoPanelColor = CGColor(red: CGFloat(switcherPanelColor[0]), green: CGFloat(switcherPanelColor[1]),
+                                         blue: CGFloat(switcherPanelColor[2]), alpha: CGFloat(switcherPanelColor[3]))
 
     private let window: NSWindow
     private let origin: CGPoint
@@ -53,7 +54,7 @@ final class SwitcherPanel {
             window.contentView = root
         }
 
-        let pad = CGFloat(SwitcherLayout.pad)
+        let pad = CGFloat(SW_PAD)
         let pictures = style.macOS ? Self.pictureFrames(tiles)
                                    : Dictionary(uniqueKeysWithValues: tiles.map { ($0.id, $0.frame.insetBy(dx: pad, dy: pad)) })
         for t in tiles { root.layer?.addSublayer(makeTile(t, picture: pictures[t.id] ?? t.frame)) }
@@ -68,7 +69,7 @@ final class SwitcherPanel {
     }
 
     static func pictureFrames(_ tiles: [Tile]) -> [ClientID: CGRect] {
-        let pad = CGFloat(SwitcherLayout.pad)
+        let pad = CGFloat(SW_PAD)
         let largest = tiles.map { $0.size.width * $0.size.height }.max() ?? 0
         var out: [ClientID: CGRect] = [:]
         for t in tiles {

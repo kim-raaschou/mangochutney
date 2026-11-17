@@ -318,8 +318,18 @@ extension MacWindowSystem: AppWatcherDelegate {
     /// The window's frame read again and its monitor's layout written.
     func placeAgain(_ id: ClientID) {
         guard let c = server.clientByIdAll(id), let m = c.mon else { return }
-        if let real = windowServerFrame(c.id) { c.frame = real }
+        if let real = windowServerFrame(c.id) {
+            c.frame = real
+            // macOS put it back where it stood before fullscreen: a window it shows is not parked
+            if c.parked && !Hider.isParked(real, in: m.screen.frame) {
+                c.parked = false
+                c.parkRetries = 0
+            }
+        }
         server.arrange(m, false, false)
+        // A window out of view was not parked while macOS had it in fullscreen; mango's scene is
+        // unchanged, so it is parked now.
+        showOrPark(c)
     }
 
     func moved(_ c: Client, to actual: CGRect, resized: Bool) {

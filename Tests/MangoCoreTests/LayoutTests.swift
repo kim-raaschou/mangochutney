@@ -374,7 +374,8 @@ final class LayoutTests: MangoTestCase {
             (3, CGSize(width: 1200, height: 1000)), (4, CGSize(width: 400, height: 800)),
             (5, CGSize(width: 1000, height: 700)),
         ]
-        let frames = OverviewLayout.overviewScale(clients: sizes, workArea: work, gapInner: 5, gapOuter: 30)
+        let runner = OverviewRunner()
+        let frames = runner.cards(sizes, workArea: work, gapInner: 5, gapOuter: 30)
         XCTAssertEqual(frames.count, 5)
         let inner = work.insetBy(dx: 30, dy: 30)
         let list = sizes.map { frames[$0.id]! }
@@ -385,8 +386,8 @@ final class LayoutTests: MangoTestCase {
             XCTAssertLessThanOrEqual(f.width, s.width)
             for g in list[(i + 1)...] { XCTAssertEqual(f.overlapArea(g), 0) }
         }
-        let one = OverviewLayout.overviewScale(clients: [(9, CGSize(width: 400, height: 300))], workArea: work,
-                                      gapInner: 5, gapOuter: 30)
+        let one = OverviewRunner().cards([(9, CGSize(width: 400, height: 300))], workArea: work,
+                                         gapInner: 5, gapOuter: 30)
         XCTAssertEqual(one[9]!.size, CGSize(width: 400, height: 300))
         XCTAssertEqual(one[9]!.midX, work.midX, accuracy: 1)
         XCTAssertEqual(one[9]!.midY, work.midY, accuracy: 1)
@@ -416,6 +417,7 @@ final class LayoutTests: MangoTestCase {
     func testRandomInputsNeverTrapOrDropClients() {
         var rng = SystemRandomNumberGenerator()
         var runners = LayoutKind.allCases.map { LayoutRunner($0) }
+        let overviewRunner = OverviewRunner()
         for iter in 0..<300 {
             let n = Int.random(in: 0...10, using: &rng)
             let area = CGRect(x: CGFloat(Int.random(in: -2000...2000, using: &rng)), y: CGFloat(Int.random(in: -500...500, using: &rng)),
@@ -447,7 +449,7 @@ final class LayoutTests: MangoTestCase {
                 for c in clients { XCTAssertNotNil(r.frames[c.id], "\(kind.name) n=\(n) lost client \(c.id)") }
             }
             if iter % 5 == 0 { runners = LayoutKind.allCases.map { LayoutRunner($0) } }
-            let cards = OverviewLayout.overviewScale(clients: ids.map { ($0, CGSize(width: Double.random(in: 0...1500, using: &rng), height: Double.random(in: 0...1500, using: &rng))) },
+            let cards = overviewRunner.cards(ids.map { ($0, CGSize(width: Double.random(in: 0...1500, using: &rng), height: Double.random(in: 0...1500, using: &rng))) },
                                             workArea: area, gapInner: CGFloat(Int.random(in: 0...100, using: &rng)), gapOuter: CGFloat(Int.random(in: 0...200, using: &rng)))
             XCTAssertTrue(cards.count == n || cards.isEmpty, "mango: all placed, or none when no scale fits")
         }

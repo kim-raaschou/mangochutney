@@ -1,18 +1,21 @@
 import Foundation
 import CoreGraphics
+import Mango
 
-public enum SwitcherLayout {
-    package static let pad = 6, gap = 14, margin = 28
-    static let panelFrac: Float = 0.8, tileFrac: Float = 0.25
-    static let aspectMin: Float = 9.0 / 16.0, aspectMax: Float = 12.0 / 5.0
+/// Port extension: not in mango. chutney_launch_or_focus's panel of given windows, laid out as mango's
+/// switcher_open (the tile height), switcher_tile_create (the tile widths) and switcher_layout.
+enum SwitcherPanelLayout {
+    static let pad = Int(SW_PAD), gap = Int(SW_GAP), margin = Int(SW_MARGIN)
+    static let panelFrac = SW_PANEL_FRAC, tileFrac = SW_TILE_FRAC
+    static let aspectMin = SW_ASPECT_MIN, aspectMax = SW_ASPECT_MAX
 
-    public struct Result: Equatable, Sendable {
-        public var panel: CGRect
-        public var tiles: [CGRect]
-        public var tileHeight: Int
+    struct Result: Equatable {
+        var panel: CGRect
+        var tiles: [CGRect]
+        var tileHeight: Int
     }
 
-    public static func switcherLayout(sizes: [CGSize], monitor: CGRect) -> Result {
+    static func switcherLayout(sizes: [CGSize], monitor: CGRect) -> Result {
         let n = sizes.count
         let monW = Int(monitor.width), monH = Int(monitor.height)
         guard n > 0 else { return Result(panel: .zero, tiles: [], tileHeight: 0) }

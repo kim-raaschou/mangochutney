@@ -88,10 +88,10 @@ final class LaunchOrFocusPicker {
         }
     }
 
-    private func tiles(_ server: MangoServer) -> (layout: SwitcherLayout.Result, tiles: [SwitcherPanel.Tile]) {
+    private func tiles(_ server: MangoServer) -> (layout: SwitcherPanelLayout.Result, tiles: [SwitcherPanel.Tile]) {
         let clients = windows.compactMap { server.clientByIdAll($0) }
         let monitor = server.selectedMonitor.screen.frame
-        let layout = SwitcherLayout.switcherLayout(sizes: clients.map(\.frame.size), monitor: monitor)
+        let layout = SwitcherPanelLayout.switcherLayout(sizes: clients.map(\.frame.size), monitor: monitor)
         let tiles = clients.enumerated().map { i, c in
             SwitcherPanel.Tile(id: c.id, frame: layout.tiles[i], size: c.frame.size, pid: c.pid, highlighted: c.id == highlighted)
         }

@@ -1848,7 +1848,13 @@ package extension MangoServer {
         }
 
         if enter {
-            // not in mango: no pointer focus to clear; the cursor is macOS'
+            system.seatPointerClearFocus()
+
+            if cursorHidden {
+                pointerCursorActivity()
+            } else {
+                system.setCursor("default")
+            }
 
             for c in clients where c.mon === m {
                 // not in mango: every Client is a mapped window
@@ -1874,7 +1880,7 @@ package extension MangoServer {
             m.tagset[m.seltags] = target
             overviewCardsClose(m)   // not in mango: the port's pictures, overview_destroy_card
             for c in clients where c.mon === m && !c.iskilling && !c.isunglobal && !c.isminimized && c.tags & TAG0_MASK == 0 {
-                overviewRestore(c, target)
+                overviewRestore(c, Arg(ui: target))
             }
         }
 

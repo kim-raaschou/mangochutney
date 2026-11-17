@@ -125,6 +125,7 @@ public final class Client {
     public var overviewIsfloatingbak = false
     public var overviewIsfullscreenbak = false
     public var overviewIsmaximizescreenbak = false
+    public var isRestoringFromOv = false
     public var jumpChar: Character?
     public var jumpKeycodes = MultiKeycode()
     package var jumpLabelNode: MangoJumpLabel?

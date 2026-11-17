@@ -155,6 +155,7 @@ enum FullscreenTag {
         c.scheduledFullscreen = fullscreen
         c.fullscreenPending = true
         server.mac.forgetPlacement(c)
+        wlrLog(.debug, "chutney_fullscreen_tag: \(c.appName) window \(c.id) is told to go \(fullscreen ? "into" : "out of") macOS fullscreen")
         server.mac.setNativeFullscreen(c, fullscreen) { took in
             guard !took, c.scheduledFullscreen == fullscreen, server.clientByIdAll(c.id) === c else { return }
             wlrLog(.info, "chutney_fullscreen_tag: \(c.appName) window \(c.id) cannot go \(fullscreen ? "into" : "out of") macOS fullscreen")
@@ -164,9 +165,12 @@ enum FullscreenTag {
         }
     }
 
-    /// After a Space change macOS has the window out of fullscreen, though it was told to go in (or in and
-    /// out): it never went, or was taken out on the way. Out of mango's fullscreen too, back in its place.
+    /// After a Space change macOS has the window out of fullscreen, though it was told to go in: it never
+    /// went (macOS drops what it is told while it moves a window between Spaces), or was taken out on the
+    /// way. Out of mango's fullscreen too, back in its place. A window told to go out is not judged here:
+    /// macOS may still be on its way out after the Space change.
     static func notTaken(_ server: MangoServer, _ c: Client) {
+        wlrLog(.info, "chutney_fullscreen_tag: \(c.appName) window \(c.id) was not taken into macOS fullscreen")
         server.mac.fullscreenTag.wanted[c.id] = nil
         c.scheduledFullscreen = false
         c.fullscreenPending = false
@@ -216,8 +220,14 @@ enum FullscreenTag {
                 return (c, home.bit)
             }
             if let (_, bit) = shown.first(where: { $0.0 === server.focused }) ?? shown.first {
-                if m.tagset[m.seltags] & bit == 0 { view(server, m, bit) }
+                if m.tagset[m.seltags] & bit == 0 {
+                    wlrLog(.debug, "chutney_fullscreen_tag: the Space changed with \(name(bit, server.config))'s window on screen: its tag is viewed")
+                    view(server, m, bit)
+                }
             } else {
+                if isFullscreenView(m, server.config), !m.isoverview {
+                    wlrLog(.debug, "chutney_fullscreen_tag: the Space changed with no window in fullscreen on screen: the desktop's view")
+                }
                 viewDesktop(server, m)
             }
         }
@@ -345,7 +355,14 @@ enum FullscreenTag {
         guard let c = server.focused, let m = c.mon else { return viewDispatch(server, arg) }
         if let w = window(server, on: m, bit) {
             if w === c {
-                if c.isfullscreen { _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false) }
+                if c.isfullscreen {
+                    _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false)
+                } else if c.nativeFullscreen {
+                    // Told to go out before, and macOS still has it in fullscreen (it drops what it is told
+                    // while it moves a window between Spaces): it is told again.
+                    c.scheduledFullscreen = true
+                    notify(server, c, false)
+                }
             } else {
                 view(server, m, bit)
             }

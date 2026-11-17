@@ -24,7 +24,8 @@ final class TitleMessageBarTests: MangoTestCase {
         let r = rig()
         run(r, "switcher", "next")
         let bar = try XCTUnwrap(bar(r))
-        let panel = r.server.switcherState!.layout.panel
+        let st = r.server.switcherState
+        let panel = CGRect(x: Int(st.panelX), y: Int(st.panelY), width: Int(st.panelW), height: Int(st.panelH))
         XCTAssertTrue(bar.enabled)
         XCTAssertEqual(bar.lastText, "t900200\ntest", "title, then appid")
         XCTAssertEqual(bar.lastScale, 2)

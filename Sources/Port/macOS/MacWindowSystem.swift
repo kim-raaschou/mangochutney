@@ -327,21 +327,21 @@ class MacWindowSystem: WindowSystem {
         .init(id: c.id, frame: c.frame, title: c.title, pid: c.pid, focused: c.focused)
     }
 
-    func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat) {
+    func showSwitcher(panel: CGRect, tiles: [SwitcherTilePicture], look: SwitcherLook, scale: CGFloat) {
         switcherPanel?.close()
         switcherPanel = SwitcherPanel(panel: panel, tiles: tiles.map(Self.tile),
                                       style: .init(focus: look.focus, border: look.border, macOS: server.config.chutneyMacOSAppearance),
                                       scale: scale)
     }
 
-    func switcherApplyHighlight(_ tiles: [SwitcherTile]) { switcherPanel?.highlight(tiles.map(Self.tile)) }
+    func switcherApplyHighlight(_ tiles: [SwitcherTilePicture]) { switcherPanel?.highlight(tiles.map(Self.tile)) }
 
     func closeSwitcherPanel() {
         switcherPanel?.close()
         switcherPanel = nil
     }
 
-    static func tile(_ t: SwitcherTile) -> SwitcherPanel.Tile {
+    static func tile(_ t: SwitcherTilePicture) -> SwitcherPanel.Tile {
         .init(id: t.id, frame: t.frame, size: t.size, pid: t.pid, highlighted: t.highlighted)
     }
 
@@ -564,8 +564,13 @@ class MacWindowSystem: WindowSystem {
         let layoutChanged: @Sendable (Notification) -> Void = { [weak server] _ in
             MainActor.assumeIsolated { server?.printstatus(.kbLayout) }
         }
+        // Behind a locked screen Accessibility gives no windows: they are read again once it is unlocked.
+        let unlocked: @Sendable (Notification) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated { self?.watcher.refreshAll(recheckRejected: true) }
+        }
         observers = [
             dnc.addObserver(forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: .main, using: close),
+            dnc.addObserver(forName: Notification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main, using: unlocked),
             ws.addObserver(forName: NSWorkspace.sessionDidResignActiveNotification, object: nil, queue: .main, using: close),
             dnc.addObserver(forName: Notification.Name("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged"),
                             object: nil, queue: .main, using: layoutChanged),

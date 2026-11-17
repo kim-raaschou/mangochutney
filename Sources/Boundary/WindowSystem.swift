@@ -33,8 +33,8 @@ package protocol WindowSystem: AnyObject {
     func updateOverview(_ cards: [OverviewCard], on m: Monitor)
     func captureOverviewCards(on m: Monitor, scale: CGFloat)
     func closeOverview(on m: Monitor)
-    func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat)
-    func switcherApplyHighlight(_ tiles: [SwitcherTile])
+    func showSwitcher(panel: CGRect, tiles: [SwitcherTilePicture], look: SwitcherLook, scale: CGFloat)
+    func switcherApplyHighlight(_ tiles: [SwitcherTilePicture])
     func closeSwitcherPanel()
     /// mango_bar_decoration_create for the title message bar: its type and its layer
     /// (LyrSpecialOverlay, ignoring hits) are the port's.

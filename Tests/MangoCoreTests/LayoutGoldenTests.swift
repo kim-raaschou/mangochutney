@@ -603,11 +603,13 @@ final class LayoutGoldenTests: MangoTestCase {
     OT m2 n8 r1 f5 | 513,779 1016,423 591,485 1433,681 1537,859 1168,629 219,674 451,908 | 2012,1052,199,302 2012,1355,199,82 71,819,754,619 71,460,754,358 71,38,754,421 896,531,768,413 2012,38,199,613 2012,651,199,401
     """
 
+    @MainActor
     func testOverviewMatchesC() {
         let mons: [(x: Int, y: Int, w: Int, h: Int, gi: Int, go: Int)] =
             [(0, 25, 1920, 1080, 5, 30), (-1920, 0, 1437, 899, 10, 20), (0, 38, 2560, 1400, 0, 0)]
         let ratios: [Float] = [0.5, 0.3, 0.7]
         var checked = 0
+        let runner = OverviewRunner()
         for line in Self.overview.split(separator: "\n") {
             let parts = line.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
             let head = parts[0].split(separator: " ").map(String.init)
@@ -621,11 +623,11 @@ final class LayoutGoldenTests: MangoTestCase {
             let clients = sizes.enumerated().map { (id: ClientID($0 + 1), size: $1) }
             let r: [ClientID: CGRect]
             if head[0] == "OT" {
-                r = OverviewLayout.overviewScaleTab(clients: clients, focused: ClientID(Int(head[4].dropFirst())! + 1), workArea: area,
-                                          gapInner: CGFloat(m.gi), gapOuter: CGFloat(m.go),
-                                          centerRatio: CGFloat(ratios[Int(head[3].dropFirst())! % 3]))
+                r = runner.cards(clients, workArea: area, gapInner: CGFloat(m.gi), gapOuter: CGFloat(m.go), tab: true,
+                                 focused: ClientID(Int(head[4].dropFirst())! + 1),
+                                 centerRatio: CGFloat(ratios[Int(head[3].dropFirst())! % 3]))
             } else {
-                r = OverviewLayout.overviewScale(clients: clients, workArea: area, gapInner: CGFloat(m.gi), gapOuter: CGFloat(m.go))
+                r = runner.cards(clients, workArea: area, gapInner: CGFloat(m.gi), gapOuter: CGFloat(m.go))
             }
             for (i, c) in clients.enumerated() {
                 XCTAssertEqual(r[c.id], expected[i], "\(parts[0]) client \(c.id)")

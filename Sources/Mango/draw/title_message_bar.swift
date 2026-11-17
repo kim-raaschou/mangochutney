@@ -7,8 +7,8 @@ package extension MangoServer {
         "\(c.title)\n\(c.appid)"
     }
 
-    private func titleMessageBarInit(_ m: Monitor) {
-        if m.titleMessageBar != nil { return }
+    private func titleMessageBarInit(_ m: Monitor?) {
+        guard let m, m.titleMessageBar == nil else { return }
 
         // not in mango: the port's side (mango_bar_decoration_create)
         m.titleMessageBar = system.mangoBarDecorationCreate(
@@ -44,27 +44,27 @@ package extension MangoServer {
         return overcircleTitleBarGeometry(m, useAnimation)
     }
 
-    func titleMessageBarFinish(_ m: Monitor) {
-        guard let bar = m.titleMessageBar else { return }
+    func titleMessageBarFinish(_ m: Monitor?) {
+        guard let m, let bar = m.titleMessageBar else { return }
 
         bar.destroy()
         m.titleMessageBar = nil
     }
 
-    func titleMessageBarApplyConfig(_ m: Monitor) {
-        guard let bar = m.titleMessageBar else { return }
+    func titleMessageBarApplyConfig(_ m: Monitor?) {
+        guard let m, let bar = m.titleMessageBar else { return }
 
         bar.applyConfig(mangoBarDecorationApplyConfig(config.titleMessageBardata, mango: .mangoTitleMessageBar))
         bar.setFocus(true)
     }
 
-    func titleMessageBarHide(_ m: Monitor) {
-        guard let bar = m.titleMessageBar else { return }
+    func titleMessageBarHide(_ m: Monitor?) {
+        guard let m, let bar = m.titleMessageBar else { return }
         if bar.enabled { bar.setEnabled(false) }
     }
 
-    func titleMessageBarUpdateTitle(_ c: Client) {
-        guard let m = c.mon, let bar = m.titleMessageBar else { return }
+    func titleMessageBarUpdateTitle(_ c: Client?) {
+        guard let c, let m = c.mon, let bar = m.titleMessageBar else { return }
         if !bar.enabled { return }
 
         if let target = portHooks.titleMessageBarGeometry?(self, m)?.client ?? switcherTitleMessageBarGeometry(m)?.client {   // Port extension: chutney_launch_or_focus
@@ -78,7 +78,9 @@ package extension MangoServer {
         titleMessageBarSetText(bar, c, m.screen.scale)
     }
 
-    private func titleMessageBarRefresh(_ m: Monitor, _ useAnimation: Bool) {
+    private func titleMessageBarRefresh(_ m: Monitor?, _ useAnimation: Bool) {
+        guard let m else { return }
+
         guard let (c, box) = titleMessageBarGeometry(m, useAnimation), box.width > 0, box.height > 0 else {
             titleMessageBarHide(m)
             return
@@ -97,11 +99,11 @@ package extension MangoServer {
         if !wasEnabled { bar.raiseToTop() }
     }
 
-    func titleMessageBarUpdate(_ m: Monitor) {
+    func titleMessageBarUpdate(_ m: Monitor?) {
         titleMessageBarRefresh(m, false)
     }
 
-    func titleMessageBarUpdateGeometry(_ m: Monitor) {
+    func titleMessageBarUpdateGeometry(_ m: Monitor?) {
         titleMessageBarRefresh(m, true)
     }
 }

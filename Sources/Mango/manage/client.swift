@@ -604,6 +604,11 @@ package extension MangoServer {
         clientInsertTilingOrder(c)
         focusStack.insert(c.id, at: 0)
         clientSetRules(c)
+
+        if let cm = c.mon, cm.isoverview {
+            overviewBackupSurface(c)
+        }
+
         // not in mango: arrange, not resize, until a floating client's geom is its float_geom (docs/afvigelser.md, arrange)
         if let cm = c.mon { arrange(cm, false, false) }
         printstatus(.arrangge)
@@ -614,6 +619,7 @@ package extension MangoServer {
         guard clientByIdAll(id) === c else { return }
         c.iskilling = true
         if c.tabPrev != nil || c.tabNext != nil { tabDetachClient(c) }
+        switcherRemoveClient(c)
         let targetNode = c.mon.flatMap { findScrollerNode($0.pertag.scrollerState[getClientTagIdx(c)], c) }
         let stackPrev = targetNode?.prevInStack?.client
         let stackNext = targetNode?.nextInStack?.client
@@ -642,7 +648,6 @@ package extension MangoServer {
         clients.removeAll { $0 === c }
         portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
         focusStack.removeAll { $0 == id }
-        switcherRemoveClient(id)
         if c === grabClient {
             cursorMode = CurNormal
             grabClient = nil
@@ -690,7 +695,7 @@ package extension MangoServer {
     }
 
     package func handleClientDestroy(_ c: Client) {
-        switcherRemoveClient(c.id)
+        switcherRemoveClient(c)
         pointerClientDestroyed(c)
     }
 
@@ -1434,7 +1439,12 @@ package extension MangoServer {
         tabReplaceClient(w, c)
 
         clientUnpark(c, w)
-        // not in mango: the group bar's focus, overview cards and foreign toplevel are the port's side
+        // not in mango: the group bar's focus, w's overview card and foreign toplevel are the port's side
+
+        if let cm = c.mon, cm.isoverview {
+            overviewBackupSurface(c)
+        }
+
         w.jumpLabelNode?.setEnabled(false)
 
         c.tagVisible = w.tagVisible
@@ -1621,6 +1631,7 @@ package extension MangoServer {
         }
 
         if (!c.isfullscreen && !c.ismaximizescreen) || isScrollerLayout(m) {
+            if m.isoverview && overviewCardTileResize(c, geo) { return }   // not in mango: the box is the client's card (the port's picture)
             resize(c, geo, ResizeOpts(interact: interact))
         }
     }
@@ -1634,7 +1645,8 @@ package extension MangoServer {
 
         if c.isClipToHide { return false }
 
-        // not in mango: the overview's card tree (ov_card_tree) and overview_scene_surface are the port's pictures
+        // not in mango: the client's card stands for its ov_card_tree and overview_scene_surface
+        if let m = c.mon, m.isoverview, m.ovCards[c.id] != nil { return true }
 
         if c.isTabHidden { return false }
 

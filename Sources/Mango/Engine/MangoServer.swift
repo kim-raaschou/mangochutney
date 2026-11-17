@@ -64,7 +64,10 @@ public final class MangoServer {
     public var cliDebugLog = false
 
     package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
-    var switcherState: SwitcherState? { didSet { publishInputState() } }
+    /// mango switcher_state (switcher/switcher.c)
+    package var switcherState = SwitcherState() {
+        didSet { if switcherState.tree != oldValue.tree { publishInputState() } }   // not in mango: the event tap's snapshot
+    }
     var publishedGlobalKeys = false
     package var cursorMode = CurNormal
     package var grabClient: Client? {

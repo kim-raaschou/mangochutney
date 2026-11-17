@@ -5,7 +5,7 @@ package extension MangoServer {
     func publishInputState() {
         let c = config
         let mode = keyMode
-        let sw = switcherState != nil
+        let sw = switcherIsActive()
         let hidden = cursorHidden
         let combo = tagCombo
         system.publishInput(InputState(

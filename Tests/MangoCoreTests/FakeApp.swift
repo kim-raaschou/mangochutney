@@ -135,14 +135,14 @@ final class FakeWindowSystem: MacWindowSystem {
     var tabStrips: [TabStrip] = [], groupStrips: [TabStrip] = []
     override func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) { tabStrips = strips }
     override func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) { groupStrips = strips }
-    var overviewCards: [OverviewCard]?, switcherTiles: [SwitcherTile]?
+    var overviewCards: [OverviewCard]?, switcherTiles: [SwitcherTilePicture]?
     var specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
     override func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
     override func updateOverview(_ cards: [OverviewCard], on m: Monitor) { overviewCards = cards }
     override func captureOverviewCards(on m: Monitor, scale: CGFloat) {}
     override func closeOverview(on m: Monitor) { overviewCards = nil }
-    override func showSwitcher(panel: CGRect, tiles: [SwitcherTile], look: SwitcherLook, scale: CGFloat) { switcherTiles = tiles }
-    override func switcherApplyHighlight(_ tiles: [SwitcherTile]) { switcherTiles = tiles }
+    override func showSwitcher(panel: CGRect, tiles: [SwitcherTilePicture], look: SwitcherLook, scale: CGFloat) { switcherTiles = tiles }
+    override func switcherApplyHighlight(_ tiles: [SwitcherTilePicture]) { switcherTiles = tiles }
     override func closeSwitcherPanel() { switcherTiles = nil }
     var bars: [FakeBar] = []
     override func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateStyle, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {

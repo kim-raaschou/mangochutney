@@ -124,3 +124,46 @@ final class LayoutRunner {
 func runLayout(_ kind: LayoutKind, _ input: LayoutInput) -> LayoutResult {
     LayoutRunner(kind).arrange(input)
 }
+
+// OverviewRunner runs mango's overview_scale and overview_scale_tab (layout/overview.c) on a rig: the
+// clients in list order with their overview_backup_geom sizes, the cards as client_tile_resize puts them.
+@MainActor
+final class OverviewRunner {
+    let rig = EngineRig()
+    private var screen: CGRect?
+
+    func cards(_ clients: [(id: ClientID, size: CGSize)], workArea: CGRect, gapInner: CGFloat, gapOuter: CGFloat,
+               tab: Bool = false, focused: ClientID? = nil, centerRatio: CGFloat = 0.5) -> [ClientID: CGRect] {
+        let server = rig.server
+        if screen != workArea {
+            screen = workArea
+            server.rebuildMonitors(screens: [Screen(displayID: 1, name: "overview", frame: workArea,
+                                                    workArea: workArea, scale: 1, isMain: true)])
+        }
+        server.config.overviewgappi = Int(gapInner)
+        server.config.overviewgappo = Int(gapOuter)
+        server.config.overcircleCenterRatio = Double(centerRatio)
+        server.config.titleMessageBarHeight = 0
+        let m = rig.monitor
+        var order: [Client] = []
+        for item in clients {
+            let c = server.clientByIdAll(item.id) ?? rig.window(item.id)
+            c.tags = 1
+            c.overviewBackupGeom = CGRect(origin: .zero, size: item.size)
+            order.append(c)
+        }
+        let ids = Set(clients.map(\.id))
+        for c in server.clientsAll where !ids.contains(c.id) { c.tags = 2 }
+        server.clients = order + server.clients.filter { !ids.contains($0.id) }
+        m.sel = focused
+        m.isoverview = true
+        m.ovThumbnails = true   // the cards only; the windows stay
+        m.ovCards = [:]
+        if tab { server.overviewScaleTab(m) } else { server.overviewScale(m) }
+        let cards = m.ovCards
+        m.isoverview = false
+        m.ovThumbnails = false
+        m.ovCards = [:]
+        return cards
+    }
+}

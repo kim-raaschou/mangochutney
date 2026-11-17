@@ -768,14 +768,6 @@ package extension MangoServer {
     func arrange(_ m: Monitor, _ wantAnimation: Bool, _ fromView: Bool) {
         guard started else { return }   // not in mango: no arrange before the port has its windows
 
-        // not in mango: the overview before pre_calculate_before_arrange; its cards are the port's pictures
-        if m.isoverview {
-            m.hideClients = 0
-            for c in clients where c.isminimized { m.hideClients += 1 }
-            overviewlayout.arrange(self, m)
-            return
-        }
-
         if m.sel == nil {
             m.sel = clientFocusTop(m)?.id
         }
@@ -799,7 +791,11 @@ package extension MangoServer {
             m.gappiv = m.specialGappiv
         }
 
-        layouts.first { $0.id == m.pertag.ltidxs[getMonCurtag(m)] }!.arrange(self, m)   // not in mango: ltidxs holds the id
+        if m.isoverview {
+            overviewlayout.arrange(self, m)
+        } else {
+            layouts.first { $0.id == m.pertag.ltidxs[getMonCurtag(m)] }!.arrange(self, m)   // not in mango: ltidxs holds the id
+        }
 
         if isTag0 {
             m.gappoh = savedOh

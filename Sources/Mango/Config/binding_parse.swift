@@ -1,5 +1,15 @@
 let NUM_TYPE_MINUS: UInt32 = 0, NUM_TYPE_PLUS: UInt32 = 1, NUM_TYPE_DEFAULT: UInt32 = 2
 
+package extension MangoServer {
+    func findKeycodesForChar(_ cChar: Character?, _ multiKc: inout MultiKeycode) {
+        multiKc = MultiKeycode()
+
+        guard let cChar else { return }
+
+        multiKc = system.findKeycodesForKeysym(cChar)   // not in mango: the port's side (xkb's keymap)
+    }
+}
+
 extension BindingParser {
     static func parseMouseAction(_ str: String) -> UInt32 {
         // Converts the input string to lowercase.

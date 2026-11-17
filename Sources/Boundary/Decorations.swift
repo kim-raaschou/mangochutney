@@ -70,7 +70,7 @@ public struct OverviewLook: Equatable {
     }
 }
 
-public struct SwitcherTile: Equatable {
+public struct SwitcherTilePicture: Equatable {
     public var id: ClientID
     public var frame: CGRect
     public var size: CGSize

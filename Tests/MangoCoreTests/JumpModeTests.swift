@@ -103,7 +103,7 @@ final class JumpModeTests: MangoTestCase {
         let a = r.map(1)
         r.arrange()
         r.server.switcher(Arg(i: NEXT, i2: SW_CURRENT_TAG))
-        XCTAssertNotNil(r.server.switcherState, "the switcher is not refused afterwards")
+        XCTAssertTrue(r.server.switcherIsActive(), "the switcher is not refused afterwards")
         _ = a
     }
 
@@ -122,7 +122,7 @@ final class JumpModeTests: MangoTestCase {
         r.server.leaveOverview(Arg())
         r.monitor.isJumpMode = true
         r.server.switcher(Arg(i: NEXT, i2: SW_CURRENT_TAG))
-        XCTAssertNil(r.server.switcherState, "mango's switcher returns in jump mode")
+        XCTAssertFalse(r.server.switcherIsActive(), "mango's switcher returns in jump mode")
     }
 
     func testTheEventTapGetsTheJumpKeys() {
