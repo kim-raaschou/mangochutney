@@ -1,5 +1,7 @@
 # G-options: src/config/option_defs.c, include/mango/config/parse.h, src/config/preset.c, include/mango/config/preset.h, assets/config.conf, assets/config.toml
 
+Status 2026-11-20 (trin 10): hvert fund er mærket ✓ (rettet, som mango, listet, væk) eller åben, kontrolleret mod koden efter trin 9.
+
 Mango 0.18.5 (21f80a9) against this repo (main, da81bb9). Read-only.
 Ours: Sources/Mango/Config/ConfigOptions.swift (setters, `parseOption`), Sources/Mango/Config/ConfigParser.swift
 (`ParserState.parseOption`, `BindingParser`), Sources/Mango/Config/RuleParser.swift, Sources/Mango/Model/Config.swift
@@ -25,22 +27,22 @@ Systemic deviations used in the tables:
 | mango (file:line) | ours (file:line) | status | note |
 |---|---|---|---|
 | `is_title_message_bar_decorate_key` option_defs.c:46 | folded into `ConfigOptions.decorate` ConfigOptions.swift:190,300 | 1:1 | same key set (`title_message_bar_decorate_*` ×10); no separate function, same result |
-| `parse_option` option_defs.c:55 | `ParserState.parseOption` ConfigParser.swift:359 + `ConfigOptions.parseOption` ConfigOptions.swift:12 (+ `RuleParser`, `BindingParser`) | differs | strcmp chain as a table (listed §5). Key-level differences in the key table: D1 (negative int-as-bool), D3 (curves), key_mode "", env prefix, scroller_proportion_preset/circle_layout error paths. Two callers differ: `setoption` (Dispatch.swift:443) reaches only `ConfigOptions.parseOption`, which has no `var`, `source`, `source_optional` ("Unknown keyword" where mango's setoption runs them) and drops a window_rule/tag_rule with any unknown field (mango keeps it). Prefix keywords (`env*`, `exec_once*`, `mousebind*`, `axisbind*`, `switchbind*`, `gesturebind*`, `source*`) and the `\|` in mango's `^bind[s\|l\|r\|p\|c]*$` regex are exact names in ours (trivial) |
+| `parse_option` option_defs.c:55 | `ParserState.parseOption` ConfigParser.swift:359 + `ConfigOptions.parseOption` ConfigOptions.swift:12 (+ `RuleParser`, `BindingParser`) | differs ✓ rettet 15. nov. (tabellen: listet afvigelser.md §5) | strcmp chain as a table (listed §5). Key-level differences in the key table: D1 (negative int-as-bool), D3 (curves), key_mode "", env prefix, scroller_proportion_preset/circle_layout error paths. Two callers differ: `setoption` (Dispatch.swift:443) reaches only `ConfigOptions.parseOption`, which has no `var`, `source`, `source_optional` ("Unknown keyword" where mango's setoption runs them) and drops a window_rule/tag_rule with any unknown field (mango keeps it). Prefix keywords (`env*`, `exec_once*`, `mousebind*`, `axisbind*`, `switchbind*`, `gesturebind*`, `source*`) and the `\|` in mango's `^bind[s\|l\|r\|p\|c]*$` regex are exact names in ours (trivial) |
 | `apply_option_expanded` option_defs.c:2369 | `ParserState.applyOptionExpanded` ConfigParser.swift:354 | 1:1 | expand then parse; setoption skips expansion in both |
 | `set_value_default` option_defs.c:2378 | property initialisers Config.swift:7-161; bar/label defaults `DecorateStyle.mango*` Decorate.swift:31-47 merged at draw (Tabs.swift:57) | 1:1 | every default checked equal (table below). name: no function of that name; `DecorateStyle.setValueDefault(from:)` (Decorate.swift:49) borrows mango's name for a nil-merge. `title_message_bardata = groupbardata` copy of the defaults (not of user settings) matches `mangoTitleMessageBar` |
-| `override_config` option_defs.c:2730 | `Config.overrideConfig` Config.swift:163 | differs | every numeric clamp present (some at parse time in the setter, same result). The CLAMP_INT(…,0,1) of the ~48 int-as-bool keys has no counterpart: Swift stores `atoi != 0`, so `x=-1` is on in ours and off in mango (D1) |
+| `override_config` option_defs.c:2730 | `Config.overrideConfig` Config.swift:163 | differs ✓ rettet 15. nov. | every numeric clamp present (some at parse time in the setter, same result). The CLAMP_INT(…,0,1) of the ~48 int-as-bool keys has no counterpart: Swift stores `atoi != 0`, so `x=-1` is on in ours and off in mango (D1) |
 | `update_global_var` option_defs.c:3011 | `TagMask.mask(forTagNum:)` at use, Rules.swift:7-9 | 1:1 | marked "not in mango: TAGMASK … worked out where it is used"; same result |
 | `CLAMP_INT` parse.h:15 | `min(max())` Config.swift:164, ConfigOptions.swift:276 | 1:1 | (int32_t) cast only matters on overflow |
 | `CLAMP_FLOAT` parse.h:21 | same | 1:1 | |
-| `APPLY_INT_PROP` parse.h:25 (`if (rule->prop >= 0)`) | `if let` in `applyRuleProperties` MangoServer.swift:943 | differs | D2: RuleParser turns any non-zero (also negative) into `true`; mango's -1/negative means "not set". `window_rule=is_floating:-1,app_id:foo` floats foo in ours, leaves it in mango. Apply site is the client group's |
-| `APPLY_FLOAT_PROP` parse.h:29 (`if (rule->prop > 0.0f)`) | MangoServer.swift:960-961 | differs | ours assigns `scroller_proportion`/`scroller_proportion_single` also when ≤0 (only `isCustom…` checks >0): `window_rule=scroller_proportion:0,app_id:foo` gives foo proportion 0 (Scroller.swift:191 uses it) where mango keeps the default. Opacity fields: platform |
+| `APPLY_INT_PROP` parse.h:25 (`if (rule->prop >= 0)`) | `if let` in `applyRuleProperties` MangoServer.swift:943 | differs ✓ rettet 15. nov. | D2: RuleParser turns any non-zero (also negative) into `true`; mango's -1/negative means "not set". `window_rule=is_floating:-1,app_id:foo` floats foo in ours, leaves it in mango. Apply site is the client group's |
+| `APPLY_FLOAT_PROP` parse.h:29 (`if (rule->prop > 0.0f)`) | MangoServer.swift:960-961 | differs ✓ rettet 15. nov. | ours assigns `scroller_proportion`/`scroller_proportion_single` also when ≤0 (only `isCustom…` checks >0): `window_rule=scroller_proportion:0,app_id:foo` gives foo proportion 0 (Scroller.swift:191 uses it) where mango keeps the default. Opacity fields: platform |
 | `enum animation_type` parse.h:38 (UNSET=-1 … UNKNOWN) | `AnimationType` Config.swift:205, `animationTypeFromString` :209 | 1:1 | UNSET/UNKNOWN folded into `.slide`/nil; both reach the slide branch in mango (animation/client.c:175-195), same result |
 | `enum { VERTICAL, HORIZONTAL }` parse.h:34 | literal `1` (Animation.swift:187) | 1:1 | name: no constants |
 | `enum { UNFOLD, FOLD, INVALIDFOLD }`, `tearing_mode`, `seat_config_shortcuts_inhibit`, `render_bit_depth` parse.h | – | platform | switchbind / tearing / shortcuts-inhibit / HDR, all listed MangoCompat |
 | `default_jump_labels` parse.h:62 (def. load.c:52) | default of `Config.jumpLabels` Config.swift:114 | 1:1 | |
 | `Config` struct parse.h:308 | `Config` Config.swift:4 | 1:1 | fields Double where mango has float (rounded at use, e.g. `f32` in TileLayouts.swift:71); `envVars` for `env` (name); `port` dict and `xkbRulesOptions` marked |
 | `ConfigWinRule` parse.h:108 | `WindowRule` Rules.swift:75 | 1:1 | name (`WindowRule`); sentinels -1/0/NULL as Optionals (see D2, APPLY_FLOAT_PROP, app_id/title) |
-| `ConfigTagRule` parse.h:194 | `TagRule` Rules.swift:143 | differs | name (`TagRule`); D4: mango's int fields default 0 and `tag_rule_apply_to_slot` applies them when ≥0, ours nil (see tag-rule fields) |
+| `ConfigTagRule` parse.h:194 | `TagRule` Rules.swift:143 | differs ✓ rettet 15. nov. | name (`TagRule`); D4: mango's int fields default 0 and `tag_rule_apply_to_slot` applies them when ≥0, ours nil (see tag-rule fields) |
 | `ConfigEnv` / `ConfigVar` | `(String,String)` tuples Config.swift:151 / `ParserState.vars` ConfigParser.swift:182 | 1:1 | name |
 | `ConfigMonitorRule`, `ConfigLayerRule`, `ConfigDeviceRule`, `SwitchBinding` | – | platform | listed MangoCompat.ignoredKeywords |
 | `tags[tag_num_MAX]` preset.c:4 | – | platform | tag names for ext-workspace only (src/ext-protocol/ext-workspace.c:46) |
@@ -57,8 +59,8 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 
 | key | mango | mango default | ours | our default | parse/clamp | status | note |
 |---|---|---|---|---|---|---|---|
-| `key_mode` | option_defs.c:56 | - | Sources/Mango/Config/ConfigParser.swift:361, Sources/Mango/Config/ConfigOptions.swift:64 | "default" (mango: keymode "default", load.c) | snprintf → `%.27s` copy | differs | empty value (`key_mode= ` or `key_mode=""`): mango sets mode "" so later binds sit in an unreachable mode "", ours resets to "default"; mango truncates to 27 chars, ours keeps the whole name |
-| `animations` | option_defs.c:58 | 1 | Sources/Mango/Config/ConfigOptions.swift:105 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `key_mode` | option_defs.c:56 | - | Sources/Mango/Config/ConfigParser.swift:361, Sources/Mango/Config/ConfigOptions.swift:64 | "default" (mango: keymode "default", load.c) | snprintf → `%.27s` copy | differs ✓ rettet 15. nov. | empty value (`key_mode= ` or `key_mode=""`): mango sets mode "" so later binds sit in an unreachable mode "", ours resets to "default"; mango truncates to 27 chars, ours keeps the whole name |
+| `animations` | option_defs.c:58 | 1 | Sources/Mango/Config/ConfigOptions.swift:105 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `layer_animations` | option_defs.c:60 | 0 | Port/macOS/MangoCompat.swift:40 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Layer surfaces" |
 | `animation_type_open` | option_defs.c:62 | ANIM_TYPE_UNSET | Sources/Mango/Config/ConfigOptions.swift:106 | .slide (mango ANIM_TYPE_UNSET) | animation_type_from_string → animation_type_from_string | 1:1 | same result: UNSET and UNKNOWN both fall to the slide branch of set_client_open_animation; ours stores .slide |
 | `animation_type_close` | option_defs.c:64 | ANIM_TYPE_UNSET | Sources/Mango/Config/ConfigOptions.swift:107 | .slide | animation_type_from_string → animation | platform | stored, no effect: listed MangoCompat.optionsWithoutEffect (close animation: window already gone) |
@@ -75,30 +77,30 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 | `animation_duration_open` | option_defs.c:86 | 400 | Sources/Mango/Config/ConfigOptions.swift:116 | 400 | atoi; override 0..50000 → int | 1:1 |  |
 | `animation_duration_tag` | option_defs.c:88 | 300 | Sources/Mango/Config/ConfigOptions.swift:117 | 300 | atoi; override 0..50000 → int | 1:1 |  |
 | `animation_duration_close` | option_defs.c:90 | 300 | Sources/Mango/Config/ConfigOptions.swift:118 | 300 | atoi; override 0..50000 → int | platform | stored, no effect: listed MangoCompat.optionsWithoutEffect (close animation: window already gone) |
-| `animation_duration_focus` | option_defs.c:92 | 0 | Sources/Mango/Config/ConfigOptions.swift:119 | 0 | atoi; override 0..50000 → int | missing | mango's focus animation also fades the border colour (client_start_focus_animation, animation/client.c:1682); the port draws the borders and could. Stored, read nowhere; MangoCompat lists it only as opacity ("SIP off"), which covers half of it. Default 0 = same result |
-| `animation_curve_move` | option_defs.c:94 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:120 | (0.46,1.0,0.29,0.99) | parse_double_array → parse_double_array(…,4) ==4 else error | differs | D3: a bad value (`0.46,1.0,0.29`) leaves our curve unchanged; mango memsets the array to 0 and fills what parsed, so the curve becomes (0.46,1.0,0.29,0). Mango also prints "Invalid number in array" before "Failed to parse" |
-| `animation_curve_open` | option_defs.c:104 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:121 | (0.46,1.0,0.29,0.99) | parse_double_array → as move | differs | D3 |
-| `animation_curve_tag` | option_defs.c:114 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:122 | (0.46,1.0,0.29,0.99) | parse_double_array → as move | differs | D3 |
+| `animation_duration_focus` | option_defs.c:92 | 0 | Sources/Mango/Config/ConfigOptions.swift:119 | 0 | atoi; override 0..50000 → int | missing åben (som mangel i afvigelser.md §4): fokus-animationen mangler stadig (ingen client_start_focus_animation; parse.swift:21/26 gemmes og læses aldrig; MangoCompat.swift:100-101 `.notImplemented`, men afvigelser.md §4 siger, intet mangler) | mango's focus animation also fades the border colour (client_start_focus_animation, animation/client.c:1682); the port draws the borders and could. Stored, read nowhere; MangoCompat lists it only as opacity ("SIP off"), which covers half of it. Default 0 = same result |
+| `animation_curve_move` | option_defs.c:94 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:120 | (0.46,1.0,0.29,0.99) | parse_double_array → parse_double_array(…,4) ==4 else error | differs ✓ rettet 15. nov. | D3: a bad value (`0.46,1.0,0.29`) leaves our curve unchanged; mango memsets the array to 0 and fills what parsed, so the curve becomes (0.46,1.0,0.29,0). Mango also prints "Invalid number in array" before "Failed to parse" |
+| `animation_curve_open` | option_defs.c:104 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:121 | (0.46,1.0,0.29,0.99) | parse_double_array → as move | differs ✓ rettet 15. nov. | D3 |
+| `animation_curve_tag` | option_defs.c:114 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:122 | (0.46,1.0,0.29,0.99) | parse_double_array → as move | differs ✓ rettet 15. nov. | D3 |
 | `animation_curve_close` | option_defs.c:123 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:123 | BezierCurve.mangoDefault | parse_double_array → curve("animation_curve_close") | platform | stored, no effect: listed MangoCompat.optionsWithoutEffect (close animation: window already gone) |
-| `animation_curve_focus` | option_defs.c:133 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:124 | BezierCurve.mangoDefault | parse_double_array → curve | missing | mango's focus animation also fades the border colour (client_start_focus_animation, animation/client.c:1682); the port draws the borders and could. Stored, read nowhere; MangoCompat lists it only as opacity ("SIP off"), which covers half of it. Default 0 = same result |
+| `animation_curve_focus` | option_defs.c:133 | (0.46,1.0,0.29,0.99) | Sources/Mango/Config/ConfigOptions.swift:124 | BezierCurve.mangoDefault | parse_double_array → curve | missing åben (som mangel i afvigelser.md §4): fokus-animationen mangler stadig (ingen client_start_focus_animation; parse.swift:21/26 gemmes og læses aldrig; MangoCompat.swift:100-101 `.notImplemented`, men afvigelser.md §4 siger, intet mangler) | mango's focus animation also fades the border colour (client_start_focus_animation, animation/client.c:1682); the port draws the borders and could. Stored, read nowhere; MangoCompat lists it only as opacity ("SIP off"), which covers half of it. Default 0 = same result |
 | `animation_curve_opacity_fade_in` | option_defs.c:143 | (0.46,1.0,0.29,0.99) | Port/macOS/MangoCompat.swift:37 | - | parse_double_array → ignored | platform | listed MangoCompat "Opacity animation" |
 | `animation_curve_opacity_fade_out` | option_defs.c:153 | (0.5,0.5,0.5,0.5) | Port/macOS/MangoCompat.swift:37 | - | parse_double_array → ignored | platform | listed MangoCompat "Opacity animation" |
 | `scroller_structs` | option_defs.c:164 | 20 | Sources/Mango/Config/ConfigOptions.swift:126 | 20 | atoi; override 0..1000 → int | 1:1 |  |
 | `scroller_default_proportion` | option_defs.c:166 | 0.9f | Sources/Mango/Config/ConfigOptions.swift:127 | 0.9 | atof; override 0.1f..1.0f → double | 1:1 |  |
 | `scroller_default_proportion_single` | option_defs.c:168 | 1.0f | Sources/Mango/Config/ConfigOptions.swift:128 | 1.0 | atof; override 0.1f..1.0f → double | 1:1 |  |
-| `scroller_ignore_proportion_single` | option_defs.c:170 | 1 | Sources/Mango/Config/ConfigOptions.swift:129 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `scroller_focus_center` | option_defs.c:172 | 0 | Sources/Mango/Config/ConfigOptions.swift:130 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `scroller_prefer_center` | option_defs.c:174 | 0 | Sources/Mango/Config/ConfigOptions.swift:131 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `scroller_prefer_overspread` | option_defs.c:176 | 1 | Sources/Mango/Config/ConfigOptions.swift:132 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `edge_scroller_pointer_focus` | option_defs.c:178 | 1 | Sources/Mango/Config/ConfigOptions.swift:133 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `scroller_ignore_proportion_single` | option_defs.c:170 | 1 | Sources/Mango/Config/ConfigOptions.swift:129 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `scroller_focus_center` | option_defs.c:172 | 0 | Sources/Mango/Config/ConfigOptions.swift:130 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `scroller_prefer_center` | option_defs.c:174 | 0 | Sources/Mango/Config/ConfigOptions.swift:131 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `scroller_prefer_overspread` | option_defs.c:176 | 1 | Sources/Mango/Config/ConfigOptions.swift:132 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `edge_scroller_pointer_focus` | option_defs.c:178 | 1 | Sources/Mango/Config/ConfigOptions.swift:133 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `edge_scroller_focus_allow_speed` | option_defs.c:180 | 0.0f | Sources/Mango/Config/ConfigOptions.swift:134 | 0.0 | atof; override 0.0f..1000.0f → double | 1:1 |  |
-| `focus_cross_monitor` | option_defs.c:182 | 0 | Sources/Mango/Config/ConfigOptions.swift:239 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `focus_direction_only_zone_overlap` | option_defs.c:184 | 1 | Sources/Mango/Config/ConfigOptions.swift:240 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `exchange_cross_monitor` | option_defs.c:186 | 0 | Sources/Mango/Config/ConfigOptions.swift:242 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `scratchpad_cross_monitor` | option_defs.c:188 | 0 | Sources/Mango/Config/ConfigOptions.swift:243 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `special_tag_cross_monitor` | option_defs.c:190 | 0 | Sources/Mango/Config/ConfigOptions.swift:178 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `focus_cross_tag` | option_defs.c:192 | 0 | Sources/Mango/Config/ConfigOptions.swift:241 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `view_current_to_back` | option_defs.c:194 | 0 | Sources/Mango/Config/ConfigOptions.swift:159 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `focus_cross_monitor` | option_defs.c:182 | 0 | Sources/Mango/Config/ConfigOptions.swift:239 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `focus_direction_only_zone_overlap` | option_defs.c:184 | 1 | Sources/Mango/Config/ConfigOptions.swift:240 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `exchange_cross_monitor` | option_defs.c:186 | 0 | Sources/Mango/Config/ConfigOptions.swift:242 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `scratchpad_cross_monitor` | option_defs.c:188 | 0 | Sources/Mango/Config/ConfigOptions.swift:243 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `special_tag_cross_monitor` | option_defs.c:190 | 0 | Sources/Mango/Config/ConfigOptions.swift:178 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `focus_cross_tag` | option_defs.c:192 | 0 | Sources/Mango/Config/ConfigOptions.swift:241 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `view_current_to_back` | option_defs.c:194 | 0 | Sources/Mango/Config/ConfigOptions.swift:159 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `blur` | option_defs.c:196 | 0 | Port/macOS/MangoCompat.swift:26 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Blur" |
 | `blur_layer` | option_defs.c:198 | 0 | Port/macOS/MangoCompat.swift:26 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Blur" |
 | `blur_optimized` | option_defs.c:200 | 1 | Port/macOS/MangoCompat.swift:26 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Blur" |
@@ -116,7 +118,7 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 | `shadows_blur` | option_defs.c:224 | 15.0f | Port/macOS/MangoCompat.swift:30 | - | atof; override 0..100 → ignored | platform | listed MangoCompat "Shadows" |
 | `shadows_position_x` | option_defs.c:226 | 0 | Port/macOS/MangoCompat.swift:30 | - | atoi; override -1000..1000 → ignored | platform | listed MangoCompat "Shadows" |
 | `shadows_position_y` | option_defs.c:228 | 0 | Port/macOS/MangoCompat.swift:31 | - | atoi; override -1000..1000 → ignored | platform | listed MangoCompat "Shadows" |
-| `single_scratchpad` | option_defs.c:230 | 1 | Sources/Mango/Config/ConfigOptions.swift:244 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `single_scratchpad` | option_defs.c:230 | 1 | Sources/Mango/Config/ConfigOptions.swift:244 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `xwayland_persistence` | option_defs.c:232 | 1 | Port/macOS/MangoCompat.swift:74 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Xwayland" |
 | `xwayland_ignore_scale` | option_defs.c:234 | 0 | Port/macOS/MangoCompat.swift:74 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Xwayland" |
 | `sync_obj_enable` | option_defs.c:236 | 1 | Port/macOS/MangoCompat.swift:43 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Display" |
@@ -126,19 +128,19 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 | `allow_shortcuts_inhibit` | option_defs.c:244 | SHORTCUTS_INHIBIT_ENABLE | Port/macOS/MangoCompat.swift:71 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Wayland protocols" |
 | `disable_middle_paste` | option_defs.c:246 | 0 | Port/macOS/MangoCompat.swift:62 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Other input" |
 | `allow_lock_transparent` | option_defs.c:248 | 0 | Port/macOS/MangoCompat.swift:71 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Wayland protocols" |
-| `auto_reload_config` | option_defs.c:250 | 1 | Sources/Mango/Config/ConfigOptions.swift:257 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `no_border_when_single` | option_defs.c:252 | 0 | Sources/Mango/Config/ConfigOptions.swift:202 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `no_radius_when_single` | option_defs.c:254 | 0 | Sources/Mango/Config/ConfigOptions.swift:203 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `monocle_no_border` | option_defs.c:256 | 0 | Sources/Mango/Config/ConfigOptions.swift:175 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `monocle_no_gap` | option_defs.c:258 | 0 | Sources/Mango/Config/ConfigOptions.swift:176 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `monocle_no_radius` | option_defs.c:260 | 0 | Sources/Mango/Config/ConfigOptions.swift:177 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `auto_reload_config` | option_defs.c:250 | 1 | Sources/Mango/Config/ConfigOptions.swift:257 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `no_border_when_single` | option_defs.c:252 | 0 | Sources/Mango/Config/ConfigOptions.swift:202 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `no_radius_when_single` | option_defs.c:254 | 0 | Sources/Mango/Config/ConfigOptions.swift:203 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `monocle_no_border` | option_defs.c:256 | 0 | Sources/Mango/Config/ConfigOptions.swift:175 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `monocle_no_gap` | option_defs.c:258 | 0 | Sources/Mango/Config/ConfigOptions.swift:176 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `monocle_no_radius` | option_defs.c:260 | 0 | Sources/Mango/Config/ConfigOptions.swift:177 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `snap_distance` | option_defs.c:262 | 30 | Sources/Mango/Config/ConfigOptions.swift:252 | 30 | atoi; override 0..99999 → int(0...99999) | 1:1 |  |
-| `enable_floating_snap` | option_defs.c:264 | 0 | Sources/Mango/Config/ConfigOptions.swift:251 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `float_full_to_top` | option_defs.c:266 | 0 | Sources/Mango/Config/ConfigOptions.swift:253 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `drag_tile_to_tile` | option_defs.c:268 | 1 | Sources/Mango/Config/ConfigOptions.swift:254 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `drag_tile_small` | option_defs.c:270 | 1 | Sources/Mango/Config/ConfigOptions.swift:255 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `enable_floating_snap` | option_defs.c:264 | 0 | Sources/Mango/Config/ConfigOptions.swift:251 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `float_full_to_top` | option_defs.c:266 | 0 | Sources/Mango/Config/ConfigOptions.swift:253 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `drag_tile_to_tile` | option_defs.c:268 | 1 | Sources/Mango/Config/ConfigOptions.swift:254 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `drag_tile_small` | option_defs.c:270 | 1 | Sources/Mango/Config/ConfigOptions.swift:255 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `swipe_min_threshold` | option_defs.c:272 | 1 | Sources/Mango/Config/ConfigOptions.swift:258 | 1 | atoi; override 1..1000 → int(1...1000) | 1:1 |  |
-| `gesture_live` | option_defs.c:274 | 1 | Sources/Mango/Config/ConfigOptions.swift:259 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `gesture_live` | option_defs.c:274 | 1 | Sources/Mango/Config/ConfigOptions.swift:259 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `gesture_swipe_distance` | option_defs.c:276 | 300 | Sources/Mango/Config/ConfigOptions.swift:260 | 300 | atoi; override 32..4096 → int(32...4096) | 1:1 |  |
 | `gesture_swipe_cancel_ratio` | option_defs.c:278 | 0.5 | Sources/Mango/Config/ConfigOptions.swift:261 | 0.5 | atof; override 0.05..0.95 → double(0.05...0.95) | 1:1 |  |
 | `gesture_swipe_min_speed_to_force` | option_defs.c:280 | 10 | Sources/Mango/Config/ConfigOptions.swift:262 | 10.0 | atof; override >=0 → double(0...Double.greatestFiniteMagnitude) | 1:1 |  |
@@ -149,47 +151,47 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 | `xkb_rules_layout` | option_defs.c:294 | - | Port/macOS/MangoCompat.swift:46 | - | strncpy → ignored | platform | listed MangoCompat "Keyboard" |
 | `xkb_rules_variant` | option_defs.c:298 | - | Port/macOS/MangoCompat.swift:46 | - | strncpy → ignored | platform | listed MangoCompat "Keyboard" |
 | `xkb_rules_options` | option_defs.c:302 | - | Sources/Mango/Config/ConfigOptions.swift:103 | "" | strncpy → strncpy 127 | port | only key-moving options, done by the port (listed §3); other xkb_rules_* ignored |
-| `scroller_proportion_preset` | option_defs.c:306 | - | Sources/Mango/Config/ConfigOptions.swift:135 | [] (mango NULL) | strdup → count commas+1, strtok tokens, sscanf %f, CLAMP 0.1..1, count must match | differs | on a bad value (`0.5,x` or `0.5,,0.8`) mango frees the list (preset becomes empty), ours returns invalid and keeps the previous list; sscanf %f also takes inf/nan/hex, our scanDouble does not |
-| `circle_layout` | option_defs.c:381 | - | Sources/Mango/Config/ConfigOptions.swift:160 | [] (mango NULL) | strdup → count commas+1, strtok tokens, sanitize_string, count must match else error and list emptied | differs | `circle_layout=tile,,scroller` or a trailing comma: mango errors "Invalid circle_layout format" and empties the list; ours silently keeps [tile, scroller]. Ours trims Cc/Cf chars where mango strips !isprint bytes (same for ASCII) |
-| `new_is_master` | option_defs.c:461 | 1 | Sources/Mango/Config/ConfigOptions.swift:151 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `scroller_proportion_preset` | option_defs.c:306 | - | Sources/Mango/Config/ConfigOptions.swift:135 | [] (mango NULL) | strdup → count commas+1, strtok tokens, sscanf %f, CLAMP 0.1..1, count must match | differs ✓ rettet 15. nov. (inf/nan: listet afvigelser.md §5) | on a bad value (`0.5,x` or `0.5,,0.8`) mango frees the list (preset becomes empty), ours returns invalid and keeps the previous list; sscanf %f also takes inf/nan/hex, our scanDouble does not |
+| `circle_layout` | option_defs.c:381 | - | Sources/Mango/Config/ConfigOptions.swift:160 | [] (mango NULL) | strdup → count commas+1, strtok tokens, sanitize_string, count must match else error and list emptied | differs ✓ rettet 15. nov. | `circle_layout=tile,,scroller` or a trailing comma: mango errors "Invalid circle_layout format" and empties the list; ours silently keeps [tile, scroller]. Ours trims Cc/Cf chars where mango strips !isprint bytes (same for ASCII) |
+| `new_is_master` | option_defs.c:461 | 1 | Sources/Mango/Config/ConfigOptions.swift:151 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `default_master_factor` | option_defs.c:463 | 0.55f | Sources/Mango/Config/ConfigOptions.swift:152 | 0.55 | atof; override 0.1f..0.9f → double | 1:1 |  |
 | `default_master_count` | option_defs.c:465 | 1 | Sources/Mango/Config/ConfigOptions.swift:153 | 1 | atoi; override 1..1000 → int | 1:1 |  |
 | `tag_num` | option_defs.c:467 | 9 | Sources/Mango/Config/ConfigOptions.swift:156 | 9 | atoi → int; overrideConfig 1..31 | 1:1 | tagmask derived at use (Rules.swift:7, marked) |
-| `tag_gather` | option_defs.c:469 | 0 | Sources/Mango/Config/ConfigOptions.swift:157 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `center_master_overspread` | option_defs.c:471 | 0 | Sources/Mango/Config/ConfigOptions.swift:154 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `center_when_single_stack` | option_defs.c:473 | 1 | Sources/Mango/Config/ConfigOptions.swift:155 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `tag_gather` | option_defs.c:469 | 0 | Sources/Mango/Config/ConfigOptions.swift:157 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `center_master_overspread` | option_defs.c:471 | 0 | Sources/Mango/Config/ConfigOptions.swift:154 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `center_when_single_stack` | option_defs.c:473 | 1 | Sources/Mango/Config/ConfigOptions.swift:155 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `dwindle_vertical_split` | option_defs.c:475 | 1 | Sources/Mango/Config/ConfigOptions.swift:166 | 1 | atoi; override 0..2 → int | 1:1 |  |
 | `dwindle_horizontal_split` | option_defs.c:477 | 1 | Sources/Mango/Config/ConfigOptions.swift:167 | 1 | atoi; override 0..2 → int | 1:1 |  |
-| `dwindle_preserve_split` | option_defs.c:479 | 0 | Sources/Mango/Config/ConfigOptions.swift:168 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `dwindle_smart_split` | option_defs.c:481 | 0 | Sources/Mango/Config/ConfigOptions.swift:169 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `dwindle_smart_resize` | option_defs.c:483 | 0 | Sources/Mango/Config/ConfigOptions.swift:170 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `dwindle_drop_simple_split` | option_defs.c:485 | 1 | Sources/Mango/Config/ConfigOptions.swift:172 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `dwindle_manual_split` | option_defs.c:487 | 0 | Sources/Mango/Config/ConfigOptions.swift:171 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `dwindle_preserve_split` | option_defs.c:479 | 0 | Sources/Mango/Config/ConfigOptions.swift:168 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `dwindle_smart_split` | option_defs.c:481 | 0 | Sources/Mango/Config/ConfigOptions.swift:169 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `dwindle_smart_resize` | option_defs.c:483 | 0 | Sources/Mango/Config/ConfigOptions.swift:170 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `dwindle_drop_simple_split` | option_defs.c:485 | 1 | Sources/Mango/Config/ConfigOptions.swift:172 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `dwindle_manual_split` | option_defs.c:487 | 0 | Sources/Mango/Config/ConfigOptions.swift:171 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `dwindle_split_ratio` | option_defs.c:489 | 0.5f | Sources/Mango/Config/ConfigOptions.swift:173 | 0.5 | atof; override 0.05f..0.95f → double | 1:1 |  |
 | `hotarea_size` | option_defs.c:491 | 10 | Sources/Mango/Config/ConfigOptions.swift:224 | 10 | atoi; override 1..1000 → int(1...1000) | 1:1 |  |
 | `hotarea_corner` | option_defs.c:493 | BOTTOM_LEFT | Sources/Mango/Config/ConfigOptions.swift:225 | 2 | atoi; override 0..3 → int | 1:1 |  |
-| `enable_hotarea` | option_defs.c:495 | 0 | Sources/Mango/Config/ConfigOptions.swift:226 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `hotarea_disable_on_fullscreen` | option_defs.c:497 | 1 | Sources/Mango/Config/ConfigOptions.swift:227 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `enable_hotarea` | option_defs.c:495 | 0 | Sources/Mango/Config/ConfigOptions.swift:226 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `hotarea_disable_on_fullscreen` | option_defs.c:497 | 1 | Sources/Mango/Config/ConfigOptions.swift:227 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `overview_gap_inner` | option_defs.c:499 | 5 | Sources/Mango/Config/ConfigOptions.swift:228 | 5 | atoi; override 0..1000 → int(0...1000) | 1:1 |  |
 | `overview_gap_outer` | option_defs.c:501 | 30 | Sources/Mango/Config/ConfigOptions.swift:229 | 30 | atoi; override 0..1000 → int(0...1000) | 1:1 |  |
 | `overcircle_center_ratio` | option_defs.c:503 | 0.5f | Sources/Mango/Config/ConfigOptions.swift:230 | 0.5 | atof; override 0.1f..0.9f → double(0.1...0.9) | 1:1 |  |
 | `jump_labels` | option_defs.c:505 | - | Sources/Mango/Config/ConfigOptions.swift:231 | "HJKLASDFGQWERTYUIOPZXCVBNM" (mango NULL→default_jump_labels, load.c:52) | strdup → strdup | 1:1 | labels indexed by Character in ours, by byte in mango (only non-ASCII labels differ) |
 | `cursor_hide_timeout` | option_defs.c:509 | 0 | Sources/Mango/Config/ConfigOptions.swift:245 | 0 | atoi; override 0..36000 → int(0...36000) | 1:1 |  |
-| `cursor_hide_on_keypress` | option_defs.c:511 | 0 | Sources/Mango/Config/ConfigOptions.swift:246 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `cursor_hide_on_keypress` | option_defs.c:511 | 0 | Sources/Mango/Config/ConfigOptions.swift:246 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `axis_bind_apply_timeout` | option_defs.c:513 | 100 | Sources/Mango/Config/ConfigOptions.swift:256 | 100 | atoi; override 0..1000 → int(0...1000) | 1:1 |  |
-| `focus_on_activate` | option_defs.c:515 | 1 | Sources/Mango/Config/ConfigOptions.swift:236 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `focus_on_activate` | option_defs.c:515 | 1 | Sources/Mango/Config/ConfigOptions.swift:236 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `numlock_on` | option_defs.c:517 | 0 | Port/macOS/MangoCompat.swift:47 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Keyboard" |
 | `idle_inhibit_ignore_visible` | option_defs.c:519 | 0 | Port/macOS/MangoCompat.swift:68 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Idle" |
 | `idle_inhibit_when_fullscreen` | option_defs.c:521 | 0 | Port/macOS/MangoCompat.swift:68 | - | atoi; override 0..1 → ignored | platform | listed MangoCompat "Idle" |
-| `sloppy_focus` | option_defs.c:523 | 1 | Sources/Mango/Config/ConfigOptions.swift:237 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `warp_cursor` | option_defs.c:525 | 1 | Sources/Mango/Config/ConfigOptions.swift:238 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `sloppy_focus` | option_defs.c:523 | 1 | Sources/Mango/Config/ConfigOptions.swift:237 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `warp_cursor` | option_defs.c:525 | 1 | Sources/Mango/Config/ConfigOptions.swift:238 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `drag_corner` | option_defs.c:527 | 3 | Sources/Mango/Config/ConfigOptions.swift:247 | 3 | atoi; override 0..4 → int(0...4) | 1:1 |  |
-| `drag_warp_cursor` | option_defs.c:529 | 1 | Sources/Mango/Config/ConfigOptions.swift:248 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `enable_border_resize` | option_defs.c:531 | 1 | Sources/Mango/Config/ConfigOptions.swift:249 | true | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `drag_warp_cursor` | option_defs.c:529 | 1 | Sources/Mango/Config/ConfigOptions.swift:248 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `enable_border_resize` | option_defs.c:531 | 1 | Sources/Mango/Config/ConfigOptions.swift:249 | true | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `border_resize_size` | option_defs.c:533 | 10 | Sources/Mango/Config/ConfigOptions.swift:250 | 10 | atoi; override 0..50 → int(0...50) | 1:1 |  |
-| `smart_gaps` | option_defs.c:535 | 0 | Sources/Mango/Config/ConfigOptions.swift:199 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `smart_gaps` | option_defs.c:535 | 0 | Sources/Mango/Config/ConfigOptions.swift:199 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `monocle_tab_mode` | option_defs.c:537 | 1 | Sources/Mango/Config/ConfigOptions.swift:174 | true | atoi → bool | 1:1 | not clamped in mango; atoi!=0 same result |
-| `monocle_right_button_close` | option_defs.c:539 | 0 | Sources/Mango/Config/ConfigOptions.swift:187 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `monocle_right_button_close` | option_defs.c:539 | 0 | Sources/Mango/Config/ConfigOptions.swift:187 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `deck_tab_mode` | option_defs.c:541 | 1 | Sources/Mango/Config/ConfigOptions.swift:179 | true | atoi → bool | 1:1 | not clamped in mango; atoi!=0 same result |
 | `repeat_rate` | option_defs.c:543 | 25 | Port/macOS/MangoCompat.swift:47 | - | atoi; override 1..1000 → ignored | platform | listed MangoCompat "Keyboard" |
 | `repeat_delay` | option_defs.c:545 | 600 | Port/macOS/MangoCompat.swift:47 | - | atoi; override 1..20000 → ignored | platform | listed MangoCompat "Keyboard" |
@@ -280,8 +282,8 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 | `tab_bar_height` | option_defs.c:932 | 33 | Sources/Mango/Config/ConfigOptions.swift:180 | 33 | atoi; override 0..500 → int(0...500) | 1:1 |  |
 | `title_message_bar_height` | option_defs.c:934 | 52 | Sources/Mango/Config/ConfigOptions.swift:188 | 52 | atoi; override 0..500 → int(0...500) | 1:1 |  |
 | `title_message_bar_gap` | option_defs.c:936 | 20 | Sources/Mango/Config/ConfigOptions.swift:189 | 20 | atoi; override 0..500 → int(0...500) | 1:1 |  |
-| `always_show_group_bar` | option_defs.c:938 | 0 | Sources/Mango/Config/ConfigOptions.swift:182 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
-| `group_bar_close_button_enable` | option_defs.c:940 | 0 | Sources/Mango/Config/ConfigOptions.swift:183 | false | atoi; override 0..1 → bool | differs | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `always_show_group_bar` | option_defs.c:938 | 0 | Sources/Mango/Config/ConfigOptions.swift:182 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
+| `group_bar_close_button_enable` | option_defs.c:940 | 0 | Sources/Mango/Config/ConfigOptions.swift:183 | false | atoi; override 0..1 → bool | differs ✓ rettet 15. nov. | D1: negative value → mango 0 (CLAMP_INT 0..1), ours on (atoi != 0) |
 | `group_bar_button_size` | option_defs.c:942 | 16 | Sources/Mango/Config/ConfigOptions.swift:184 | 16 | atoi; override 4..64 → int(4...64) | 1:1 |  |
 | `group_bar_button_margin` | option_defs.c:944 | 4 | Sources/Mango/Config/ConfigOptions.swift:185 | 4 | atoi; override 0..50 → int(0...50) | 1:1 |  |
 | `group_bar_button_color` | option_defs.c:946 | (ad,40,1f,1.0f) | Sources/Mango/Config/ConfigOptions.swift:186 | parseColor("0xad401fff")! | parse_color → color("group_bar_button_color") | 1:1 | parse_color assumed 1:1 (value_parse.c, other group) |
@@ -300,11 +302,11 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 | `global_color` | option_defs.c:1084 | (b1,53,a7,1.0f) | Sources/Mango/Config/ConfigOptions.swift:212 | parseColor("0xb153a7ff")! | parse_color → color("globalcolor") | 1:1 | parse_color assumed 1:1 (value_parse.c, other group) |
 | `overlay_color` | option_defs.c:1095 | (14,a5,7c,1.0f) | Sources/Mango/Config/ConfigOptions.swift:213 | parseColor("0x14a57cff")! | parse_color → color("overlaycolor") | 1:1 | parse_color assumed 1:1 (value_parse.c, other group) |
 | `monitor_rule` | option_defs.c:1106 | - | Sources/Mango/Config/ConfigOptions.swift:67 | - |  → see rule-field table | platform | listed (MangoCompat.ignoredKeywords); also mango's validation errors (no name/make/model/serial; width/height/refresh together; x/y together) are not reported |
-| `tag_rule` | option_defs.c:1247 | - | Sources/Mango/Config/ConfigParser.swift:430 → RuleParser.swift:112 | - |  → see rule-field table | differs | field differences (no_hide/no_render_border/open_as_floating defaults). Via setoption (ConfigOptions.swift:44) ours drops a rule with any unknown field; mango keeps it |
+| `tag_rule` | option_defs.c:1247 | - | Sources/Mango/Config/ConfigParser.swift:430 → RuleParser.swift:112 | - |  → see rule-field table | differs ✓ rettet 15. nov. | field differences (no_hide/no_render_border/open_as_floating defaults). Via setoption (ConfigOptions.swift:44) ours drops a rule with any unknown field; mango keeps it |
 | `layer_rule` | option_defs.c:1343 | - | Sources/Mango/Config/ConfigOptions.swift:67 | - |  → see rule-field table | platform | listed (MangoCompat.ignoredKeywords) |
-| `window_rule` | option_defs.c:1412 | - | Sources/Mango/Config/ConfigParser.swift:421 → RuleParser.swift:22 | - |  → see rule-field table | differs | rule-level: kept with unknown fields (1:1), dropped on a bad global_key_binding (1:1); field differences D2, app_id/title empty. Via setoption (ConfigOptions.swift:39) ours drops a rule that has any unknown field; mango keeps it |
+| `window_rule` | option_defs.c:1412 | - | Sources/Mango/Config/ConfigParser.swift:421 → RuleParser.swift:22 | - |  → see rule-field table | differs ✓ rettet 15. nov. | rule-level: kept with unknown fields (1:1), dropped on a bad global_key_binding (1:1); field differences D2, app_id/title empty. Via setoption (ConfigOptions.swift:39) ours drops a rule that has any unknown field; mango keeps it |
 | `device_rule` | option_defs.c:1640 | - | Sources/Mango/Config/ConfigOptions.swift:67 | - |  → see rule-field table | platform | listed (MangoCompat.ignoredKeywords) |
-| `env` | option_defs.c:1787 | - | Sources/Mango/Config/ConfigOptions.swift:19 | - |  → sscanf "%255[^,],%255[^\n]", trim, "~/"→$HOME/ | differs | mango matches any key starting "env" (strncmp 3): `envfoo=A,b` is an env in mango, unknown keyword in ours; ` ,x` (blank name) is accepted by mango (sscanf before trim) and rejected by ours. HOME unset: mango error, ours NSHomeDirectory (marked) |
+| `env` | option_defs.c:1787 | - | Sources/Mango/Config/ConfigOptions.swift:19 | - |  → sscanf "%255[^,],%255[^\n]", trim, "~/"→$HOME/ | differs ✓ rettet 15. nov. | mango matches any key starting "env" (strncmp 3): `envfoo=A,b` is an env in mango, unknown keyword in ours; ` ,x` (blank name) is accepted by mango (sscanf before trim) and rejected by ours. HOME unset: mango error, ours NSHomeDirectory (marked) |
 | `var` | option_defs.c:1867 | - | Sources/Mango/Config/ConfigParser.swift:365 | - | strdup → strchr comma, trim, is_valid_var_name, set_config_var | 1:1 | only reachable from a file line in ours: `setoption,var,...` is "Unknown keyword" in ours (ConfigOptions.parseOption has no var), mango sets the variable |
 | `exec` | option_defs.c:1891 | - | Sources/Mango/Config/ConfigOptions.swift:33 | - |  → append | 1:1 |  |
 | `exec_once` | option_defs.c:1912 | - | Sources/Mango/Config/ConfigOptions.swift:36 | - |  → append; strncmp 9 prefix | 1:1 | `exec_onceX` is exec_once in mango (trivial) |
@@ -320,36 +322,36 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 ## Window-rule fields (window_rule / window_rule_once)
 | field (option_defs.c) | mango default / parse | ours (RuleParser.swift) | status | note |
 |---|---|---|---|---|
-| `is_floating` :1506 | -1 / atoi | :46 flag→Bool? | differs | D2 (negative = unset in mango, true in ours) |
-| `title` :1508 | NULL / strdup | :45 nil if empty | differs | empty value: mango pattern "" matches every title (regex_match, client.c:1057); ours nil, and a rule with neither app_id nor title never matches (Rules.swift:139). `window_rule=is_floating:1,title:` floats every window in mango, none in ours |
-| `app_id` :1510 | NULL / strdup | :44 nil if empty | differs | as title; also matches the app's name (listed §3) |
+| `is_floating` :1506 | -1 / atoi | :46 flag→Bool? | differs ✓ rettet 15. nov. | D2 (negative = unset in mango, true in ours) |
+| `title` :1508 | NULL / strdup | :45 nil if empty | differs ✓ rettet 15. nov. | empty value: mango pattern "" matches every title (regex_match, client.c:1057); ours nil, and a rule with neither app_id nor title never matches (Rules.swift:139). `window_rule=is_floating:1,title:` floats every window in mango, none in ours |
+| `app_id` :1510 | NULL / strdup | :44 nil if empty | differs ✓ rettet 15. nov. | as title; also matches the app's name (listed §3) |
 | `animation_type_open` :1512 | UNSET / animation_type_from_string | :77 | 1:1 | empty → unset both; unknown → slide (same result) |
 | `animation_type_close` :1514 | UNSET | :78 | platform | listed MangoCompat.windowRuleFieldsWithoutEffect |
 | `tags` :1517 | 0 / parse_tag_mask | :57 nil if 0 | 1:1 | mango applies only `if (r->tags)` |
 | `monitor` :1519 | NULL / strdup | :60 MonitorSpec(mango:) | 1:1 | empty → nil; matching is another group's (unsure for `monitor:` empty) |
 | `offset_x` / `offset_y` :1521/1523 | 0 / atoi | :63/64 | 1:1 | |
-| `no_focus` :1525 | -1 / atoi | :81 | differs | D2 |
+| `no_focus` :1525 | -1 / atoi | :81 | differs ✓ rettet 15. nov. | D2 |
 | `no_fade_in` / `no_fade_out` :1527/1529 | -1 | :72/73 | platform | listed |
-| `no_force_center` :1531 | -1 | :65 | differs | D2 |
+| `no_force_center` :1531 | -1 | :65 | differs ✓ rettet 15. nov. | D2 |
 | `width` / `height` :1533/1535 | 0 / atof | :61/62 | 1:1 | |
-| `no_border` :1537 | -1 | :67 | differs | D2 |
+| `no_border` :1537 | -1 | :67 | differs ✓ rettet 15. nov. | D2 |
 | `no_shadow` / `no_radius` :1539/1541 | -1 | :68/69 | platform | listed |
-| `no_animation` :1543 | -1 | :71 | differs | D2 |
-| `is_open_silent` / `is_tag_silent` :1545/1547 | -1 | :51/52 | differs | D2 |
-| `is_named_scratchpad` :1549 | -1 | :53 | differs | D2 |
-| `is_unmanaged_global` / `is_global` :1551/1553 | -1 | :54/49 | differs | D2 |
-| `scroller_proportion_single` :1555 | 0 / atof | :80 | differs | ≤0 applied in ours (see APPLY_FLOAT_PROP) |
+| `no_animation` :1543 | -1 | :71 | differs ✓ rettet 15. nov. | D2 |
+| `is_open_silent` / `is_tag_silent` :1545/1547 | -1 | :51/52 | differs ✓ rettet 15. nov. | D2 |
+| `is_named_scratchpad` :1549 | -1 | :53 | differs ✓ rettet 15. nov. | D2 |
+| `is_unmanaged_global` / `is_global` :1551/1553 | -1 | :54/49 | differs ✓ rettet 15. nov. | D2 |
+| `scroller_proportion_single` :1555 | 0 / atof | :80 | differs ✓ rettet 15. nov. | ≤0 applied in ours (see APPLY_FLOAT_PROP) |
 | `unfocused_opacity` / `focused_opacity` :1557/1559 | 0 | :75/74 | platform | listed |
-| `is_overlay` :1561 | -1 | :50 | differs | D2 |
+| `is_overlay` :1561 | -1 | :50 | differs ✓ rettet 15. nov. | D2 |
 | `shield_when_capture`, `allow_shortcuts_inhibit`, `idle_inhibit_when_focus`, `vrr_only_fullscreen`, `force_render`, `activation_bypass`, `force_fake_maximize`, `force_tearing` :1563-1589 | -1 | accepted by port (MangoCompat.ignoredWindowRuleFields) | platform | listed, 8 fields |
 | `ignore_maximize` :1567 | -1 | :83 | platform | listed |
-| `ignore_minimize` :1569 | -1 | :84 | differs | D2 |
+| `ignore_minimize` :1569 | -1 | :84 | differs ✓ rettet 15. nov. | D2 |
 | `no_size_hint` :1571 | -1 | :66 | platform | listed |
 | `is_term` / `allow_csd` / `no_swallow` / `force_tiled_state` :1581/1583/1591/1587 | -1 | :55/76/56/85 | platform | listed |
-| `confine_pointer` :1593 | -1 | :82 | differs | D2 |
+| `confine_pointer` :1593 | -1 | :82 | differs ✓ rettet 15. nov. | D2 |
 | `no_blur` :1595 | -1 | :70 | platform | listed |
-| `scroller_proportion` :1597 | 0 / atof | :79 | differs | ≤0 applied in ours (APPLY_FLOAT_PROP row) |
-| `is_fullscreen` / `is_fake_fullscreen` :1599/1601 | -1 | :47/48 | differs | D2 |
+| `scroller_proportion` :1597 | 0 / atof | :79 | differs ✓ rettet 15. nov. | ≤0 applied in ours (APPLY_FLOAT_PROP row) |
+| `is_fullscreen` / `is_fake_fullscreen` :1599/1601 | -1 | :47/48 | differs ✓ rettet 15. nov. | D2 |
 | `global_key_binding` :1603 | {0} / sscanf "%255[^-]-%255s", parse_mod, parse_key; error → rule dropped | :86 | 1:1 | dropped on error (keep=false) as mango; mango stops at that token, ours goes on and also reports later unknown fields (message only); `%255s` stops at a space, ours takes the rest (edge) |
 | unknown field | error, rule kept (count++) | :103 | 1:1 | kept in file parsing (ConfigParser.swift:423); dropped via setoption (ConfigOptions.swift:40) |
 | token without ':' | skipped | `tokens` :156 | 1:1 | |
@@ -361,13 +363,13 @@ parse time and again in `overrideConfig`; mango applies them once in `override_c
 | `id` :1290 | 0 / `*`→wildcard, CLAMP 0..31 | :123 (nil = wildcard) | 1:1 | |
 | `layout_name` :1298 | NULL / strdup | :127 | 1:1 | |
 | `monitor_name` / `monitor_make` / `monitor_model` / `monitor_serial` :1300-1306 | NULL / strdup | :129-132 | 1:1 | make is PNP id (listed §3) |
-| `no_render_border` :1308 | 0 / CLAMP 0..1 | :133 Bool? | differs | D4: mango's default 0 is applied by every matching rule (`>= 0`, reapply.c:457), ours nil skips: `tag_rule=id:2,no_render_border:1` then `tag_rule=id:2,layout_name:scroller` → mango 0, ours 1. Also D1 (negative → 0 vs true) |
-| `open_as_floating` :1310 | 0 / CLAMP 0..1 | :135 | differs | D4 |
-| `no_hide` :1312 | 0 / CLAMP 0..1 | :137 | differs | D4 |
+| `no_render_border` :1308 | 0 / CLAMP 0..1 | :133 Bool? | differs ✓ rettet 15. nov. | D4: mango's default 0 is applied by every matching rule (`>= 0`, reapply.c:457), ours nil skips: `tag_rule=id:2,no_render_border:1` then `tag_rule=id:2,layout_name:scroller` → mango 0, ours 1. Also D1 (negative → 0 vs true) |
+| `open_as_floating` :1310 | 0 / CLAMP 0..1 | :135 | differs ✓ rettet 15. nov. | D4 |
+| `no_hide` :1312 | 0 / CLAMP 0..1 | :137 | differs ✓ rettet 15. nov. | D4 |
 | `master_count` :1314 | 0 / CLAMP 1..99 | :139 | 1:1 | applied if ≥1 (always after clamp) |
 | `master_factor` :1316 | 0 / CLAMP 0.1..0.9 | :141 | 1:1 | |
-| `scroller_default_proportion` / `_single` :1318/1321 | 0 / CLAMP 0..1, applied only if >0 | :143/145, applied always | differs | `…proportion:0` is "unset" in mango (reapply.c:461), ours sets 0 |
-| `scroller_ignore_proportion_single` :1325 | -1 / CLAMP 0..1 | :147 | differs | D1 only (negative → 0 vs true) |
+| `scroller_default_proportion` / `_single` :1318/1321 | 0 / CLAMP 0..1, applied only if >0 | :143/145, applied always | differs ✓ rettet 15. nov. | `…proportion:0` is "unset" in mango (reapply.c:461), ours sets 0 |
+| `scroller_ignore_proportion_single` :1325 | -1 / CLAMP 0..1 | :147 | differs ✓ rettet 15. nov. | D1 only (negative → 0 vs true) |
 | unknown field | error, rule kept | :150, kept (ConfigParser.swift:432) | 1:1 | dropped via setoption (ConfigOptions.swift:45) |
 
 ## Monitor, layer and device rules

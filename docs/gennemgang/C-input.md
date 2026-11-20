@@ -1,5 +1,7 @@
 # C-input: src/input/{pointer,keyboard,trackpad,device,touch,tablet,switch}.c, include/mango/input/*.h
 
+Status 2026-11-20 (trin 10): hvert fund er mærket ✓ (rettet, som mango, listet, væk) eller åben, kontrolleret mod koden efter trin 9.
+
 Paths: mango = `~/sources/mango/src/input/`; ours relative to `Sources/`. "Input" = `Mango/Engine/Input.swift`,
 "DragTile" = `Mango/Engine/DragTile.swift`, "LG" = `Mango/Engine/LiveGestures.swift`, "KB" = `Mango/Engine/Keyboard.swift`,
 "PT" = `Mango/Engine/Pointer.swift`, "CH" = `Mango/Engine/CursorHide.swift`, "MS" = `Mango/Engine/MangoServer.swift`,
@@ -18,12 +20,12 @@ Paths: mango = `~/sources/mango/src/input/`; ours relative to `Sources/`. "Input
 | pointer_constraint_hint_position :100 | - | platform | pointer constraints |
 | pointer_locked_constraint_applies :121 | - | platform | pointer constraints |
 | pointer_follow_constraint_hint :141 | - | platform | pointer constraints |
-| pointer_cursor_outside_client :158 | Input:319 (`!c.frame.contains`) | differs | minor: mango's box includes the border (`geom`), ours is `c.frame` without it. Pointer resting on the confined window's border when it gains focus: mango leaves it, ours warps it to the centre |
-| pointer_node_enabled :165 | - (in pointerConfineRuleClient Input:311) | missing | `c->scene->node.enabled` (ours `!c.parked`) not checked in the confine rule client; same result in practice (a parked window is not VISIBLEON) |
+| pointer_cursor_outside_client :158 | Input:319 (`!c.frame.contains`) | differs ✓ rettet i trin 7 | minor: mango's box includes the border (`geom`), ours is `c.frame` without it. Pointer resting on the confined window's border when it gains focus: mango leaves it, ours warps it to the centre |
+| pointer_node_enabled :165 | - (in pointerConfineRuleClient Input:311) | missing ✓ rettet i trin 7 | `c->scene->node.enabled` (ours `!c.parked`) not checked in the confine rule client; same result in practice (a parked window is not VISIBLEON) |
 | pointer_client_visible :174 | - | platform | used only by constraints |
 | pointer_confine_rule_client :183 | pointerConfineRuleClient Input:311 | 1:1 | seat's keyboard surface falls back to `selmon->sel` (`focused`); port |
 | pointer_check_confine_client :202 | pointerCheckConfineClient Input:317 | 1:1 | border nuance via pointer_cursor_outside_client |
-| pointer_client_destroyed :213 | - | missing | `confinePointerLast` (MS:75) is never cleared on destroy; same result (window IDs are not reused) |
+| pointer_client_destroyed :213 | - | missing ✓ rettet i trin 5 | `confinePointerLast` (MS:75) is never cleared on destroy; same result (window IDs are not reused) |
 | pointer_constraint_surface_visible :219 | - | platform | constraints |
 | pointer_warp_into_constraint :235 | - | platform | constraints |
 | pointer_confine_client :268 | - | platform | constraints |
@@ -49,20 +51,20 @@ Paths: mango = `~/sources/mango/src/input/`; ours relative to `Sources/`. "Input
 | resize_cursor_name :900 | resizeCursorName Input:534 | 1:1 | |
 | pointer_update_resize_cursor :907 | pointerUpdateResizeCursor Input:539 | 1:1 | CurNormal = no grab and no button (marked); `seat->drag` covered by the button test |
 | pointer_resize_floating_window :946 | pointerResizeFloatingWindow Input:408 | 1:1 | maths identical; `resize(.drag_edge = edge)` becomes `setFrame` without the edge, so the anchoring of an app-clamped size is the port's (unsure if visible) |
-| client_begin_drag_float :989 | clientBeginDragFloat DragTile:9 | differs | ours lacks `exit_scroller_stack(c)` and `old_stack_inner_per = old_master_inner_per = 0`, sets `isFloating`/`floatGeom = frame` directly instead of `client_set_floating(c,1,false)` (grab branch: no recentre, `arrange(m, false)`; ours `arrange(m, .move)`), and calls `set_size_per` before the float instead of after. Scenario: drag a window out of a scroller stack with drag_tile_to_tile=0; mango has taken it out of the stack, ours still lists it there (unsure what becomes visible on re-tile) |
+| client_begin_drag_float :989 | clientBeginDragFloat DragTile:9 | differs ✓ rettet i trin 7 | ours lacks `exit_scroller_stack(c)` and `old_stack_inner_per = old_master_inner_per = 0`, sets `isFloating`/`floatGeom = frame` directly instead of `client_set_floating(c,1,false)` (grab branch: no recentre, `arrange(m, false)`; ours `arrange(m, .move)`), and calls `set_size_per` before the float instead of after. Scenario: drag a window out of a scroller stack with drag_tile_to_tile=0; mango has taken it out of the stack, ours still lists it there (unsure what becomes visible on re-tile) |
 | pointer_begin_move_resize :999 | pointerBeginMoveResize Input:195 | 1:1 | extra `|| c.scratchpadShown` beside `isfloating` (same result if a shown scratchpad is always floating); cancelAnimation marked |
 | pointer_end_grab_client :1086 | pointerEndGrabClient Input:250 | 1:1 | partial `pointer_process_motion(0)` (listed §2); ours adds `arrange(target, …)` mango does not call on the same monitor (client_set_monitor returns early) — same result for a floating move, unsure for others |
-| group_bar_target_at :1147 | groupBarTargetAt DragTile:46 | differs | unsure: mango hit-tests any bar node (group, tab, title bar) under the pointer and returns `client_group_active(owner)`; ours tests only a strip `group_bar_height` above each visible client with a group bar and returns that client |
-| pointer_process_motion :1178 | pointerProcessMotion Input:332 | differs | **sloppy focus is not focus-on-enter** (see pointer_focus). Also: rule-confine clamp skipped during a grab (`grab == nil`; mango clamps regardless of cursor_mode); group-bar close-button hover (`mango_bar_decoration_set_close_hover`) missing; scroller lock: no `!c->animation.running` when clearing it, `ISSCROLLTILED` instead of `ISTILED` when setting it; "default" cursor platform; relative motion, constraints, drag icon platform |
+| group_bar_target_at :1147 | groupBarTargetAt DragTile:46 | differs åben: stadig en strip over vinduer med gruppebjælke, ingen fanebjælker eller stabling (input/pointer.swift:457-471) | unsure: mango hit-tests any bar node (group, tab, title bar) under the pointer and returns `client_group_active(owner)`; ours tests only a strip `group_bar_height` above each visible client with a group bar and returns that client |
+| pointer_process_motion :1178 | pointerProcessMotion Input:332 | differs åben: kun gruppebjælkens lukkeknap-hover mangler (input/pointer.swift:524); resten rettet i trin 7 | **sloppy focus is not focus-on-enter** (see pointer_focus). Also: rule-confine clamp skipped during a grab (`grab == nil`; mango clamps regardless of cursor_mode); group-bar close-button hover (`mango_bar_decoration_set_close_hover`) missing; scroller lock: no `!c->animation.running` when clearing it, `ISSCROLLTILED` instead of `ISTILED` when setting it; "default" cursor platform; relative motion, constraints, drag icon platform |
 | handle_cursor_motion :1425 | handleCursorMotion Input:325 (from IR.mouseMoved :258 / dragged :236) | port | 1:1 order (motion then toggle_hotarea); no ipc_notify_device_event |
-| pointer_focus :1445 | (inlined) Input:388-404 | differs | mango focuses only when the pointer *enters* a different surface (`surface != pointer_state.focused_surface`), and every arrange / client_focus / warp re-enters the surface under the pointer via `pointer_process_motion(0)` without focusing. Ours focuses whenever the pointer moves over a window that is not `sel` (Input:403). Scenario: sloppyfocus=1 (default), pointer resting on A, a floating dialog opens elsewhere and takes focus; a 1-px nudge: mango keeps the dialog, ours focuses A. Also missing `!c->animation.tagining`. Listed §2/§5 only as "Ingen synlig" for the motion(0) part, which is wrong here |
+| pointer_focus :1445 | (inlined) Input:388-404 | differs ✓ rettet i trin 7 | mango focuses only when the pointer *enters* a different surface (`surface != pointer_state.focused_surface`), and every arrange / client_focus / warp re-enters the surface under the pointer via `pointer_process_motion(0)` without focusing. Ours focuses whenever the pointer moves over a window that is not `sel` (Input:403). Scenario: sloppyfocus=1 (default), pointer resting on A, a floating dialog opens elsewhere and takes focus; a 1-px nudge: mango keeps the dialog, ours focuses A. Also missing `!c->animation.tagining`. Listed §2/§5 only as "Ingen synlig" for the motion(0) part, which is wrong here |
 | handle_request_start_drag :1514 | - | platform | DnD |
 | handle_request_set_cursor :1524 | - | platform | listed §3 |
 | handle_start_drag :1566 | - | platform | DnD |
 | pointer_cursor_activity :1576 | pointerCursorActivity CH:4 | 1:1 | timer as asyncAfter (listed §3); the `/// mango pointer_cursor_activity` line sits on armCursorHideTimer (CH:14), not here |
 | pointer_hide_cursor :1593 | pointerHideCursor CH:33 | 1:1 | |
-| pointer_warp_to_client :1599 | pointerWarpToClient MS:830 | differs | no `pointer_process_motion(0)` after the warp (feeds the pointer_focus deviation); overview card marked |
-| pointer_warp_to_monitor :1608 | pointerWarpToMonitor MS:837 | differs | no `pointer_cursor_activity()` (and "default" cursor). Scenario: cursor_hide_on_keypress=1, `focusmon` with warpcursor: mango shows the cursor on the new monitor, ours leaves it hidden until the mouse moves |
+| pointer_warp_to_client :1599 | pointerWarpToClient MS:830 | differs ✓ rettet i trin 7 | no `pointer_process_motion(0)` after the warp (feeds the pointer_focus deviation); overview card marked |
+| pointer_warp_to_monitor :1608 | pointerWarpToMonitor MS:837 | differs ✓ rettet i trin 7 | no `pointer_cursor_activity()` (and "default" cursor). Scenario: cursor_hide_on_keypress=1, `focusmon` with warpcursor: mango shows the cursor on the new monitor, ours leaves it hidden until the mouse moves |
 | handle_new_virtual_pointer :1615 | - | platform | protocol, unlisted (not user-visible) |
 | find_closest_tiled_client :1627 | findClosestTiledClient DragTile:30 | 1:1 | same result (hypot vs squared int distance, same order; first wins) |
 | pointer_place_drag_tile :1658 | pointerPlaceDragTile DragTile:89 | 1:1 | UNDIR/rightTile/default/dwindle branches 1:1; scroller branch maps to `scrollerDropTile` (body is the layout group's, unsure); group join folded in (mango does it in the release path) |
@@ -72,14 +74,14 @@ Paths: mango = `~/sources/mango/src/input/`; ours relative to `Sources/`. "Input
 
 | mango (file:line) | ours (file:line) | status | note |
 |---|---|---|---|
-| handle_keyboard_key_watch :28 | - | missing | `ipc_notify_device_event`; `mmsg watch all-devices` never streams (IPCJSON nullDevice); unlisted |
+| handle_keyboard_key_watch :28 | - | missing ✓ listet: afvigelser.md §3 | `ipc_notify_device_event`; `mmsg watch all-devices` never streams (IPCJSON nullDevice); unlisted |
 | find_device_rule :34 | - | platform | device_rule listed |
 | keyboard_create :106 | - | platform | |
 | device_rule_has_keyboard_settings :146 | - | platform | |
 | compile_rule_keymap :157 | - | platform | xkb |
 | keyboard_repeat :182 | - | platform | listed (repeat_rate/delay; macOS repeats) — same result for pass-only binds (mango does not repeat unhandled keys either) |
 | is_keyboard_shortcut_inhibitor :199 | - | platform | listed (allow_shortcuts_inhibit) |
-| keyboard_process_global_keypress :210 | publishGlobalKeys Input:48 + KB.handleUnboundKey :97 + IR | differs | name (publishGlobalKeys, marked). Port forwards to a pid. Differs: mango skips a rule whose `globalkeybinding.mod` is 0; ours accepts `NONE-key` (Modifiers.parse "none" → []), so F5 with no modifier is taken from every app. Ours also drops the rule when the first matching window shares the focused window's pid (Input:60, unmarked); mango sends to that window |
+| keyboard_process_global_keypress :210 | publishGlobalKeys Input:48 + KB.handleUnboundKey :97 + IR | differs ✓ listet: afvigelser.md §3; NONE rettet i trin 7, pid-reglen mærket (input/keyboard.swift:27) | name (publishGlobalKeys, marked). Port forwards to a pid. Differs: mango skips a rule whose `globalkeybinding.mod` is 0; ours accepts `NONE-key` (Modifiers.parse "none" → []), so F5 with no modifier is taken from every app. Ours also drops the rule when the first matching window shares the focused window's pid (Input:60, unmarked); mango sends to that window |
 | handle_keyboard_shortcuts_inhibitor_destroy :271 | - | platform | |
 | handle_keyboard_shortcuts_inhibit_new_inhibitor :283 | - | platform | listed |
 | keyboard_sync_keymap :321 | - | platform | Xwayland |
@@ -95,10 +97,10 @@ Paths: mango = `~/sources/mango/src/input/`; ours relative to `Sources/`. "Input
 | keyboard_is_bound_key :563 | KB.handleKeyboardKey | 1:1 | name |
 | keyboard_mark_bound_key :568 | KB.handleKeyboardKey | 1:1 | name; marked after the dispatch is decided, not before it runs (same result) |
 | keyboard_unmark_bound_key :577 | KB.handleKeyboardKey | 1:1 | name |
-| keyboard_check_keybinding :585 | KB.keyboardCheckKeybinding :5 | differs | matches keycodes only, never `KEY_TYPE_SYM` with `xkb_keysym_to_lower` (keysym model deferred by the user 2026-11-14, but not in docs/afvigelser.md). `handled` is a sticky OR in ours; mango overwrites it per match, so an allow-conflict non-pass bind followed by a `bindp` match passes the key in mango and swallows it in ours. Break after setkeymode/chvt/reload_config/load_config_file = mango's nonzero returns (1:1). Modifier-key mods translation (keyModifier) reproduces wlroots' pre-update mods (1:1) |
+| keyboard_check_keybinding :585 | KB.keyboardCheckKeybinding :5 | differs ✓ listet: afvigelser.md §3 (keysym); handled rettet i trin 7 | matches keycodes only, never `KEY_TYPE_SYM` with `xkb_keysym_to_lower` (keysym model deferred by the user 2026-11-14, but not in docs/afvigelser.md). `handled` is a sticky OR in ours; mango overwrites it per match, so an allow-conflict non-pass bind followed by a `bindp` match passes the key in mango and swallows it in ours. Break after setkeymode/chvt/reload_config/load_config_file = mango's nonzero returns (1:1). Modifier-key mods translation (keyModifier) reproduces wlroots' pre-update mods (1:1) |
 | keyboard_cancel_pending_release_bind :656 | IR.cancelPendingReleaseBind :171 (WindowSystem) | port | |
 | keyboard_find_jump_client :663 | keyboardFindJumpClient OverviewMode:373 | 1:1 | |
-| handle_keyboard_key :680 | KB.handleKeyboardKey :67 + handleUnboundKey :97 + MangoServer.handleKeyboardKey Input:68 + IR.key :81 | differs | minor: `ISMODEKEYCODE` is the 8 Shift/Ctrl/Alt/Super keycodes; ours is any flagsChanged key, so releasing Caps Lock or Fn commits the switcher / leaves overcircle. Jump mode decided on the tap (listed §5). Order of hide-cursor/tag_combo/overcircle differs, same result |
+| handle_keyboard_key :680 | KB.handleKeyboardKey :67 + handleUnboundKey :97 + MangoServer.handleKeyboardKey Input:68 + IR.key :81 | differs ✓ rettet i trin 7 | minor: `ISMODEKEYCODE` is the 8 Shift/Ctrl/Alt/Super keycodes; ours is any flagsChanged key, so releasing Caps Lock or Fn commits the switcher / leaves overcircle. Jump mode decided on the tap (listed §5). Order of hide-cursor/tag_combo/overcircle differs, same result |
 | handle_keyboard_modifiers :837 | MWS :548 (TIS notification → printstatus) | port | layout change → printstatus; seat part platform |
 | reset_keyboard_layout :874 | resetKeyboardLayout MS:251 | port | listed §3 (xkb_rules_options) |
 | handle_new_virtual_keyboard :968 | - | platform | protocol |
@@ -137,10 +139,10 @@ Paths: mango = `~/sources/mango/src/input/`; ours relative to `Sources/`. "Input
 | handle_cursor_swipe_begin :803 | LG:560 | 1:1 | listed §3 |
 | handle_cursor_swipe_update :826 | LG:573 | 1:1 | listed §3 |
 | handle_cursor_swipe_end :846 | LG:582 | 1:1 | never cancelled, listed §3 |
-| handle_cursor_pinch_begin :871 | - | missing | its one mango step, `keyboard_cancel_pending_release_bind()`, is not done (the port tracks only 3+ finger swipes). Scenario: `bindr=SUPER,Super_L`, hold Super and pinch-zoom: mango cancels the release bind, ours fires it |
+| handle_cursor_pinch_begin :871 | - | missing ✓ listet: afvigelser.md §5 | its one mango step, `keyboard_cancel_pending_release_bind()`, is not done (the port tracks only 3+ finger swipes). Scenario: `bindr=SUPER,Super_L`, hold Super and pinch-zoom: mango cancels the release bind, ours fires it |
 | handle_cursor_pinch_update :885 | - | platform | forward to client |
 | handle_cursor_pinch_end :898 | - | platform | forward to client |
-| handle_cursor_hold_begin :910 | - | missing | as pinch_begin |
+| handle_cursor_hold_begin :910 | - | missing ✓ listet: afvigelser.md §5 | as pinch_begin |
 | handle_cursor_hold_end :924 | - | platform | |
 | pointer_process_swipe_end :937 | LG:598 | 1:1 | |
 
@@ -158,7 +160,7 @@ Paths: mango = `~/sources/mango/src/input/`; ours relative to `Sources/`. "Input
 | mango | ours | status | note |
 |---|---|---|---|
 | CLEANMASK keyboard.h | `mods.subtracting(.fn)` | 1:1 | caps is not in our Modifiers; fn is the port's |
-| ISMODEKEYCODE keyboard.h | `ev.isModifierKey` (EventTap flagsChanged) | differs | includes Caps Lock (57) and Fn (63); see handle_keyboard_key |
+| ISMODEKEYCODE keyboard.h | `ev.isModifierKey` (EventTap flagsChanged) | differs ✓ rettet i trin 7 | includes Caps Lock (57) and Fn (63); see handle_keyboard_key |
 | KEYBOARD_MAX_KEYSYMS | - | platform | xkb |
 | KEYBOARD_MAX_BOUND_KEYS (32) | Set | 1:1 | same result |
 | CONFINE_POINTER_MARGIN (5) | literal 5 Input:338 | 1:1 | |

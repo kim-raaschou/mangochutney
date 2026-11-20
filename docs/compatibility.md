@@ -11,7 +11,11 @@ Generated from the code with `make readme-tables`.
 <!-- mango-compat:start -->
 ### Not implemented yet
 
-Nothing: everything of mango that macOS allows is implemented.
+macOS would allow these; the port does not have them yet.
+
+| What | Names | Note |
+| --- | --- | --- |
+| Other options | `animation_curve_focus`, `animation_duration_focus` | not implemented yet |
 
 ### Cannot work on macOS
 
@@ -37,7 +41,7 @@ macOS draws and manages other apps' windows, the keyboard, the pointer and the d
 | Keyword | `layer_rule=` | macOS has no layer shell |
 | Keyword | `monitor_rule=` | display mode, scale, position and HDR are macOS display settings |
 | Keyword | `switchbind=` | lid switch events are not available to apps on macOS |
-| Options | `animation_curve_focus`, `animation_duration_focus`, `animation_fade_in`, `animation_fade_out`, `fade_in_begin_opacity`, `fade_out_begin_opacity`, `focused_opacity`, `unfocused_opacity` | another app's window opacity can only be changed with SIP off |
+| Options | `animation_fade_in`, `animation_fade_out`, `fade_in_begin_opacity`, `fade_out_begin_opacity`, `focused_opacity`, `unfocused_opacity` | another app's window opacity can only be changed with SIP off |
 | Options | `animation_curve_close`, `animation_duration_close`, `animation_type_close`, `zoom_end_ratio` | the window is already gone when macOS reports it closed |
 | Window-rule fields | `allow_shortcuts_inhibit` | Wayland protocol without a macOS counterpart |
 | Window-rule fields | `focused_opacity`, `no_fade_in`, `no_fade_out`, `unfocused_opacity` | another app's window opacity can only be changed with SIP off |
@@ -70,21 +74,27 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 
 | Name | Does |
 | --- | --- |
-| `chutney_keybindings_spotlight_launch` | the installed applications (Spotlight's Applications) in the keybindings palette's search |
+| `chutney_fit_layout` | where a tiled window's app keeps it larger than its tile: where the layout has room for it on that side, mango's resizewin on it by what it lacks; 1: "Fit layout" in the menu bar's menu, 2: also a macOS notification with a Fit button, or one saying there is no room, 3: by itself (the dispatcher chutney_fit_layout always) |
+| `chutney_fullscreen_tag` | a window mango manages that goes into macOS fullscreen moves alone to its own tag F1–F12 after mango's tags, as macOS gives it its own Space, drawn in the menu bar as its app's icon: the tag it leaves closes up, its Space and its tag are viewed together, and out of fullscreen it is back on its tag, in its place; mango's togglefullscreen is macOS fullscreen, and macOS fullscreen is mango's |
+| `chutney_group_bar_decorate_icon` | the app's icon before each title in the group bar |
 | `chutney_hyper_key` | the key held as HYPER, as Raycast's Hyper Key: caps_lock, a left_ or right_ control, shift, option or command, f1 … f12 (macOS's own key mapping) |
-| `chutney_hyper_modifier` | the modifiers that, held together, are mango's HYPER (Mod3) |
+| `chutney_hyper_modifier` | what HYPER means in a bind |
+| `chutney_keybindings_spotlight_launch` | the installed applications (Spotlight's Applications) in the keybindings palette's search |
 | `chutney_layout_switcher_keys` | the keys that move the layout switcher's selection: left,down,up,right (or h,j,k,l); the arrows always work |
+| `chutney_macos_appearance` | bars, switcher and jump labels in the macOS style where no decorate key is set |
 | `chutney_menu_bar` | menu-bar item with the current tags and layout |
 | `chutney_menu_bar_layout` | the layout's icon in the menu bar |
 | `chutney_menu_bar_logo` | the mango logo in the menu bar: color, mono (the menu bar's colour) or 0 |
 | `chutney_menu_bar_mode` | the key mode in the menu bar, the default one too (0: only another mode) |
 | `chutney_menu_bar_tag_style` | the menu bar's tags: square, circle (SF Symbols numbers) or text |
 | `chutney_menu_config` | the file the menu's panel saves its settings in; the config reads it with source_optional, last |
-| `chutney_macos_appearance` | bars, switcher and jump labels in the macOS style where no decorate key is set |
+| `chutney_overlap_warning` | a tiled window its app keeps larger than its tile (over its neighbour): its tag in orange in the menu bar |
 | `chutney_tab_bar_decorate_icon` | the app's icon before each tab's title in the tab bar |
-| `chutney_group_bar_decorate_icon` | the app's icon before each title in the group bar |
-| `chutney_launch_or_focus` (dispatcher) | one key per app: start it, or go to its window |
-| `chutney_restart` (dispatcher) | quit, with hidden windows left hidden for the next mango (make install, mmsg service restart) |
+| `chutney_fit_layout` (dispatcher) | fit the selected monitor's layout to the windows larger than their tiles, with mango's resizewin, where the layout has room |
 | `chutney_keybindings` (dispatcher) | the keybindings palette: search the bindings, move with the keys, Return runs one |
+| `chutney_launch_or_focus` (dispatcher) | one key per app: start it, or go to its window |
 | `chutney_layout_switcher` (dispatcher) | the layout switcher: circle_layout's layouts (or all 14) as icons, move with the keys, Return sets one |
+| `chutney_restart` (dispatcher) | quit, with hidden windows left hidden for the next mango (make install, mmsg service restart) |
+| `chutney_toggle_fullscreen` (dispatcher) | chutney_fullscreen_tag's F tag N (1–12) as a toggle: the focused window there goes out of macOS fullscreen; with F tag N empty the focused window goes into it; another window there is viewed |
+| `chutney_view_fullscreen` (dispatcher) | chutney_fullscreen_tag's F tag N (1–12): its window in macOS fullscreen focused, so macOS goes to its Space |
 <!-- mango-compat:end -->

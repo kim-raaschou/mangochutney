@@ -1,5 +1,7 @@
 # F-anim-draw: src/animation/{client,common,layer,tag}.c, src/draw/{text-node,dim-node,title_message_bar}.c, src/overview/overview.c, src/switcher/switcher.c
 
+Status 2026-11-20 (trin 10): hvert fund er mærket ✓ (rettet, som mango, listet, væk) eller åben, kontrolleret mod koden efter trin 9.
+
 Paths: mango = `~/sources/mango/src/...`; ours relative to `Sources/`.
 Abbreviations: `Anim` = Mango/Engine/Animation.swift, `MS` = Mango/Engine/MangoServer.swift, `Tabs` = Mango/Engine/Tabs.swift,
 `OvM` = Mango/Engine/OverviewMode.swift, `SwM` = Mango/Engine/SwitcherMode.swift, `SwL` = Mango/Layout/SwitcherLayout.swift,
@@ -20,7 +22,7 @@ Abbreviations: `Anim` = Mango/Engine/Animation.swift, `MS` = Mango/Engine/MangoS
 | compute_edge_offsets client.c:64 | Tabs:106 | 1:1 | uses port's `animationCurrent` for `c->animation.current` (marked) |
 | client_actual_size client.c:79 | Tabs:93 (inset by bw) | port | |
 | set_rect_size client.c:83 | — | platform | scene rect |
-| set_client_corner_location client.c:86 | MS:701 (`radius = clientNoRadiusActive ? 0 : borderRadius`) | differs | mango zeroes each corner that touches the monitor edge (`target_geom.x + border_radius <= m.x` …) and keeps all four for `client_is_ignore_output_clip`; ours is one uniform radius for the border. Scenario: `border_radius=10`, mango look (no `chutney_macos_appearance`), a tiled window flush with the screen's left edge: mango draws square left corners, ours round. Unlisted (afvigelser §3 only says mango's window corners are not drawn) |
+| set_client_corner_location client.c:86 | MS:701 (`radius = clientNoRadiusActive ? 0 : borderRadius`) | differs åben (som mangel i afvigelser.md §4) (lille: klippet ved kanten nu, MangoServer.swift:265; ingen radius pr. hjørne) | mango zeroes each corner that touches the monitor edge (`target_geom.x + border_radius <= m.x` …) and keeps all four for `client_is_ignore_output_clip`; ours is one uniform radius for the border. Scenario: `border_radius=10`, mango look (no `chutney_macos_appearance`), a tiled window flush with the screen's left edge: mango draws square left corners, ours round. Unlisted (afvigelser §3 only says mango's window corners are not drawn) |
 | is_horizontal_stack_layout client.c:119 | Anim:117 inline | 1:1 | name: inlined |
 | is_horizontal_right_stack_layout client.c:125 | Anim:118 inline | 1:1 | name: inlined |
 | is_special_animation_rule client.c:130 | Anim:113 | 1:1 | returns nil for UNDIR; `!isfloating` hoisted into the guard, same result |
@@ -47,13 +49,13 @@ Abbreviations: `Anim` = Mango/Engine/Animation.swift, `MS` = Mango/Engine/MangoS
 | client_animation_resume client.c:1429 | MWS:488 → Ani:50/57 | port | listed §5; same 0.05 threshold and whole-duration restart |
 | client_commit client.c:1458 | Ani:100 `animate` | port | |
 | client_set_pending_state client.c:1483 | Pl:43-68, Anim:76 | port | grab → 0 ms, equal box → no write, `no_animation` via `clientAnimationsEnabled`; `start_drag_window` is achieved by callers passing `.none` |
-| resize client.c:1520 | Anim:32 `clientAnimation` (marked) + Pl:31 + MS arrange (bounds) | differs | (a) OVERVIEW action: mango's `find_animation_curve_at` has no OVERVIEW branch, so it uses `animation_curve_move`; ours uses `animationCurveTag` (Anim:42). Scenario: no Screen Recording permission (real windows move), `animation_curve_tag` ≠ `_move`: overview zoom eases differently. (b) `scratchpad_switching_mon && isfloating → animainit_geom = geom` not honoured: a shown scratchpad pulled to the selected monitor (`scratchpad_cross_monitor`) slides across from the old monitor in ours, appears in place in mango. (c) `.none` arrange (no animation at all, Dispatch/Tabs/FloatingSnap/port callers) has no counterpart: mango always animates a move. (d) size hints (`client_set_size_bound`) and swallow absent — listed (MangoCompat `no_size_hint`, `no_swallow`). listed §5 for the structure only |
+| resize client.c:1520 | Anim:32 `clientAnimation` (marked) + Pl:31 + MS arrange (bounds) | differs ✓ rettet i trin 2 | (a) OVERVIEW action: mango's `find_animation_curve_at` has no OVERVIEW branch, so it uses `animation_curve_move`; ours uses `animationCurveTag` (Anim:42). Scenario: no Screen Recording permission (real windows move), `animation_curve_tag` ≠ `_move`: overview zoom eases differently. (b) `scratchpad_switching_mon && isfloating → animainit_geom = geom` not honoured: a shown scratchpad pulled to the selected monitor (`scratchpad_cross_monitor`) slides across from the old monitor in ours, appears in place in mango. (c) `.none` arrange (no animation at all, Dispatch/Tabs/FloatingSnap/port callers) has no counterpart: mango always animates a move. (d) size hints (`client_set_size_bound`) and swallow absent — listed (MangoCompat `no_size_hint`, `no_swallow`). listed §5 for the structure only |
 | client_draw_fadeout_frame client.c:1674 | — | platform | listed §3 |
-| client_start_focus_animation client.c:1682 | — | missing | opacity part is platform, but the same animation fades the **border colour** (`target_border_color`) over `animation_duration_focus` with `animation_curve_focus`; the port draws borders and could. MangoCompat lists both keys only as "opacity needs SIP off" (reason incomplete). Scenario: `animation_duration_focus=300`: mango fades border focus→unfocus colour, ours switches at once |
-| client_interpolate_focus_animation client.c:1704 | — | missing | as above (border/dim colour interpolation) |
-| client_step_focus_animation client.c:1728 | — | missing | as above |
-| client_set_unfocused_opacity_animation client.c:1739 | — | missing | border-colour fade start; border raise is scene |
-| client_set_focused_opacity_animation client.c:1748 | — | missing | as above |
+| client_start_focus_animation client.c:1682 | — | missing åben (som mangel i afvigelser.md §4) | opacity part is platform, but the same animation fades the **border colour** (`target_border_color`) over `animation_duration_focus` with `animation_curve_focus`; the port draws borders and could. MangoCompat lists both keys only as "opacity needs SIP off" (reason incomplete). Scenario: `animation_duration_focus=300`: mango fades border focus→unfocus colour, ours switches at once |
+| client_interpolate_focus_animation client.c:1704 | — | missing åben (som mangel i afvigelser.md §4) | as above (border/dim colour interpolation) |
+| client_step_focus_animation client.c:1728 | — | missing åben (som mangel i afvigelser.md §4) | as above |
+| client_set_unfocused_opacity_animation client.c:1739 | — | missing åben (som mangel i afvigelser.md §4) | border-colour fade start; border raise is scene |
+| client_set_focused_opacity_animation client.c:1748 | — | missing åben (som mangel i afvigelser.md §4) | as above |
 | client_set_focus_opacity client.c:1759 | — | platform | opacity/fade-in/blur; listed (MangoCompat fade keys) |
 | client_draw_frame client.c:1865 | MS:721 `clientDrawFrame` + Ani:202 `frozen` | port | listed §5; our `clientDrawFrame` only redraws borders/bars for the animator's frames (see table 2) |
 
@@ -61,8 +63,8 @@ Abbreviations: `Anim` = Mango/Engine/Animation.swift, `MS` = Mango/Engine/MangoS
 
 | mango (file:line) | ours (file:line) | status | note |
 |---|---|---|---|
-| set_tagin_animation tag.c:10 | Anim:196 `setTaginAnimation` | differs | mango: forward start x = `MAX(m.x+m.width, geom.x+m.width)`, back `MIN(m.x-geom.width, geom.x-m.width)` (y likewise vertical), and keeps the other axis at `animation.current`; ours is `target ± screen width/height` with the other axis from the target. Scenario: scroller window extending past the right screen edge, view back: mango starts at `m.x - w`, ours at `x - m.width` (different start). Also a client whose geom changed while hidden starts from its old y in mango (diagonal), straight in ours. The "running" and "on both tags / global" branches are covered elsewhere (move) |
-| set_arrange_visible tag.c:55 | Anim:38-75 (inside `clientAnimation`), Anim:179 | differs | (1) `tag_switch` needs `prevtag != 0 && curtag != 0`; ours slides in any parked client on a `.tag` arrange. Scenario: special tag shown, `view 3`: prevtag becomes 0, mango shows tag 3's windows in place, ours slides them in. (2) In-flight tagout reversed: mango sets `tagining` → TAG duration/curve; ours falls to `.move` (move duration 500 ms / move curve instead of 300 ms / tag curve). (3) Special (TAG0) clients: mango slides from above on every `want_animation` arrange even when shown; ours only when parked. `tag_from_rule`: same result (new client takes OPEN in both). Unlisted |
+| set_tagin_animation tag.c:10 | Anim:196 `setTaginAnimation` | differs ✓ rettet i trin 2 | mango: forward start x = `MAX(m.x+m.width, geom.x+m.width)`, back `MIN(m.x-geom.width, geom.x-m.width)` (y likewise vertical), and keeps the other axis at `animation.current`; ours is `target ± screen width/height` with the other axis from the target. Scenario: scroller window extending past the right screen edge, view back: mango starts at `m.x - w`, ours at `x - m.width` (different start). Also a client whose geom changed while hidden starts from its old y in mango (diagonal), straight in ours. The "running" and "on both tags / global" branches are covered elsewhere (move) |
+| set_arrange_visible tag.c:55 | Anim:38-75 (inside `clientAnimation`), Anim:179 | differs ✓ rettet i trin 2 | (1) `tag_switch` needs `prevtag != 0 && curtag != 0`; ours slides in any parked client on a `.tag` arrange. Scenario: special tag shown, `view 3`: prevtag becomes 0, mango shows tag 3's windows in place, ours slides them in. (2) In-flight tagout reversed: mango sets `tagining` → TAG duration/curve; ours falls to `.move` (move duration 500 ms / move curve instead of 300 ms / tag curve). (3) Special (TAG0) clients: mango slides from above on every `want_animation` arrange even when shown; ours only when parked. `tag_from_rule`: same result (new client takes OPEN in both). Unlisted |
 | set_tagout_animation tag.c:129 | Anim:184 | 1:1 | same MIN/MAX positions; port runs it (Pl:180) |
 | set_arrange_hidden tag.c:168 | Anim:141 | 1:1 | scratchpad, special (`want_animation && !isoverview`), prev-tag tagout with mango's conditions; `ov_card_tree` branch is port; `!parked` stands for `!tagouted`; same result |
 
@@ -167,7 +169,7 @@ Abbreviations: `Anim` = Mango/Engine/Animation.swift, `MS` = Mango/Engine/MangoS
 | mango_bar_decoration_set_colors text-node.c:1004 | — | port | never called in mango |
 | mango_bar_decoration_set_close text-node.c:1018 | Tabs:199 `TabStrip.closeButton` | port | |
 | mango_bar_decoration_set_close_color text-node.c:1033 | Tabs:201 | port | hover colour derivation (`c + (1-c)*0.4`) unused, see next |
-| mango_bar_decoration_set_close_hover text-node.c:1047 | — | missing | group-bar close button does not change colour under the pointer (mango: pointer.c:1286). Unlisted |
+| mango_bar_decoration_set_close_hover text-node.c:1047 | — | missing åben (som mangel i afvigelser.md §4) (pointer.swift:524) | group-bar close button does not change colour under the pointer (mango: pointer.c:1286). Unlisted |
 | mango_bar_decoration_close_contains text-node.c:1055 | TabBars.swift:321 | port | |
 | mango_jump_label_node_apply_config text-node.c:1067 | JumpLabel.swift:41 | port | |
 | mango_bar_decoration_apply_config text-node.c:1095 | boundary `applyConfig`; Tabs:57 | port | see table 2 for Tabs:57's name |
@@ -179,7 +181,7 @@ Abbreviations: `Anim` = Mango/Engine/Animation.swift, `MS` = Mango/Engine/MangoS
 | title_message_bar_text tmb.c:12 | TMB:6 | 1:1 | appid = bundle id (listed §3) |
 | title_message_bar_init tmb.c:16 | TMB:10 | 1:1 | layer/ignore-hit are port |
 | title_message_bar_set_text tmb.c:32 | TMB:23 | 1:1 | string compare instead of strncmp pieces; same result |
-| overcircle_title_bar_geometry tmb.c:48 | TMB:30 | differs | listed §5: under the client's card (`ovCards`), not `geom`/`animation.current`, and no fallback between them |
+| overcircle_title_bar_geometry tmb.c:48 | TMB:30 | differs ✓ listet: afvigelser.md §5 | listed §5: under the client's card (`ovCards`), not `geom`/`animation.current`, and no fallback between them |
 | title_message_bar_geometry tmb.c:75 | TMB:41 | 1:1 | plus one marked `PortHooks` call (launch_or_focus) |
 | title_message_bar_finish tmb.c:82 | TMB:47 | 1:1 | |
 | title_message_bar_apply_config tmb.c:90 | TMB:54 | 1:1 | |
@@ -221,15 +223,15 @@ Abbreviations: `Anim` = Mango/Engine/Animation.swift, `MS` = Mango/Engine/MangoS
 | switcher_layout switcher.c:237 | SwL:15 `switcherLayout` | 1:1 | rows, centring, panel position match; also holds switcher_open's tile_h loop (table 2) |
 | switcher_apply_highlight switcher.c:294 | SwM:102/113 → port | port | focuscolor/bordercolor passed |
 | switcher_close switcher.c:301 | SwM:68 | 1:1 | |
-| switcher_remove_client switcher.c:321 | SwM:88 | differs | mango's `switcher_layout` keeps `tile_h` and each `tile->cw` from open; ours re-runs `switcherLayout` from scratch, recomputing tile height for the new count and widths from current frames. Scenario: 2 tiles open, one window closes: mango keeps the remaining tile its size, ours can grow it (rows=1 gives larger `h_by_h`). Unlisted |
+| switcher_remove_client switcher.c:321 | SwM:88 | differs ✓ rettet i trin 8 | mango's `switcher_layout` keeps `tile_h` and each `tile->cw` from open; ours re-runs `switcherLayout` from scratch, recomputing tile height for the new count and widths from current frames. Scenario: 2 tiles open, one window closes: mango keeps the remaining tile its size, ours can grow it (rows=1 gives larger `h_by_h`). Unlisted |
 | switcher_client_eligible switcher.c:355 | SwM:36 | 1:1 | mapped/unmanaged/x11 checks need no macOS part |
-| switcher_commit_client switcher.c:361 | SwM:76 | differs | mango calls `client_view_on_monitor(..., true, tc->mon, true)` (changefocus true); ours passes no `changeFocus`, so false when `tc` is on another monitor than the selected one (all_next scope): mango first focuses that monitor's top client then `tc` (prevsel = that top client), ours focuses `tc` directly (prevsel unchanged). Unlisted |
+| switcher_commit_client switcher.c:361 | SwM:76 | differs ✓ rettet i trin 8 | mango calls `client_view_on_monitor(..., true, tc->mon, true)` (changefocus true); ours passes no `changeFocus`, so false when `tc` is on another monitor than the selected one (all_next scope): mango first focuses that monitor's top client then `tc` (prevsel = that top client), ours focuses `tc` directly (prevsel unchanged). Unlisted |
 | switcher_commit switcher.c:371 | SwM:83 | 1:1 | |
 | switcher_client_at switcher.c:375 | Mango/Engine/Input.swift:135 inline | 1:1 | name: inlined; same box (cw+2·pad × tile_h+2·pad) |
 | switcher_title_message_bar_geometry switcher.c:394 | SwM:117 | 1:1 | |
 | switcher_open switcher.c:415 | SwM:42 (+SwL tile_h loop) | 1:1 | index rule, focus-stack order match; mango's "any monitor in overview → return" moved to `switcher` (see next) |
 | switcher_cycle switcher.c:486 | SwM:60 | 1:1 | |
-| switcher switcher.c:493 | SwM:14 | differs | ours returns when any monitor is in overview before the active/cycle test (mango checks overview only inside `switcher_open`). Scenario: switcher open, a binding enters overview, mod+Tab again: mango cycles (or closes on scope change), ours does nothing and the switcher stays. `session_locked` n/a. Unlisted |
+| switcher switcher.c:493 | SwM:14 | differs ✓ rettet i trin 8 | ours returns when any monitor is in overview before the active/cycle test (mango checks overview only inside `switcher_open`). Scenario: switcher open, a binding enters overview, mod+Tab again: mango cycles (or closes on scope change), ours does nothing and the switcher stays. `session_locked` n/a. Unlisted |
 | switcher_is_active switcher.c:511 | `switcherState != nil` | 1:1 | name: no function |
 | switcher_candidate switcher.c:513 | SwM:44-51 inline | 1:1 | name: inlined |
 | switcher_content_size switcher.c:524 | `c.frame.size` (SwM:55) | port | |

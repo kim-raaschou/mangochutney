@@ -1,5 +1,7 @@
 # A-client: src/manage/client.c, include/mango/manage/client.h
 
+Status 2026-11-20 (trin 10): hvert fund er mærket ✓ (rettet, som mango, listet, væk) eller åben, kontrolleret mod koden efter trin 9.
+
 Paths: mango = `~/sources/mango`, ours = `~/sources/mangochutney/Sources`. `MS` = `Mango/Engine/MangoServer.swift`,
 `D` = `Mango/Engine/Dispatch.swift`, `G` = `Mango/Engine/Groups.swift`, `T` = `Mango/Engine/Tabs.swift`,
 `CL` = `Mango/Engine/Client.swift`, `WS` = `Boundary/WindowSystem.swift`.
@@ -26,7 +28,7 @@ the border, mango's include it. Where only that shifts a number by `bw`, the row
 | client.c:89 `toplevel_from_wlr_surface` | none | platform | surface tree lookup |
 | client.c:153 `client_activate_surface` | WS:13, MacWindowSystem.swift:137 | port | |
 | client.c:168 `client_get_appid` | CL:126 `appid` | port listed §3 | bundle id (or app name); "broken" fallback not needed |
-| client.c:178 `get_client_tag_idx` | none; inline `getTagsFirstTagNum(c.tags) ?? m.getMonCurtag` (MS:1053, MS:1180, D:1641) or `m.layout` | differs | (1) for `tags == 0` (a minimized client) mango gives slot 0, ours the current tag (`clear_fullscreen_flag`, `exit_scroller_stack`, `client_reassign_monitor`). (2) Several callers use the monitor's current-tag layout (`m.layout`) where mango uses the client's own tag (`ltidxs[get_client_tag_idx(c)]`): `client_is_in_same_stack`, `get_focused_stack_client`, `client_exchange`, `client_replace`, `handle_client_unmap`'s scroller node. Scenario: view tags 1+2 (curtag 1, tile) with `sc` only on tag 2 (scroller): mango treats `sc` as scroller for focus-stack memory, ours as tile |
+| client.c:178 `get_client_tag_idx` | none; inline `getTagsFirstTagNum(c.tags) ?? m.getMonCurtag` (MS:1053, MS:1180, D:1641) or `m.layout` | differs ✓ rettet i trin 5 | (1) for `tags == 0` (a minimized client) mango gives slot 0, ours the current tag (`clear_fullscreen_flag`, `exit_scroller_stack`, `client_reassign_monitor`). (2) Several callers use the monitor's current-tag layout (`m.layout`) where mango uses the client's own tag (`ltidxs[get_client_tag_idx(c)]`): `client_is_in_same_stack`, `get_focused_stack_client`, `client_exchange`, `client_replace`, `handle_client_unmap`'s scroller node. Scenario: view tags 1+2 (curtag 1, tile) with `sc` only on tag 2 (scroller): mango treats `sc` as scroller for focus-stack memory, ours as tile |
 | client.c:184 `client_get_pid` | CL:14 `pid` | port | |
 | client.c:193 `client_get_clip` | none | platform | xdg geometry clip |
 | client.c:210 `client_surface_get_source_box` | none | platform | buffer transform |
@@ -62,9 +64,9 @@ the border, mango's include it. Where only that shifts a number by `bw`, the row
 | client.c:835 `client_request_minimize` | none | platform | event payload |
 | client.c:847 `client_request_maximize` | none | platform | compat `ignore_maximize` |
 | client.c:858 `client_set_size_bound` | none | platform listed §3 | app keeps its own min/max (§3 row 65, compat `no_size_hint`) |
-| client.c:910 `check_hit_no_border` | MS:658 `checkHitNoBorder` | differs | `monocle_no_border` term: mango `ISFAKETILED(c)` (!floating, !minimized, !killing, !unglobal), ours only `!c.isFloating` (MS:672). Scenario: a `isunglobal` window in monocle with `monocle_no_border=1`: mango draws its border, ours hides it. (Counts are computed live, mango's are cached from the last arrange: same result) |
+| client.c:910 `check_hit_no_border` | MS:658 `checkHitNoBorder` | differs ✓ rettet i trin 5 | `monocle_no_border` term: mango `ISFAKETILED(c)` (!floating, !minimized, !killing, !unglobal), ours only `!c.isFloating` (MS:672). Scenario: a `isunglobal` window in monocle with `monocle_no_border=1`: mango draws its border, ours hides it. (Counts are computed live, mango's are cached from the last arrange: same result) |
 | client.c:941 `client_find_terminal` | none | platform listed (compat `is_term`, `no_swallow`) | |
-| client.c:957 `get_client_by_id_or_title` | D:1866 (inline in `toggleNamedScratchpad`, marked `mango get_client_by_id_or_title`) | differs name | mango's "none" test is `strncmp(arg,"none",4)`: any argument *starting* with "none" means unset; ours only exactly "none" (plus "0"/"" which come from our arg parsing). App-name match is listed §3 row 85 |
+| client.c:957 `get_client_by_id_or_title` | D:1866 (inline in `toggleNamedScratchpad`, marked `mango get_client_by_id_or_title`) | differs name ✓ rettet i trin 6 | mango's "none" test is `strncmp(arg,"none",4)`: any argument *starting* with "none" means unset; ours only exactly "none" (plus "0"/"" which come from our arg parsing). App-name match is listed §3 row 85 |
 | client.c:1001 `client_center_geometry` | MS:564 | 1:1 | mango's `cbw` (only when `check_hit_no_border`) is `c->bw`, which `resize` has just set to 0 in that case, so the clamp is the same; same result |
 | client.c:1055 `is_window_rule_matches` | Rules.swift:127 | 1:1 listed §3 | app-name alternative listed §3 row 85, marked |
 | client.c:1063 `center_tiled_select` | MS:1218 | 1:1 | takes the candidate list as `among:` (the caller's `scrollTiled`, same filter) |
@@ -76,18 +78,18 @@ the border, mango's include it. Where only that shifts a number by `bw`, the row
 | client.c:1323 `get_dim_color` | none | platform | dimming (compat "Dimming") |
 | client.c:1332 `is_single_bit_set` | D:500 inline `nonzeroBitCount == 1` | 1:1 name | |
 | client.c:1334 `client_only_in_one_tag` | D:498 | 1:1 | |
-| client.c:1345 `client_is_in_same_stack` | D:1532 | differs | layout from `m.layout` (current tag), mango from `sc`'s own tag (see `get_client_tag_idx`); tile-family tab test is `tabMembers(m).contains(tc)` for `tc->tab_prev\|\|tab_next` (tab chain listed §5) |
+| client.c:1345 `client_is_in_same_stack` | D:1532 | differs ✓ rettet i trin 5 | layout from `m.layout` (current tag), mango from `sc`'s own tag (see `get_client_tag_idx`); tile-family tab test is `tabMembers(m).contains(tc)` for `tc->tab_prev\|\|tab_next` (tab chain listed §5) |
 | client.c:1399 `dwindle_node_depth` | Dwindle.swift:39 nested `depth` | 1:1 name | |
 | client.c:1406 `dwindle_node_lca` | Dwindle.swift:40-44 inline | 1:1 name | |
 | client.c:1433 `dwindle_focus_block_root` | Dwindle.swift:37 `dwindleFocusBlockRoot` | 1:1 | returns the branch's clients as a Set; root of the current tag (see `get_client_tag_idx`) |
 | client.c:1453 `dwindle_focus_block_has_client` | D:1566 `block.contains` | 1:1 name | |
-| client.c:1462 `get_focused_stack_client` | D:1560 | differs | dwindle test uses `m.layout`, mango `sc`'s tag layout (see `get_client_tag_idx`); otherwise 1:1 (nil `fc` returns `sc` where mango would crash) |
-| client.c:1508 `apply_rule_properties` | MS:944 | differs | all missing fields are listed in compatibility.md (opacity, blur, shadow, swallow, size hints, csd, tearing, …). Two differences: (1) `scroller_proportion`/`_single` are applied when the rule gives any value (MS:960-961); mango's `APPLY_FLOAT_PROP` only when `> 0`. Scenario: `windowrule=scroller_proportion:0,…` sets 0 in ours, mango keeps the default. (2) `no_radius` is listed "impossible", but the port draws mango's border with `border_radius` (`MS:701`), so mango's `no_radius` would apply to it |
+| client.c:1462 `get_focused_stack_client` | D:1560 | differs ✓ rettet i trin 5 | dwindle test uses `m.layout`, mango `sc`'s tag layout (see `get_client_tag_idx`); otherwise 1:1 (nil `fc` returns `sc` where mango would crash) |
+| client.c:1508 `apply_rule_properties` | MS:944 | differs ✓ rettet 15. nov. | all missing fields are listed in compatibility.md (opacity, blur, shadow, swallow, size hints, csd, tearing, …). Two differences: (1) `scroller_proportion`/`_single` are applied when the rule gives any value (MS:960-961); mango's `APPLY_FLOAT_PROP` only when `> 0`. Scenario: `windowrule=scroller_proportion:0,…` sets 0 in ours, mango keeps the default. (2) `no_radius` is listed "impossible", but the port draws mango's border with `border_radius` (`MS:701`), so mango's `no_radius` would apply to it |
 | client.c:1552 `set_float_malposition` | MS:1200 | 1:1 | |
 | client.c:1597 `client_reset_mon_tags` | MS:1029 | 1:1 | its doc line ("Not in mango: the port's overview leaves the tags in view…") is stale: the code uses `ovbkCurrentTagset` as mango does |
 | client.c:1611 `check_match_tag_floating_rule` | MS:1038 | 1:1 | `!c->swallowing` n/a |
-| client.c:1618 `client_set_rules` | MS:861 | differs listed §3 | listed: parent (`\|\| parent`, parent tags/monitor), swallow (compat), fake fullscreen's `client_notify_fullscreen` (§3 row 77). Not done, same result: the second `client_set_fullscreen(c, backup, true)` after the view (ours relies on `client_set_monitor`'s call), `old_*_inner_per` saves (refreshed before every use in arrange.c:139-162), fs_mon (xdg). Extra, marked: off-monitor floating window centred (MS:901), `layoutStateInsert`, `mapped:` |
-| client.c:1841 `apply_window_snap` | FloatingSnap.swift:31 | differs | mango snaps the outer border edge only when the border is really drawn (`cbw` from `c->bw`, 0 when `check_hit_no_border`); ours uses `config.borderpx` whenever `renderBorder` (FloatingSnap.swift:34). Scenario: `no_border_when_single=1`, one floating window: mango snaps the window to the screen edge, ours leaves a `borderpx` gap |
+| client.c:1618 `client_set_rules` | MS:861 | differs listed §3 ✓ listet: afvigelser.md §3 | listed: parent (`\|\| parent`, parent tags/monitor), swallow (compat), fake fullscreen's `client_notify_fullscreen` (§3 row 77). Not done, same result: the second `client_set_fullscreen(c, backup, true)` after the view (ours relies on `client_set_monitor`'s call), `old_*_inner_per` saves (refreshed before every use in arrange.c:139-162), fs_mon (xdg). Extra, marked: off-monitor floating window centred (MS:901), `layoutStateInsert`, `mapped:` |
+| client.c:1841 `apply_window_snap` | FloatingSnap.swift:31 | differs ✓ rettet i trin 6 | mango snaps the outer border edge only when the border is really drawn (`cbw` from `c->bw`, 0 when `check_hit_no_border`); ours uses `config.borderpx` whenever `renderBorder` (FloatingSnap.swift:34). Scenario: `no_border_when_single=1`, one floating window: mango snaps the window to the screen edge, ours leaves a `borderpx` gap |
 | client.c:1947 `client_update_geometry` | none | platform | X11 |
 | client.c:1962 `client_init_xwayland` | none | platform | X11 |
 | client.c:1988 `client_init_unmanaged` | none | platform | X11 |
@@ -107,7 +109,7 @@ the border, mango's include it. Where only that shifts a number by `bw`, the row
 | client.c:2769 `handle_client_request_maximize` | none | platform listed (compat `ignore_maximize`) | |
 | client.c:2788 `handle_client_request_minimize` | MS:1303 | 1:1 listed §3 | `client_set_minimized` is the port's (§3 row 76) |
 | client.c:2806 `handle_client_set_title` | MS:1311 | 1:1 | bar titles via `tabRefreshBars` |
-| client.c:2834 `handle_client_activation_request` | MS:1284 | differs | mango returns when `!c->foreign_toplevel`, which is the case for a parked group member (`client_replace` destroys `w`'s handle); ours (guard `clientByIdAll`, which includes parked members) goes on and swaps it in. Scenario: macOS activates a parked member's window (its app brings it forward): mango ignores it, ours shows it in the group's place. Otherwise 1:1 |
+| client.c:2834 `handle_client_activation_request` | MS:1284 | differs ✓ listet: afvigelser.md §3; porten bytter et parkeret medlem ind, umærket i koden (Port/macOS/MacEvents.swift:144) | mango returns when `!c->foreign_toplevel`, which is the case for a parked group member (`client_replace` destroys `w`'s handle); ours (guard `clientByIdAll`, which includes parked members) goes on and swaps it in. Scenario: macOS activates a parked member's window (its app brings it forward): mango ignores it, ours shows it in the group's place. Otherwise 1:1 |
 | client.c:2862 `pending_kill_client` | Input.swift:125 | 1:1 | |
 | client.c:2868 `client_blur_uses_wallpaper` | none | platform | blur (compat) |
 | client.c:2875 `client_sync_blur_optimized` | none | platform | blur |
@@ -116,7 +118,7 @@ the border, mango's include it. Where only that shifts a number by `bw`, the row
 | client.c:2907 `client_set_opacity` | none | platform | opacity (compat) |
 | client.c:2913 `client_ensure_constraint` | none | platform | pointer-constraints protocol |
 | client.c:2927 `client_focus` | MS:725 | 1:1 listed §5 | the omissions are §5's list. Extra (marked, "client_active's step"): a parked group member is swapped in first (MS:734); see `client_active` |
-| client.c:3108 `client_active` | D:543 | differs | missing first step `if (!c->mon && !client_group_swap_focus(c)) return;` (moved into `clientFocus`, which runs last). Scenario: group A (shown) + B (parked); A was moved to tag 3. `mmsg dispatch focusid <B>` (mango `focus_by_id`; also our launch_or_focus): mango swaps B in first (B takes A's tags 3) and views tag 3; ours views B's stale tags (tag 1), then swaps B in on tag 3 while tag 1 is shown. Same for the scratchpad/minimized tests, which read B's stale fields |
+| client.c:3108 `client_active` | D:543 | differs ✓ rettet i trin 5 | missing first step `if (!c->mon && !client_group_swap_focus(c)) return;` (moved into `clientFocus`, which runs last). Scenario: group A (shown) + B (parked); A was moved to tag 3. `mmsg dispatch focusid <B>` (mango `focus_by_id`; also our launch_or_focus): mango swaps B in first (B takes A's tags 3) and views tag 3; ours views B's stale tags (tag 1), then swaps B in on tag 3 while tag 1 is shown. Same for the scratchpad/minimized tests, which read B's stale fields |
 | client.c:3149 `client_view_on_monitor` | D:592 | 1:1 | also does arrange's `from_view` `set_size_per` for global/multi-tag clients here (D:622, unmarked; arrange.c's part, for group B) |
 | client.c:3210 `client_switch_view` | D:518 | 1:1 | |
 | client.c:3227 `tag_client` | D:503 | 1:1 | `client_reparent_group` listed §5 |
@@ -124,17 +126,17 @@ the border, mango's include it. Where only that shifts a number by `bw`, the row
 | client.c:3277 `client_set_monitor` | MS:1011 | 1:1 | `reset_foreign_toplevel` platform; `resize` is the arrange |
 | client.c:3316 `client_adapt_geometry_to_monitor` | MS:973 | 1:1 | |
 | client.c:3330 `client_set_monitor_adapted` | MS:983 | 1:1 | extra marked `parked = false` |
-| client.c:3350 `client_change_mon` | MS:341 | differs | (1) re-centres `floatGeom`; mango centres `c->geom` into both (a floating window in fullscreen/maximize gets that size as its float size in mango). (2) extra `focus:` parameter (unmarked); `rebuildMonitors` passes `false` where mango's `monitor_close` focuses per client |
+| client.c:3350 `client_change_mon` | MS:341 | differs ✓ rettet i trin 5 | (1) re-centres `floatGeom`; mango centres `c->geom` into both (a floating window in fullscreen/maximize gets that size as its float size in mango). (2) extra `focus:` parameter (unmarked); `rebuildMonitors` passes `false` where mango's `monitor_close` focuses per client |
 | client.c:3358 `view_insert_shift_tags` | D:742 | 1:1 | ours also remaps parked members' tags (mango skips them, `mon == NULL`); `client_replace` copies tags on unpark: same result |
 | client.c:3400 `client_set_floating` | MS:1065 | 1:1 | `need_float_size_reduce` unused; `old_*_inner_per` same result; `client_set_maximized`/`sync_tiled_hint` platform; extra marked off-monitor centring |
 | client.c:3486 `client_set_fullscreen` | MS:1101 | 1:1 | bw/vrr/idle platform; resize is the arrange |
-| client.c:3532 `client_set_fake_fullscreen` | MS:1116 | differs listed §3 | no `client_notify_fullscreen(c, fake)` (§3 row 77) |
+| client.c:3532 `client_set_fake_fullscreen` | MS:1116 | differs listed §3 ✓ listet: afvigelser.md §3 | no `client_notify_fullscreen(c, fake)` (§3 row 77) |
 | client.c:3543 `maximize_screen_gaps` | MS:510-512 inline | 1:1 name | arrange returns early in overview, so the `!isoverview` term holds |
 | client.c:3553 `client_set_maximize_screen` | MS:1122 | 1:1 | box computed in arrange (MS:508-518) |
 | client.c:3607 `reset_maximizescreen_size` | MS:508-518 inline in `arrange` | 1:1 name | |
 | client.c:3626 `set_minimized` | D:1774 | 1:1 | |
-| client.c:3653 `unminimize` | none | missing | only caller is `handle_client_request_minimize`'s else branch, which is unreachable (it returns on `isminimized` first): no observable effect |
-| client.c:3683 `exit_scroller_stack` | MS:1178 -> Scroller.swift:53 | differs listed §5 | port's columns (marked). Mango removes the node in every case (copying its proportions back to the client); ours only splits a multi-window column and keeps a single column's entry (unsure whether visible: position is then the port's) |
+| client.c:3653 `unminimize` | none | missing åben (som mangel i afvigelser.md §4): findes ikke, ikke listet (død i mango) | only caller is `handle_client_request_minimize`'s else branch, which is unreachable (it returns on `isminimized` first): no observable effect |
+| client.c:3683 `exit_scroller_stack` | MS:1178 -> Scroller.swift:53 | differs listed §5 ✓ rettet i trin 4 | port's columns (marked). Mango removes the node in every case (copying its proportions back to the client); ours only splits a multi-window column and keeps a single column's entry (unsure whether visible: position is then the port's) |
 | client.c:3701 `clear_fullscreen_and_maximized_state` | MS:1059 | 1:1 | |
 | client.c:3711 `clear_fullscreen_flag` | MS:1051 | 1:1 | tags==0 fallback under `get_client_tag_idx` |
 | client.c:3728 `client_pending_fullscreen_state` | field writes | 1:1 name | foreign toplevel platform |
@@ -148,13 +150,13 @@ the border, mango's include it. Where only that shifts a number by `bw`, the row
 | client.c:3875 `client_exchange` | D:1342 | 1:1 | layouts from `m.layout` (see `get_client_tag_idx`); scroller/dwindle branches re-implement scroll.c/dwindle.c (their groups) |
 | client.c:3908 `client_is_parked` | CL:62 `groupParked` | 1:1 name | a flag, unmarked |
 | client.c:3910 `client_unlink` | G:141-142, MS:1255-1257 inline | 1:1 name | |
-| client.c:3919 `client_park` | G:139 | differs | keeps `c.mon` (mango sets `c->mon = NULL`; `animation.running = false` is the port's). Scenario: a group moved to monitor 2 by its shown member; `mmsg get all-clients` reports the parked members on monitor 1 (IPCJSON.swift:173), mango (`client_output_name` -> `client_group_active`) on monitor 2 |
-| client.c:3929 `client_unpark` | G:145 | differs | no focus-stack part and no "parked without anchor -> tail + focus head" branch; `clientReplace` re-inserts c before w in the focus stack itself (same result there); `clientGroupLeave` puts c right after rc (bind.c's own reinsert: its group) |
+| client.c:3919 `client_park` | G:139 | differs ✓ rettet i trin 5 | keeps `c.mon` (mango sets `c->mon = NULL`; `animation.running = false` is the port's). Scenario: a group moved to monitor 2 by its shown member; `mmsg get all-clients` reports the parked members on monitor 1 (IPCJSON.swift:173), mango (`client_output_name` -> `client_group_active`) on monitor 2 |
+| client.c:3929 `client_unpark` | G:145 | differs ✓ rettet i trin 5 | no focus-stack part and no "parked without anchor -> tail + focus head" branch; `clientReplace` re-inserts c before w in the focus stack itself (same result there); `clientGroupLeave` puts c right after rc (bind.c's own reinsert: its group) |
 | client.c:3942 `client_replace` | G:73 | 1:1 | scene/bar/card/foreign parts are the port's; tab chain listed §5; layout from `m.layout` (see `get_client_tag_idx`); always parks `w` (mango unlinks a killing `w`, same result: the unmap removes it) |
 | client.c:4060 `monitor_move_direction` | D:1628 | 1:1 | |
 | client.c:4078 `client_reassign_monitor` | D:1637 | 1:1 | extra: scroller node removed from the old tag (D:1641, unmarked; port's column state), marked `parked = false` |
 | client.c:4096 `client_jump_to_monitor` | D:1650 | 1:1 | |
-| client.c:4111 `client_move_to_monitor` | D:1659 | differs | along the scroller axis mango inserts c before the target column's head / after its tail in `clients`; ours beside the target itself (D:1683; marked "the port's scroller columns" on the column part only) |
+| client.c:4111 `client_move_to_monitor` | D:1659 | differs ✓ rettet i trin 4 | along the scroller axis mango inserts c before the target column's head / after its tail in `clients`; ours beside the target itself (D:1683; marked "the port's scroller columns" on the column part only) |
 | client.c:4156 `client_update_oldmonname_record` | MS:1046 | 1:1 listed §5 | display ID; no iskilling/mapped test (marked) |
 | client.c:4164 `client_set_bounds` | MS:629 | 1:1 | returns the frame (marked) |
 | client.c:4179 `client_swap_layout_properties` | D:1348 nested `swapLayoutProperties` | 1:1 name | |
@@ -177,17 +179,17 @@ the border, mango's include it. Where only that shifts a number by `bw`, the row
 | client.c:4452 `client_remove_group_bar` | none | port listed §5 | `groupBarDrag` is guarded on use (Input.swift:352): same result |
 | client.c:4465 `client_group_swap_focus` | G:62 | 1:1 | |
 | client.c:4491 `client_focus_group_member` | G:55 | 1:1 | |
-| client.c:4500 `client_check_tab_node_visible` | T:65 (returns Bool; the port draws, §5) | differs | `show` needs `TAGMATCH && ISNORMAL` (so not `isunglobal`); ours `isVisible` (VISIBLEON) with no unglobal test. Scenario: `always_show_group_bar=1` and an `isunglobal` window: mango shows no group bar, ours does |
+| client.c:4500 `client_check_tab_node_visible` | T:65 (returns Bool; the port draws, §5) | differs ✓ rettet i trin 5 | `show` needs `TAGMATCH && ISNORMAL` (so not `isunglobal`); ours `isVisible` (VISIBLEON) with no unglobal test. Scenario: `always_show_group_bar=1` and an `isunglobal` window: mango shows no group bar, ours does |
 | client.c:4530 `client_raise_group` | MS:810 | 1:1 listed §3 | a parked member is not raised (§3 row 79) |
 | client.c:4544 `client_reparent_group` | none | port listed §5 | `restack` |
 | client.c:4566 `client_handle_decorate_click` | T:206 | 1:1 | |
-| client.c:4580 `client_set_group_mon` | none; `rebuildMonitors` MS:329 loops `clientsAll` | differs | mango moves only unparked members (parked have `mon == NULL`); ours moves parked ones too. Follows from `client_park` keeping `mon`; no visible effect found |
+| client.c:4580 `client_set_group_mon` | none; `rebuildMonitors` MS:329 loops `clientsAll` | differs ✓ rettet i trin 5 | mango moves only unparked members (parked have `mon == NULL`); ours moves parked ones too. Follows from `client_park` keeping `mon`; no visible effect found |
 | client.c:4589 `client_set_group_config` | G:109 | 1:1 | drop area / split / bar colours drawn by the port (marked) |
 | client.c:4602 `client_chain_head` | G:4 `clientGroupHead` | 1:1 name | |
 | client.c:4615 `client_group_head` | G:4 | 1:1 | |
 | client.c:4619 `client_is_group_member` | CL:63 `isGroupMember` | 1:1 name | |
 | client.c:4623 `client_group_focused` | G:64 inline `first { isGroupFocus }` | 1:1 name | |
-| client.c:4630 `client_group_active` | none | differs | used by mango for a parked member's output (ipc.c:574) and bar hit owner (pointer.c:1174); ours reads the parked member's own `mon` (see `client_park`) |
+| client.c:4630 `client_group_active` | none | differs ✓ rettet i trin 5 | used by mango for a parked member's output (ipc.c:574) and bar hit owner (pointer.c:1174); ours reads the parked member's own `mon` (see `client_park`) |
 | client.c:4639 `client_chain_unlink` | G:153-156 inline | 1:1 name | |
 | client.c:4652 `client_group_mark_dirty` | none | platform | output flush |
 | client.c:4657 `client_group_detach` | G:152 | 1:1 | |

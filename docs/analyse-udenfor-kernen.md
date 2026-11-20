@@ -2,7 +2,52 @@
 
 2. november 2026. Udarbejdet i to runder med Fable og Sonnet. I første runde svarede de hver for sig. I anden runde svarede hver på den andens uenigheder. Påstande om kode og om mango er tjekket i kilden.
 
-## 1. Status
+## 0. Status 20. november (trin 10)
+
+Kernen er bygget om til mangos filer (`docs/plan-struktur.md`, trin 1–9):
+`Sources/Mango/{manage,input,dispatch,overview,switcher,draw,Config,IPC,Layout,animation,common}`,
+plus `mmsg` og `mangonag`. Grænsen står i `Sources/Boundary`, porten i `Sources/Port` (`macOS`,
+`Extensions`, `mmsg`).
+
+| Del | Linjer (uden tomme) |
+|---|---|
+| Kernen, `Sources/Mango` (med `mmsg` og `mangonag`) | 17.282 |
+| Grænsen, `Sources/Boundary` | 456 |
+| `Port/macOS` | 6.912 |
+| `Port/Extensions` | 3.001 |
+| `Port/mmsg` | 393 |
+| `MangoApp` | 1.065 |
+| `MangoPrivate` | 73 |
+| Tests | 12.428 |
+
+Der er 581 linjer med "not in mango" i kernen; de fleste er ét kald over grænsen eller en del, macOS
+ikke har.
+
+**Det, der står i kernen uden at være mangos** (resten af mangos gamle `Engine/` og `Model/`):
+
+| Hvad | Fil | Mærket | Vurdering |
+|---|---|---|---|
+| `dispatch(_:)`, indgangen for en binding, IPC og portens dispatchere | `Engine/Dispatch.swift` | ja | Bliver (afvigelser.md §5, Dispatchere) |
+| `publishInputState`, event tappets øjebliksbillede | `Engine/Input.swift` | ja | Bliver (afvigelser.md §3, event tappet) |
+| `MangoServer.xkbOptions`, kun brugt af porten | `Engine/Input.swift` | nej | Flyttes til porten |
+| `groupMembers` | `Engine/Groups.swift` | nej | Mærkes eller fjernes |
+| `FloatingSnap.snapped`, `apply_window_snap`s regning for sig | `Engine/FloatingSnap.swift` | ja | Bliver |
+| `visibleClients`, `tiledClients`, `specialClients`, `arrangeAll`, `updateBorders`, `clientDrawSplitBorder` | `Engine/MangoServer.swift` | ja | Bliver; mangos filtre som lister og portens tegning af kanter |
+| `clientsAll`, `focused`, `started`, `drawsOverlays`, `mangoVersion` | `Engine/MangoServer.swift` | nej | Mærkes (`clientsAll` og `started` er nævnt i afvigelser.md §5) |
+| `Client.appid`, `isVisible(on:)`, `isGroupMember`, `frame`, `parked`, `Monitor.screen` | `Engine/Client.swift` | nej | Mærkes; `isGroupMember` bør hedde mangos `client_is_group_member` |
+| `KeyboardState`, `KeyInput`, `KeyAction`, `publishGlobalKeys` | `input/keyboard.swift` | delvis | Event tappets typer; mærkes |
+| Geometri-hjælpere og `BezierCurve` | `Model/Geometry.swift` | ja; `BezierCurve.extremes` nej | `extremes` har ingen kalder: fjernes |
+| `DecorateStyle` (bjælkernes stil) | `Model/Decorate.swift` | ja | Bliver |
+| `LayoutKind.isMonocleLike` (portens parkering) | `Layout/Layout.swift` | ja | Bliver |
+| `LayoutKind.isVertical` | `Layout/Layout.swift` | nej | Ingen kalder: fjernes |
+| `mangoBarDecorationApplyConfig`, en fletning med mangos navn | `draw/text-node.swift` | ja | Omdøbes eller listes |
+| `Dispatch.arg`, kun brugt af `Port/Extensions/Shortcuts.swift` | `Config/parse.swift` | ja | Kan flyttes til porten |
+| `ConfigParser` (`parse_config` uden server: `mango -p`, `setoption`, tests) og portens noter | `Config/load.swift` | ja | Bliver |
+| JSON-kodningen for cJSON | `IPC/ipc.swift` | ja | Bliver |
+
+Afsnittene nedenfor er analysen fra 2. november; filnavnene i dem er fra før ombygningen.
+
+## 1. Status 2. november
 
 | Del | Linjer (uden tomme) |
 |---|---|
@@ -45,7 +90,7 @@ Rækkefølgen er de hele filer først, fordi de er mekaniske at flytte. Mærkern
 
 | Gruppe | Linjer | Vurdering |
 |---|---|---|
-| **Vinduer via Accessibility:** AX, AppWatcher, Placement, Animator, WindowClassifier, parkering, MacWindowSystem | ~3.000 | Behold. Det er wlroots' plads og bærer de egentlige macOS-farer. |
+| **Vinduer via Accessibility:** AX, AppWatcher, Placement, FrameClock (før: Animator), WindowClassifier, parkering, MacWindowSystem | ~3.000 | Behold. Det er wlroots' plads og bærer de egentlige macOS-farer. |
 | **Input:** EventTap, InputRouter, KeyNames, gestures, KeyboardOptions | ~800 | Behold. |
 | **Mangos egne tegninger:** kanter, faner, switcher, overview, jump-mærker, nag | ~1.300 | Behold. |
 | Tilladelsesvinduet | ~250 | Behold. |
@@ -88,6 +133,8 @@ Begge vil af med den kode, der omskriver dine filer (`withoutBindings`, `withHyp
 - **Sonnet:** fjern valget. Standarden er plain mango, og docs siger "kopier mac-bindings.conf". Det sparer cirka 250 linjer.
 
 ### 3.4 `Shortcuts.swift` ud af kernen
+
+**Gjort:** den står i `Port/Extensions/Shortcuts.swift`.
 
 Flyt de 164 linjer til `Port/Extensions` med én krog til `get binds`. Så skal kernen ikke længere ændres, hver gang paletten får en ny dispatcher. Med reglen fra 2. november er det ikke længere et valg, men et krav (se afsnit 1).
 

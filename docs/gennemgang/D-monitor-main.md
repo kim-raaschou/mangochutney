@@ -1,5 +1,7 @@
 # D-monitor-main: manage/monitor.c, manage/misc.c, manage/layer.c, manage/tab.c, manage/xwayland_primary.c, main.c, common/{log,scene_node,server,util}.c, include/mango/manage/{monitor,misc,layer,tab,xwayland_primary}.h, include/mango/common/{server,types,util,log,scene_node}.h
 
+Status 2026-11-20 (trin 10): hvert fund er mærket ✓ (rettet, som mango, listet, væk) eller åben, kontrolleret mod koden efter trin 9.
+
 Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS` = `Mango/Engine/MangoServer.swift`, `CL` = `Mango/Engine/Client.swift`, `DI` = `Mango/Engine/Dispatch.swift`, `IN` = `Mango/Engine/Input.swift`, `TB` = `Mango/Engine/Tabs.swift`, `RU` = `Mango/Model/Rules.swift`).
 
 ## Functions
@@ -13,20 +15,20 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 | special_has_clients monitor.c:61 | MS:373 `specialClients(m).isEmpty` (used MS:409) | 1:1 name | Helper is marked; mango's server.clients excludes parked members, as our `clients` does. |
 | get_monitor_active_tagset monitor.c:74 | MS:599 | 1:1 | `& ~special` where mango has `& TAGMASK`; same result unless the other tagset holds bits above tag_num (only with `chutney_fullscreen_tag`'s F tags). |
 | monitor_from_direction monitor.c:86 | DI:1574 `monitorFromDirection(_:from:)` | 1:1 | wlroots' adjacent/farthest output written out with ref point (m.x,m.y). Returns nil where mango returns selmon; callers treat both as "nothing". |
-| monitor_from_cycle monitor.c:106 | DI:1607-1608 (inline in `parseMonitorArg`) | differs, name | Same algorithm, but over a differently ordered list: mango's `server.monitors` is newest-first (`wl_list_insert(&server.monitors, …)` in handle_new_output), ours is sorted left-to-right (`Port/macOS/Screens.swift:33`). Displays A,B,C plugged in that order and also placed left-to-right, selected B: `focusmon next` → mango A, ours C. (Mango's loop also steps onto the list head sentinel when selmon is last; unsure what it does there.) |
+| monitor_from_cycle monitor.c:106 | DI:1607-1608 (inline in `parseMonitorArg`) | differs, name ✓ rettet i trin 5 | Same algorithm, but over a differently ordered list: mango's `server.monitors` is newest-first (`wl_list_insert(&server.monitors, …)` in handle_new_output), ours is sorted left-to-right (`Port/macOS/Screens.swift:33`). Displays A,B,C plugged in that order and also placed left-to-right, selected B: `focusmon next` → mango A, ours C. (Mango's loop also steps onto the list head sentinel when selmon is last; unsure what it does there.) |
 | is_scroller_layout monitor.c:124 | inline `m.layout.isScroller` (Mango/Layout/Layout.swift:51) | 1:1 name | |
 | is_monocle_layout monitor.c:134 | inline `m.layout == .monocle` | 1:1 name | |
-| is_centertile_layout monitor.c:141 | none | missing | Has no caller in mango, so nothing is lost. |
+| is_centertile_layout monitor.c:141 | none | missing ✓ rettet i trin 5 | Has no caller in mango, so nothing is lost. |
 | is_overcircle_mode monitor.c:148 | Mango/Engine/OverviewMode.swift:5 | 1:1 | |
 | special_sync_top_layer monitor.c:153 | none | platform | Moves the layer-shell top layer in the scene. |
 | special_update_dim monitor.c:164 | MS:620 → `system.showSpecialDim` | port | |
 | get_tag_status monitor.c:179 | DI:630 `getTagStatus(_:on:)` → Bool | 1:1 | Mango's urgent level (2) is read only by ext-workspace. The `!isMinimized` filter changes nothing because minimized clients have tags 0 (DI:1783). |
-| get_tags_first_tag_num monitor.c:194 | RU:30 `TagMask.getTagsFirstTagNum` | differs | Mango clamps the result to `config.tag_num` (`i >= tag_num → tag_num`); ours returns lowest bit + 1 with no clamp, and nil for 0. Example: tags = only bit 9 (tag 10) with tag_num 9 (a rule tag or an F tag above tag_num): mango → 9, ours → 10, which picks a different pertag slot in checkMatchTagFloatingRule, clearFullscreenFlag and checkHitNoBorder. Unsure how reachable this is without the port extension. |
+| get_tags_first_tag_num monitor.c:194 | RU:30 `TagMask.getTagsFirstTagNum` | differs ✓ rettet i trin 1 | Mango clamps the result to `config.tag_num` (`i >= tag_num → tag_num`); ours returns lowest bit + 1 with no clamp, and nil for 0. Example: tags = only bit 9 (tag 10) with tag_num 9 (a rule tag or an F tag above tag_num): mango → 9, ours → 10, which picks a different pertag slot in checkMatchTagFloatingRule, clearFullscreenFlag and checkHitNoBorder. Unsure how reachable this is without the port extension. |
 | monitor_copy_tag_layout monitor.c:220 | MS:995 | 1:1 | |
 | get_tags_first_tag monitor.c:248 | DI:567 | 1:1 | |
-| monitor_at_point monitor.c:282 | MS:355 `monitorAtPoint` | differs | Mango returns NULL for a point outside every output. Ours falls back to the monitor with the nearest centre. Example: a window centre off-screen (`Port/macOS/MacEvents.swift:40`, DragTile, IPC): mango → none, ours → a monitor. |
+| monitor_at_point monitor.c:282 | MS:355 `monitorAtPoint` | differs ✓ rettet i trin 5 | Mango returns NULL for a point outside every output. Ours falls back to the monitor with the nearest centre. Example: a window centre off-screen (`Port/macOS/MacEvents.swift:40`, DragTile, IPC): mango → none, ours → a monitor. |
 | get_monitor_nearest_to monitor.c:288 | none (monitorAtPoint's fallback is similar) | platform | Used only for text-input/IM popups. |
-| match_monitor_spec monitor.c:297 | RU:47 `MonitorSpec(mango:)` + RU:65 `matchMonitorSpec`; callers MS:877, DI:219, DI:223, DI:1611 | differs | Every caller passes only `name:`; make/model/serial default to "". `Screen` has make/model/serial (Boundary/Screen.swift:11). So a spec with `make:`, `model:` or `serial:` (focusmon, tagmon, tagcrossmon, window_rule `monitor:`, …) never matches on any display, where mango matches it. Smaller points: keys are lowercased and trimmed (mango: `Name:` is ignored, so it matches all), and we split on "&&" where strtok splits on any '&'. |
+| match_monitor_spec monitor.c:297 | RU:47 `MonitorSpec(mango:)` + RU:65 `matchMonitorSpec`; callers MS:877, DI:219, DI:223, DI:1611 | differs ✓ rettet i trin 9 | Every caller passes only `name:`; make/model/serial default to "". `Screen` has make/model/serial (Boundary/Screen.swift:11). So a spec with `make:`, `model:` or `serial:` (focusmon, tagmon, tagcrossmon, window_rule `monitor:`, …) never matches on any display, where mango matches it. Smaller points: keys are lowercased and trimmed (mango: `Name:` is ignored, so it matches all), and we split on "&&" where strtok splits on any '&'. |
 | device_target_monitor monitor.c:366 | none | platform listed | device_rule (MangoCompat.ignoredKeywords). |
 | blur_layer_on_wallpaper monitor.c:379 | none | platform listed | Blur. |
 | mango_scene_output_commit monitor.c:390 | none | platform | Output commit, tearing. |
@@ -38,13 +40,13 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 | monitor_load_icc_transform monitor.c:534 | none | platform listed | monitor_rule icc. |
 | monitor_set_icc monitor.c:578 | none | platform listed | |
 | apply_rule_to_state monitor.c:601 | none | platform listed | monitor_rule. |
-| handle_new_output monitor.c:645 | MS:303 `rebuildMonitors` (marked) + CL:191 `Monitor.init` | differs | Pertag defaults, `parse_tagrule`, tagset/curtag/prevtag = 1, gaps from config: same. Monitor rules, chvt backup, blur and ext-workspace are platform (listed). The difference is list position: mango inserts the new monitor at the head of `server.monitors`; ours rebuilds the list in left-to-right order. That order drives monitor_from_cycle, monitor_close's fallback, the `!selected_monitor` choice in handle_output_layout_change, and the order of IPC outputs. |
+| handle_new_output monitor.c:645 | MS:303 `rebuildMonitors` (marked) + CL:191 `Monitor.init` | differs ✓ rettet i trin 5 | Pertag defaults, `parse_tagrule`, tagset/curtag/prevtag = 1, gaps from config: same. Monitor rules, chvt backup, blur and ext-workspace are platform (listed). The difference is list position: mango inserts the new monitor at the head of `server.monitors`; ours rebuilds the list in left-to-right order. That order drives monitor_from_cycle, monitor_close's fallback, the `!selected_monitor` choice in handle_output_layout_change, and the order of IPC outputs. |
 | handle_output_destroy monitor.c:899 | MS:315-324 (removed branch of rebuildMonitors) | port | Fadeouts, layer surfaces, ext-workspace, scene, skip-frame timer and ICC are platform. `title_message_bar_finish` is kept (MS:324, before monitor_close rather than after; same result). |
 | set_selected_monitor monitor.c:973 | inline `selectedMonitor = …` | 1:1 name | |
-| monitor_close monitor.c:975 | MS:315-338 | differs, listed §6 (the overview part only) | (a) When the selected monitor goes, mango picks the first enabled monitor in its list (the most recently added); ours picks the macOS main display (`isMain`, MS:327). Example: three displays, the selected secondary one is unplugged: mango → newest remaining, ours → menu-bar display. Not listed. (b) `gesture_drive_mon/active` is not reset (ours MS:94-95 keep pointing at the removed monitor until the gesture ends). (c) Clients move with `focus:false`, then one `clientFocus(top,true)`; same end state as mango's per-client `client_change_mon` plus the final client_focus. The oldmonname record matches. |
+| monitor_close monitor.c:975 | MS:315-338 | differs, listed §6 (the overview part only) ✓ rettet i trin 5 | (a) When the selected monitor goes, mango picks the first enabled monitor in its list (the most recently added); ours picks the macOS main display (`isMain`, MS:327). Example: three displays, the selected secondary one is unplugged: mango → newest remaining, ours → menu-bar display. Not listed. (b) `gesture_drive_mon/active` is not reset (ours MS:94-95 keep pointing at the removed monitor until the gesture ends). (c) Clients move with `focus:false`, then one `clientFocus(top,true)`; same end state as mango's per-client `client_change_mon` plus the final client_focus. The oldmonname record matches. |
 | handle_output_request_state monitor.c:1032 | none | platform | Nested backend. |
 | create_output monitor.c:1061 | none | platform listed | Virtual outputs. |
-| handle_output_layout_change monitor.c:1082 | MS:349 + rebuildMonitors | differs | (a) A floating client on a monitor whose origin moved gets `geom += (Δx, Δy)` in mango; ours leaves `floatGeom` alone, and `keepOnDisplay` then clamps it. Example: move a display in System Settings → mango keeps the float in the same place on that display; ours puts it back at its old global coordinates, clamped. Unsure whether the port's move report updates floatGeom first. (b) Mango calls `client_focus(client_focus_top(selmon), 1)` on every layout change; ours only when monitors were added or removed (MS:338), so a resolution or scale change does not refocus or lift. (c) The fix-up for clients with `tags == 0 && !is_in_scratchpad` (tags = selmon's tagset + set_size_per) is missing. (d) Restoring by oldmonname runs only for added monitors; same result in practice. The fullscreen resize and per-monitor arrange are covered by `arrangeAll(.none)`. |
+| handle_output_layout_change monitor.c:1082 | MS:349 + rebuildMonitors | differs ✓ rettet i trin 5 | (a) A floating client on a monitor whose origin moved gets `geom += (Δx, Δy)` in mango; ours leaves `floatGeom` alone, and `keepOnDisplay` then clamps it. Example: move a display in System Settings → mango keeps the float in the same place on that display; ours puts it back at its old global coordinates, clamped. Unsure whether the port's move report updates floatGeom first. (b) Mango calls `client_focus(client_focus_top(selmon), 1)` on every layout change; ours only when monitors were added or removed (MS:338), so a resolution or scale change does not refocus or lift. (c) The fix-up for clients with `tags == 0 && !is_in_scratchpad` (tags = selmon's tagset + set_size_per) is missing. (d) Restoring by oldmonname runs only for added monitors; same result in practice. The fullscreen resize and per-monitor arrange are covered by `arrangeAll(.none)`. |
 | handle_output_manager_apply monitor.c:1256 | none | platform | wlr-output-management; macOS arranges displays. |
 | output_manager_apply_or_test monitor.c:1261 | none | platform | |
 | handle_output_manager_test monitor.c:1328 | none | platform | |
@@ -57,7 +59,7 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 | do_renderer_recreate monitor.c:1486 (static) | none | platform | |
 | handle_renderer_lost monitor.c:1514 | none | platform | |
 | setgaps monitor.c:1524 | DI:804 `setgaps(_:_:)` | 1:1 | Takes the monitor; its only caller passes selmon (DI:389). Only `incgaps` is bound in mango too. |
-| INSIDEMON monitor.h:15 | inline IN:397 `m.screen.frame.contains(c.frame)`; MS:834 | differs | Mango tests `c->geom` (with the border) against `c->mon->m`. Ours tests the frame without the border, against the monitor under the pointer. A scroller column whose border alone crosses the monitor edge: mango says not inside (scroller_focus_lock path), ours says inside. Minor. |
+| INSIDEMON monitor.h:15 | inline IN:397 `m.screen.frame.contains(c.frame)`; MS:834 | differs ✓ rettet i trin 4 | Mango tests `c->geom` (with the border) against `c->mon->m`. Ours tests the frame without the border, against the monitor under the pointer. A scroller column whose border alone crosses the monitor edge: mango says not inside (scroller_focus_lock path), ours says inside. Minor. |
 | GEOMINSIDEMON monitor.h:19 | Mango/Layout/Scroller.swift:198 `insideMon` | 1:1 name | |
 
 ### manage/misc.c
@@ -66,10 +68,10 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 |---|---|---|---|
 | get_parent_process misc.c:123 | none | platform listed | Swallowing (`is_term`/`no_swallow` in MangoCompat). Unsure: macOS can read a process's ppid with sysctl `KERN_PROC_PID`; the listing says it cannot. |
 | is_descendant_process misc.c:144 | none | platform listed | Same as above. |
-| get_layout_abbr misc.c:151 (+ layout_mappings table) | none | missing | Has no caller in mango. |
+| get_layout_abbr misc.c:151 (+ layout_mappings table) | none | missing åben: ikke der, mærket udeladt i manage/misc.swift:3; som mangel i afvigelser.md §4 | Has no caller in mango. |
 | client_at_point misc.c:202 | IN:104 (overview branch: `ovCards.first { contains }`) | port listed §5 | Mango walks server.clients in order; ours walks a dictionary in no fixed order. Same result while overview cards do not overlap. |
 | layer_ignores_focus misc.c:214 | none | platform listed | Layer shell. |
-| node_at_point misc.c:223 | IN:101 `clientAtPoint`, IN:114 `surfaceAt`, bars via `BarButton` | differs, listed §5 | §5 lists the written-out order. Two consequences not stated there: (1) among overlapping floating windows ours returns the first in the `clients` (tiling) order; mango returns the topmost in the scene. Example: float B opened after float A and over it; pointer on the overlap: mango B, ours A (sloppy focus, click focus and `moveresize` pick A). (2) Mango's layer order puts LyrFullscreen and LyrOverlay above LyrFloat; ours checks floats and scratchpads first. Example: a fullscreen client covering a float: mango returns the fullscreen client, ours the hidden float. |
+| node_at_point misc.c:223 | IN:101 `clientAtPoint`, IN:114 `surfaceAt`, bars via `BarButton` | differs, listed §5 åben: manage/misc.swift:19 giver første flydende i `clients`-rækkefølge, før fullscreen/overlay | §5 lists the written-out order. Two consequences not stated there: (1) among overlapping floating windows ours returns the first in the `clients` (tiling) order; mango returns the topmost in the scene. Example: float B opened after float A and over it; pointer on the overlap: mango B, ours A (sloppy focus, click focus and `moveresize` pick A). (2) Mango's layer order puts LyrFullscreen and LyrOverlay above LyrFloat; ours checks floats and scratchpads first. Example: a fullscreen client covering a float: mango returns the fullscreen client, ours the hidden float. |
 | check_idle_inhibitor misc.c:330 | none | platform listed | Idle. |
 | handle_xdg_decoration_destroy misc.c:361 | none | platform listed | allow_csd. |
 | handle_new_xdg_decoration misc.c:369 | none | platform listed | |
@@ -140,15 +142,15 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 | tab_layout_active tab.c:68 | TB:12 | 1:1 | |
 | tab_state_ok tab.c:72 (static) | TB:14 | 1:1 | `iskilling` has no counterpart here. |
 | tab_is_stack_candidate tab.c:80 (static) | TB:19 | 1:1 | |
-| tab_member_kept tab.c:89 (static) | TB:26 `tabMembers` (marked) | differs | `tabMembers` returns [] when `config.tabBarHeight <= 0`. Mango's chain does not depend on tab_bar_height (only `client_add_tab_bar` and the tile reservation do; the option is clamped 0..500, so 0 is legal). With `tab_bar_height=0` and monocle_tab_mode/deck_tab_mode (default 1), mango still chains the stack, hides the non-focused members (`is_tab_hidden`) and uses tab semantics in client_is_in_same_stack; ours forms no chain. Example: deck, tab_bar_height=0: mango shows only the focused stack window; ours leaves all of them stacked and visible. |
+| tab_member_kept tab.c:89 (static) | TB:26 `tabMembers` (marked) | differs ✓ rettet i trin 5 | `tabMembers` returns [] when `config.tabBarHeight <= 0`. Mango's chain does not depend on tab_bar_height (only `client_add_tab_bar` and the tile reservation do; the option is clamped 0..500, so 0 is legal). With `tab_bar_height=0` and monocle_tab_mode/deck_tab_mode (default 1), mango still chains the stack, hides the non-focused members (`is_tab_hidden`) and uses tab semantics in client_is_in_same_stack; ours forms no chain. Example: deck, tab_bar_height=0: mango shows only the focused stack window; ours leaves all of them stacked and visible. |
 | tab_member_in_view tab.c:94 (static) | via `visibleClients` in tabMembers | 1:1 name | |
 | tab_focus_can_render tab.c:98 (static) | inline TB:145 | 1:1 name | |
 | tab_refresh_bars tab.c:102 (static) | MS:450-454 (`isTabHidden`) + TB:70 `tabRefreshBars` | port listed §5 | Reparenting the bar to the focus layer is the port's restack. |
 | tab_update_input_penetration tab.c:138 | none (no strip, no panel) | port | |
 | tab_sync_focus tab.c:164 | `tabChainFocus` from `sel` on each draw | port listed §5 | §5 client_focus row. |
 | tab_detach_client tab.c:175 | none (derived) | port listed §5 | |
-| tab_replace_client tab.c:197 | none; `clientReplace` (Mango/Engine/Groups.swift:73) does not move `isTabFocus` | differs | Mango gives the replacing group member the old member's `is_tab_focus`/`is_tab_hidden`. Ours falls back to sel, then an existing `isTabFocus`, then the first member. Example: monocle tab chain [A, G1(tab focus)] on a monitor that is not selected; G1 closes and its parked group member G2 replaces it: mango shows G2, ours shows A. Unsure: an edge case. |
-| tab_sync_monitor tab.c:231 | MS:450-454 + `tabMembers` | differs | The tab_bar_height gate described under tab_member_kept. Otherwise same membership (current tagset, tab_state_ok, stack candidate, ≥2 members) and the same `is_tab_hidden` clearing. |
+| tab_replace_client tab.c:197 | none; `clientReplace` (Mango/Engine/Groups.swift:73) does not move `isTabFocus` | differs ✓ rettet i trin 5 | Mango gives the replacing group member the old member's `is_tab_focus`/`is_tab_hidden`. Ours falls back to sel, then an existing `isTabFocus`, then the first member. Example: monocle tab chain [A, G1(tab focus)] on a monitor that is not selected; G1 closes and its parked group member G2 replaces it: mango shows G2, ours shows A. Unsure: an edge case. |
+| tab_sync_monitor tab.c:231 | MS:450-454 + `tabMembers` | differs ✓ rettet i trin 5 | The tab_bar_height gate described under tab_member_kept. Otherwise same membership (current tagset, tab_state_ok, stack candidate, ≥2 members) and the same `is_tab_hidden` clearing. |
 | tab_focus_member tab.c:291 | TB:216 | 1:1 | Mango's member guard is not needed, since callers pass only members. `arrange(m, .none)` gives the same result as mango's arrange(false,false) here: only hidden/shown members change. |
 | client_raise_tab tab.c:299 | MS:821 | 1:1 | Placing the bar on top is the port's restack (§3 row 79). |
 | client_reparent_tab tab.c:313 | none (restack) | port listed §5 | "Lag". |
@@ -181,8 +183,8 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 
 | mango (file:line) | ours (file:line) | status | note |
 |---|---|---|---|
-| restore_nofile_limit main.c:136 (static) | none | missing | Not user-visible. |
-| increase_nofile_limit main.c:145 (static) | none | missing | Raises the soft RLIMIT_NOFILE to the hard limit; macOS could do this. Not user-visible. |
+| restore_nofile_limit main.c:136 (static) | none | missing åben: mangler, ikke listet | Not user-visible. |
+| increase_nofile_limit main.c:145 (static) | none | missing åben: mangler; som mangel i afvigelser.md §4 | Raises the soft RLIMIT_NOFILE to the hard limit; macOS could do this. Not user-visible. |
 | handle_signal main.c:167 | MangoApp/main.swift:557 (SIGTERM/SIGINT/SIGHUP → terminate); Foundation's Process reaps children | port | |
 | restore_child_signals main.c:175 (static) | none | platform | Spawning goes through Foundation's Process. |
 | cleanup_listeners main.c:185 | none | platform | |
@@ -190,9 +192,9 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 | handle_quit_signal main.c:278 | signal sources, MangoApp/main.swift:557 | port | |
 | set_activation_env main.c:292 (+ env_vars) | none | platform | dbus/systemd session. |
 | unset_activation_env main.c:336 | none | platform | |
-| run main.c:389 | MS:134-141 ("run's part of the start, in setup") | differs, partly listed §5 | §5 lists the order. Not listed: mango picks the initial `selected_monitor` with `monitor_at_point(cursor)`; ours uses the macOS main display (MS:327). Example: start with the pointer on a secondary display: mango selects it; ours selects the menu-bar display, and new windows and focus go there. Also missing: `-s startup_cmd` (fork/setsid/sh -c with a stdin pipe), making stdout non-blocking, and the readiness fd write. |
-| setup main.c:468 | MS:110 | differs | Missing: `setenv("XDG_CURRENT_DESKTOP","mango")`, so children of mango do not see it. `_JAVA_AWT_WM_NONREPARENTING` is X11 (platform). init_baked_points is listed §5. Mango runs ipc_init and config_watcher_init before outputs exist; ours runs them after rebuildMonitors (same result). Everything else is wlroots. |
-| main main.c:943 | MangoApp/main.swift:464 | differs | `-s <command>` and `-r <fdnum>` are missing. Unknown options or stray arguments are silently ignored, where mango prints usage. `-p` prints extra port lists (accepted per CLAUDE.md). The `XDG_RUNTIME_DIR` check is platform (listed §3 IPC). Extra port options (`--list-ignored`, `--list-glance`, the already-running check) are outside the core. |
+| run main.c:389 | MS:134-141 ("run's part of the start, in setup") | differs, partly listed §5 åben: startskærmen er mangos linje (Engine/MangoServer.swift:150, §5); `-s`, stdout ikke-blokerende og readiness-fd mangler | §5 lists the order. Not listed: mango picks the initial `selected_monitor` with `monitor_at_point(cursor)`; ours uses the macOS main display (MS:327). Example: start with the pointer on a secondary display: mango selects it; ours selects the menu-bar display, and new windows and focus go there. Also missing: `-s startup_cmd` (fork/setsid/sh -c with a stdin pipe), making stdout non-blocking, and the readiness fd write. |
+| setup main.c:468 | MS:110 | differs åben: `XDG_CURRENT_DESKTOP` sættes ikke (Engine/MangoServer.swift:120); som mangel i afvigelser.md §4 | Missing: `setenv("XDG_CURRENT_DESKTOP","mango")`, so children of mango do not see it. `_JAVA_AWT_WM_NONREPARENTING` is X11 (platform). init_baked_points is listed §5. Mango runs ipc_init and config_watcher_init before outputs exist; ours runs them after rebuildMonitors (same result). Everything else is wlroots. |
+| main main.c:943 | MangoApp/main.swift:464 | differs åben: `-s`/`-r` mangler (afvigelser.md §4); ukendte argumenter ignoreres, listet i §2 (MangoApp/main.swift:463-494) | `-s <command>` and `-r <fdnum>` are missing. Unknown options or stray arguments are silently ignored, where mango prints usage. `-p` prints extra port lists (accepted per CLAUDE.md). The `XDG_RUNTIME_DIR` check is platform (listed §3 IPC). Extra port options (`--list-ignored`, `--list-glance`, the already-running check) are outside the core. |
 
 ### common/log.c
 
@@ -234,8 +236,8 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 | ecalloc util.c:34 | none | platform | C allocation. |
 | utf8_strlcpy util.c:43 (static) | none | platform | Wayland string limit. |
 | wayland_string_set util.c:52 | none | platform | foreign-toplevel/xdg strings. |
-| fd_set_nonblock util.c:57 | none (IPC does its own fcntl, Mango/IPC/IPCServer.swift:281) | missing | Its only mango caller is `run` (stdout non-blocking, for `-s` scripts). Belongs with `-s`. |
-| regex_match util.c:71 | inline `String.range(of:options:.regularExpression)` (RU:66, RU:130, RU:162, DI:1868) | differs, name | ICU instead of PCRE2 (UTF). An invalid pattern returns no match in both, but mango logs "PCRE2 error: … at offset N" and ours logs nothing. Syntax that only one of the two engines supports matches differently. |
+| fd_set_nonblock util.c:57 | none (IPC does its own fcntl, Mango/IPC/IPCServer.swift:281) | missing åben: mangler, ikke listet | Its only mango caller is `run` (stdout non-blocking, for `-s` scripts). Belongs with `-s`. |
+| regex_match util.c:71 | inline `String.range(of:options:.regularExpression)` (RU:66, RU:130, RU:162, DI:1868) | differs, name ✓ listet: afvigelser.md §5 (fejlen logges nu, common/util.swift:44) | ICU instead of PCRE2 (UTF). An invalid pattern returns no match in both, but mango logs "PCRE2 error: … at offset N" and ours logs nothing. Syntax that only one of the two engines supports matches differently. |
 | wl_list_append util.c:100 | Swift arrays | platform | libwayland list helper. |
 | get_now_in_ms util.c:104 | inline clocks (CACurrentMediaTime, event times) | platform | C clock helper. |
 | timespec_to_ms util.c:111 | none | platform | |
@@ -257,7 +259,7 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 | KeyMode {char mode[28]; bool isdefault} | MS:58 `keyMode: String` | 1:1 name | No 27-character cut-off. `isdefault` is derived from `== "default"`. |
 | PERTAG_SLOTS (monitor.h:25) | CL:156 `Monitor.pertagSlots = 32` | 1:1 | |
 | MangoServer.clients / focus_stack | MS:46 `clients`, MS:56 `focusStack` | 1:1 | Like mango, parked group members are not in `clients`; `clientsAll` (unmarked) adds them. |
-| MangoServer.monitors | MS:45 | differs | Order: newest-first in mango, left-to-right in ours (see handle_new_output). |
+| MangoServer.monitors | MS:45 | differs ✓ rettet i trin 5 | Order: newest-first in mango, left-to-right in ours (see handle_new_output). |
 | MangoServer.selected_monitor / scene_geometry | `selectedMonitor` MS:57, `sceneGeometry` MS:626 (computed) | 1:1 | |
 | grab_client, cursor_mode, resize_edge, grab_is_border_resize, grab_pointer_x/y | `grab: Grab?` (IN:3: `client`, `mode`, `resizeEdge`, `isBorderResize`, `grabPointer`) | 1:1 name | The fields are gathered in one struct. `grab_offset_x/y` has no field; Grab keeps `startMouse`/`startFrame` instead (pointer.c group to check). |
 | drop_client, group_bar_hover, drop_to_group, group_bar_drag_* | `dragTile` MS:77, `groupBarDrag` tuple MS:81; hover and drop_to_group not found in the core | name / unsure | For the pointer.c group. |
@@ -270,7 +272,7 @@ Paths: mango = `~/sources/mango/src/...`; ours = `Sources/...` (abbreviated `MS`
 | tagmask | computed `TagMask.mask(forTagNum:)` | 1:1 (marked) | |
 | hide_cursor_source | MS:85 `cursorHideTimerArmed` | name | |
 | print_status_signal | `ipc?.notifyChanged()` + `onStateChange` (MS:841) | port | |
-| child_pid | none | missing | Goes with `-s`. |
+| child_pid | none | missing åben: mangler (hører til `-s`) | Goes with `-s`. |
 | chvt_backup_tag/_monitor_name, allow_frame_scheduling, session_locked, locked_modifiers, exclusive_focus, active_capture_count, next_client_id, keep_idle_inhibit_source, all wlroots pointers and listeners | none | platform (chvt, session lock and capture are listed) | |
 | baked_points_* | port animator | port listed §5 | |
 | Monitor.m / Monitor.w | `screen.frame` / `screen.workArea` (Boundary/Screen.swift) | name | Boundary type. |

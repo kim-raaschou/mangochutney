@@ -266,3 +266,24 @@ blur, skygger, dæmpning, gennemsigtighed, layer-shell, tastatur-, mus- og
 trackpadindstillinger, markør, skærmregler, HDR, tearing, virtuelle skærme,
 virtuelle terminaler, lukkontakt, Xwayland, Wayland-protokoller,
 skrivebordets farve (`root_color`: baggrunden er macOS') og luk-animationer.
+
+## 9. Strøget af afvigelser.md ved trin 10 (2026-11-20)
+
+Kontrolleret mod koden efter trin 9; disse linjer gjaldt ikke længere.
+
+- §2 "Dækkede vinduer animeres ikke": det var portens `Animator` (`covered`), som forsvandt i trin 2.
+  Animationen er mangos i kernen og springer ingen vinduer over.
+- §2, `watch` pr. tur: begrundelsen "ikke alle mangos `printstatus`-kald står hos os endnu (mangos
+  `arrange` slutter med `printstatus`)". Siden trin 3 slutter vores `arrange` også med den; rækken
+  står med en ny begrundelse.
+- §3 "Et flydende vindue holdes inden for sin skærms arbejdsområde (`keepOnDisplay`)": fjernet i
+  trin 6. Et flydende vindue står, hvor mango lægger det; når det ville nå en anden skærm, parkeres
+  det med en plade (§3, klipning).
+- §3 "En dialog arver ikke sit hovedvindues tags og skærm": `client_set_rules` bruger forælderen
+  (`client_get_parent`, §3) til skærm og tags som mango.
+- §4 "Intet: alt af mango 0.18.5, som macOS tillader, er bygget": fokus-animationens kantfarve m.fl.
+  mangler (§4 nu).
+- §5 "`set_proportion` og `switch_proportion_preset` deler deres slutning (`setProportion`)": de er
+  mangos to funktioner siden trin 6.
+- §5 Input "`resize_tile_client` mangler endnu `frame_serial`": flyttet til §4.
+- §5 "`clientAtPoint`": hedder mangos `nodeAtPoint` siden trin 5.

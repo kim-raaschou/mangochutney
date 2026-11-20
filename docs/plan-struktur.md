@@ -36,7 +36,7 @@ bygget anderledes end mangos. Denne plan bygger kernen om, så den læses som ma
 | 7 | `input/pointer.c`, `keyboard.c`, `trackpad.c` | `Engine/Input.swift`, `Keyboard.swift`, `Pointer.swift`, `LiveGestures.swift`, `DragTile.swift` | Input, inkl. mangos fokus ved indgang i en flade |
 | 8 | `overview/overview.c`, `switcher/switcher.c`, `draw/*` | `OverviewMode.swift`, `SwitcherMode.swift`, `TitleMessageBar.swift`, `Tabs.swift` | Overview, switcher, bjælker |
 | 9 | `config/*`, `ipc/ipc.c` | `Config/*`, `IPC/*` | Allerede tæt på; flyttes til mangos træ og rettes efter gennemgangen |
-| 10 | – | `docs/afvigelser.md`, `docs/gennemgang/` | Afvigelserne opdateres; fundne afvigelser strøges |
+| 10 | – | `docs/afvigelser.md`, `docs/gennemgang/` | Afvigelserne opdateres; fundne afvigelser strøges (gjort 20. november) |
 
 Rækkefølgen er nedefra: typerne først, fordi alt andet bruger dem. Trin 2–4 hænger sammen
 (resize, arrange og layouts kalder hinanden) og live-testes samlet.
@@ -184,6 +184,14 @@ HYPER,F1–F12 i `~/.config/mango/config.conf` om (backup og diff af hele filen 
   med mango. Bindingernes felter er sscanf's, `switchbind` og regler uden macOS-del tjekkes som i mango,
   skærm-specs matcher make/model/serial, og fejlene er mangos. Brugerens config læses byte-identisk før
   og efter (dump af alle felter, bindinger og regler).
+- Trin 10 (20. november): dokumentationen er sat efter koden. Hvert fund i `docs/gennemgang/` er
+  mærket (rettet i trin N, som mango, listet, væk eller åben) mod koden og mango; README'en har det,
+  der står åbent. `docs/afvigelser.md` er gået igennem: forældede rækker er flyttet til
+  `afvigelser-historik.md` §9, nye rækker for spawn, kommandolinjen, globale taster, parkerede
+  gruppemedlemmer og museknapper, og §4 lister det, der ikke er bygget endnu (bl.a.
+  fokus-animationens kantfarve). Hver §6-række peger på en fil og en test, der findes.
+  `docs/compatibility.md` er genereret igen, og `analyse-udenfor-kernen.md` §0 lister det, der står
+  i kernen uden at være mangos. Ingen kode ændret.
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter
