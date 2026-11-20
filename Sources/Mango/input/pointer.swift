@@ -454,15 +454,21 @@ package extension MangoServer {
         }
     }
 
-    // not in mango: the group bars are the port's panels; the bar under the point is where the port draws it
     func groupBarTargetAt(_ x: CGFloat, _ y: CGFloat, _ ignore: Client?) -> Client? {
         let p = CGPoint(x: x, y: y)
         var owner: Client?
-        if let m = monitorAtPoint(p) {
-            let h = CGFloat(config.groupBarHeight)
-            owner = visibleClients(m).first { g in
-                g !== ignore && clientCheckTabNodeVisible(g, on: m)
-                    && CGRect(x: g.frame.minX, y: g.frame.minY - h, width: g.frame.width, height: h).contains(p)
+        // not in mango: the group bars are the port's panels, so node_at_point's walk is spelled out;
+        // a bar lies at the bottom of its client's layer
+        if let m = monitorAtPoint(p), !m.isoverview {
+            let vis = (isSpecialActive(m) ? specialClients(m) : visibleClients(m)).filter { $0 !== ignore && !$0.parked }
+            let window = vis.filter { clientGeom($0).contains(p) }.map { clientTargetLayer($0) }.max()
+            let bars = vis.filter { g in
+                guard clientCheckTabNodeVisible(g, on: m), let s = clientDrawGroupBar(g, computeEdgeOffsets(g)) else { return false }
+                return CGRect(x: s.frame.minX, y: s.frame.minY, width: s.frame.width, height: s.barHeight).contains(p)
+            }
+            if let bar = bars.max(by: { clientTargetLayer($0) < clientTargetLayer($1) }),
+               window.map({ clientTargetLayer(bar) > $0 }) ?? true {
+                owner = bar
             }
         }
 
@@ -521,7 +527,7 @@ package extension MangoServer {
         // not in mango: node_at_point's client is its surface's toplevel; the port finds them apart
         if let s = surface, let top = system.toplevelFromWlrSurface(s) { c = top }
 
-        // not in mango: the close button's hover on a group bar is the port's panel's
+        // not in mango: no hover on a group bar's close button (docs/afvigelser.md §4)
 
         if cursorMode == CurPressed,
            surface != system.pointerFocusedSurface,

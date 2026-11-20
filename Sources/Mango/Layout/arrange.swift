@@ -490,6 +490,11 @@ package extension MangoServer {
 
     func resizeTileClient(_ gc: Client, isdrag: Bool = false, offsetX: CGFloat, offsetY: CGFloat, cursor: CGPoint = .zero) {
         guard let m = gc.mon, !gc.isfullscreen, !gc.ismaximizescreen, !m.isoverview else { return }
+
+        /* Coalesce keyboard repeats and pointer motion to once per output frame. */
+        if m.lastResizeFrame == m.frameSerial { return }
+        m.lastResizeFrame = m.frameSerial
+
         let layout = m.pertag.ltidxs[getClientTagIdx(gc)]
         switch layout {
         case .tile, .deck, .centerTile, .rightTile:

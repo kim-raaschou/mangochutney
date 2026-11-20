@@ -386,6 +386,25 @@ final class FidelityTests: MangoTestCase {
         XCTAssertGreaterThan(first.geom.width, before + 100, "kept on the windows")
     }
 
+    /// resize_tile_client: keyboard repeats and pointer motion are coalesced to once per output frame.
+    func testATiledResizeIsTakenOncePerFrame() throws {
+        let r = EngineRig()
+        let a = r.map(1)
+        r.map(2)
+        r.arrange()
+        let width = { try XCTUnwrap(a.geom).width }
+        let before = try width()
+        r.nextFrame()
+        r.server.resizeTileClient(a, offsetX: 50, offsetY: 0)
+        let once = try width()
+        XCTAssertNotEqual(once, before)
+        r.server.resizeTileClient(a, offsetX: 50, offsetY: 0)
+        XCTAssertEqual(try width(), once, "the same frame: dropped")
+        r.nextFrame()
+        r.server.resizeTileClient(a, offsetX: 50, offsetY: 0)
+        XCTAssertNotEqual(try width(), once, "the next frame: taken")
+    }
+
     func testAGridDragMovesTheEdgeItGrabs() throws {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .grid
@@ -398,6 +417,7 @@ final class FidelityTests: MangoTestCase {
         let g = try XCTUnwrap(middle.geom)
         let grab = CGPoint(x: g.minX + 5, y: g.midY)
         r.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: grab)
+        r.nextFrame()
         r.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: CGPoint(x: grab.x - 80, y: grab.y))
         XCTAssertGreaterThan(middle.gridColPer, 1, "the middle column grows to the left")
         XCTAssertTrue(left.allSatisfy { $0.gridColPer < 1 }, "the left column gives the room")
@@ -688,6 +708,17 @@ final class FidelityTests: MangoTestCase {
                           workArea: CGRect(x: 1728, y: 0, width: 1920, height: 1080), scale: 1, isMain: false)
         r.server.rebuildMonitors(screens: [r.screen, side])
         return r.server.monitors.first { $0.screen.name == "Side" }!
+    }
+
+    /// mango's monitor_from_cycle reads the list head as a monitor on the wrap (docs/afvigelser.md §6).
+    func testMonitorCycleWrapsAround() {
+        let r = EngineRig()
+        _ = twoMonitors(r)
+        let first = r.server.monitors[0], last = r.server.monitors[1]
+        r.server.selectedMonitor = last
+        XCTAssertTrue(r.server.monitorFromCycle(MON_NEXT) === first)
+        r.server.selectedMonitor = first
+        XCTAssertTrue(r.server.monitorFromCycle(MON_PREV) === last)
     }
 
     func testADialogOpensOnItsParentsMonitor() {
@@ -1290,6 +1321,20 @@ final class FidelityTests: MangoTestCase {
         }
         r.server.buttonReleased(at: bar)
         XCTAssertTrue(b.isGroupMember)
+    }
+
+    /// group_bar_target_at goes through node_at_point: a window in the bar's layer or above hides it.
+    func testAFloatingWindowOverAGroupBarHidesIt() {
+        let r = EngineRig()
+        r.server.config.alwaysShowGroupBar = true
+        let a = r.map(1)
+        r.map(2)
+        r.arrange()
+        let bar = CGPoint(x: a.frame.midX, y: a.frame.minY - CGFloat(r.server.config.groupBarHeight) / 2)
+        XCTAssertTrue(r.server.groupBarTargetAt(bar.x, bar.y, nil) === a)
+        let f = r.window(3, floating: true, frame: CGRect(x: bar.x - 50, y: bar.y - 50, width: 100, height: 100))
+        XCTAssertNil(r.server.groupBarTargetAt(bar.x, bar.y, nil), "the floating window lies over the bar")
+        XCTAssertTrue(r.server.groupBarTargetAt(bar.x, bar.y, f) === a, "the dragged window does not hide it")
     }
 
     func testBarClamps() {

@@ -20,40 +20,30 @@ Hvert fund nedenfor og i områdefilerne er mærket mod koden efter trin 9: `✓ 
 `✓ rettet 15. nov.`, `✓ som mango nu`, `✓ listet: afvigelser.md §N`, `✓ væk` eller `åben`. Næsten
 alt er rettet i ombygningen (trin 1–9). Tilbage er:
 
-**Opførsel, åbne fejl**
-- `node_at_point`: den første flydende i klientlisten, ikke den øverste; flydende før fullscreen
-  (`manage/misc.swift:19`). Rammer sloppy focus, klik-fokus og moveresize.
-- `group_bar_target_at`: en strip over hvert vindue; fanebjælker og stabling ignoreres
-  (`input/pointer.swift:457`).
-- Usikre, ikke efterprøvet: `getFocusedStackClient` (`manage/client.swift:353`) og `clientFocus(nil)`
-  (`:795`) springer ikke `iskilling` over, som mango gør.
+**Lukket 20. november (efter trin 10)**
+- ✓ `node_at_point` går lagene igennem oppefra (`client_target_layer`); i laget vinduesserverens
+  øverste, ellers fokus-stakken (`manage/misc.swift`).
+- ✓ `group_bar_target_at` går gennem samme lag: en bjælke ligger nederst i sin klients lag, så et
+  vindue i samme eller et højere lag skjuler den (`input/pointer.swift`).
+- ✓ `iskilling` springes over i `get_focused_stack_client` og `client_focus`, som i mango.
+- ✓ `resize_tile_client`s `frame_serial`: én resize pr. billede, som mango; portens Fit tager sine
+  skridt i ét billede og nulstiller `last_resize_frame` før hvert.
+- ✓ §6: `client_group_leave` (lige bag `rc`), `monitor_from_cycle` (listehovedet springes over),
+  `vertical_grid_core` (`grid_core`s betingelse).
+- ✓ som mango: `vertical_scroller_core`s fanebjælke-drift kan ikke ske i mango: `arrange` kalder
+  `tab_sync_monitor` før layoutet, og den opløser kæderne uden for monocle og deck.
+- ✓ mærker på portens ting i kernen; død kode (`LayoutKind.isVertical`, `BezierCurve.extremes`)
+  væk; de forkerte mærker rettet. `mangoBarDecorationApplyConfig` er mærket som portens fletning.
 
 **Mangler (står i `docs/afvigelser.md` §4)**
 - Fokus-animationens kantfarve; hover på gruppebjælkens lukkeknap; runde hjørner ved skærmkanten
-  under `border_radius`; `resize_tile_client`s `frame_serial`; `check_size_per_valid`.
+  under `border_radius`; `check_size_per_valid`.
 - `-s`, `-r`, `XDG_CURRENT_DESKTOP`, `increase_nofile_limit` (med `fd_set_nonblock`, `child_pid`);
   man-siderne `mmsg.1` og `mangonag.1`; `unminimize`, `get_layout_abbr`, `starts_with_ignore_case`
   og `mod_to_string` (døde i mango).
 
 **Til din beslutning**
-- `client_group_leave` (bind.c:415): mango lægger den, der forlader gruppen, to pladser bag `rc`; vi
-  lige bag (`dispatch/bind.swift:299`), umærket.
-- `monitor_from_cycle`: mango læser listehovedet som en skærm (udefineret); vi springer det over
-  uden mærke (`manage/monitor.swift:76`).
-- `vertical_grid_core` og `vertical_scroller_core`: vi følger mangos fejl igen siden trin 4;
-  kandidater til §6.
 - Idle inhibit og swallowing står som umulige, men IOPMAssertion og sysctl kunne gøre dem.
-
-**Mærker, navne og død kode i kernen** (ingen opførsel; se `docs/analyse-udenfor-kernen.md` §0)
-- Umærkede: `clientsAll`, `groupMembers`, `focused`, `started`, `drawsOverlays`, `mangoVersion`,
-  `MangoServer.xkbOptions`, `Client.appid`, `isVisible(on:)`, `isGroupMember`, `frame`, `parked`,
-  `Monitor.screen`, feltet `groupParked`, `KeyboardState`/`KeyAction`/`KeyInput`; i porten
-  `Port/macOS/MacEvents.swift:144` (parkeret medlem byttes ind, listet §3).
-- Død: `LayoutKind.isVertical`, `BezierCurve.extremes`. Mangos navn på en fletning:
-  `mangoBarDecorationApplyConfig`.
-- Mærker, der siger noget forkert: `dispatch/bind.swift:1017` og `:1024` (porten kører zsh, ikke
-  mangos `fork`/`execvp`), `input/pointer.swift:524` (porten har ingen hover), og
-  `Engine/MangoServer.swift:127` (portens animator findes ikke længere).
 
 ## Totals
 

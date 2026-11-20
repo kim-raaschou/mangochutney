@@ -32,7 +32,12 @@ final class FakeApp: WindowWriter {
     func write(_ element: AXUIElement, id: CGWindowID, frame: CGRect, setSize: Bool, animating: Bool,
                written: (@MainActor (CGRect) -> Void)?) {
         writes.append(Write(id: id, frame: frame, setSize: setSize))
-        guard !busy else { return }
+        // the AX call returns, applied or not: written is told either way
+        let report = { (f: CGRect?) in
+            guard let written, let f else { return }
+            DispatchQueue.main.async { MainActor.assumeIsolated { written(f) } }
+        }
+        guard !busy else { report(frame); return }
         var f = frame
         if !setSize, let old = frames[id] { f.size = old.size }
         if let m = minSize[id] {
@@ -40,14 +45,14 @@ final class FakeApp: WindowWriter {
             f.size.height = max(f.height, m.height)
         }
         if appliesAfter > 0 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + appliesAfter) { [self] in frames[id] = movesBackTo[id] ?? f }
+            DispatchQueue.main.asyncAfter(deadline: .now() + appliesAfter) { [self] in
+                frames[id] = movesBackTo[id] ?? f
+                report(frames[id])
+            }
             return
         }
         frames[id] = movesBackTo[id] ?? f
-        if let written {
-            let applied = frames[id]!
-            DispatchQueue.main.async { MainActor.assumeIsolated { written(applied) } }
-        }
+        report(frames[id])
     }
 
     func readBack(_ element: AXUIElement, completion: @escaping @MainActor (CGRect?) -> Void) {
@@ -255,6 +260,12 @@ final class EngineRig {
 
     /// One output frame: what mango changed in the scene is shown (the tests' display link).
     func frame() { server.mac.frameClock.fire() }
+
+    /// The display's next refresh, whether or not mango changed anything (the pointer moved): a new frame_serial.
+    func nextFrame() {
+        server.system.outputScheduleFrame(monitor)
+        frame()
+    }
 
     /// mango's arrange, and the frame that shows it.
     func arrange() {

@@ -104,6 +104,16 @@ final class GroupTests: MangoTestCase {
         XCTAssertEqual(r.monitor.sel, 900_702, "the one left keeps the focus")
     }
 
+    /// mango's wl_list_insert(rc->flink.next) puts it two places behind (docs/afvigelser.md §6).
+    func testGroupLeavePutsTheWindowRightBehindTheGroup() {
+        let r = rig()
+        run(r, "groupjoin", "down")
+        run(r, "groupleave")
+        let stack = r.server.focusStack
+        XCTAssertEqual(stack.count, 3)
+        XCTAssertEqual(stack.firstIndex(of: 900_701), stack.firstIndex(of: 900_702).map { $0 + 1 }, "\(stack)")
+    }
+
     func testTheNextMemberTakesTheClosedOnesPlace() {
         let r = rig()
         run(r, "groupjoin", "down")

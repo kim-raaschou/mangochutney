@@ -35,6 +35,7 @@ final class BorderResizeTests: MangoTestCase {
     func fake(_ r: EngineRig) -> FakeWindowSystem { r.server.system as! FakeWindowSystem }
     /// The pointer moved, as wlroots' cursor is before mango hears of it, and the frame that shows it.
     func motion(_ r: EngineRig, _ p: CGPoint, time: UInt32) {
+        r.nextFrame()
         r.server.cursorMotion(to: p, time: time)
         r.frame()
     }

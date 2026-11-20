@@ -73,6 +73,7 @@ package extension MangoServer {
         let nmons = monitors.count
 
         for _ in 0..<nmons {
+            // not in mango: the wrap skips the list head, which mango reads as a monitor (a mango bug, docs/afvigelser.md §6)
             if dir == MON_NEXT {
                 i = (i + 1) % nmons
             } else {

@@ -26,6 +26,7 @@ package extension MangoServer {
         publishGlobalKeys()
     }
 
+    // not in mango: xkb_rules_options split for the port, which has no xkb
     static func xkbOptions(_ s: String) -> [String] {
         s.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty }
     }

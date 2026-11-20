@@ -24,6 +24,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
 
     /// The pointer moved there (macOS moves it before the event comes), then the motion.
     func motion(_ r: EngineRig, _ p: CGPoint, time: UInt32) {
+        r.nextFrame()
         r.server.motion(to: p, time: time)
     }
 
@@ -44,7 +45,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let r = dwindle(2)
         let width = dragRight(r, by: 100)
         motion(r, CGPoint(x: 0, y: 0), time: 1110)
-        XCTAssertNotEqual(r.server.clientByIdAll(900_400)!.geom.width, width, "1 ms later: laid out")
+        XCTAssertNotEqual(r.server.clientByIdAll(900_400)!.geom.width, width, "the next frame: laid out")
     }
 
     func testTheSplitIndicatorShowsTheNextSplitsSide() {

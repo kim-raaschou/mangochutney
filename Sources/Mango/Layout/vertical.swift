@@ -135,7 +135,8 @@ package extension MangoServer {
 
     // not in mango: client_is_x11_popup is false; macOS has no X11 popups
     private func verticalGridCounts(_ c: Client, _ m: Monitor) -> Bool {
-        VISIBLEON(c, m) && !c.isunglobal
+        // not in mango: grid_core's (m->isoverview || ISFAKETILED(c)); floats count here (a mango bug, docs/afvigelser.md §6)
+        VISIBLEON(c, m) && !c.isunglobal && (m.isoverview || ISFAKETILED(c))
     }
 
     func verticalGridCore(_ m: Monitor, _ ctx: LayoutContext?) {

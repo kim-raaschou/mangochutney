@@ -15,10 +15,15 @@ package extension MangoServer {
             let hits = mon.ovCards.filter { $0.value.contains(p) }.compactMap { clientByIdAll($0.key) }
             return hits.first { $0.isfloating } ?? hits.first
         }
-        let vis = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon)).filter { !$0.parked }
-        if let f = vis.first(where: { ($0.isfloating || SCRATCHPAD_SHOWN($0)) && clientGeom($0).contains(p) }) { return f }
-        if let s = mon.sel.flatMap({ clientByIdAll($0) }), vis.contains(where: { $0 === s }), clientGeom(s).contains(p) { return s }
-        return vis.first { clientGeom($0).contains(p) }
+        let hits = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon))
+            .filter { !$0.parked && clientGeom($0).contains(p) }
+        // for (layer = NUM_LAYERS - 1; layer >= 0; layer--): the topmost layer under the point
+        guard let layer = hits.map({ clientTargetLayer($0) }).max() else { return nil }
+        let top = hits.filter { clientTargetLayer($0) == layer }
+        // not in mango: within the layer the window server's stacking, else the focus stack
+        if let s = system.surfaceAt(p), let c = top.first(where: { $0.id == s }) { return c }
+        for id in focusStack { if let c = top.first(where: { $0.id == id }) { return c } }
+        return top.first
     }
 
     /// Not in mango: the surface of mango's node_at_point: the window under the point, or the client's own

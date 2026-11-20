@@ -296,6 +296,7 @@ package extension MangoServer {
         clientUnpark(tc, rc)
         /* rc stays focused: put tc right behind it in the focus stack. */
         focusStack.removeAll { $0 == tc.id }
+        // not in mango: wl_list_insert(rc->flink.next) puts it two places behind (a mango bug, docs/afvigelser.md §6)
         focusStack.insert(tc.id, at: (focusStack.firstIndex(of: rc.id) ?? -1) + 1)
 
         tc.tagVisible = wasVisible
@@ -1014,14 +1015,14 @@ package extension MangoServer {
     func spawnShell(_ arg: Arg) -> Int32 {
         guard let v = arg.v else { return 0 }
 
-        system.spawnShell(v)   // not in mango: fork and execlp, the port's
+        system.spawnShell(v)   // not in mango: the port runs it with /bin/zsh -lc
         return 0
     }
 
     func spawn(_ arg: Arg) -> Int32 {
         guard let v = arg.v else { return 0 }
 
-        system.spawn(v)   // not in mango: fork, wordexp and execvp, the port's
+        system.spawn(v)   // not in mango: the port runs it with /bin/zsh -lc
         return 0
     }
 

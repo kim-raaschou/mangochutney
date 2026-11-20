@@ -454,4 +454,20 @@ final class LayoutTests: MangoTestCase {
             XCTAssertTrue(cards.count == n || cards.isEmpty, "mango: all placed, or none when no scale fits")
         }
     }
+
+    /// mango's vertical_grid_core counts visible floats in its index, unlike grid_core (docs/afvigelser.md §6).
+    func testAFloatingWindowLeavesTheVerticalGridAlone() {
+        let r = EngineRig()
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .verticalGrid
+        let float = CGRect(x: 300, y: 300, width: 200, height: 150)
+        let f = r.window(10, floating: true, frame: float)
+        f.floatGeom = float
+        let tiled = [r.window(11), r.window(12), r.window(13)]
+        r.server.clients.removeAll { $0 === f }
+        r.arrange()
+        let alone = tiled.map(\.geom)
+        r.server.clients.insert(f, at: 0)
+        r.arrange()
+        XCTAssertEqual(tiled.map(\.geom), alone, "the floating window takes no grid slot")
+    }
 }

@@ -2,6 +2,7 @@ import Foundation
 import CoreGraphics
 import QuartzCore
 
+// not in mango: the port's own version
 public let mangoVersion = "0.0.4-20261109-beta"
 // not in mango: meson.build's VERSION, with the commit of mango this port follows
 public let VERSION = "0.18.5(21f80a9)"
@@ -41,6 +42,7 @@ public final class MangoServer {
 
     public internal(set) var monitors: [Monitor] = []
     public package(set) var clients: [Client] = []
+    // not in mango: clients with the group members the port has parked (mango keeps all in clients)
     public var clientsAll: [Client] {
         var out: [Client] = []
         for c in clients {
@@ -57,8 +59,8 @@ public final class MangoServer {
     var tabMemberCount: Int32 = 0   // not in mango: tab.c's static tab_member_count
     package var enableGaps = true
     package var renderBorder = true
-    package var drawsOverlays = false
-    package internal(set) var started = false
+    package var drawsOverlays = false   // not in mango: whether the port draws (off in tests)
+    package internal(set) var started = false   // not in mango: the port has found its windows
     public var cliDebugLog = false
 
     package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
@@ -124,7 +126,7 @@ public final class MangoServer {
         if cliDebugLog {
             config.logLevel = .debug
         }
-        // not in mango: no init_baked_points, the port's animator bakes its own curves
+        // not in mango: no init_baked_points; find_animation_curve_at solves the curve
         setEnvWithoutDisplay()
         wlrLogInit(config.logLevel)
         system.setKeyboardOptions(config.xkbRulesOptions)   // not in mango: keyboard_group_create's keymap, the port's side
@@ -196,6 +198,7 @@ public final class MangoServer {
         }
     }
 
+    // not in mango: selected_monitor->sel as a client
     package var focused: Client? { selectedMonitor.sel.flatMap { clientByIdAll($0) } }
 
 

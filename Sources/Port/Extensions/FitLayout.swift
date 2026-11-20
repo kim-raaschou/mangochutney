@@ -195,6 +195,8 @@ enum FitLayout {
 
     static func resizewin(_ server: MangoServer, _ c: Client, _ axis: Axis, _ offset: Int) {
         let args = axis == .width ? ["\(offset)", "0"] : ["0", "\(offset)"]
+        // The fit's steps come in one frame; resize_tile_client takes one a frame (keyboard repeats).
+        c.mon?.lastResizeFrame = 0
         _ = server.dispatch(Dispatch(name: "resizewin", args: args), target: c)
     }
 

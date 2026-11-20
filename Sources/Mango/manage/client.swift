@@ -352,7 +352,7 @@ package extension MangoServer {
             dwindleBlock = dwindleFocusBlockRoot(m.pertag.dwindleRoot[tag], sc, fc)
         }
         for id in focusStack {
-            guard let tc = clientByIdAll(id), !tc.isunglobal, VISIBLEON(tc, m), tc !== fc else { continue }
+            guard let tc = clientByIdAll(id), !tc.iskilling, !tc.isunglobal, VISIBLEON(tc, m), tc !== fc else { continue }
             if isDwindle {
                 if dwindleBlock != nil && dwindleFocusBlockHasClient(dwindleBlock, tc) { return tc }
                 continue
@@ -737,6 +737,8 @@ package extension MangoServer {
     package func clientFocus(_ c: Client?, _ lift: Bool) {
         let oldKeyboardFocusSurface = system.keyboardFocusedSurface
 
+        if let c, c.iskilling { return }
+
         if let c, clientByIdAll(c.id) !== c { return }
 
         if let c, c.noFocus { return }
@@ -792,7 +794,7 @@ package extension MangoServer {
 
         guard let c else {
             let sm: Monitor = selectedMonitor
-            if let id = sm.sel, !(clientByIdAll(id)?.isVisible(on: sm) ?? false) {
+            if let id = sm.sel, !(clientByIdAll(id).map { $0.isVisible(on: sm) && !$0.iskilling } ?? false) {
                 sm.sel = nil
             }
             printstatus(.arrangge)

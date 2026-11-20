@@ -49,12 +49,6 @@ public enum LayoutKind: Int, CaseIterable, Sendable {
     }
 
     public var isScroller: Bool { self == .scroller || self == .verticalScroller }
-    public var isVertical: Bool {
-        switch self {
-        case .verticalScroller, .verticalTile, .verticalGrid, .verticalDeck, .verticalFair: return true
-        default: return false
-        }
-    }
     /// Not in mango: the port's parking. Layouts where only the focused stack window is
     /// visible (the others are parked, where mango leaves them behind it in the scene).
     public var isMonocleLike: Bool { self == .monocle || self == .deck || self == .verticalDeck }

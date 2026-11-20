@@ -85,6 +85,7 @@ package enum Keyboard {
     }
 }
 
+// not in mango: the port's key model, where mango has xkb and the seat
 package struct KeyboardState {
     package var lastHoldKeycode: UInt16?
     package var boundKeys: Set<UInt16> = []

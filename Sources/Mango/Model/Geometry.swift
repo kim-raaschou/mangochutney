@@ -73,16 +73,4 @@ public struct BezierCurve: Equatable, Sendable {
         }
         return calculateAnimationCurveAt(t, y1, y2)
     }
-    public var extremes: (low: Double, high: Double) {
-        let a = 3 * y1 - 3 * y2 + 1, b = 3 * y2 - 6 * y1, c = 3 * y1
-        var turns: [Double] = []
-        if abs(a) < 1e-12 {
-            if abs(b) > 1e-12 { turns = [-c / (2 * b)] }
-        } else {
-            let d = 4 * b * b - 12 * a * c
-            if d >= 0 { turns = [(-2 * b + d.squareRoot()) / (6 * a), (-2 * b - d.squareRoot()) / (6 * a)] }
-        }
-        let ys = turns.filter { $0 > 0 && $0 < 1 }.map { calculateAnimationCurveAt($0, y1, y2) }
-        return (ys.reduce(0, min), ys.reduce(1, max))
-    }
 }

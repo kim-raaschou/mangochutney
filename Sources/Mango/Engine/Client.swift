@@ -43,6 +43,7 @@ public final class Client {
     // not in mango: the display ID, not the output's name (two displays can share a name).
     public var oldmonname: CGDirectDisplayID?
 
+    // not in mango: the macOS window's frame and whether it is parked off screen (the port)
     package var frame: CGRect {
         get { platform.frame }
         set { platform.frame = newValue }
@@ -64,7 +65,8 @@ public final class Client {
     public var groupPrev: Client?
     public var groupNext: Client?
     public var isGroupFocus = false
-    public var groupParked = false
+    public var groupParked = false   // not in mango: a group member the port has parked (clientsAll)
+    /// mango client_is_group_member (client.c)
     public var isGroupMember: Bool { groupPrev != nil || groupNext != nil }
 
     public var noBorder = false
@@ -151,8 +153,11 @@ public final class Client {
     }
 
 
+    /// mango client_get_appid (client.c)
+    // not in mango: the bundle id, else the app's name
     public var appid: String { bundleId.isEmpty ? appName : bundleId }
 
+    // not in mango: VISIBLEON without the port's parked group members
     public func isVisible(on m: Monitor) -> Bool {
         guard mon === m, !groupParked, !isminimized else { return false }
         if isglobal || isunglobal { return true }
@@ -197,13 +202,13 @@ public final class Pertag {
 
 @MainActor
 public final class Monitor {
-    public var screen: Screen
+    public var screen: Screen   // not in mango: the port's output (wlr_output)
     public var m: CGRect      /* monitor area, layout-relative */
     public var w: CGRect      /* window area, layout-relative */
     public var seltags = 0
     public var tagset: [UInt32] = [1, 1]
     var frameSerial: UInt32 = 1
-    var lastResizeFrame: UInt32 = 0
+    package var lastResizeFrame: UInt32 = 0   // not in mango: package, for the port's fit (chutney_fit_layout)
 
     public var gappih: Int32 /* horizontal gap between windows */
     public var gappiv: Int32 /* vertical gap between windows */
