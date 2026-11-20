@@ -23,7 +23,7 @@ final class EngineBorderTests: MangoTestCase {
 
     func testTheCornerRadiusIsNotASetting() {
         var c = Config()
-        guard case .unknown = ConfigOptions.parseOption(key: "border_corner_radius", value: "12", to: &c) else {
+        guard !parseOption("border_corner_radius", "12", to: &c) else {
             return XCTFail("not a mango key, and the ring follows macOS")
         }
     }

@@ -86,39 +86,3 @@ public struct BezierCurve: Equatable, Sendable {
         return (ys.reduce(0, min), ys.reduce(1, max))
     }
 }
-
-// not in mango: the color as RGBA (convert_hex_to_rgba), nil where mango returns -1
-public func parseColor(_ hexStr: String) -> RGBA? {
-    let hexNum: Int
-    if let (v, rest) = ValueParse.strtol(Substring(hexStr), base: 16) {
-        guard rest.isEmpty else { return nil }
-        hexNum = v
-    } else {
-        guard hexStr.isEmpty else { return nil }
-        hexNum = 0
-    }
-    if hexNum == -1 { return nil }
-    let v = UInt32(truncatingIfNeeded: hexNum)
-    return RGBA(r: Double((v >> 24) & 0xff) / 255, g: Double((v >> 16) & 0xff) / 255,
-                b: Double((v >> 8) & 0xff) / 255, a: Double(v & 0xff) / 255)
-}
-
-/// mango parse_double_array (value_parse.c)
-// not in mango: mango_error's message returned beside the count
-public func parseDoubleArray(_ input: String, _ output: inout [Double], _ maxCount: Int) -> (Int, String?) {
-    output = Array(repeating: 0, count: maxCount)
-    var count = 0
-    for token in input.split(separator: ",") where count < maxCount {
-        let t = token.trimmingCharacters(in: CharacterSet(charactersIn: " \t\n\r\u{0B}\u{0C}"))
-        guard t.range(of: #"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$"#, options: .regularExpression) != nil,
-              let val = Double(t), val.isFinite else {
-            return (-1, "Invalid number in array: \(mangoHighlight(t))")
-        }
-        if val < 0 {
-            return (-1, "Invalid number in array (must be non-negative): \(mangoHighlight(t))")
-        }
-        output[count] = val
-        count += 1
-    }
-    return (count, nil)
-}

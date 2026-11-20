@@ -179,6 +179,11 @@ HYPER,F1–F12 i `~/.config/mango/config.conf` om (backup og diff af hele filen 
   kernen). Kortene og switcherens felter er stadig portens billeder, gemt via `client_tile_resize`;
   logikken omkring dem er mangos. `arrange` kører mangos trin også i overview, et vindue uden kort fra
   layoutet får sit kort, hvor det står, og kortet gør klienten synlig som mangos `ov_card_tree`.
+- Trin 9 (17. november): mangos `config/*.c` og `ipc/ipc.c` står i filer med mangos navne i mangos
+  rækkefølge (`Config/load.swift`, `option_defs.swift`, …, `IPC/ipc.swift`), hver funktion sammenlignet
+  med mango. Bindingernes felter er sscanf's, `switchbind` og regler uden macOS-del tjekkes som i mango,
+  skærm-specs matcher make/model/serial, og fejlene er mangos. Brugerens config læses byte-identisk før
+  og efter (dump af alle felter, bindinger og regler).
 - (Oprindelig note) `Pertag` med mangos arrays (`curtag`, `prevtag`, `nmasters`, `mfacts`, `ltidxs`,
   `configLtidxs`, `noHide`, `noRenderBorder`, `openAsFloating`, `scrollerDefaultProportion…`,
   `dwindleRoot`, `scrollerState`), `Monitor` med `gappih`…`gappov`, `m`/`w`, og mangos konstanter

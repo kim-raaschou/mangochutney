@@ -15,20 +15,25 @@ enum Service {
         return defaultExecutable
     }
     static var user: String { NSUserName() }
-    static var outLogPath: String { "/tmp/mango_\(user).out.log" }
-    static var errLogPath: String { "/tmp/mango_\(user).err.log" }
+    /// The logs stay across restarts, where macOS keeps an app's logs.
+    static var logDirectory: String { NSHomeDirectory() + "/Library/Logs/Mango Chutney" }
+    static var outLogPath: String { logDirectory + "/mango.out.log" }
+    static var errLogPath: String { logDirectory + "/mango.err.log" }
     static var plistPath: String {
         NSHomeDirectory() + "/Library/LaunchAgents/\(label).plist"
     }
     static var domain: String { "gui/\(getuid())" }
     static var serviceTarget: String { "\(domain)/\(label)" }
 
-    static let usage = "usage: mmsg service install|uninstall|start|stop|restart|status|plist"
+    static let usage = "usage: mmsg service install [--debug|--no-debug]|uninstall|start|stop|restart|status|plist"
 
     static func run(_ args: [String]) -> Int32 {
+        if args.count == 2, args[0] == "install", args[1] == "--debug" || args[1] == "--no-debug" {
+            return install(debug: args[1] == "--debug")
+        }
         guard args.count == 1 else { return err(usage) }
         switch args[0] {
-        case "install": return install()
+        case "install": return install(debug: installedWithDebug())
         case "uninstall": return uninstall()
         case "start": return start()
         case "stop": return stop()
@@ -39,10 +44,11 @@ enum Service {
         }
     }
 
-    static func plist() -> [String: Any] {
+    /// `debug`: mango runs with -d, so its log has everything (as `mango -d`).
+    static func plist(debug: Bool = false) -> [String: Any] {
         [
             "Label": label,
-            "ProgramArguments": [executable],
+            "ProgramArguments": debug ? [executable, "-d"] : [executable],
             "RunAtLoad": true,
             "KeepAlive": ["Crashed": true],
             "AbandonProcessGroup": true,
@@ -53,7 +59,15 @@ enum Service {
         ]
     }
 
-    static func install() -> Int32 {
+    /// Whether the installed agent runs mango with -d: a plain `install` (as `make install` runs it) keeps it.
+    static func installedWithDebug() -> Bool {
+        guard let data = FileManager.default.contents(atPath: plistPath),
+              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let args = plist["ProgramArguments"] as? [String] else { return false }
+        return args.contains("-d")
+    }
+
+    static func install(debug: Bool) -> Int32 {
         if !FileManager.default.isExecutableFile(atPath: executable) {
             warn("warning: \(executable) not found; the agent will fail until Mango Chutney.app is installed")
         }
@@ -64,7 +78,9 @@ enum Service {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)
-            let data = try PropertyListSerialization.data(fromPropertyList: plist(), format: .xml, options: 0)
+            // launchd does not create the log's folder
+            try FileManager.default.createDirectory(atPath: logDirectory, withIntermediateDirectories: true)
+            let data = try PropertyListSerialization.data(fromPropertyList: plist(debug: debug), format: .xml, options: 0)
             try data.write(to: url, options: .atomic)
         } catch {
             return err("mmsg: cannot write \(plistPath): \(error.localizedDescription)")
@@ -147,7 +163,12 @@ enum Service {
         return done.wait(timeout: .now() + 10) == .success
     }
 
+    /// The installed plist, or the one `install` would write.
     static func printPlist() -> Int32 {
+        if let installed = FileManager.default.contents(atPath: plistPath) {
+            FileHandle.standardOutput.write(installed)
+            return 0
+        }
         guard let data = try? PropertyListSerialization.data(fromPropertyList: plist(), format: .xml, options: 0) else {
             return err("mmsg: cannot encode the plist")
         }

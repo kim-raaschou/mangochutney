@@ -1,4 +1,132 @@
-let NUM_TYPE_MINUS: UInt32 = 0, NUM_TYPE_PLUS: UInt32 = 1, NUM_TYPE_DEFAULT: UInt32 = 2
+import Foundation
+
+// not in mango: parse_option's keyword parsers (option_defs.c) and binding_parse.c's, as one namespace
+public enum BindingParser {}
+
+// not in mango: reference_keymap, cleanup_config_keymap and create_config_keymap: xkb's keymap is the
+// port's (ConfigPort.keyCodes)
+
+extension BindingParser {
+    // Parses the bind combination string.
+    // not in mango: `error`, mango_error's message given to the caller; the flags as one set
+    static func parseBindFlags(_ str: String, error: (String) -> Void = { _ in }) -> KeyBindingFlags {
+        var kb: KeyBindingFlags = []
+        // Checks whether it starts with "bind".
+        if !str.hasPrefix("bind") {
+            return kb
+        }
+
+        let suffix = str.dropFirst(4) // Skips "bind".
+
+        // Walks the remaining suffix characters.
+        for c in suffix {
+            switch c {
+            case "s":
+                kb.insert(.keysym)
+            case "l":
+                kb.insert(.locked)
+            case "r":
+                kb.insert(.release)
+            case "p":
+                kb.insert(.passthrough)
+            case "c":
+                kb.insert(.allowConflict)
+            default:
+                error("Unknown bind flag: \(mangoHighlight(String(c)))")
+            }
+        }
+        return kb
+    }
+
+    // not in mango: the mode alone; iscommonmode and isdefaultmode are the mode's "common" and "default"
+    static func setBindingKeymode(_ config: Config) -> String {
+        config.keymode
+    }
+
+    // not in mango: nil where mango returns UINT32_MAX; `error`, mango_error's message given to the caller
+    package static func parseMod(_ modStr: String, error: (String) -> Void = { _ in }) -> Modifiers? {
+        if modStr.isEmpty {
+            return nil
+        }
+
+        var mod: Modifiers = []
+        var matchSuccess = false
+
+        // Copies and converts to lowercase.
+        let inputCopy = String(decoding: modStr.utf8.prefix(255), as: UTF8.self).lowercased()
+
+        // Splits and processes each part.
+        for raw in inputCopy.split(separator: "+") {
+            // Strips leading/trailing whitespace.
+            let token = ValueParse.trimWhitespace(raw)
+
+            // Skips tokens that became empty.
+            if token.isEmpty {
+                continue
+            }
+
+            if token.hasPrefix("code:") {
+                // Handles the code: form.
+                if let (keycode, rest) = ValueParse.strtol(token.dropFirst(5)), rest.isEmpty || rest.first == " " {
+                    switch keycode {
+                    case 133, 134:
+                        mod.insert(.superKey)
+                        matchSuccess = true
+                    case 37, 105:
+                        mod.insert(.ctrl)
+                        matchSuccess = true
+                    case 50, 62:
+                        mod.insert(.shift)
+                        matchSuccess = true
+                    case 64, 108:
+                        mod.insert(.alt)
+                        matchSuccess = true
+                    default:
+                        error("unknown modifier keycode: \(mangoHighlight(token))")
+                    }
+                }
+            } else {
+                if token == "super" || token == "super_l" || token == "super_r" {
+                    mod.insert(.superKey)
+                    matchSuccess = true
+                }
+                if token == "ctrl" || token == "ctrl_l" || token == "ctrl_r" {
+                    mod.insert(.ctrl)
+                    matchSuccess = true
+                }
+                if token == "shift" || token == "shift_l" || token == "shift_r" {
+                    mod.insert(.shift)
+                    matchSuccess = true
+                }
+                if token == "alt" || token == "alt_l" || token == "alt_r" {
+                    mod.insert(.alt)
+                    matchSuccess = true
+                }
+                if token == "hyper" || token == "hyper_l" || token == "hyper_r" {
+                    mod.insert(.hyper)
+                    matchSuccess = true
+                }
+                if token == "none" {
+                    matchSuccess = true
+                }
+                if let m = ConfigParser.port?.modifier(token) {   // the port's names: not in mango
+                    mod.formUnion(m)
+                    matchSuccess = true
+                }
+            }
+        }
+
+        if !matchSuccess {
+            error("Unknown modifier: \(mangoHighlight(modStr))")
+            return nil
+        }
+
+        return mod
+    }
+}
+
+// not in mango: find_keycodes_in_layout and find_keycodes_for_keysym: xkb's keymap is the port's
+// (ConfigPort.keyCodes, WindowSystem.findKeycodesForKeysym)
 
 package extension MangoServer {
     func findKeycodesForChar(_ cChar: Character?, _ multiKc: inout MultiKeycode) {
@@ -11,6 +139,79 @@ package extension MangoServer {
 }
 
 extension BindingParser {
+    // not in mango: the key's macOS key codes from the port (xkb's keymap in mango), [] for a key
+    // with no code (matched by keysym in mango, dropped here), nil for XKB_KEY_NoSymbol; `error`,
+    // mango_error's message given to the caller (docs/afvigelser.md §3)
+    static func parseKey(_ keyStr: String, _ isbindsym: Bool, error: (String) -> Void = { _ in }) -> [UInt16]? {
+        let codes = ConfigParser.port?.keyCodes(keyStr) ?? []   // the boundary: xkb's keymap is the port's
+
+        // Handles the code: prefix case.
+        if keyStr.hasPrefix("code:") {
+            return codes
+        }
+
+        if !codes.isEmpty || keyStr.lowercased().hasPrefix("xf86") {
+            return codes
+        }
+
+        if !isbindsym {
+            // Unparseable key name.
+            error("Unknown key: \(mangoHighlight(keyStr))")
+        }
+        return nil
+    }
+
+    // not in mango: the button as MouseButton, nil where mango returns UINT32_MAX; `error`,
+    // mango_error's message given to the caller
+    static func parseButton(_ str: String, error: (String) -> Void = { _ in }) -> MouseButton? {
+        // Converts the input string to lowercase.
+        let lowerStr = String(decoding: str.utf8.prefix(19), as: UTF8.self).lowercased()
+
+        // Parses the "code:number" format.
+        if lowerStr.hasPrefix("code:") {
+            // Checks that the conversion succeeded with no leftover characters and
+            // no overflow (within uint32_t).
+            guard let (val, rest) = ValueParse.strtoul(lowerStr.dropFirst(5)), rest.isEmpty,
+                  val <= UInt64(UInt32.max) else {
+                error("Invalid code format: \(mangoHighlight(str))")
+                return nil
+            }
+            switch val {
+            case 272: return .left
+            case 273: return .right
+            case 274: return .middle
+            case 275: return .side
+            case 276: return .extra
+            case 277: return .forward
+            case 278: return .back
+            case 279: return .task
+            default: return .code(Int(val))
+            }
+        }
+
+        // Returns the matching button number from the lowercased string.
+        if lowerStr == "btn_left" {
+            return .left
+        } else if lowerStr == "btn_right" {
+            return .right
+        } else if lowerStr == "btn_middle" {
+            return .middle
+        } else if lowerStr == "btn_side" {
+            return .side
+        } else if lowerStr == "btn_extra" {
+            return .extra
+        } else if lowerStr == "btn_forward" {
+            return .forward
+        } else if lowerStr == "btn_back" {
+            return .back
+        } else if lowerStr == "btn_task" {
+            return .task
+        } else {
+            error("Unknown button: \(mangoHighlight(str))")
+            return nil
+        }
+    }
+
     static func parseMouseAction(_ str: String) -> UInt32 {
         // Converts the input string to lowercase.
         let lowerStr = String(decoding: str.utf8.prefix(19), as: UTF8.self).lowercased()
@@ -149,7 +350,7 @@ extension BindingParser {
             arg.i = argValue == "next" ? NEXT : PREV
         } else if funcName == "tagsilent" {
             `func` = MangoServer.tagSilent(_:)
-            arg.ui = TagMask.parseTagMask(argValue)
+            arg.ui = ValueParse.parseTagMask(argValue)
         } else if funcName == "tagtoleft" {
             `func` = MangoServer.tagToLeft(_:)
             arg.i = Int32(truncatingIfNeeded: ValueParse.atoi(argValue))
@@ -196,12 +397,10 @@ extension BindingParser {
             // Collects the parameters to concatenate.
             var nonEmptyParams: [String] = []
 
-            // not in mango: a binding's "0" (not given) after the value is skipped too, as in
-            // combine_args_until_empty (a mango bug, docs/afvigelser.md §6)
             if !argValue2.isEmpty { nonEmptyParams.append(argValue2) }
-            if !argValue3.isEmpty && argValue3 != "0" { nonEmptyParams.append(argValue3) }
-            if !argValue4.isEmpty && argValue4 != "0" { nonEmptyParams.append(argValue4) }
-            if !argValue5.isEmpty && argValue5 != "0" { nonEmptyParams.append(argValue5) }
+            if !argValue3.isEmpty { nonEmptyParams.append(argValue3) }
+            if !argValue4.isEmpty { nonEmptyParams.append(argValue4) }
+            if !argValue5.isEmpty { nonEmptyParams.append(argValue5) }
 
             // Handles concatenation.
             arg.v2 = nonEmptyParams.joined(separator: ",")
@@ -266,7 +465,7 @@ extension BindingParser {
         } else if funcName == "spawn_on_empty" {
             `func` = MangoServer.spawnOnEmpty(_:)
             arg.v = argValue
-            arg.ui = TagMask.parseTagMask(argValue2)
+            arg.ui = ValueParse.parseTagMask(argValue2)
         } else if funcName == "quit" {
             `func` = MangoServer.quit(_:)
         } else if funcName == "create_virtual_output" {
@@ -300,29 +499,29 @@ extension BindingParser {
             arg.v = argValue
         } else if funcName == "tag" {
             `func` = MangoServer.tag(_:)
-            arg.ui = TagMask.parseTagMask(argValue)
+            arg.ui = ValueParse.parseTagMask(argValue)
             arg.i = Int32(truncatingIfNeeded: ValueParse.atoi(argValue2))
         } else if funcName == "view" {
             `func` = MangoServer.bindToView(_:)
-            arg.ui = TagMask.parseTagMask(argValue)
+            arg.ui = ValueParse.parseTagMask(argValue)
             arg.i = Int32(truncatingIfNeeded: ValueParse.atoi(argValue2))
         } else if funcName == "viewcrossmon" {
             `func` = MangoServer.viewCrossMonitor(_:)
-            arg.ui = TagMask.parseTagMask(argValue)
+            arg.ui = ValueParse.parseTagMask(argValue)
             arg.v = argValue2
         } else if funcName == "tagcrossmon" {
             `func` = MangoServer.tagCrossMonitor(_:)
-            arg.ui = TagMask.parseTagMask(argValue)
+            arg.ui = ValueParse.parseTagMask(argValue)
             arg.v = argValue2
         } else if funcName == "toggletag" {
             `func` = MangoServer.toggleTag(_:)
-            arg.ui = TagMask.parseTagMask(argValue)
+            arg.ui = ValueParse.parseTagMask(argValue)
         } else if funcName == "toggleview" {
             `func` = MangoServer.toggleView(_:)
-            arg.ui = TagMask.parseTagMask(argValue)
+            arg.ui = ValueParse.parseTagMask(argValue)
         } else if funcName == "comboview" {
             `func` = MangoServer.comboView(_:)
-            arg.ui = TagMask.parseTagMask(argValue)
+            arg.ui = ValueParse.parseTagMask(argValue)
         } else if funcName == "smartmovewin" {
             `func` = MangoServer.smartMoveWindow(_:)
             arg.i = ValueParse.parseDirection(argValue)

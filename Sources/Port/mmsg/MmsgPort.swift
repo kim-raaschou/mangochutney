@@ -9,7 +9,8 @@ public func mmsgPortUsage() {
       get binds                                The same as JSON
       logs                                     Follow mango's stdout/stderr logs
                                                (\(Service.outLogPath), \(Service.errLogPath))
-      service install                          Install and load the LaunchAgent (\(Service.label))
+      service install [--debug|--no-debug]     Install and load the LaunchAgent (\(Service.label)); --debug logs everything (-d),
+                                               and a plain install keeps what is installed
       service uninstall                        Unload and remove the LaunchAgent
       service start|stop|restart               Start, stop or restart mango via launchctl
       service status                           Show LaunchAgent and IPC socket status

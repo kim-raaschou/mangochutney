@@ -1,4 +1,5 @@
 import XCTest
+@testable import Mango
 @testable import Port
 
 class MangoTestCase: XCTestCase {
@@ -19,4 +20,10 @@ func keepConfigErrorsInTests() {
 
 extension String {
     var plain: String { replacingOccurrences(of: "\u{1B}\\[[0-9;]*m", with: "", options: .regularExpression) }
+}
+
+// parse_option on one line without a file, as setoption runs it
+@discardableResult
+func parseOption(_ key: String, _ value: String, to c: inout Config) -> Bool {
+    ConfigParser.parseOption(&c, key, value, 0, baseDirectory: URL(fileURLWithPath: NSTemporaryDirectory()))
 }

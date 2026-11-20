@@ -33,10 +33,10 @@ final class LaunchOrFocusTests: MangoTestCase {
     func testLaunchOrFocusIsAKnownPortExtension() {
         XCTAssertTrue(Dispatch.isKnown("chutney_launch_or_focus"))
         XCTAssertFalse(Dispatch.knownNames.contains("chutney_launch_or_focus"))
-        guard case .success(let d) = BindingParser.parseBindDispatch(["chutney_launch_or_focus", "com.mitchellh.ghostty"]) else {
-            return XCTFail("chutney_launch_or_focus does not parse")
-        }
-        XCTAssertEqual(d.args, ["com.mitchellh.ghostty"])
+        let parsed = ConfigParser.parse(text: "bind=SUPER,a,chutney_launch_or_focus,com.mitchellh.ghostty",
+                                        baseDirectory: nil, fileName: "t.conf")
+        XCTAssertEqual(parsed.errors, [], "chutney_launch_or_focus parses")
+        XCTAssertEqual(parsed.config.keyBindings.first?.dispatch.args, ["com.mitchellh.ghostty"])
     }
 
     func testThePictureShowsWhereTheKeysChoiceIsNotGiven() {
@@ -68,6 +68,18 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
         picker.key(r.server, keyCode: 36, mods: [], opening: nil)
         XCTAssertFalse(picker.isOpen)
         XCTAssertEqual(r.server.focused?.id, c.id)
+    }
+
+    func testItsMinimizedWindowIsBroughtBack() {
+        let r = EngineRig()
+        let a = r.window(1)
+        r.arrange()
+        r.server.clientActive(a)
+        _ = r.server.dispatch(Dispatch(name: "minimized"), target: a)
+        XCTAssertTrue(a.isminimized)
+        r.server.launchOrFocus("test", command: "")
+        XCTAssertFalse(a.isminimized, "client_active brings it back")
+        XCTAssertTrue(r.server.focused === a)
     }
 
     func testEscAndOtherKeysClose() {

@@ -145,7 +145,8 @@ package extension MangoServer {
     // not in mango: the binding's func and Arg, as parse_func_name gives them when mango reads the config
     func swipeBindingFunc(_ d: Dispatch) -> (func: String, arg: Arg) {
         var arg = Arg()
-        let a = (0..<5).map { $0 < d.args.count ? d.args[$0] : "0" }
+        // not in mango: setoption's fields a binding does not give are "", not "0" (a mango bug, docs/afvigelser.md §6)
+        let a = (0..<5).map { $0 < d.args.count ? d.args[$0] : d.name == "setoption" ? "" : "0" }
         _ = BindingParser.parseFuncName(d.name, &arg, a[0], a[1], a[2], a[3], a[4])
         return (d.name, arg)
     }

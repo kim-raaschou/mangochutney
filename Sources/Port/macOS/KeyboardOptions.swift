@@ -66,7 +66,7 @@ package enum KeyboardOptions {
 
     /// The keys mango's HYPER (Mod3) is on a Mac: chutney_hyper_modifier.
     package static func hyperSet(_ config: Config) -> Modifiers {
-        (Modifiers.parse(config.chutneyHyperModifier) ?? []).subtracting(.hyper)
+        (BindingParser.parseMod(config.chutneyHyperModifier) ?? []).subtracting(.hyper)
     }
 
     /// Bindings no keys can reach: their modifiers hold the whole hyper set, which is HYPER when held.

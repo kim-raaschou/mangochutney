@@ -175,6 +175,16 @@ Hvor koden står, når den ikke står som i mango.
   tabel). Ingen macOS-del: constraints, cursorbilleder, libinput, drag-and-drop, virtuelle enheder,
   keymaps, `keyboard_repeat`, shortcut-inhibitor, pinch og hold, `device.c`, `switch.c`, `tablet.c`,
   `touch.c`. `resize_tile_client` mangler endnu mangos samling pr. billede (`frame_serial`).
+- **Config og IPC:** mangos `config/*.c` og `ipc/ipc.c` står i kernen i filer med mangos navne
+  (`Config/load.swift`, `option_defs.swift`, `value_parse.swift`, `binding_parse.swift`,
+  `variable_expand.swift`, `conflict_check.swift`, `reapply.swift`, `watcher.swift`, `error_store.swift`,
+  `error_nag.swift`, `toml_parse.swift`, `parse.swift`; `IPC/ipc.swift`). Mærket i koden: `parse_option`
+  er en tabel; regex er ICU's (`NSRegularExpression`) for PCRE2, med ICU's fejltekst uden offset og
+  den tomme pattern som `(?:)`; `inf` og `nan`, som `strtod` læser, bliver 0, for Swift går ned ved
+  omregning til heltal, hvor mangos C giver skrald; `monitor_rule`, `layer_rule` og `device_rule`
+  tjekkes som i mango, men gemmes ikke (macOS har ingen del); `parse_tag_mask`'s `TAGMASK` er alle tags
+  undtagen tag0 (ingen server ved parsning). Uden macOS-del: xkb/keymap, `cleanup.c`, `preset.c`,
+  inotify. Uden `HOME` læser mango ingen config; porten vælger `/.config/mango/config.conf`.
 - **Klienter:** mangos `manage/client.c` står i kernen (`manage/client.swift`) i mangos
   rækkefølge. `client_park` giver medlemmet `mon` nil, som mango, og `client_is_parked` er
   listemedlemskab; `groupParked` er portens mærke (`clientsAll`), og porten parkerer et parkeret
@@ -265,7 +275,7 @@ Hvor koden står, når den ikke står som i mango.
   kørt, som mango. Har en gennemslupnings-binding (`bindp`) forladt overview, er tasten dog slugt, hvor
   mango sender den videre.
 - **`reset_option` og opstarten:** `reset_option` har mangos trin i mangos rækkefølge
-  (`MangoServer.resetOption`), og opstarten følger `setup` og `run`: `exec` og `exec_once` kører
+  (`resetOption` i `Config/reapply.swift`), og opstarten følger `setup` og `run`: `exec` og `exec_once` kører
   til sidst, når skærmene er sat op, og et reload kører kun `exec`. Uden macOS-del, mærket i koden:
   `init_baked_points` (kurven løses, ikke bages), `reset_blur_params`,
   `reapply_rootbg` (porten læser `rootcolor`, hvor den tegner), `reapply_keyboard`,
@@ -273,7 +283,7 @@ Hvor koden står, når den ikke står som i mango.
   `client_set_tab_bar_config` i `reapply_property` (kanten og bjælken tegnes ud fra config).
   `reapply_pointer`s plads har portens gestus-overvågning. `run`s del ligger sidst i `setup`.
 - **Config-watcheren:** mangos `config/watcher.c` med dens kqueue-del (mangos egen på macOS) står i
-  kernen (`Config/Watcher.swift`); dens filer og debounce-timer er wayland's event loop på grænsen.
+  kernen (`Config/watcher.swift`); dens filer og debounce-timer er wayland's event loop på grænsen.
 - **Grænsen (`Sources/Boundary`):** `WindowSystem` (wlroots' plads), `MangoBarDecoration` og `MangoJumpLabel` (mangos tekstnoder), `NagDisplay` (mangonags Wayland-side), `EventLoop`
   (`wl_event_loop_add_fd` og `_add_timer`, til IPC og config-watcheren), `Screen`, `PortHooks`, `ConfigPort` (portens nøgler,
   modifiernavne, tastkoder) og `InputState`.
@@ -289,7 +299,7 @@ aftalt, rettet så lidt som muligt, mærket `a mango bug` i koden og låst med e
 | Fejl i mango | mango | Hos os | Rettelse |
 |---|---|---|---|
 | `tile`, `right_tile` og `vertical_tile` giver gruppens sidste vindue sin andel afrundet ned, så kolonnen kan mangle en pixel nederst (eller til højre). Andelen er `double`, forholdet `float`, og de to går ikke op. Det sker i omkring halvdelen af skærmhøjderne med lige store vinduer | 600 px på tre vinduer: 200, 199, 200 | 200, 200, 200 | Det sidste vindue får resten, som mangos egen `center_tile` gør (`if (r == 1) h = m->w.height - my - cur_gappov`). `Layout/horizontal.swift`, `Layout/vertical.swift`, `LayoutGoldenTests` |
-| Værnet mod en `source`, der læser sig selv (direkte eller gennem en anden fil): mango læser den igen og igen, til stakken løber tør | går ned | filen læses én gang, og det meldes (én linje uden `[Index]`) | `includeStack` i `ConfigParser.swift`; `testASourceCycleIsReadOnce` |
+| Værnet mod en `source`, der læser sig selv (direkte eller gennem en anden fil): mango læser den igen og igen, til stakken løber tør | går ned | filen læses én gang, og det meldes (én linje uden `[Index]`) | `includeStack` i `Config/load.swift`; `testASourceCycleIsReadOnce` |
 | Et træk i `fair`, `vertical_fair`, `grid` og `vertical_grid` vælger naboen på den side af vinduet, man trækker i (`cursor_in_left_half`), og overskriver straks valget med tastaturets (*"Keyboard hotkey logic unchanged"*): naboen til højre, og kun for den yderste kolonne til højre den til venstre | tre kolonner, træk i midterste vindues venstre kant: dens højre kant flytter sig | venstre kant flytter sig | Tastaturets valg bruges kun ved tastaturet (`!isdrag`), og trækkets valg, som mango selv udregner, står. `resizeTileGridFair` i `Layout/arrange.swift`; `testAGridDragMovesTheEdgeItGrabs` |
 | `focus_direction` sender venstre og højre gennem `focus_stack`, når tagget er monocle, også i overview, hvor kortene ligger i et gitter; samme funktion springer stakken over i overview tre linjer længere nede (`if (!isoverview)`) | overview fra et monocle-tag: venstre/højre følger vinduernes rækkefølge, ikke kortene | venstre/højre går til kortet ved siden af | Monocle-grenen gælder ikke i overview, som mangos egen `!isoverview`. `focusDirection` i `dispatch/bind.swift`; `testMonocleInTheOverviewGoesByTheCards` |
 | `togglejump` på en skærm uden vinduer sætter `is_jump_mode` (`begin_jump_mode`), men `set_overview` vender om uden at gå i overview, så flaget bliver stående: kun at forlade overview rydder det | indtil næste overview er switcheren afvist, og Escape sluges i alle apps (`toggle_jump`) | jump-tilstanden slutter igen | Den tomme vej kalder `finish_jump_mode`, som mangos egen vej ud af overview gør. `setOverview` i `dispatch/bind.swift`; `testToggleJumpOnAnEmptyMonitorLeavesNoJumpMode` |
@@ -301,5 +311,6 @@ aftalt, rettet så lidt som muligt, mærket `a mango bug` i koden og låst med e
 | `toml_foreach_array_element` kopierer `\` og det escapede tegn, men tester bagefter, om tegnet er citattegnet, så et escapet `"` afslutter strengen; mangos egne `remove_toml_comment` og `toml_statement_complete` springer det escapede tegn over | `exec = ["notify-send \"a, b\""]` deles ved kommaet i to `exec` | én `exec`: `notify-send "a, b"` | Det escapede tegn afslutter ikke strengen, som i mangos to andre TOML-læsere. `tomlForeachArrayElement`; `testAnEscapedQuoteStaysInsideATomlString` |
 | `toml_section_begin` sætter `kind = BIND`, før den læser keymode og flag; afvises sektionen, sætter `toml_section_flush` `config->keymode` til `""` | efter `[bind.default.bogus]` får alle senere bindinger keymode `""` og virker aldrig | keymode er uændret | Kun en sektion, der ikke er afvist, sætter keymode tilbage. `tomlSectionFlush`; `testARejectedTomlBindSectionKeepsTheKeymode` |
 | `increase_gaps` lægger tallet til de normale mellemrum, også på special-tagget, og `setgaps` skriver dem så som special-tagets | `incgaps,5` på special-tagget giver special-mellemrummene de normales + 5 | special-tagets egne + 5 | `increase_gaps` regner fra special-mellemrummene, når special-tagget er aktivt. `increaseGaps` i `dispatch/bind.swift`; `testIncgapsOnTheSpecialTagChangesTheSpecialGaps` |
-| `parse_func_name` samler `setoption`'s felt 2–5 med komma og springer kun tomme felter over, men nøglebindingens parser giver de manglende felter `0` | `bind=…,setoption,circle_layout,tile,scroller` sætter `circle_layout` til `tile,scroller,0,0` | `tile,scroller` | felterne samles efter `combine_args_until_empty`'s regel, mangos egen for `spawn`: til det første tomme eller `0`. `parseFuncName` i `Config/binding_parse.swift`; `testSetoptionSkipsTheBindingsUngivenFields` |
+| `parse_func_name` samler `setoption`'s felt 2–5 med komma og springer kun tomme felter over, men nøglebindingens parser giver de manglende felter `0` | `bind=…,setoption,circle_layout,tile,scroller` sætter `circle_layout` til `tile,scroller,0,0` | `tile,scroller` | felter, bindingen ikke giver, når `setoption` som `""` (som IPC's), ikke `"0"`; `parse_func_name` er mangos, så et givet `0` står (`setoption,animation_curve_move,0,0,1,1` virker). `dispatch(_:)` i `Engine/Dispatch.swift` og `swipeBindingFunc` i `input/trackpad.swift`; `testSetoptionSkipsTheBindingsUngivenFields`, `testSetoptionKeepsGivenZeros` |
+| En tom linje i en fil med CRLF-linjeskift er `"\r\n"`, og `parse_conf_stream` springer kun `'\n'` over | hver tom linje giver `Invalid line format` | linjen springes over | en linje på præcis `"\r\n"` springes over som en tom; værdilinjer er mangos (`\r` trimmes). `parseConfStream` i `Config/load.swift`; `testCRLFLineEndings` |
 | `handle_client_unmap` rydder `drop_client`, men ikke `group_bar_drag_client` | lukkes et vindue, mens et træk fra dets gruppebjælke venter, peger mango videre på det lukkede vindue | trækket slippes | unmap rydder `group_bar_drag_client` og `group_bar_drag_pending`, som `drop_client`. `handleClientUnmap` i `manage/client.swift`; `testAGroupBarPressOnAWindowThatClosesIsLetGo` |

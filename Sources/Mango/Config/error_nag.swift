@@ -1,17 +1,24 @@
 import Foundation
 
 private func nagStripAnsi(_ src: String) -> String {
+    let src = Array(src.unicodeScalars)
     var dst = String.UnicodeScalarView()
-    var it = src.unicodeScalars.makeIterator()
-    while let c = it.next() {
-        if c == "\u{1B}" {
-            guard let n = it.next() else { break }
-            if n == "[" {
-                while let t = it.next(), !(t.value >= 0x40 && t.value <= 0x7E) {}
+
+    var i = 0
+    while i < src.count {
+        if src[i] == "\u{1B}" && i + 1 < src.count && src[i + 1] == "[" {
+            var k = i + 2
+            while k < src.count && !(src[k].value >= 0x40 && src[k].value <= 0x7E) {
+                k += 1
             }
+            if k == src.count {
+                break
+            }
+            i = k + 1
             continue
         }
-        dst.append(c)
+        dst.append(src[i])
+        i += 1
     }
     return String(dst)
 }

@@ -265,64 +265,6 @@ public final class Monitor {
 }
 
 package extension MangoServer {
-    // Reset a pertag slot to defaults.
-    func tagSlotSetDefaults(_ m: Monitor, _ tag: UInt32) {
-        m.pertag.nmasters[tag] = Int32(config.defaultNmaster)
-        m.pertag.mfacts[tag] = Float(config.defaultMfact)
-        m.pertag.configLtidxs[tag] = .tile
-        m.pertag.scrollerDefaultProportion[tag] = Float(config.scrollerDefaultProportion)
-        m.pertag.scrollerDefaultProportionSingle[tag] = Float(config.scrollerDefaultProportionSingle)
-        m.pertag.scrollerIgnoreProportionSingle[tag] = config.scrollerIgnoreProportionSingle
-    }
-
-    // Apply one tag rule to a slot (caller checks coverage).
-    func tagRuleApplyToSlot(_ m: Monitor, _ tr: ConfigTagRule, _ tag: UInt32) {
-        for layout in LayoutKind.allCases {
-            if let ln = tr.layoutName, layout.name == ln { m.pertag.configLtidxs[tag] = layout }
-        }
-
-        m.pertag.noHide[tag] = tr.noHide
-        if let v = tr.masterCount, v >= 1 { m.pertag.nmasters[tag] = Int32(v) }
-        if let v = tr.masterFactor, v > 0 { m.pertag.mfacts[tag] = Float(v) }
-        m.pertag.noRenderBorder[tag] = tr.noRenderBorder
-        m.pertag.openAsFloating[tag] = tr.openAsFloating
-        if tr.scrollerDefaultProportion > 0 {
-            m.pertag.scrollerDefaultProportion[tag] = Float(tr.scrollerDefaultProportion)
-        }
-        if tr.scrollerDefaultProportionSingle > 0 {
-            m.pertag.scrollerDefaultProportionSingle[tag] = Float(tr.scrollerDefaultProportionSingle)
-        }
-        if let v = tr.scrollerIgnoreProportionSingle { m.pertag.scrollerIgnoreProportionSingle[tag] = v }
-    }
-
-    func parseTagrule(_ m: Monitor) {
-        let prevConfigLtidxs = m.pertag.configLtidxs
-
-        // Set defaults for every tag.
-        for i in 0...UInt32(config.tagNum) { tagSlotSetDefaults(m, i) }
-
-        for tr in config.tagRules {
-            if tr.tagRuleMatchesMonitor(m.screen) && (tr.id == nil || tr.id! <= config.tagNum) {
-                let tagIdStart = tr.id ?? 0
-                let tagIdEnd = tr.id ?? config.tagNum
-
-                for ti in tagIdStart...tagIdEnd { tagRuleApplyToSlot(m, tr, UInt32(ti)) }
-            }
-        }
-
-        for i in 0...config.tagNum where prevConfigLtidxs[i] != m.pertag.configLtidxs[i] {
-            m.pertag.ltidxs[i] = m.pertag.configLtidxs[i]
-        }
-
-        for i in 1...UInt32(config.tagNum) {
-            for c in clientsAll where (c.tags & (1 << (i - 1)) & TAGMASK) != 0 && ISTILED(c) {
-                // not in mango: this monitor's windows only; mango's gives every window the last monitor's mfact (a mango bug, docs/afvigelser.md §6).
-                guard c.mon === m else { continue }
-                if m.pertag.mfacts[i] > 0 { c.masterMfactPer = CGFloat(m.pertag.mfacts[i]) }
-            }
-        }
-    }
-
     func tagGatherResetSlot(_ m: Monitor, _ tag: UInt32) {
         tagSlotSetDefaults(m, tag)
         m.pertag.noHide[tag] = false
@@ -332,7 +274,7 @@ package extension MangoServer {
         m.pertag.scrollerState[tag] = nil
 
         for tr in config.tagRules {
-            if tr.tagRuleMatchesMonitor(m.screen) && (tr.id == nil || tr.id == Int(tag)) {
+            if tagRuleMatchesMonitor(tr, m) && (tr.id == nil || tr.id == Int(tag)) {
                 tagRuleApplyToSlot(m, tr, tag)
             }
         }
@@ -361,10 +303,6 @@ public let TAG0_MASK: UInt32 = 1 << 31
 
 extension MangoServer {
     var TAGMASK: UInt32 { tagmask }
-
-    func updateGlobalVar() {
-        tagmask = (UInt32(1) << UInt32(config.tagNum)) - 1
-    }
 }
 
 @MainActor public func ISTILED(_ a: Client?) -> Bool {

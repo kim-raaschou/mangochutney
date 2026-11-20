@@ -34,7 +34,7 @@ Det skal ud af kernen efter den regel:
 | Grænsefladen | `Engine/WindowSystem`, `Model/Screen`, `Engine/PortHooks`, `Engine/InputState` | ~290 | Et eget modul ved siden af kernen, der hvor wlroots står |
 | Portens tabeller | `Config/MangoCompat`, `Config/PortOptions` | ~440 | Porten. Parseren får dem gennem en krog |
 | Port-funktioner | `Engine/Shortcuts`, `Engine/DepartedWindows`, `Engine/SavedLayout`, `Engine/SwipeTracker` | ~430 | Porten, med en krog hvor mangos kode bruger dem |
-| Portens felter i `Config` | omkring 20 `chutney*`-felter i `Model/Config.swift` | ~60 | Porten, fx en tabel med portens værdier |
+| Portens felter i `Config` | omkring 20 `chutney*`-felter i `Config/parse.swift` | ~60 | Porten, fx en tabel med portens værdier |
 | Mærket port-logik inde i mangos filer | omkring 210 mærker, mest i `MangoServer`, `WindowSystem`, `Dispatch`, `Input`, `Tabs` | ? | Gås igennem én ad gangen: et kald over grænsen bliver, port-logik flyttes ud bag en krog |
 
 Rækkefølgen er de hele filer først, fordi de er mekaniske at flytte. Mærkerne kommer bagefter og kræver en vurdering hver især.

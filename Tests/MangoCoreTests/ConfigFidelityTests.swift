@@ -178,7 +178,7 @@ final class ConfigFidelityTests: MangoTestCase {
     special_gap_outer_horizontal=20
     special_gap_outer_vertical=20
     split_color=0xEB441EFF
-    switchbind=FOLD_STATE,COMMAND,PARAMETERS
+    switchbind=fold,spawn,swaylock
     switchbind=fold,spawn,swaylock -f -c 000000
     switchbind=unfold,spawn,wlr-dpms on
     sync_obj_enable=1
@@ -358,18 +358,20 @@ final class ConfigFidelityTests: MangoTestCase {
 
     func testSetoptionClampsToo() {
         var config = Config()
-        XCTAssertEqual(ConfigOptions.parseOption(key: "overcircle_center_ratio", value: "5", to: &config), .applied)
+        XCTAssertTrue(parseOption("overcircle_center_ratio", "5", to: &config))
         XCTAssertEqual(config.overcircleCenterRatio, 0.9)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "hotarea_size", value: "-3", to: &config), .applied)
+        XCTAssertTrue(parseOption("hotarea_size", "-3", to: &config))
         XCTAssertEqual(config.hotareaSize, 1)
     }
 
+    /// atof is strtod (hex floats too); inf and nan, which Swift cannot make an int of, read as 0.
     func testNonFiniteNumbersReadAsZero() {
         for bad in ["nan", "inf", "-inf", "1e999", "infinity", "abc"] {
             let parsed = parse("default_master_factor=\(bad)")
             XCTAssertEqual(parsed.errors.count, 0, bad)
             XCTAssertEqual(parsed.config.defaultMfact, 0.1, bad)
         }
+        XCTAssertEqual(parse("default_master_factor=0x1p-1").config.defaultMfact, 0.5)
         XCTAssertEqual(parse("default_master_factor=.7").config.defaultMfact, 0.7)
         XCTAssertEqual(parse("default_master_factor=0.6f").config.defaultMfact, 0.6)
         XCTAssertEqual(parse("default_master_factor=5.").config.defaultMfact, 0.9, "clamped to 0.9")

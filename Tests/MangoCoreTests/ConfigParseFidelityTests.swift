@@ -173,7 +173,9 @@ final class ConfigParseFidelityTests: MangoTestCase {
         gesturebindx=none,left,3,focusdir,left
         bind|=SUPER,a,quit
         """)
-        XCTAssertEqual(c.errors, [], c.errors.map(\.description).joined(separator: "\n"))
+        // parse_bind_flags reports the bar, and the binding is kept (no [Index])
+        XCTAssertEqual(c.errors.map(\.message.plain), ["Unknown bind flag: |"])
+        XCTAssertEqual(c.errors.map(\.reportsLine), [false])
         XCTAssertEqual(c.config.envVars.first?.0, "A")
         XCTAssertEqual(c.config.execOnce, ["echo hi"])
         XCTAssertEqual(c.config.mouseBindings.count, 1)
@@ -255,11 +257,11 @@ final class ConfigParseFidelityTests: MangoTestCase {
 
     func testParseButtonCodeForms() {
         var errors: [String] = []
-        XCTAssertNil(parseButton("code:abc") { errors.append($0) })
-        XCTAssertNil(parseButton("code:-1") { errors.append($0) })
+        XCTAssertNil(BindingParser.parseButton("code:abc") { errors.append($0) })
+        XCTAssertNil(BindingParser.parseButton("code:-1") { errors.append($0) })
         XCTAssertEqual(errors.map(\.plain), ["Invalid code format: code:abc", "Invalid code format: code:-1"])
-        XCTAssertEqual(parseButton("code:272"), .left)
-        XCTAssertEqual(parseButton("code:+273"), .right)
+        XCTAssertEqual(BindingParser.parseButton("code:272"), .left)
+        XCTAssertEqual(BindingParser.parseButton("code:+273"), .right)
     }
 
     func testParseColorIsStrtol() {
@@ -278,5 +280,36 @@ final class ConfigParseFidelityTests: MangoTestCase {
         mousebind=SUPER,btn_left,killclient
         """)
         XCTAssertEqual(p.errors.map(\.line), [4, 3], "pairs (1, 4) then (2, 3), as check_simple_binding_conflicts")
+    }
+
+    // mango parse_option checks switchbind, monitor_rule, layer_rule and device_rule as it does every
+    // line, though macOS gives none of them an effect
+    func testRulesAndSwitchbindsWithoutAMacOSPartAreCheckedAsMangoChecksThem() {
+        let p = parse("""
+        switchbind=fold,frobnicate,x
+        switchbind=fold,spawn
+        layer_rule=layer_name:rofi,bogus:1
+        device_rule=name:x,type:mouse
+        device_rule=name:x,nocolon
+        monitor_rule=width:1920
+        switchbind=fold,spawn,swaylock
+        """)
+        XCTAssertEqual(p.errors.map(\.message.plain), [
+            "Unknown dispatch in switchbind: frobnicate",
+            "Invalid switchbind format: fold,spawn",
+            "Unknown layer rule option:bogus",
+            "Invalid device rule type: mouse (expected one of keyboard, pointer, trackpad, touch, switch, tablet, pad)",
+            "Invalid device rule format: nocolon",
+            "Monitor rule must have at least one of the following options: name, make, model, serial",
+        ])
+        XCTAssertEqual(p.errors.map(\.line), [1, 2, 3, 4, 5, 6])
+        XCTAssertEqual(p.config.switchBindings.map(\.fold), [FOLD])
+    }
+
+    // mango parse_key with bindsym: a name xkb does not know is NoSymbol, with no message of its own
+    func testAnUnknownKeysymInABindsIsRejectedWithoutAMessage() {
+        let p = parse("binds=SUPER,notakey,quit\nbind=SUPER,notakey,quit")
+        XCTAssertEqual(p.errors.map(\.message.plain), ["", "Unknown key: notakey"])
+        XCTAssertEqual(p.errors.map(\.reportsLine), [true, true])
     }
 }

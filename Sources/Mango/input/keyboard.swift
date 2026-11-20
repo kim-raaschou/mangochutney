@@ -20,7 +20,7 @@ package extension MangoServer {
         var keys: [GlobalKey] = []
         for r in rules {
             guard let spec = r.globalKeyBinding, let dash = spec.firstIndex(of: "-"),
-                  let mods = Modifiers.parse(String(spec[..<dash])), !mods.isEmpty else { continue }
+                  let mods = BindingParser.parseMod(String(spec[..<dash])), !mods.isEmpty else { continue }
             let name = String(spec[spec.index(after: dash)...]).trimmingCharacters(in: .whitespaces)
             guard let target = windows.first(where: {
                 $0 !== focusedNow && r.isWindowRuleMatches(appId: $0.bundleId, appName: $0.appName, title: $0.title)

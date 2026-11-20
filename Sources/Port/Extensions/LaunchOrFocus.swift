@@ -43,15 +43,15 @@ extension MangoServer {
     func appWindowsInGridOrder(_ key: String) -> [Client] {
         let position = Dictionary(clients.enumerated().map { ($1.id, $0) }, uniquingKeysWith: min)
         let monitorIndex = { (c: Client) in self.monitors.firstIndex { $0 === c.mon } ?? Int.max }
+        // The app's minimized windows come last: client_active brings one back when it is the one focused.
         return clientsAll
             .filter { c in
-                !c.isminimized && c.tags & TAG0_MASK == 0
-                    && (c.appid.lowercased() == key || c.appName.lowercased() == key)
+                c.tags & TAG0_MASK == 0 && (c.appid.lowercased() == key || c.appName.lowercased() == key)
             }
             .sorted { a, b in
-                let ka = (a.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(a.tags)), monitorIndex(a), position[a.id] ?? Int.max)
-                let kb = (b.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(b.tags)), monitorIndex(b), position[b.id] ?? Int.max)
-                return ka < kb
+                let ka = (a.isminimized, a.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(a.tags)), monitorIndex(a), position[a.id] ?? Int.max)
+                let kb = (b.isminimized, b.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(b.tags)), monitorIndex(b), position[b.id] ?? Int.max)
+                return (ka.0 ? 1 : 0, ka.1, ka.2, ka.3) < (kb.0 ? 1 : 0, kb.1, kb.2, kb.3)
             }
     }
 }

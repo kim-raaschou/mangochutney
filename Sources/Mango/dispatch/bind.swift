@@ -368,7 +368,7 @@ package extension MangoServer {
             tm = monitorFromDirection(arg.i)
         } else if let v = arg.v {
             // not in mango: no disabled outputs
-            for m in monitors where MonitorSpec(mango: v).matchMonitorSpec(name: m.screen.name) {
+            for m in monitors where MonitorSpec(mango: v).matchMonitorSpec(m.screen) {
                 tm = m
                 break
             }
@@ -1104,7 +1104,7 @@ package extension MangoServer {
             m = monitorFromDirection(arg.i)
         } else if let v = arg.v {
             // not in mango: no disabled outputs
-            for cm in monitors where MonitorSpec(mango: v).matchMonitorSpec(name: cm.screen.name) {
+            for cm in monitors where MonitorSpec(mango: v).matchMonitorSpec(cm.screen) {
                 m = cm
                 break
             }
@@ -1708,7 +1708,7 @@ package extension MangoServer {
 
         guard let c = arg.tc ?? focused else { return 0 }
 
-        if let v = arg.v, MonitorSpec(mango: v).matchMonitorSpec(name: selectedMonitor.screen.name) {
+        if let v = arg.v, MonitorSpec(mango: v).matchMonitorSpec(selectedMonitor.screen) {
             tagClient(arg, c)
             return 0
         }

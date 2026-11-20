@@ -68,10 +68,10 @@ package extension MangoServer {
 
             // not in mango: the app's name matches the id too (macOS app ids are bundle ids)
             func idMatch(_ id: String) -> Bool {
-                appid.range(of: id, options: .regularExpression) != nil
-                    || c.appName.range(of: id, options: .regularExpression) != nil
+                regexMatch(id, appid)
+                    || regexMatch(id, c.appName)
             }
-            func titleMatch(_ t: String) -> Bool { title.range(of: t, options: .regularExpression) != nil }
+            func titleMatch(_ t: String) -> Bool { regexMatch(t, title) }
 
             if (argTitle.map(titleMatch) == true && argId == nil) ||
                 (argId.map(idMatch) == true && argTitle == nil) ||
@@ -450,7 +450,7 @@ package extension MangoServer {
             }
 
             if let spec = r.monitor {
-                for m in monitors where spec.matchMonitorSpec(name: m.screen.name) { mon = m }
+                for m in monitors where spec.matchMonitorSpec(m.screen) { mon = m }
             }
 
             if c.isnamedscratchpad { c.isfloating = true }

@@ -955,7 +955,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         r.monitor.tagset[r.monitor.seltags] = 0b11
         d(r, "toggletag", [], a)
-        XCTAssertEqual(a.tags, TagMask.mask(forTagNum: 9))
+        XCTAssertEqual(a.tags, 0x1FF)
         d(r, "toggletag", [], a)
         XCTAssertEqual(a.tags, 1, "the current tag alone")
         d(r, "toggleview", ["0"])
@@ -1331,22 +1331,22 @@ final class FidelityTests: MangoTestCase {
     }
 
     func testParseTagMaskAsMango() {
-        XCTAssertEqual(TagMask.parseTagMask("1|0"), TAG0_MASK)
-        XCTAssertEqual(TagMask.parseTagMask("32"), 32)
-        XCTAssertEqual(TagMask.parseTagMask("1|abc"), 1)
-        XCTAssertEqual(TagMask.parseTagMask("00"), 0)
-        XCTAssertEqual(TagMask.parseTagMask("-1"), TagMask.all)
+        XCTAssertEqual(ValueParse.parseTagMask("1|0"), TAG0_MASK)
+        XCTAssertEqual(ValueParse.parseTagMask("32"), 32)
+        XCTAssertEqual(ValueParse.parseTagMask("1|abc"), 1)
+        XCTAssertEqual(ValueParse.parseTagMask("00"), 0)
+        XCTAssertEqual(ValueParse.parseTagMask("-1"), 0xFFFF_FFFF)
     }
 
     func testParseModSkipsUnknownTokens() {
-        XCTAssertEqual(Modifiers.parse("SUPER+FOO"), .superKey)
-        XCTAssertNil(Modifiers.parse("FOO"))
-        XCTAssertNil(Modifiers.parse(""))
+        XCTAssertEqual(BindingParser.parseMod("SUPER+FOO"), .superKey)
+        XCTAssertNil(BindingParser.parseMod("FOO"))
+        XCTAssertNil(BindingParser.parseMod(""))
     }
 
     func testARuleFlagThatIsNoNumberIsZero() {
-        var errors: [String] = []
-        let r = RuleParser.parseWindowRule("app_id:foo,is_floating:yes", once: false, errors: &errors).0
+        let r = ConfigParser.parse(text: "window_rule=app_id:foo,is_floating:yes", baseDirectory: nil, fileName: "t.conf")
+            .config.windowRules.first
         XCTAssertEqual(r?.isfloating, false)
     }
 
@@ -1390,7 +1390,7 @@ final class FidelityTests: MangoTestCase {
         XCTAssertTrue(ConfigParser.parseOption(&c, "key_mode", "resize", 0, baseDirectory: base))
         XCTAssertTrue(ConfigParser.parseOption(&c, "bind", "NONE,h,focusdir,left", 0, baseDirectory: base))
         XCTAssertEqual(c.keyBindings.last?.mode, "resize")
-        guard case .invalid = ConfigOptions.parseOption(key: "env", value: "FOO,", to: &c) else { return XCTFail("expected invalid") }
+        guard !parseOption("env", "FOO,", to: &c) else { return XCTFail("expected invalid") }
     }
 
     func testColoursAreAlwaysRRGGBBAA() {
@@ -1437,10 +1437,10 @@ final class FidelityTests: MangoTestCase {
         r.server.clientFocus(a, true)
         r.monitor.tagset[r.monitor.seltags] = 1
         d(r, "toggleoverview")
-        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], TagMask.mask(forTagNum: 9))
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 0x1FF)
         d(r, "view", ["3"])
         XCTAssertTrue(r.server.anyOverview, "a tag view is refused in overview")
-        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], TagMask.mask(forTagNum: 9))
+        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 0x1FF)
         d(r, "focusstack", ["next"])
         XCTAssertTrue(r.server.focused === b, "a card on another tag is reached")
         d(r, "toggleoverview")
@@ -1580,21 +1580,57 @@ final class FidelityTests: MangoTestCase {
     }
 
     func testMonitorNamesMatchByCase() {
+        let screen = Screen(displayID: 1, name: "Built-in Retina Display", frame: .zero, workArea: .zero, scale: 1, isMain: true)
         var spec = MonitorSpec()
         spec.name = "Built-in"
-        XCTAssertTrue(spec.matchMonitorSpec(name: "Built-in Retina Display"))
+        XCTAssertTrue(spec.matchMonitorSpec(screen))
         spec.name = "built-in"
-        XCTAssertFalse(spec.matchMonitorSpec(name: "Built-in Retina Display"))
+        XCTAssertFalse(spec.matchMonitorSpec(screen))
+    }
+
+    /// mango match_monitor_spec: strtok(spec, "&&") splits at every "&", the key is exact and nothing is
+    /// trimmed; make, model and serial are compared with the output's, and a missing one does not match.
+    func testMonitorSpecIsMangos() {
+        let benq = Screen(displayID: 2, name: "DP-1", frame: .zero, workArea: .zero, scale: 1, isMain: false,
+                          make: "BNQ", model: "X", serial: "42")
+        let bare = Screen(displayID: 1, name: "Built-in", frame: .zero, workArea: .zero, scale: 1, isMain: true)
+
+        XCTAssertEqual(MonitorSpec(mango: "make:BNQ&&model:X"), MonitorSpec(make: "BNQ", model: "X"))
+        XCTAssertEqual(MonitorSpec(mango: "make:BNQ&model:X"), MonitorSpec(make: "BNQ", model: "X"))
+        XCTAssertEqual(MonitorSpec(mango: "make:BNQ && model:X"), MonitorSpec(make: "BNQ "), "\" model\" is no key")
+        XCTAssertEqual(MonitorSpec(mango: "Name:DP"), MonitorSpec(), "keys are exact")
+        XCTAssertEqual(MonitorSpec(mango: " DP-1"), MonitorSpec(name: " DP-1"), "no trim")
+
+        XCTAssertTrue(MonitorSpec(mango: "make:BNQ&&model:X&&serial:42").matchMonitorSpec(benq))
+        XCTAssertFalse(MonitorSpec(mango: "make:BNQ").matchMonitorSpec(bare), "no make: no match")
+        XCTAssertFalse(MonitorSpec(mango: "make:BNQ && model:X").matchMonitorSpec(benq))
+        XCTAssertTrue(MonitorSpec(mango: "Name:nothing").matchMonitorSpec(bare), "no known key: every monitor")
+        XCTAssertTrue(MonitorSpec(mango: "").matchMonitorSpec(bare), "an empty spec is an empty regex")
+        XCTAssertTrue(MonitorSpec(mango: "name:^DP").matchMonitorSpec(benq))
+        XCTAssertFalse(MonitorSpec(mango: "name:^DP").matchMonitorSpec(bare))
+    }
+
+    /// Dispatchers give the monitor's make, model and serial to match_monitor_spec, as mango does.
+    func testFocusmonMatchesMake() {
+        let r = EngineRig()
+        var side = Screen(displayID: 2, name: "Side", frame: CGRect(x: 1728, y: 0, width: 1920, height: 1080),
+                          workArea: CGRect(x: 1728, y: 0, width: 1920, height: 1080), scale: 1, isMain: false)
+        side.make = "BNQ"
+        r.server.rebuildMonitors(screens: [r.screen, side])
+        d(r, "focusmon", ["make:BNQ"])
+        XCTAssertEqual(r.server.selectedMonitor.screen.name, "Side")
+        d(r, "focusmon", ["name:Built-in"])
+        XCTAssertEqual(r.server.selectedMonitor.screen.name, "Built-in")
     }
 
     func testJumpLabelsPresetAndDropColour() {
         var c = Config()
         XCTAssertEqual(c.dropcolor.a, 0.5)
-        _ = ConfigOptions.parseOption(key: "jump_labels", value: "", to: &c)
+        _ = parseOption("jump_labels", "", to: &c)
         XCTAssertEqual(c.jumpLabels, "")
-        _ = ConfigOptions.parseOption(key: "scroller_proportion_preset", value: "0.5x, 0.8", to: &c)
+        _ = parseOption("scroller_proportion_preset", "0.5x, 0.8", to: &c)
         XCTAssertEqual(c.scrollerProportionPreset, [0.5, 0.8])
-        if case .applied = ConfigOptions.parseOption(key: "scroller_proportion_preset", value: "a,0.8", to: &c) { XCTFail("not a number") }
+        if parseOption("scroller_proportion_preset", "a,0.8", to: &c) { XCTFail("not a number") }
         XCTAssertEqual(c.scrollerProportionPreset, [], "mango frees the old list first")
     }
 
@@ -1684,8 +1720,8 @@ final class FidelityTests: MangoTestCase {
     }
 
     func testAnEmptyRuleAnimationTypeIsUnset() throws {
-        var errors: [String] = []
-        let r = try XCTUnwrap(RuleParser.parseWindowRule("app_id:x,animation_type_open:", once: false, errors: &errors).0)
+        let r = try XCTUnwrap(ConfigParser.parse(text: "window_rule=app_id:x,animation_type_open:", baseDirectory: nil,
+                                                 fileName: "t.conf").config.windowRules.first)
         XCTAssertNil(r.animationTypeOpen)
     }
 

@@ -23,7 +23,7 @@ final class EngineFollowupTests: MangoTestCase {
     }
 
     /// mango parse_func_name: movewin's and resizewin's fields are parse_num_type and atoi of the rest;
-    /// a number that is no number (nan, inf) is 0, as the port's atof reads only finite numbers.
+    /// atof is strtod's (hex floats too); nan and inf read as 0, as Swift cannot make an int of them.
     @MainActor
     func testDispatcherNumbersAreMangosParse() {
         var arg = Arg()
@@ -40,20 +40,46 @@ final class EngineFollowupTests: MangoTestCase {
         XCTAssertEqual(arg.f, 0)
         XCTAssertNotNil(BindingParser.parseFuncName("set_proportion", &arg, "inf", "0", "0", "0", "0"))
         XCTAssertEqual(arg.f, 0)
+        XCTAssertNotNil(BindingParser.parseFuncName("set_proportion", &arg, "0x1p-1", "0", "0", "0", "0"))
+        XCTAssertEqual(arg.f, 0.5)
     }
 
-    /// mango's setoption joins every field after the key that is not empty, so a binding's "0"
-    /// (not given) ends up in the value: `setoption,circle_layout,tile,scroller` gives
-    /// "tile,scroller,0,0". Ours skips the binding's "0" there, as combine_args_until_empty does.
+    /// mango's parse_func_name joins setoption's fields after the key that are not empty, and the
+    /// keybinding parser gives the fields a binding does not give as "0", so
+    /// `bind=…,setoption,circle_layout,tile,scroller` gives "tile,scroller,0,0" in mango. Ours gives
+    /// a binding's missing fields to setoption as "", as IPC does (docs/afvigelser.md §6).
     @MainActor
     func testSetoptionSkipsTheBindingsUngivenFields() {
         var arg = Arg()
         XCTAssertNotNil(BindingParser.parseFuncName("setoption", &arg, "circle_layout", "tile", "scroller", "0", "0"))
         XCTAssertEqual(arg.v, "circle_layout")
-        XCTAssertEqual(arg.v2, "tile,scroller")
-        XCTAssertNotNil(BindingParser.parseFuncName("setoption", &arg, "animations", "0", "0", "0", "0"))
-        XCTAssertEqual(arg.v2, "0")
+        XCTAssertEqual(arg.v2, "tile,scroller,0,0", "parse_func_name is mango's: only empty fields are skipped")
         XCTAssertNotNil(BindingParser.parseFuncName("setoption", &arg, "gappih", "5", "", "", ""))
         XCTAssertEqual(arg.v2, "5")
+
+        let r = EngineRig()
+        let parsed = ConfigParser.parse(text: "bind=SUPER,a,setoption,circle_layout,tile,scroller\nbind=SUPER,b,setoption,animations,0\n",
+                                        baseDirectory: FileManager.default.temporaryDirectory, fileName: "t.conf")
+        XCTAssertEqual(parsed.errors, [])
+        r.server.config.animations = true
+        r.server.dispatch(parsed.config.keyBindings[0].dispatch)
+        XCTAssertEqual(r.server.config.circleLayout, ["tile", "scroller"])
+        r.server.dispatch(parsed.config.keyBindings[1].dispatch)
+        XCTAssertFalse(r.server.config.animations, "a given 0 is the value")
+    }
+
+    /// A field given as "0" is kept, as in mango: `setoption,animation_curve_move,0,0,1,1` sets 0,0,1,1.
+    @MainActor
+    func testSetoptionKeepsGivenZeros() {
+        let r = EngineRig()
+        let parsed = ConfigParser.parse(text: "bind=SUPER,a,setoption,animation_curve_move,0,0,1,1\n",
+                                        baseDirectory: FileManager.default.temporaryDirectory, fileName: "t.conf")
+        XCTAssertEqual(parsed.errors, [])
+        r.server.dispatch(parsed.config.keyBindings[0].dispatch)
+        XCTAssertEqual(r.server.config.animationCurveMove, BezierCurve(x1: 0, y1: 0, x2: 1, y2: 1))
+
+        r.server.config.animationCurveMove = BezierCurve(x1: 0.5, y1: 0.5, x2: 0.5, y2: 0.5)
+        r.server.dispatch(Dispatch(name: "setoption", args: ["animation_curve_move", "0", "0", "1", "1"]), notGiven: "")
+        XCTAssertEqual(r.server.config.animationCurveMove, BezierCurve(x1: 0, y1: 0, x2: 1, y2: 1), "IPC's path")
     }
 }

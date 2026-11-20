@@ -21,13 +21,14 @@ final class MangoCoverageTests: MangoTestCase {
 
     static var engineSources: String {
         let base = repo.appendingPathComponent("Sources")
-        let skip = ["Mango/Model/Config.swift", "Mango/Model/Rules.swift", "Mango/Config/"]
+        let skip = ["Mango/Config/"]
+        let engine = ["Mango/Config/watcher.swift", "Mango/Config/reapply.swift"]
         var out = ""
         let files = FileManager.default.enumerator(at: base, includingPropertiesForKeys: nil)
         while let f = files?.nextObject() as? URL {
             guard f.pathExtension == "swift" else { continue }
             let rel = String(f.path.dropFirst(base.path.count + 1))
-            if skip.contains(where: { rel.hasPrefix($0) }) && rel != "Mango/Config/Watcher.swift" { continue }
+            if skip.contains(where: { rel.hasPrefix($0) }) && !engine.contains(rel) { continue }
             out += (try? String(contentsOf: f, encoding: .utf8)) ?? ""
             out += "\n"
         }
@@ -92,9 +93,8 @@ final class MangoCoverageTests: MangoTestCase {
         XCTAssertGreaterThan(fields.count, 40)
         var unknown: [String] = []
         for f in fields {
-            var errors: [String] = []
-            _ = RuleParser.parseWindowRule("\(f):1,app_id:x", once: false, errors: &errors)
-            if errors.contains(where: { $0.hasPrefix("Unknown window rule option") }) { unknown.append(f) }
+            let errors = ConfigParser.parse(text: "window_rule=\(f):1,app_id:x", baseDirectory: nil, fileName: "t.conf").errors
+            if errors.contains(where: { $0.message.hasPrefix("Unknown window rule option") }) { unknown.append(f) }
         }
         XCTAssertEqual(unknown, [])
     }
@@ -102,9 +102,8 @@ final class MangoCoverageTests: MangoTestCase {
     func testEveryTagRuleFieldIsKnown() {
         var unknown: [String] = []
         for f in Self.list("tag_rule") {
-            var errors: [String] = []
-            _ = RuleParser.parseTagRule("id:1,\(f):1", errors: &errors)
-            if errors.contains(where: { $0.hasPrefix("Unknown tag rule option") }) { unknown.append(f) }
+            let errors = ConfigParser.parse(text: "tag_rule=id:1,\(f):1", baseDirectory: nil, fileName: "t.conf").errors
+            if errors.contains(where: { $0.message.hasPrefix("Unknown tag rule option") }) { unknown.append(f) }
         }
         XCTAssertEqual(unknown, [])
     }
@@ -129,6 +128,7 @@ final class MangoCoverageTests: MangoTestCase {
         let parse = Self.source("Sources/Mango/Config/binding_parse.swift")
         let functions = Self.source("Sources/Mango/dispatch/bind.swift") + Self.source("Sources/Mango/ext-protocol/hdr.swift")
             + Self.source("Sources/Mango/Engine/MangoServer.swift") + Self.source("Sources/Mango/switcher/switcher.swift")
+            + Self.source("Sources/Mango/Config/reapply.swift")
         let re = try NSRegularExpression(pattern: #"funcName == "([a-z_]+)" \{\n(?:\s*/\*.*\*/\n)?\s*`func` = MangoServer\.(\w+)\(_:\)"#)
         var withoutEffect = Set<String>()
         let matches = re.matches(in: parse, range: NSRange(parse.startIndex..., in: parse))
@@ -188,7 +188,7 @@ final class MangoCoverageTests: MangoTestCase {
     static let readOnlyToWarn: Set<String> = ["focused_opacity", "unfocused_opacity", "no_size_hint"]
 
     func testOptionsWithoutEffectAreExactlyTheUnreadOnes() throws {
-        let setters = Self.source("Sources/Mango/Config/ConfigOptions.swift")
+        let setters = Self.source("Sources/Mango/Config/option_defs.swift")
         let engine = Self.engineSources
         let re = try NSRegularExpression(pattern: #"t\["([a-z_0-9]+)"\] = \w+\(\\\.(\w+)"#)
         var unreadButNotListed: [String] = [], listedButRead: [String] = []
@@ -205,12 +205,12 @@ final class MangoCoverageTests: MangoTestCase {
     }
 
     func testWindowRuleFieldsWithoutEffectAreExactlyTheUnreadOnes() throws {
-        let parser = Self.source("Sources/Mango/Config/RuleParser.swift")
+        let parser = Self.source("Sources/Mango/Config/option_defs.swift")
         let engine = Self.engineSources
-        let re = try NSRegularExpression(pattern: #"case "([a-z_]+)": \w+ \{ rule\.(\w+) ="#)
+        let re = try NSRegularExpression(pattern: #"key == "([a-z_]+)" \{\n\s*rule\.(\w+) ="#)
         var unreadButNotListed: [String] = [], listedButRead: [String] = []
         let start = parser.range(of: "func parseWindowRule(")!.lowerBound
-        let end = parser.range(of: "func parseTagRule(")!.lowerBound
+        let end = parser.range(of: "func parseDeviceRule(")!.lowerBound
         let body = String(parser[start..<end])
         for m in re.matches(in: body, range: NSRange(body.startIndex..., in: body)) {
             let field = String(body[Range(m.range(at: 1), in: body)!])

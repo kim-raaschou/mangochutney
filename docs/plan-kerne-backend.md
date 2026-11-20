@@ -107,7 +107,7 @@ Mærket og bevidst. Kandidater til senere, når hverdagen har vist, at det, der 
 
 - `make test` efter hvert trin; alle tests grønne.
 - Et trin pr. commit, tagget `plan/<n>-<navn>`.
-- Live: `make install`, genstart med `-d`, og tjek med `mmsg` og loggen (`/tmp/mango_krn.debug.log`).
+- Live: `make install`, genstart med `-d`, og tjek med `mmsg` og loggen (`~/Library/Logs/Mango Chutney/mango.err.log`; tjenesten installeres med `mmsg service install --debug`).
 - En ændring i kernen læses mod mangos kilde først (`~/sources/mango`), og mangos opførsel låses
   med en test, hvor det kan lade sig gøre.
 

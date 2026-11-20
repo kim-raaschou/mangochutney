@@ -207,11 +207,11 @@ final class TOMLConfigTests: MangoTestCase {
 
     func testBindKeys() {
         typealias S = ParserState
-        XCTAssertEqual(S.tomlBindPrefix(base: "bind", combo: "SUPER+SHIFT+Return"), "SUPER+SHIFT,Return,")
-        XCTAssertEqual(S.tomlBindPrefix(base: "bind", combo: "XF86AudioMute"), "none,XF86AudioMute,")
-        XCTAssertEqual(S.tomlBindPrefix(base: "gesturebind", combo: "none+left+3"), "none,left,3,")
-        XCTAssertNil(S.tomlBindPrefix(base: "gesturebind", combo: "left+3"))
-        XCTAssertEqual(S.tomlBindPrefix(base: "switchbind", combo: "fold"), "fold,")
+        XCTAssertEqual(S.tomlBindPrefix("bind", "SUPER+SHIFT+Return"), "SUPER+SHIFT,Return,")
+        XCTAssertEqual(S.tomlBindPrefix("bind", "XF86AudioMute"), "none,XF86AudioMute,")
+        XCTAssertEqual(S.tomlBindPrefix("gesturebind", "none+left+3"), "none,left,3,")
+        XCTAssertNil(S.tomlBindPrefix("gesturebind", "left+3"))
+        XCTAssertEqual(S.tomlBindPrefix("switchbind", "fold"), "fold,")
         let p = parse("""
         [keybind.default.release.pass]
         "SUPER+a" = "spawn,x"
@@ -255,6 +255,15 @@ final class TOMLConfigTests: MangoTestCase {
         ])
         XCTAssertEqual(p.errors.map(\.line), [1, 3, 5, 7, 10])
         XCTAssertTrue(p.config.keyBindings.isEmpty, "skipped sections add nothing")
+    }
+
+    /// mango's statement buffer is 8192 bytes: a longer statement is "Config line too long" and the
+    /// rest of the file is not read.
+    func testTooLongStatementStopsTheFile() {
+        let elements = Array(repeating: "  \"tile\",", count: 1100).joined(separator: "\n")
+        let p = parse("[global]\ncircle_layout = [\n\(elements)\n]\njust text\n")
+        XCTAssertEqual(p.errors.map(\.message.plain), ["Config line too long in t.toml"], "the file stops")
+        XCTAssertNotEqual(p.config.circleLayout.count, 1100)
     }
 
     func testRuleErrorsPointAtTheSection() {

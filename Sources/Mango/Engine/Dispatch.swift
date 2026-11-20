@@ -6,7 +6,8 @@ package extension MangoServer {
     @discardableResult
     func dispatch(_ d: Dispatch, target: Client? = nil, rescan: Bool = true, notGiven: String = "0") -> String? {
         var arg = Arg()
-        let a = (0..<5).map { $0 < d.args.count ? d.args[$0] : notGiven }
+        // not in mango: setoption's fields a binding does not give are "", not "0" (a mango bug, docs/afvigelser.md §6)
+        let a = (0..<5).map { $0 < d.args.count ? d.args[$0] : d.name == "setoption" ? "" : notGiven }
         if let fn = BindingParser.parseFuncName(d.name, &arg, a[0], a[1], a[2], a[3], a[4]) {
             defer { if rescan { system.rescan() } }   // not in mango: the port's side
             arg.tc = target

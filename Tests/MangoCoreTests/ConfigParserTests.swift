@@ -133,11 +133,15 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.config.borderpx, 3)
     }
 
+    /// A value's "\r" is trimmed as mango's trim_whitespace does. An empty line of a CRLF file is
+    /// "\r\n", which mango does not skip: "Invalid line format" for each. Ours skips it as an empty
+    /// line (a mango bug, docs/afvigelser.md §6).
     func testCRLFLineEndings() {
-        let parsed = parse("# comment\r\nborder_px=3\r\n\r\nbind=SUPER,a,quit\r\nnope=1\r\n")
+        let parsed = parse("# comment\r\nborder_px=3\r\n\r\nbind=SUPER,a,quit\r\nnope=1\r\njump_labels=\r\n")
         XCTAssertEqual(parsed.config.borderpx, 3)
         XCTAssertEqual(parsed.config.keyBindings.count, 1)
-        XCTAssertEqual(parsed.errors.map(\.line), [5])
+        XCTAssertEqual(parsed.errors.map(\.line), [5], "line 3, the empty one, is skipped")
+        XCTAssertEqual(parsed.config.jumpLabels, "", "\"\\r\" is a value in mango's sscanf, trimmed to empty")
     }
 
     func testValueTooLong() {
@@ -145,6 +149,103 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.errors.count, 1)
         XCTAssertTrue(parsed.errors[0].message.contains("exceeds 255 bytes"))
         XCTAssertEqual(parsed.config.jumpLabels, Config().jumpLabels)
+
+        let max = parse("jump_labels=" + String(repeating: "A", count: 255) + "\n")
+        XCTAssertEqual(max.errors, [], "the newline is not counted")
+        XCTAssertEqual(max.config.jumpLabels.utf8.count, 255)
+    }
+
+    /// mango's sscanf("%255[^=]=%255[^\n]") reads no value from "key=" and a newline: Invalid line format.
+    func testKeyWithoutValueIsInvalid() {
+        let parsed = parse("border_px=\nexec_once=\nborder_px=")
+        XCTAssertEqual(parsed.errors.map(\.line), [1, 2, 3])
+        XCTAssertTrue(parsed.errors.allSatisfy { $0.message.plain.hasPrefix("Invalid line format") })
+        XCTAssertEqual(parsed.config.borderpx, Config().borderpx)
+        XCTAssertEqual(parsed.config.execOnce, [])
+    }
+
+    /// fgets(line, 512): a longer line is read in pieces of 511 bytes, each a line of its own.
+    func testLongLinesAreReadAsFgetsDoes() {
+        let long = parse("jump_labels=" + String(repeating: "A", count: 588) + "\nborder_px=3\n")
+        XCTAssertEqual(long.errors.map(\.line), [1, 2])
+        XCTAssertTrue(long.errors[0].message.contains("exceeds 255 bytes"))
+        XCTAssertTrue(long.errors[1].message.plain.hasPrefix("Invalid line format"))
+        XCTAssertEqual(long.config.borderpx, 3)
+
+        let line = "border_px=5 #"
+        let exact = parse(line + String(repeating: "x", count: 511 - line.utf8.count) + "\nnope\n")
+        XCTAssertEqual(exact.config.borderpx, 5)
+        XCTAssertEqual(exact.errors.map(\.line), [3], "the newline after 511 bytes is a line of its own")
+    }
+
+    /// mango fopen's a source file; one that cannot be read is "Failed to open config file".
+    func testUnreadableSourceFails() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("locked.conf")
+        try "border_px=7\n".write(to: file, atomically: true, encoding: .utf8)
+        chmod(file.path, 0)
+        defer { chmod(file.path, 0o600) }
+        let parsed = parse("source=\(file.path)\n")
+        XCTAssertEqual(parsed.errors.first?.message.plain, "Failed to open config file: \(file.path)")
+        XCTAssertEqual(parsed.config.borderpx, Config().borderpx)
+        XCTAssertEqual(parse("source_optional=\(file.path)\n").errors, [])
+    }
+
+    /// mango's window_rule keeps an empty monitor: an empty regex, which every monitor matches.
+    func testWindowRuleEmptyMonitorMatchesEveryMonitor() {
+        let rule = parse("window_rule=app_id:x,monitor:").config.windowRules.first
+        XCTAssertEqual(rule?.monitor, MonitorSpec(name: ""))
+        let screen = Screen(displayID: 1, name: "Built-in", frame: .zero, workArea: .zero, scale: 1, isMain: true)
+        XCTAssertEqual(rule?.monitor?.matchMonitorSpec(screen), true)
+    }
+
+    /// mango regex_match: an invalid pattern matches nothing and is reported (PCRE2 there, ICU here).
+    func testInvalidRegexIsReported() throws {
+        keepConfigErrorsInTests()
+        configErrorStoreBegin()
+        XCTAssertFalse(regexMatch("(", "("))
+        configErrorStoreEnd()
+        let text = try String(contentsOfFile: configErrorStorePath(), encoding: .utf8)
+        XCTAssertTrue(text.contains("[ERROR]: PCRE2 error: "), text)
+        XCTAssertTrue(regexMatch("^Bu.lt", "Built-in"))
+        XCTAssertFalse(regexMatch(nil, "x"))
+    }
+
+    /// libc's numbers: atoi is glibc's (int)strtol, atof and %f are strtod's (hex floats; inf and nan
+    /// are 0, as Swift traps on them), sanitize_string trims what isprint (C locale) refuses, bytes
+    /// above ASCII too.
+    func testNumbersAreLibcs() {
+        XCTAssertEqual(ValueParse.atoi("3000000000"), -1294967296)
+        XCTAssertEqual(ValueParse.atoi("99999999999"), 1215752191)
+        XCTAssertEqual(ValueParse.atoi("99999999999999999999"), -1, "LONG_MAX as an int")
+        XCTAssertEqual(ValueParse.atoi("-99999999999999999999"), 0, "LONG_MIN as an int")
+        XCTAssertEqual(ValueParse.atoi(" 12abc"), 12)
+        XCTAssertEqual(ValueParse.atof("0x1p3"), 8)
+        XCTAssertEqual(ValueParse.atof("inf"), 0)
+        XCTAssertEqual(ValueParse.atof("-Infinity"), 0)
+        XCTAssertEqual(ValueParse.atof("nan"), 0)
+        XCTAssertEqual(ValueParse.atof("1.5x"), 1.5)
+        XCTAssertEqual(ValueParse.atof("x"), 0)
+        XCTAssertEqual(ValueParse.scanDouble("0x.8"), 0.5)
+        XCTAssertNil(ValueParse.scanDouble("x"))
+        var v: [Double] = []
+        XCTAssertEqual(ValueParse.parseDoubleArray("0x1p-1, 1e0,inf", &v, 4).0, 3)
+        XCTAssertEqual(Array(v.prefix(3)), [0.5, 1, 0])
+        XCTAssertEqual(ValueParse.parseDoubleArray("1,2x", &v, 4).0, -1)
+        XCTAssertEqual(ValueParse.sanitizeString("\u{01}tile\r"), "tile")
+        XCTAssertEqual(ValueParse.sanitizeString("scroll\u{E9}"), "scroll", "é is two bytes isprint refuses")
+        XCTAssertEqual(ValueParse.sanitizeString(" tile "), " tile ", "a space is printable")
+    }
+
+    /// mango's env and resolve_config_path fail without HOME: "HOME environment variable not set."
+    func testHomeNotSet() {
+        let previous = getenv("HOME").map { String(cString: $0) }
+        unsetenv("HOME")
+        defer { if let previous { setenv("HOME", previous, 1) } }
+        let parsed = parse("env=A,~/x\nsource=~/x.conf\n")
+        XCTAssertEqual(parsed.errors.map(\.message), ["HOME environment variable not set.", "HOME environment variable not set."])
+        XCTAssertTrue(parsed.config.envVars.isEmpty)
     }
 
     func testClampAtEnd() {
@@ -284,7 +385,10 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(parsed.errors[0].message.hasPrefix("Unknown modifier"))
     }
 
-    func testSpawnKeepsCommas() {
+    // mango's option_defs.c keeps sscanf's fields, the last one the rest of the line; parse_func_name
+    // joins spawn's and setoption's, and gives spawn_on_empty and toggle_named_scratchpad one field each
+    @MainActor
+    func testBindingFieldsAreSscanfsAndParseFuncNameJoinsThem() {
         let parsed = parse("""
         bind=SUPER,a,spawn,notify-send "a, b" ,c
         bind=SUPER,b,spawn_shell,echo 1,2,3,4,5,6,7 | cat
@@ -295,25 +399,43 @@ final class ConfigParserTests: MangoTestCase {
         """)
         XCTAssertEqual(parsed.errors, [])
         let d = parsed.config.keyBindings.map(\.dispatch)
-        XCTAssertEqual(d[0], Dispatch(name: "spawn", args: ["notify-send \"a,b\",c"]))
-        XCTAssertEqual(d[1], Dispatch(name: "spawn_shell", args: ["echo 1,2,3,4,5,6,7 | cat"]))
-        XCTAssertEqual(d[2], Dispatch(name: "spawn_on_empty", args: ["firefox --new-window a,b", "4"]))
-        XCTAssertEqual(d[3], Dispatch(name: "toggle_named_scratchpad", args: ["com.app", "none", "open -a X,Y"]))
+        XCTAssertEqual(d[0], Dispatch(name: "spawn", args: ["notify-send \"a", "b\"", "c"]))
+        XCTAssertEqual(d[1], Dispatch(name: "spawn_shell", args: ["echo 1", "2", "3", "4", "5,6,7 | cat"]))
+        XCTAssertEqual(d[2], Dispatch(name: "spawn_on_empty", args: ["firefox --new-window a", "b", "4"]))
+        XCTAssertEqual(d[3], Dispatch(name: "toggle_named_scratchpad", args: ["com.app", "none", "open -a X", "Y"]))
         XCTAssertEqual(d[4], Dispatch(name: "killclient", args: []))
-        XCTAssertEqual(d[5], Dispatch(name: "setoption", args: ["circle_layout", "tile,scroller,grid"]))
+        XCTAssertEqual(d[5], Dispatch(name: "setoption", args: ["circle_layout", "tile", "scroller", "grid"]))
+
+        func arg(_ d: Dispatch) -> Arg {
+            var arg = Arg()
+            let a = (0..<5).map { $0 < d.args.count ? d.args[$0] : d.name == "setoption" ? "" : "0" }   // as dispatch gives them
+            _ = BindingParser.parseFuncName(d.name, &arg, a[0], a[1], a[2], a[3], a[4])
+            return arg
+        }
+        XCTAssertEqual(arg(d[0]).v, "notify-send \"a,b\",c")
+        XCTAssertEqual(arg(d[1]).v, "echo 1,2,3,4,5,6,7 | cat")
+        XCTAssertEqual(arg(d[2]).v, "firefox --new-window a")
+        XCTAssertEqual(arg(d[2]).ui, 0, "parse_tag_mask(\"b\")")
+        XCTAssertEqual(arg(d[3]).v3, "open -a X")
+        XCTAssertEqual(arg(d[5]).v2, "tile,scroller,grid")
     }
 
     func testParseDispatch() {
-        XCTAssertEqual(try BindingParser.parseBindDispatch(["view", " 1 ", "0"]).get(), Dispatch(name: "view", args: ["1", "0"]))
-        XCTAssertEqual(try BindingParser.parseBindDispatch(["focusdir", "left", "", "x"]).get().args, ["left"])
-        XCTAssertEqual(try BindingParser.parseBindDispatch(["movewin", "1", "2", "3", "4", "5", "6"]).get().args,
-                       ["1", "2", "3", "4", "5,6"])
-        XCTAssertEqual(try BindingParser.parseBindDispatch(["dwindle_toggle_current_split"]).get().name,
-                       "dwindle_toggle_current_split")
-        guard case .failure(let msg) = BindingParser.parseBindDispatch(["nonsense", "1"]) else {
-            return XCTFail("expected failure")
-        }
-        XCTAssertTrue(msg.contains("nonsense"))
+        let parsed = parse("""
+        bind=SUPER,a,view, 1 ,0
+        bind=SUPER,b,focusdir,left,,x
+        bind=SUPER,c,movewin,1,2,3,4,5,,6
+        bind=SUPER,d,dwindle_toggle_current_split
+        bind=SUPER,e,nonsense,1
+        """)
+        let d = parsed.config.keyBindings.map(\.dispatch)
+        XCTAssertEqual(d[0], Dispatch(name: "view", args: ["1", "0"]))
+        XCTAssertEqual(d[1].args, ["left"])
+        XCTAssertEqual(d[2].args, ["1", "2", "3", "4", "5,,6"], "the last field is the rest of the line")
+        XCTAssertEqual(d[3].name, "dwindle_toggle_current_split")
+        XCTAssertEqual(d.count, 4)
+        XCTAssertTrue(parsed.errors[0].message.contains("Unknown dispatch in bind"))
+        XCTAssertTrue(parsed.errors[0].message.contains("nonsense"))
     }
 
     func testBindErrors() {
@@ -448,16 +570,19 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parsed.errors.map(\.line), [4])
         XCTAssertEqual(parsed.errors.first?.message.plain, "Unknown window rule option:bogus_option", "mango's text, no space")
 
-        var errors: [String] = []
-        let (kept, ok) = RuleParser.parseWindowRule("app_id:y,bogus:1", once: false, errors: &errors)
-        XCTAssertFalse(ok)
-        XCTAssertEqual(kept?.appId, "y", "mango counts a rule with an unknown field")
-        XCTAssertEqual(RuleParser.parseWindowRule("app_id:z", once: true, errors: &errors).0?.once, true)
+        let bad = parse("window_rule=app_id:y,bogus:1")
+        XCTAssertEqual(bad.errors.last?.reportsLine, true, "parse_option returns false")
+        XCTAssertEqual(bad.config.windowRules.last?.appId, "y", "mango counts a rule with an unknown field")
+        XCTAssertEqual(parse("window_rule_once=app_id:z").config.windowRules.first?.once, true)
     }
 
     func testTagRule() throws {
-        var errors: [String] = []
-        func tagRule(_ v: String) -> ConfigTagRule { RuleParser.parseTagRule(v, errors: &errors).0 }
+        var errors: [ConfigError] = []
+        func tagRule(_ v: String) -> ConfigTagRule {
+            let p = parse("tag_rule=\(v)")
+            errors += p.errors
+            return p.config.tagRules[0]
+        }
         let r = tagRule("id:3,layout_name:scroller,master_count:200,master_factor:0.6,monitor_name:DELL.*,no_hide:1")
         XCTAssertEqual(r.id, 3)
         XCTAssertEqual(r.layoutName, "scroller")
@@ -515,32 +640,35 @@ final class ConfigParserTests: MangoTestCase {
         axis_scroll_factor=1.0
         animation_curve_opacity_fade_in=0.46,1.0,0.29,1
         layer_rule=animation_type_open:zoom,layer_name:rofi
-        monitor_rule=name:eDP-1,width:1920,height:1080
+        monitor_rule=name:eDP-1,width:1920,height:1080,refresh:60
         device_rule=name:foo,type:keyboard
         switchbind=fold,spawn,swaylock
         """)
         XCTAssertEqual(parsed.errors, [], parsed.errors.map(\.description).joined(separator: "\n"))
+        // mango checks a monitor_rule it cannot apply on macOS: width, height and refresh go together
+        XCTAssertEqual(parse("monitor_rule=name:eDP-1,width:1920,height:1080").errors.map(\.message.plain),
+                       ["Monitor rule must set width, height and refresh together"])
     }
 
     func testConfigOptionsApply() {
         var c = Config()
-        XCTAssertEqual(ConfigOptions.parseOption(key: "gap_inner_horizontal", value: "12", to: &c), .applied)
+        XCTAssertTrue(parseOption("gap_inner_horizontal", "12", to: &c))
         XCTAssertEqual(c.gappih, 12)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "smart_gaps", value: "1", to: &c), .applied)
+        XCTAssertTrue(parseOption("smart_gaps", "1", to: &c))
         XCTAssertTrue(c.smartgaps)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "default_master_factor", value: "0.6", to: &c), .applied)
+        XCTAssertTrue(parseOption("default_master_factor", "0.6", to: &c))
         XCTAssertEqual(c.defaultMfact, 0.6)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "focus_color", value: "0x112233ff", to: &c), .applied)
+        XCTAssertTrue(parseOption("focus_color", "0x112233ff", to: &c))
         XCTAssertEqual(c.focuscolor, parseColor("0x112233ff"))
-        XCTAssertEqual(ConfigOptions.parseOption(key: "animation_curve_move", value: "0.1,0.2,0.3,0.4", to: &c), .applied)
+        XCTAssertTrue(parseOption("animation_curve_move", "0.1,0.2,0.3,0.4", to: &c))
         XCTAssertEqual(c.animationCurveMove, BezierCurve(x1: 0.1, y1: 0.2, x2: 0.3, y2: 0.4))
-        XCTAssertEqual(ConfigOptions.parseOption(key: "animation_type_open", value: "zoom", to: &c), .applied)
+        XCTAssertTrue(parseOption("animation_type_open", "zoom", to: &c))
         XCTAssertEqual(c.animationTypeOpen, .zoom)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "circle_layout", value: "tile, scroller,monocle", to: &c), .applied)
+        XCTAssertTrue(parseOption("circle_layout", "tile, scroller,monocle", to: &c))
         XCTAssertEqual(c.circleLayout, ["tile", " scroller", "monocle"])
-        XCTAssertEqual(ConfigOptions.parseOption(key: "scroller_proportion_preset", value: "0.3,0.6,1", to: &c), .applied)
+        XCTAssertTrue(parseOption("scroller_proportion_preset", "0.3,0.6,1", to: &c))
         XCTAssertEqual(c.scrollerProportionPreset, [0.3, 0.6, 1])
-        XCTAssertEqual(ConfigOptions.parseOption(key: "chutney_hyper_modifier", value: "ctrl+alt", to: &c), .applied)
+        XCTAssertTrue(parseOption("chutney_hyper_modifier", "ctrl+alt", to: &c))
         XCTAssertEqual(c.chutneyHyperModifier, "ctrl+alt")
         let base = URL(fileURLWithPath: NSTemporaryDirectory())
         XCTAssertTrue(ConfigParser.parseOption(&c, "window_rule", "app_id:foo,is_floating:1", 0, baseDirectory: base))
@@ -548,16 +676,16 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(ConfigParser.parseOption(&c, "bind", "SUPER,a,quit", 0, baseDirectory: base))
         XCTAssertEqual(c.keyBindings.last?.mode, "default")
 
-        XCTAssertEqual(ConfigOptions.parseOption(key: "blur", value: "1", to: &c), .ignored)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "nope", value: "1", to: &c), .unknown)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "border_px", value: "wide", to: &c), .applied)
+        XCTAssertTrue(parseOption("blur", "1", to: &c))
+        XCTAssertFalse(parseOption("nope", "1", to: &c))
+        XCTAssertTrue(parseOption("border_px", "wide", to: &c))
         XCTAssertEqual(c.borderpx, 0)
-        XCTAssertEqual(ConfigOptions.parseOption(key: "circle_layout", value: "tile,spiral", to: &c), .applied)
+        XCTAssertTrue(parseOption("circle_layout", "tile,spiral", to: &c))
         XCTAssertEqual(c.circleLayout, ["tile", "spiral"])
-        guard case .invalid = ConfigOptions.parseOption(key: "focus_color", value: "0xzz", to: &c) else {
+        guard !parseOption("focus_color", "0xzz", to: &c) else {
             return XCTFail("expected invalid")
         }
-        guard case .invalid = ConfigOptions.parseOption(key: "animation_curve_open", value: "1,2,3", to: &c) else {
+        guard !parseOption("animation_curve_open", "1,2,3", to: &c) else {
             return XCTFail("expected invalid")
         }
         XCTAssertEqual(c.focuscolor, parseColor("0x112233ff"), "an invalid colour leaves the option unchanged")

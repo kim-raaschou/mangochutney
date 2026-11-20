@@ -40,7 +40,7 @@ final class OverviewTests: MangoTestCase {
         r.server.clientViewOnMonitor(Arg(ui: 1), true, r.monitor, r.monitor === r.server.selectedMonitor)
         d(r, "toggleoverview")
         let m = r.monitor
-        XCTAssertEqual(m.tagset[m.seltags], TagMask.mask(forTagNum: r.server.config.tagNum))
+        XCTAssertEqual(m.tagset[m.seltags], r.server.tagmask)
         XCTAssertEqual(m.tagset[m.seltags ^ 1], 1 << 1, "ovbk_prev_tagset")
         XCTAssertEqual(m.pertag.prevtag, 2)
     }

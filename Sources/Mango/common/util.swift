@@ -28,3 +28,22 @@ package extension MangoServer {
         clients.swapAt(i, j)
     }
 }
+
+/// mango regex_match (common/util.c)
+// not in mango: ICU's regex (NSRegularExpression) stands for PCRE2; its error has no offset, and the
+// empty pattern, which ICU refuses, is PCRE2's "(?:)"
+func regexMatch(_ pattern: String?, _ str: String?) -> Bool {
+    guard let pattern, let str else {
+        return false
+    }
+
+    let re: NSRegularExpression
+    do {
+        re = try NSRegularExpression(pattern: pattern.isEmpty ? "(?:)" : pattern)
+    } catch {
+        mangoError(false, .error, "PCRE2 error: \(error.localizedDescription)\n")
+        return false
+    }
+
+    return re.firstMatch(in: str, range: NSRange(str.startIndex..., in: str)) != nil
+}

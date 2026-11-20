@@ -14,6 +14,12 @@ package struct WatchedFile {
     var mtime = timespec()
 }
 
+package extension MangoServer {
+    private func scheduleCheck() {
+        if watcherActive, let watchTimer { watchTimer.timerUpdate(CONFIG_WATCH_DEBOUNCE_MS) }
+    }
+}
+
 private func refreshFileState(_ file: inout WatchedFile) -> Bool {
     var st = stat()
     let exists = stat(file.path, &st) == 0
@@ -40,6 +46,17 @@ private func refreshFileState(_ file: inout WatchedFile) -> Bool {
     }
 
     return changed
+}
+
+package extension MangoServer {
+    private func clearWatchedFiles() {
+        for file in watchedFiles where file.fd >= 0 { close(file.fd) }
+        watchedFiles = []
+    }
+
+    private func fileIsTracked(_ path: String) -> Bool {
+        watchedFiles.contains { $0.path == path }
+    }
 }
 
 private func pathDirname(_ path: String) -> String {
@@ -82,19 +99,6 @@ func resolveWatchPath(_ path: String) -> String? {
 }
 
 package extension MangoServer {
-    private func scheduleCheck() {
-        if watcherActive, let watchTimer { watchTimer.timerUpdate(CONFIG_WATCH_DEBOUNCE_MS) }
-    }
-
-    private func clearWatchedFiles() {
-        for file in watchedFiles where file.fd >= 0 { close(file.fd) }
-        watchedFiles = []
-    }
-
-    private func fileIsTracked(_ path: String) -> Bool {
-        watchedFiles.contains { $0.path == path }
-    }
-
     private func trackPath(_ path: String) {
         if fileIsTracked(path) { return }
 

@@ -79,17 +79,23 @@ final class EngineMonitorChangeTests: MangoTestCase {
         XCTAssertEqual(b.masterMfactPer, 0.7, accuracy: 0.001)
     }
 
-    func testTagRuleMatchesMakeModelSerial() {
+    @MainActor
+    func testTagRuleMatchesMakeModelSerial() throws {
         var benq = external
         benq.make = "BNQ"; benq.model = "BenQ RD280U"; benq.serial = "J7R0095701Q"
+        let server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/mango.conf"))
+        server.system = FakeWindowSystem(server)
+        server.rebuildMonitors(screens: [laptop, benq])
+        let b = try XCTUnwrap(server.monitors.first { $0.screen.displayID == 2 })
+        let lap = try XCTUnwrap(server.monitors.first { $0.screen.displayID == 1 })
         func rule(_ s: String) -> ConfigTagRule {
             ConfigParser.parse(text: "tag_rule=id:1,\(s),master_factor:0.7", baseDirectory: nil, fileName: "t").config.tagRules[0]
         }
-        XCTAssertTrue(rule("monitor_make:BNQ").tagRuleMatchesMonitor(benq))
-        XCTAssertTrue(rule("monitor_model:BenQ RD280U,monitor_serial:J7R0095701Q").tagRuleMatchesMonitor(benq))
-        XCTAssertFalse(rule("monitor_make:DEL").tagRuleMatchesMonitor(benq))
-        XCTAssertFalse(rule("monitor_serial:J7R").tagRuleMatchesMonitor(benq))
-        XCTAssertFalse(rule("monitor_make:BNQ").tagRuleMatchesMonitor(laptop))
-        XCTAssertTrue(rule("monitor_name:LG").tagRuleMatchesMonitor(benq))
+        XCTAssertTrue(server.tagRuleMatchesMonitor(rule("monitor_make:BNQ"), b))
+        XCTAssertTrue(server.tagRuleMatchesMonitor(rule("monitor_model:BenQ RD280U,monitor_serial:J7R0095701Q"), b))
+        XCTAssertFalse(server.tagRuleMatchesMonitor(rule("monitor_make:DEL"), b))
+        XCTAssertFalse(server.tagRuleMatchesMonitor(rule("monitor_serial:J7R"), b))
+        XCTAssertFalse(server.tagRuleMatchesMonitor(rule("monitor_make:BNQ"), lap))
+        XCTAssertTrue(server.tagRuleMatchesMonitor(rule("monitor_name:LG"), b))
     }
 }

@@ -41,8 +41,6 @@ public final class MangoServer {
 
     public internal(set) var monitors: [Monitor] = []
     public package(set) var clients: [Client] = []
-    func clientById(_ id: ClientID) -> Client? { clients.first { $0.id == id } }
-    public func clientByIdAll(_ id: ClientID) -> Client? { clientsAll.first { $0.id == id } }
     public var clientsAll: [Client] {
         var out: [Client] = []
         for c in clients {
@@ -178,150 +176,6 @@ public final class MangoServer {
         return config.monocleNoRadius && ISFAKETILED(c) && !m.isoverview && isMonocleLayout(m)
     }
 
-    // not in mango: the server's side of parse_config, the config read, its errors and the nag
-    func parseConfig() {
-        configErrorStoreBegin()
-        let parsed = ConfigParser.parseConfig(fileAt: configURL, emits: true)
-        config = parsed.config
-        updateGlobalVar()   // not in mango: override_config's last step, as parse_config runs it
-        configErrors = parsed.errors
-        configFiles = parsed.sourcedFiles
-        configErrorStoreEnd()
-        configErrorNagUpdate()
-    }
-
-    func configGetFilePaths() -> [String] {
-        configFiles.map(\.path)
-    }
-
-    func setEnvWithoutDisplay() {
-        for (k, v) in config.envVars {
-            if k == "DISPLAY" {
-                continue // Skip setting DISPLAY
-            }
-            setenv(k, v, 1)
-        }
-    }
-
-    func setEnvDisplay() {
-        for (k, v) in config.envVars where k == "DISPLAY" {
-            setenv("DISPLAY", v, 1)
-        }
-    }
-
-    func runExec() {
-        for cmd in config.exec { system.spawnShell(cmd) }
-    }
-
-    func runExecOnce() {
-        for cmd in config.execOnce { system.spawnShell(cmd) }
-    }
-
-    func reapplyProperty() {
-        // reset border width when config change
-        for c in clients {
-            // not in mango: no bw to reset, the border width is read from the config where it is drawn
-            clientSetGroupConfig(c)
-            // not in mango: no client_set_tab_bar_config, the port draws the tab bar from the config
-        }
-    }
-
-    func reapplyTagrule() {
-        for m in monitors {
-            parseTagrule(m)
-        }
-    }
-
-    func resetOption() {
-        // not in mango: no init_baked_points, the port's animator bakes its own curves
-        pointerCursorActivity()
-        resetKeyboardLayout()
-        // not in mango: no reset_blur_params, macOS has no blur (MangoCompat)
-        setEnvWithoutDisplay()
-        setEnvDisplay()
-        runExec()
-
-        reapplyCursorStyle()
-        reapplyProperty()
-        // not in mango: no reapply_rootbg, the port reads rootcolor where it draws
-        // not in mango: no reapply_keyboard, key repeat is macOS's (MangoCompat)
-        system.watchGestures(!config.gestureBindings.isEmpty)   // not in mango: the port's side, where reapply_pointer stands
-        reapplyMaster()
-
-        reapplyTagrule()
-        // not in mango: no reapply_monitor_rules, monitor_rule is macOS's (MangoCompat)
-
-        // Port extension: not in mango. The port takes its own options.
-        for loaded in portHooks.configLoaded { loaded(self) }
-        publishInputState()   // not in mango: the event tap's snapshot
-
-        /* A global reload must re-apply every monitor, not just the selected one:
-         * layout-affecting options such as always_show_group_bar reserve or release
-         * space on all outputs. */
-        for m in monitors {
-            titleMessageBarApplyConfig(m)
-            titleMessageBarUpdate(m)
-            arrange(m, false, false)
-        }
-    }
-
-    func reapplyCursorStyle() {
-        // not in mango: no xcursor manager and no new timer, macOS draws the cursor (MangoCompat)
-        if !cursorHidden {
-            hideCursorSource?.timerUpdate(Int32(config.cursorHideTimeout * 1000))
-        }
-    }
-
-    func reapplyMaster() {
-        for i in 0..<PERTAG_SLOTS {
-            for m in monitors {
-                m.pertag.nmasters[i] = Int32(config.defaultNmaster)
-                m.pertag.mfacts[i] = Float(config.defaultMfact)
-                m.gappih = Int32(config.gappih)
-                m.gappiv = Int32(config.gappiv)
-                m.gappoh = Int32(config.gappoh)
-                m.gappov = Int32(config.gappov)
-                m.specialGappih = Int32(config.specialGappih)
-                m.specialGappiv = Int32(config.specialGappiv)
-                m.specialGappoh = Int32(config.specialGappoh)
-                m.specialGappov = Int32(config.specialGappov)
-            }
-        }
-    }
-
-    @discardableResult
-    package func reloadConfig(_ arg: Arg?) -> Int32 {
-        let oldTagNum = config.tagNum
-        parseConfig()
-        resetTag(oldTagNum)
-        resetOption()
-        // not in mango: update_seat_capabilities and apply_primary_selection (no macOS part)
-        printstatus(.arrangge)
-        configWatcherUpdate()
-        return 1
-    }
-
-    func resetTag(_ oldTagNum: Int) {
-        guard config.tagNum != oldTagNum else { return }
-        let tagmask = TAGMASK
-        let last: UInt32 = 1 << UInt32(config.tagNum - 1)
-        for c in clientsAll where c.tags & ~tagmask != 0 {
-            c.tags = last
-            c.oldtags = last
-        }
-        for m in monitors {
-            m.tagset[0] &= tagmask
-            m.tagset[1] &= tagmask
-            if m.tagset[m.seltags] == 0 { m.tagset[m.seltags] = last }
-            if m.pertag.curtag > UInt32(config.tagNum) { m.pertag.curtag = UInt32(config.tagNum) }
-            if m.pertag.prevtag > UInt32(config.tagNum) { m.pertag.prevtag = UInt32(config.tagNum) }
-        }
-    }
-
-
-
-
-
     /// Not in mango: the VISIBLEON filter as a list.
     func visibleClients(_ m: Monitor) -> [Client] {
         clients.filter { VISIBLEON($0, m) }
@@ -426,11 +280,6 @@ public final class MangoServer {
 
 
 
-    package func printstatus(_ type: IPCWatchType) {
-        publishGlobalKeys()
-        ipc?.notifyChanged(type)
-        onStateChange?()   // the boundary, not in mango: the port's status change
-    }
 
 
 
