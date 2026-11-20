@@ -15,10 +15,11 @@ enum Service {
         return defaultExecutable
     }
     static var user: String { NSUserName() }
-    /// The logs stay across restarts, where macOS keeps an app's logs.
-    static var logDirectory: String { NSHomeDirectory() + "/Library/Logs/Mango Chutney" }
-    static var outLogPath: String { logDirectory + "/mango.out.log" }
-    static var errLogPath: String { logDirectory + "/mango.err.log" }
+    /// The logs stay across restarts, where macOS keeps an app's logs: in the folder itself, which is always
+    /// there (launchd does not create a folder for them, and a cleaner may remove one of ours).
+    static var logDirectory: String { NSHomeDirectory() + "/Library/Logs" }
+    static var outLogPath: String { logDirectory + "/mango-chutney.out.log" }
+    static var errLogPath: String { logDirectory + "/mango-chutney.err.log" }
     static var plistPath: String {
         NSHomeDirectory() + "/Library/LaunchAgents/\(label).plist"
     }
@@ -78,7 +79,6 @@ enum Service {
         do {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
                                                     withIntermediateDirectories: true)
-            // launchd does not create the log's folder
             try FileManager.default.createDirectory(atPath: logDirectory, withIntermediateDirectories: true)
             let data = try PropertyListSerialization.data(fromPropertyList: plist(debug: debug), format: .xml, options: 0)
             try data.write(to: url, options: .atomic)
