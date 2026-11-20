@@ -22,6 +22,9 @@ public final class TabBarManager {
     public var onClose: ((CGWindowID) -> Void)?
     public var onRightClick: ((CGWindowID) -> Void)?
     private var panels: [CGWindowID: (NSPanel, TabStripView, TabStrip)] = [:]
+    /// Panels no strip uses now: ordered out and kept (a new one costs window server round trips and its
+    /// glass a first layout).
+    private var idle: [(NSPanel, TabStripView)] = []
     private var style: TabStripStyle?
     private var keyFocus: CGWindowID?
 
@@ -48,6 +51,11 @@ public final class TabBarManager {
                     apply(strip, to: panel, view: view, style: style, redraw: moved != strip || restyle)
                     panels[strip.above] = (panel, view, strip)
                 }
+            } else if let (panel, view) = idle.popLast() {
+                apply(strip, to: panel, view: view, style: style)
+                panel.orderFrontRegardless()
+                panel.order(.below, relativeTo: Int(strip.above))
+                panels[strip.above] = (panel, view, strip)
             } else {
                 let panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],
                                     backing: .buffered, defer: false)
@@ -75,9 +83,9 @@ public final class TabBarManager {
             }
         }
         for id in panels.keys where !seen.contains(id) {
-            panels[id]?.0.orderOut(nil)
-            panels[id]?.0.close()
-            panels.removeValue(forKey: id)
+            guard let (panel, view, _) = panels.removeValue(forKey: id) else { continue }
+            panel.orderOut(nil)
+            idle.append((panel, view))
         }
     }
 
@@ -295,10 +303,17 @@ final class TabStripView: NSView {
     }
 
     private static var icons: [String: CGImage] = [:]
+    /// Each running app's key: asking LaunchServices for it on every draw costs a round trip per tab.
+    private static var keys: [pid_t: String] = [:]
+
+    static func forget(pid: pid_t) { keys.removeValue(forKey: pid) }
 
     static func icon(for pid: pid_t) -> CGImage? {
-        guard pid > 0, let app = NSRunningApplication(processIdentifier: pid) else { return nil }
+        guard pid > 0 else { return nil }
+        if let key = keys[pid], let i = icons[key] { return i }
+        guard let app = NSRunningApplication(processIdentifier: pid) else { return nil }
         let key = app.bundleIdentifier ?? "pid:\(pid)"
+        keys[pid] = key
         if let i = icons[key] { return i }
         guard let image = app.icon else { return nil }
         var rect = CGRect(x: 0, y: 0, width: 64, height: 64)

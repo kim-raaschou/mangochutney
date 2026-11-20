@@ -33,16 +33,6 @@ final class EngineHiderTests: MangoTestCase {
         XCTAssertEqual(Hider.corner(for: screen, others: [left]), .bottomRight)
         XCTAssertEqual(Hider.corner(for: screen, others: []), .bottomRight)
     }
-
-    @MainActor
-    func testFrozenWindowCountsAsAwayOnlyWhenParked() {
-        let parked = CGRect(origin: Hider.parkedOrigin(size: CGSize(width: 800, height: 80), workArea: work,
-                                                       corner: .bottomRight), size: CGSize(width: 800, height: 80))
-        XCTAssertTrue(MacWindowSystem.isStuckAway(realFrame: parked, screen: screen))
-        XCTAssertTrue(MacWindowSystem.isStuckAway(realFrame: CGRect(x: 3000, y: 0, width: 800, height: 600), screen: screen))
-        XCTAssertFalse(MacWindowSystem.isStuckAway(realFrame: CGRect(x: 916, y: 198, width: 800, height: 139), screen: screen))
-        XCTAssertFalse(MacWindowSystem.isStuckAway(realFrame: nil, screen: screen), "unknown frame: keep it")
-    }
 }
 
 final class EngineParkAgainTests: MangoTestCase {

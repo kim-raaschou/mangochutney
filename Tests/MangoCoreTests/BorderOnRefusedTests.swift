@@ -29,4 +29,31 @@ final class BorderOnRefusedTests: MangoTestCase {
             check(layout: .tile, min: [3: CGSize(width: 0, height: 700)], animations: anim)
         }
     }
+    /// wlroots shows a window and its border in one frame: a window coming back from parking gets its
+    /// border when the app has moved it, not before.
+    func testAWindowFromParkingGetsItsBorderWhenItIsBack() {
+        let r = EngineRig()
+        r.server.renderBorder = true
+        r.server.drawsOverlays = true
+        let fake = r.server.system as! FakeWindowSystem
+        r.window(1)
+        let b = r.window(2, tags: 1 << 1)
+        r.arrange()
+        r.settle()
+        XCTAssertTrue(b.parked)
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
+        r.settle()
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["1"]))
+        r.settle()
+        XCTAssertTrue(b.parked)
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
+        r.frame()
+        XCTAssertFalse(b.parked)
+        XCTAssertTrue(b.mac.comingBack, "written, not yet moved")
+        XCTAssertEqual(r.app.writes.last { $0.id == 2 }?.setSize, false, "back at its size: the position alone")
+        XCTAssertFalse(r.server.mac.shownBorders(fake.borderSpecs).contains { $0.id == 2 }, "no border before the window")
+        r.settle()
+        XCTAssertFalse(b.mac.comingBack)
+        XCTAssertTrue(r.server.mac.shownBorders(fake.borderSpecs).contains { $0.id == 2 }, "the border with the window")
+    }
 }

@@ -51,6 +51,7 @@ extension MacWindowSystem {
                 c.parked = false
                 c.parkRetries = 0
                 c.mac.offEdge = false
+                c.mac.comingBack = true
             }
         }
     }
@@ -98,6 +99,10 @@ extension MacWindowSystem {
     /// Writes the window's frame: each step of an animation, and at its end the frame it is to keep.
     func place(_ c: Client, _ box: CGRect) {
         c.mac.box = box
+        let comingBack = c.mac.comingBack
+        c.mac.comingBack = false
+        var held = false
+        defer { if comingBack && !held { server.updateBorders() } }
         guard c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled else { return }
         guard !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
         if reachesAnotherMonitor(c, box) {
@@ -133,7 +138,22 @@ extension MacWindowSystem {
         c.writes += 1
         let resized = target.size != c.frame.size
         c.frame = target
-        q.setFrame(c.element, id: c.id, frame: target, setSize: final || resized, animating: !final && resized)
+        if comingBack {
+            c.mac.comingBack = true
+            held = true
+            let sent = CACurrentMediaTime()
+            // Back at the size it was parked with: the position alone is written (one answer from the app,
+            // not three); verifyFrame's read finds a size that is not its tile's.
+            q.setFrame(c.element, id: c.id, frame: target, setSize: resized || (final && wasMoving),
+                       animating: !final && resized) { [weak self, weak c] _ in
+                guard let self, let c, c.mac.comingBack else { return }
+                c.mac.comingBack = false
+                wlrLog(.debug, "\(c.appName): window \(c.id) back in \(Int((CACurrentMediaTime() - sent) * 1000)) ms")
+                self.server.updateBorders()
+            }
+        } else {
+            q.setFrame(c.element, id: c.id, frame: target, setSize: final || resized, animating: !final && resized)
+        }
         if final { verifyFrame(c) }
     }
 

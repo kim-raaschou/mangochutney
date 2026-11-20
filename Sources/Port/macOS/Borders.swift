@@ -52,7 +52,9 @@ final class BorderView: NSView {
 
 @MainActor
 public final class BorderManager {
-    private var windows: [CGWindowID: (NSWindow, BorderView, BorderSpec)] = [:]
+    /// Each window's overlay; with no spec it is ordered out and kept for when the window is shown again
+    /// (a new NSWindow costs the window server several round trips), till the window is gone (forget).
+    private var windows: [CGWindowID: (NSWindow, BorderView, BorderSpec?)] = [:]
 
     public init() {}
 
@@ -63,7 +65,7 @@ public final class BorderManager {
             guard !f.isNull, f.minX.isFinite, f.minY.isFinite, f.width.isFinite, f.height.isFinite else { continue }
             seen.insert(spec.id)
             if let (win, view, old) = windows[spec.id] {
-                if old != spec || Self.distance(win.frame, Self.appKitFrame(spec)) > 0.5 {
+                if old != spec || !win.isVisible || Self.distance(win.frame, Self.appKitFrame(spec)) > 0.5 {
                     apply(spec, to: win, view: view)
                     windows[spec.id] = (win, view, spec)
                 }
@@ -84,27 +86,26 @@ public final class BorderManager {
                 content.addSubview(view)
                 win.contentView = content
                 apply(spec, to: win, view: view)
-                win.orderFrontRegardless()
-                win.order(.above, relativeTo: Int(spec.id))
                 windows[spec.id] = (win, view, spec)
             }
         }
-        for id in windows.keys where !seen.contains(id) {
-            windows[id]?.0.orderOut(nil)
-            windows[id]?.0.close()
-            windows.removeValue(forKey: id)
+        for (id, (win, view, old)) in windows where !seen.contains(id) && old != nil {
+            win.orderOut(nil)
+            windows[id] = (win, view, nil)
         }
+    }
+
+    /// The window is gone: its overlay is closed.
+    public func forget(_ id: CGWindowID) {
+        guard let (win, _, _) = windows.removeValue(forKey: id) else { return }
+        win.orderOut(nil)
+        win.close()
     }
 
     public func restack(_ ids: Set<CGWindowID>? = nil, inPlace: (CGWindowID, CGWindowID) -> Bool = { _, _ in false }) {
-        for (id, (win, _, _)) in windows where ids?.contains(id) ?? true {
+        for (id, (win, _, spec)) in windows where spec != nil && (ids?.contains(id) ?? true) {
             if !inPlace(CGWindowID(truncatingIfNeeded: win.windowNumber), id) { win.order(.above, relativeTo: Int(id)) }
         }
-    }
-
-    public func removeAll() {
-        for (_, (win, _, _)) in windows { win.orderOut(nil); win.close() }
-        windows.removeAll()
     }
 
     private static func distance(_ a: CGRect, _ b: CGRect) -> CGFloat {
@@ -124,12 +125,6 @@ public final class BorderManager {
 
     private func apply(_ spec: BorderSpec, to win: NSWindow, view: BorderView) {
         let frame = Self.appKitFrame(spec)
-        if frame.isNull || frame.isEmpty {
-            win.orderOut(nil)
-        } else if !win.isVisible {
-            win.orderFrontRegardless()
-            win.order(.above, relativeTo: Int(spec.id))
-        }
         win.setFrame(frame.isNull ? .zero : frame, display: false)
         let outer = Self.appKit(BorderGeometry.overlayFrame(window: spec.frame, width: spec.width))
         view.frame = CGRect(x: outer.minX - frame.minX, y: outer.minY - frame.minY, width: outer.width, height: outer.height)
@@ -137,5 +132,12 @@ public final class BorderManager {
         view.set(color: ns(spec.color), width: spec.width,
                  radius: BorderGeometry.outerRadius(corner: spec.radius, width: spec.width),
                  split: spec.split.map { ($0.side, ns($0.color)) })
+        // shown last: a kept overlay still has the frame and look it was hidden with
+        if frame.isNull || frame.isEmpty {
+            if win.isVisible { win.orderOut(nil) }
+        } else if !win.isVisible {
+            win.orderFrontRegardless()
+            win.order(.above, relativeTo: Int(spec.id))
+        }
     }
 }

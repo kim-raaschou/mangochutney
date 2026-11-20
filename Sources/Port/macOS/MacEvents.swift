@@ -24,6 +24,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             } else if initial {
                 mapInitial(c)
             } else {
+                wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)'")
                 server.handleClientMap(c)
             }
         }
@@ -121,6 +122,7 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     func windowDestroyed(id: CGWindowID) {
         hideEdgePlate(id)
+        borders.forget(id)
         if away.removeValue(forKey: id) != nil {
             memory.departed.away.remove(id)
             return
@@ -174,6 +176,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func appTerminated(pid: pid_t) {
+        TabStripView.forget(pid: pid)
         for (id, e) in away where e.client.pid == pid {
             away.removeValue(forKey: id)
             memory.departed.away.remove(id)
@@ -227,26 +230,6 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.parked = false
         server.arrange(m, false, false)
         server.printstatus(.arrangge)
-    }
-
-    func appResponding(pid: pid_t, responding: Bool) {
-        if responding {
-            for (id, e) in away where e.client.pid == pid && e.reasons.contains(.stuck) {
-                wlrLog(.info, "\(e.client.appName): window \(id) answers again")
-                comeBack(id, .stuck)
-            }
-            return
-        }
-        for c in server.clientsAll where c.pid == pid {
-            guard let m = c.mon, Self.isStuckAway(realFrame: windowServerFrame(c.id), screen: m.screen.frame) else { continue }
-            if let real = windowServerFrame(c.id) { c.frame = real }
-            goAway(c, .stuck)
-        }
-    }
-
-    nonisolated static func isStuckAway(realFrame: CGRect?, screen: CGRect) -> Bool {
-        guard let f = realFrame else { return false }
-        return Hider.isParked(f, in: screen) || !f.intersects(screen)
     }
 
     func windowGeometryChanged(id: CGWindowID, frame: CGRect, resized: Bool, isfullscreen: Bool?) {

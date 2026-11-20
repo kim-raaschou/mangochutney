@@ -25,6 +25,9 @@ final class MacWindow: PlatformWindow {
     var moving = false
     /// Parked because the part mango clips away would land on another monitor.
     var offEdge = false
+    /// Shown again after it was parked, and the app has not yet moved it back: no border till then, as
+    /// wlroots shows the border and the window in one frame.
+    var comingBack = false
     /// Port extension: chutney_fullscreen_tag. On its F tag in macOS fullscreen, in its own Space: macOS
     /// places it, the port writes nothing to it.
     var nativeFullscreen = false

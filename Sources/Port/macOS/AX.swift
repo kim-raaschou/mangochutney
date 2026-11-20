@@ -151,11 +151,8 @@ public final class AXObserverBox {
     @discardableResult
     public func add(_ element: AXUIElement, _ notification: String, refcon: UnsafeMutableRawPointer?) -> Bool {
         let err = AXObserverAddNotification(observer, element, notification as CFString, refcon)
-        if err == .success || err == .notificationAlreadyRegistered {
-            registered.append((element, notification))
-            return true
-        }
-        return false
+        if err == .success { registered.append((element, notification)) }
+        return err == .success || err == .notificationAlreadyRegistered
     }
 
     public func remove(_ element: AXUIElement, _ notification: String) {

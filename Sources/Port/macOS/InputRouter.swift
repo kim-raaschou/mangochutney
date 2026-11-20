@@ -152,7 +152,7 @@ final class InputRouter: @unchecked Sendable {
             let started = CACurrentMediaTime()
             server.handleKeyboardKey(main)
             let waited = (started - queued) * 1000, ran = (CACurrentMediaTime() - started) * 1000
-            if waited > 250 || ran > 250 {
+            if waited > 50 || ran > 50 {
                 wlrLog(.info, String(format: "key: waited %.0f ms for the main thread, ran %.0f ms", waited, ran))
             }
         }

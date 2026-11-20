@@ -30,7 +30,6 @@ public protocol AppWatcherDelegate: AnyObject {
     func appActivated(pid: pid_t)
     func appHidden(pid: pid_t, hidden: Bool)
     func windowReacquired(id: CGWindowID, element: AXUIElement, state: ReacquiredState)
-    func appResponding(pid: pid_t, responding: Bool)
     func appTerminated(pid: pid_t)
     func screensChanged()
     func spaceChanged()
@@ -44,7 +43,6 @@ enum AppEvent {
     case minimized(CGWindowID, Bool)
     case title(CGWindowID, String)
     case focused(CGWindowID)
-    case responding(Bool)
     case reacquired(CGWindowID, AXUIElement, ReacquiredState)
     case fullscreenStates([(CGWindowID, Bool)])
 }
@@ -94,6 +92,7 @@ public final class AppWorker: @unchecked Sendable {
     private var observer: AXObserverBox?
     private var book = WindowBook<AXUIElement, DiscoveredWindow>()
     private var appSubscribed = false
+    private var subscribeFailureLogged = false
     private var scannedOnce = false
     private var unresponsive = false
     private static let firstContactTimeout: Float = 6
@@ -133,14 +132,25 @@ public final class AppWorker: @unchecked Sendable {
         }
     }
 
+    /// The app's notifications: each is tried, and the ones it would not take (busy at launch) are tried
+    /// again at the next refresh; an observer that could not be made is made then.
     private func subscribeApp() {
-        guard !appSubscribed, let obs = observer else { return }
+        guard !appSubscribed else { return }
         let refcon = Unmanaged.passUnretained(self).toOpaque()
-        for n in [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification,
-                  kAXMainWindowChangedNotification, kAXApplicationActivatedNotification] {
-            guard obs.add(ax, n, refcon: refcon) else { return }
+        if observer == nil {
+            observer = AXObserverBox(pid: pid, callback: workerAXCallback, refcon: refcon, runLoop: thread.runLoop)
         }
-        appSubscribed = true
+        guard let obs = observer else { return }
+        var all = true
+        for n in [kAXWindowCreatedNotification, kAXFocusedWindowChangedNotification,
+                  kAXMainWindowChangedNotification, kAXApplicationActivatedNotification] where !obs.add(ax, n, refcon: refcon) {
+            all = false
+        }
+        if !all && !subscribeFailureLogged {
+            subscribeFailureLogged = true
+            wlrLog(.debug, "\(name): not all AX notifications taken yet; tried again at the next refresh")
+        }
+        appSubscribed = all
     }
 
     func stop() {
@@ -177,14 +187,21 @@ public final class AppWorker: @unchecked Sendable {
         let isInitialScan = initial && !scannedOnce
         scannedOnce = true
         subscribeApp()
-        let (err, value) = ax.attributeResult(kAXWindowsAttribute)
+        var (err, value) = ax.attributeResult(kAXWindowsAttribute)
+        if err == .cannotComplete, notified, answered {
+            // The app told of a window and is busy showing it: it is waited for, on its own thread, as at
+            // first contact. No input would ask again.
+            wlrLog(.debug, "\(name): no answer after its notification; waiting for it")
+            AXUIElementSetMessagingTimeout(ax, Self.firstContactTimeout)
+            (err, value) = ax.attributeResult(kAXWindowsAttribute)
+            AXUIElementSetMessagingTimeout(ax, AX.messagingTimeout)
+        }
         if err == .cannotComplete {
             if !answered {
                 return
             }
             if !unresponsive {
                 wlrLog(.info, "\(name) is not responding; keeping its windows")
-                post(.responding(false))
             }
             unresponsive = true
             return
@@ -195,9 +212,9 @@ public final class AppWorker: @unchecked Sendable {
         }
         if unresponsive {
             wlrLog(.info, "\(name) is responding again")
-            post(.responding(true))
         }
         unresponsive = false
+        subscribeApp()   // again, now that it answers
         let listed = ((value as? [AXUIElement]) ?? []).compactMap { el in el.windowID.map { ($0, el) } }
         let out = book.refresh(listed: listed, recheck: recheck, notified: notified, answers: .init(
             subscribe: { [self] in subscribeWindow($0) },
@@ -315,7 +332,12 @@ public final class AppWorker: @unchecked Sendable {
     fileprivate func handle(notification: String, element: AXUIElement) {
         switch notification {
         case kAXWindowCreatedNotification:
+            let id = element.windowID
+            wlrLog(.debug, "\(name): AXWindowCreated \(id.map(String.init) ?? "(no window id yet)")")
             runRefresh(recheck: true, notified: true)
+            if let id, book.windows[id] == nil, book.rejected[id] == nil {
+                wlrLog(.debug, "\(name): created window \(id) is not in the app's window list yet")
+            }
         case kAXMainWindowChangedNotification, kAXApplicationActivatedNotification, kAXFocusedWindowChangedNotification:
             runRefresh(recheck: true, notified: true)
             reportFocus()
@@ -498,8 +520,26 @@ public final class AppWatcher {
         delegate?.appTerminated(pid: pid)
     }
 
+    private static func kind(_ e: AppEvent) -> String {
+        switch e {
+        case .discovered(let ws): "discovered(\(ws.count))"
+        case .destroyed: "destroyed"
+        case .geometry: "geometry"
+        case .minimized: "minimized"
+        case .title: "title"
+        case .focused: "focused"
+        case .reacquired: "reacquired"
+        case .fullscreenStates: "fullscreenStates"
+        }
+    }
+
     private func receive(_ e: AppEvent, pid: pid_t) {
         guard apps[pid] != nil else { return }
+        let start = CACurrentMediaTime()
+        defer {
+            let ms = (CACurrentMediaTime() - start) * 1000
+            if ms > 50 { wlrLog(.info, String(format: "slow on the main thread: %@ from %@ took %.0f ms", Self.kind(e), apps[pid]?.name ?? "\(pid)", ms)) }
+        }
         switch e {
         case .discovered(let ws):
             for w in ws {
@@ -516,8 +556,6 @@ public final class AppWatcher {
             delegate?.windowMinimized(id: id, minimized: m)
         case .title(let id, let t):
             delegate?.windowTitleChanged(id: id, title: t)
-        case .responding(let r):
-            delegate?.appResponding(pid: pid, responding: r)
         case .reacquired(let id, let element, let state):
             owners[id] = (pid, element)
             delegate?.windowReacquired(id: id, element: element, state: state)

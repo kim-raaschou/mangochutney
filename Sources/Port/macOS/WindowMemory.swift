@@ -10,6 +10,7 @@ final class WindowMemory {
     let session = SavedLayout.currentSession
     var lastSaved: SavedLayout?
     let queue = DispatchQueue(label: "mango.layout", qos: .utility)
+    private var pruning = false
 
     func back(_ c: Client) -> DepartedWindow? {
         let back = departed.take(c.id).flatMap { d in d.bundleId.isEmpty || d.bundleId == c.bundleId ? d : nil }
@@ -112,7 +113,21 @@ final class WindowMemory {
             queue.sync { Self.write(now, to: url) }
             return
         }
-        if departed.hasSavedEntries { departed.dropSaved(keeping: server.mac.allWindowIDs()) }
+        // The window server's list is asked for on the memory's queue: on the main thread it is a round trip
+        // at every status change while saved entries remain.
+        if departed.hasSavedEntries && !pruning {
+            pruning = true
+            queue.async { [weak self] in
+                let ids = AppWorker.allWindowIDs()
+                DispatchQueue.main.async {
+                    MainActor.assumeIsolated {
+                        guard let self else { return }
+                        self.pruning = false
+                        self.departed.dropSaved(keeping: ids)
+                    }
+                }
+            }
+        }
         let now = currentLayout(server)
         guard now != lastSaved else { return }
         lastSaved = now

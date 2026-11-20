@@ -2,7 +2,7 @@ import CoreGraphics
 import Mango
 
 enum AwayReason: Hashable {
-    case minimized, fullscreen, hidden, stuck
+    case minimized, fullscreen, hidden
 }
 
 extension MacWindowSystem {

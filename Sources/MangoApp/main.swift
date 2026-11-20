@@ -84,7 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         server.useMacSystem()
         server.cliDebugLog = cliDebugLog
         self.server = server
-        server.onStatusChange = { [weak self] in MainActor.assumeIsolated { self?.refreshStatus() } }
+        server.onStatusChange = { [weak self] in MainActor.assumeIsolated { self?.statusChanged() } }
         FitNotification.shared.install(server)   // Port extension: chutney_fit_layout's Fit button, also from before a restart
         server.setup()
         refreshStatus()
@@ -135,7 +135,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setStatus("mango")
     }
 
+    private static var logos: [Bool: NSImage] = [:]
+
     static func logo(mono: Bool) -> NSImage? {
+        if let img = logos[mono] { return img }
+        guard let img = loadLogo(mono: mono) else { return nil }
+        logos[mono] = img
+        return img
+    }
+
+    private static func loadLogo(mono: Bool) -> NSImage? {
         var url = Bundle.main.url(forResource: "mango", withExtension: "svg")
         if url == nil {
             var dir = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath().deletingLastPathComponent()
@@ -168,7 +177,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard shownStatus != key, let b = statusItem?.button else { return }
         shownStatus = key
         tagSpans = []
-        b.image = nil
+        if b.image != nil { b.image = nil }
         let font = b.font ?? .monospacedSystemFont(ofSize: 12, weight: .medium)
         let title = NSMutableAttributedString()
         let near: CGFloat = 3, apart: CGFloat = 7
@@ -245,15 +254,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         publishTagHits()
     }
 
+    /// Drawn once each: a new image every refresh costs the status item a fresh symbol lookup when it draws.
+    private static var tagImages: [String: NSImage] = [:]
+
     static func tagImage(_ t: MenuBarTag, style: String, dim: Bool = false) -> NSImage? {
+        let key = "\(t.number)|\(t.active)|\(t.overlap)|\(style)|\(dim)"
+        if let img = tagImages[key] { return img }
         let shape = style == "circle" ? "circle" : "square"
         let name = (t.number == 0 ? "star" : "\(t.number)") + ".\(shape)" + (t.active ? ".fill" : "")
         let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
         guard let img = NSImage(systemSymbolName: name, accessibilityDescription: "tag \(t.number)")?
             .withSymbolConfiguration(cfg) else { return nil }
         img.isTemplate = true
-        if t.overlap { return tinted(img, overlapColor.withAlphaComponent(dim ? 0.6 : 1)) }
-        return dim ? dimmed(img) : img
+        let out = t.overlap ? tinted(img, overlapColor.withAlphaComponent(dim ? 0.6 : 1)) : dim ? dimmed(img) : img
+        tagImages[key] = out
+        return out
     }
 
     static let overlapColor = NSColor.systemOrange   // Port extension: chutney_overlap_warning
@@ -324,6 +339,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         img.accessibilityDescription = "layout \(kind.name)"
         return img
+    }
+
+    private var statusRefreshQueued = false
+
+    /// mango's status changes several times in one dispatch (focus, arrange, view): the menu bar is drawn
+    /// once, after the turn.
+    func statusChanged() {
+        guard !statusRefreshQueued else { return }
+        statusRefreshQueued = true
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                self?.statusRefreshQueued = false
+                self?.refreshStatus()
+            }
+        }
     }
 
     func refreshStatus() {

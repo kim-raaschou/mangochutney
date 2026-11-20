@@ -59,10 +59,13 @@ final class FrameClock {
         guard let server else { stop(); return }
         let due = scheduled
         scheduled.removeAll()
+        let start = CACurrentMediaTime()
         for m in server.monitors where due.contains(m.screen.displayID) {
             server.handleOutputFrame(m)
         }
         commit?()
+        let ms = (CACurrentMediaTime() - start) * 1000
+        if ms > 50 { wlrLog(.info, String(format: "slow on the main thread: a frame took %.0f ms", ms)) }
         guard scheduled.isEmpty else { return }
         link?.invalidate(); link = nil; linkDisplay = nil
         timer?.cancel(); timer = nil

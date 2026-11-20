@@ -251,9 +251,21 @@ class MacWindowSystem: WindowSystem {
         }
     }
 
+    /// The window server's stacking is asked for off the main thread (it waits for the window server's
+    /// pending transactions); the overlays are ordered on the main thread with what it answered.
     private func restackNow(_ pid: pid_t, reserve: Bool = true) {
+        Self.stackingQueue.async { [weak self] in
+            let order = AppWorker.onScreenOrder()
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.restackApply(pid, order, reserve: reserve) }
+            }
+        }
+    }
+
+    private static let stackingQueue = DispatchQueue(label: "mango.stacking", qos: .userInteractive)
+
+    private func restackApply(_ pid: pid_t, _ order: [CGWindowID], reserve: Bool) {
         let ids = Set(server.clientsAll.filter { $0.pid == pid }.map(\.id))
-        let order = AppWorker.onScreenOrder()
         let at = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: min)
         let ours = Set(((NSApp as NSApplication?)?.windows ?? []).map { CGWindowID(truncatingIfNeeded: $0.windowNumber) })
         func inPlace(_ overlay: CGWindowID, _ target: CGWindowID, above: Bool) -> Bool {
@@ -276,10 +288,19 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawBorders(_ specs: [BorderSpec]) {
-        // Port extension: chutney_fullscreen_tag. No border for a window in its own fullscreen Space.
-        let specs = MacOSAppearance.borders(specs.filter { server.clientByIdAll($0.id)?.leftToMacOS != true }, server.config)
-        if specs.isEmpty { borders.removeAll() } else { borders.update(specs) }
+        let specs = MacOSAppearance.borders(shownBorders(specs), server.config)
+        borders.update(specs)
         for c in server.clientsAll where c.mac.offEdge { edgePlates.setBorder(c.id, plateBorder(c)) }
+    }
+
+    /// The borders macOS shows now. A window coming back from parking gets its border when the app has
+    /// moved it (comingBack). Port extension: chutney_fullscreen_tag. No border for a window in its own
+    /// fullscreen Space.
+    func shownBorders(_ specs: [BorderSpec]) -> [BorderSpec] {
+        specs.filter { s in
+            guard let c = server.clientByIdAll(s.id) else { return true }
+            return !c.leftToMacOS && !c.mac.comingBack
+        }
     }
 
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) {
@@ -622,15 +643,37 @@ class MacWindowSystem: WindowSystem {
         CursorHider.setCursor(name)
     }
 
-    func surfaceAt(_ p: CGPoint) -> ClientID? { CursorHider.windowAt(p) }
+    /// The window server's answer for a point, kept for the turn: mango asks twice for one motion.
+    private var surfaceAtTurn: (p: CGPoint, id: ClientID?)?
+
+    func surfaceAt(_ p: CGPoint) -> ClientID? {
+        if let k = surfaceAtTurn, k.p == p { return k.id }
+        if surfaceAtTurn == nil {
+            DispatchQueue.main.async { [weak self] in MainActor.assumeIsolated { self?.surfaceAtTurn = nil } }
+        }
+        let id = CursorHider.windowAt(p)
+        surfaceAtTurn = (p, id)
+        return id
+    }
+
+    /// A window's owner does not change: asked for once.
+    private var surfaceOwners: [ClientID: pid_t] = [:]
 
 
     /// A managed window is its own client; another window of an app (a menu, a popup) belongs to the
     /// app's window that had the focus last, as a popup belongs to its toplevel.
     func toplevelFromWlrSurface(_ surface: ClientID) -> Client? {
         if let c = server.clientByIdAll(surface) { return c }
-        guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], CGWindowID(surface)) as? [[String: Any]])?.first,
-              let pid = info[kCGWindowOwnerPID as String] as? pid_t else { return nil }
+        let pid: pid_t
+        if let known = surfaceOwners[surface] {
+            pid = known
+        } else {
+            guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], CGWindowID(surface)) as? [[String: Any]])?.first,
+                  let p = info[kCGWindowOwnerPID as String] as? pid_t else { return nil }
+            if surfaceOwners.count > 256 { surfaceOwners.removeAll() }
+            surfaceOwners[surface] = p
+            pid = p
+        }
         for id in server.focusStack {
             if let c = server.clientByIdAll(id), c.pid == pid, c.mon != nil { return c }
         }
