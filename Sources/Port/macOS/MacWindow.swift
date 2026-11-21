@@ -28,6 +28,12 @@ final class MacWindow: PlatformWindow {
     /// Shown again after it was parked, and the app has not yet moved it back: no border till then, as
     /// wlroots shows the border and the window in one frame.
     var comingBack = false
+    /// The frames handed to the app and the last one it answered; while they differ the border stands
+    /// where the app last put the window (applied; nil: not in view), as wlroots shows both in one frame.
+    var writeSerial = 0
+    var confirmedSerial = 0
+    var applied: CGRect?
+    var inSync: Bool { writeSerial == confirmedSerial }
     /// Port extension: chutney_fullscreen_tag. On its F tag in macOS fullscreen, in its own Space: macOS
     /// places it, the port writes nothing to it.
     var nativeFullscreen = false

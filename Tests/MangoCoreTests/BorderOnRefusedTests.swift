@@ -56,4 +56,28 @@ final class BorderOnRefusedTests: MangoTestCase {
         XCTAssertFalse(b.mac.comingBack)
         XCTAssertTrue(r.server.mac.shownBorders(fake.borderSpecs).contains { $0.id == 2 }, "the border with the window")
     }
+    /// wlroots shows a border with its window in one frame: while the app has a frame it has not yet
+    /// carried out, the border stays where the app last put the window, and follows when it answers.
+    func testTheBorderFollowsTheWindowNotTheLayout() {
+        let r = EngineRig()
+        r.server.renderBorder = true
+        r.server.drawsOverlays = true
+        let fake = r.server.system as! FakeWindowSystem
+        let a = r.map(1)
+        r.arrange()
+        r.settle()
+        let before = r.app.frames[1]!
+        XCTAssertTrue(a.mac.inSync)
+        r.app.appliesAfter = 0.3
+        r.map(2)
+        r.arrange()
+        XCTAssertFalse(a.mac.inSync, "a new tile is written")
+        XCTAssertNotEqual(a.frame, before)
+        XCTAssertEqual(r.server.mac.shownBorders(fake.borderSpecs).first { $0.id == 1 }?.frame, before,
+                       "the border stays on the window till the app has moved it")
+        r.settle(0.6)
+        XCTAssertTrue(a.mac.inSync)
+        XCTAssertEqual(r.server.mac.shownBorders(fake.borderSpecs).first { $0.id == 1 }?.frame, r.app.frames[1],
+                       "and follows it when it has")
+    }
 }

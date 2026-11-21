@@ -137,6 +137,7 @@ extension MacWindowSystem {
         watcher.suppressGeometry(c.id, until: now + left + 0.05)
         c.writes += 1
         let resized = target.size != c.frame.size
+        let was = c.frame
         c.frame = target
         if comingBack {
             c.mac.comingBack = true
@@ -144,17 +145,45 @@ extension MacWindowSystem {
             let sent = CACurrentMediaTime()
             // Back at the size it was parked with: the position alone is written (one answer from the app,
             // not three); verifyFrame's read finds a size that is not its tile's.
-            q.setFrame(c.element, id: c.id, frame: target, setSize: resized || (final && wasMoving),
-                       animating: !final && resized) { [weak self, weak c] _ in
-                guard let self, let c, c.mac.comingBack else { return }
+            send(c, q, target, from: nil, setSize: resized || (final && wasMoving), animating: !final && resized) { c in
+                guard c.mac.comingBack else { return }
                 c.mac.comingBack = false
                 wlrLog(.debug, "\(c.appName): window \(c.id) back in \(Int((CACurrentMediaTime() - sent) * 1000)) ms")
-                self.server.updateBorders()
             }
         } else {
-            q.setFrame(c.element, id: c.id, frame: target, setSize: final || resized, animating: !final && resized)
+            send(c, q, target, from: was, setSize: final || resized, animating: !final && resized)
         }
         if final { verifyFrame(c) }
+    }
+
+    /// Every frame the port hands an app. `from` is where the window stands now (nil: out of view): till the
+    /// app has answered, its border stays where the app last put it.
+    func send(_ c: Client, _ q: WindowWriter, _ frame: CGRect, from: CGRect?, setSize: Bool, animating: Bool = false,
+              then: (@MainActor (Client) -> Void)? = nil) {
+        let w = c.mac
+        if w.inSync { w.applied = from }
+        w.writeSerial &+= 1
+        let serial = w.writeSerial
+        q.setFrame(c.element, id: c.id, frame: frame, setSize: setSize, animating: animating) { [weak self, weak c] r in
+            guard let self, let c, self.server.clientByIdAll(c.id) === c else { return }
+            c.mac.applied = r
+            c.mac.confirmedSerial = serial
+            then?(c)
+            self.bordersFollow()
+        }
+    }
+
+    /// One updateBorders per main-queue turn for all the apps that answered in it (a flag, no timer).
+    func bordersFollow() {
+        guard !bordersFollowQueued else { return }
+        bordersFollowQueued = true
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.bordersFollowQueued = false
+                self.server.updateBorders()
+            }
+        }
     }
 
     func verifyFrame(_ c: Client) {
@@ -250,7 +279,7 @@ extension MacWindowSystem {
                     c.frame = CGRect(origin: inward, size: actual.size)
                     c.ignoreMovesUntil = now + 0.5
                     watcher.suppressGeometry(c.id, until: c.ignoreMovesUntil)
-                    q.setFrame(c.element, id: c.id, frame: c.frame, setSize: false)
+                    send(c, q, c.frame, from: actual, setSize: false)
                     server.updateBorders()
                     return
                 }
@@ -280,10 +309,11 @@ extension MacWindowSystem {
         guard !c.parked, !c.leftToMacOS, !fullscreenTagViewed(c), let m = monitor(of: c), let q = writer(for: c.pid) else { return }
         c.mac.moving = false
         c.parked = true
+        let was = c.frame
         c.frame = CGRect(origin: parkedOrigin(c, on: m), size: c.frame.size)
         c.ignoreMovesUntil = CACurrentMediaTime() + 0.5
         watcher.suppressGeometry(c.id, until: c.ignoreMovesUntil)
-        q.setFrame(c.element, id: c.id, frame: c.frame, setSize: false)
+        send(c, q, c.frame, from: was, setSize: false)
         q.readBack(c.element) { [weak self] actual in self?.keepHidden(c, seenAt: actual) }
     }
 

@@ -119,6 +119,7 @@ class MacWindowSystem: WindowSystem {
     let missionControl = MissionControl()
     var writerOverride: ((pid_t) -> (any WindowWriter)?)?
     var stackingOverride: (() -> [StackedWindow])?
+    var bordersFollowQueued = false
 
     func writer(for pid: pid_t) -> (any WindowWriter)? {
         if let writerOverride { return writerOverride(pid) }
@@ -297,13 +298,42 @@ class MacWindowSystem: WindowSystem {
     /// moved it (comingBack). Port extension: chutney_fullscreen_tag. No border for a window in its own
     /// fullscreen Space.
     func shownBorders(_ specs: [BorderSpec]) -> [BorderSpec] {
-        specs.filter { s in
-            guard let c = server.clientByIdAll(s.id) else { return true }
-            return !c.leftToMacOS && !c.mac.comingBack
+        specs.compactMap { s in
+            guard let c = server.clientByIdAll(s.id) else { return s }
+            if c.leftToMacOS || c.mac.comingBack { return nil }
+            guard let d = lag(c) else { return c.mac.inSync ? s : nil }
+            var s = s
+            s.frame = CGRect(x: s.frame.minX + d.minX, y: s.frame.minY + d.minY,
+                             width: s.frame.width + d.width, height: s.frame.height + d.height)
+            return s
+        }
+    }
+
+    /// How far the window the app last answered for is from mango's box this frame (origin and size
+    /// differences); nil in sync or out of view.
+    func lag(_ c: Client) -> CGRect? {
+        guard !c.mac.inSync, let a = c.mac.applied else { return nil }
+        let ref = c.animation.running ? c.animation.current.insetBy(dx: c.bw, dy: c.bw) : c.frame
+        return CGRect(x: a.minX - ref.minX, y: a.minY - ref.minY, width: a.width - ref.width, height: a.height - ref.height)
+    }
+
+    /// A strip moves with its window's border (lag): bars and border lie together.
+    func followingWindows(_ strips: [TabStrip]) -> [TabStrip] {
+        strips.map { strip in
+            guard let c = server.clientByIdAll(strip.above), let d = lag(c), d.minX != 0 || d.minY != 0 else { return strip }
+            var s = strip
+            s.frame.origin.x += d.minX
+            s.frame.origin.y += d.minY
+            for i in s.segments.indices {
+                s.segments[i].frame.origin.x += d.minX
+                s.segments[i].frame.origin.y += d.minY
+            }
+            return s
         }
     }
 
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) {
+        let strips = followingWindows(strips)
         var style = withAppIcons(style, server.config.chutneyTabBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.tabbardata, server.config)
         tabBars.update(strips, style: style, keyFocus: server.focused?.id)
@@ -312,6 +342,7 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) {
+        let strips = followingWindows(strips)
         var style = withAppIcons(style, server.config.chutneyGroupBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.groupbardata, server.config)
         groupBars.update(strips, style: style, keyFocus: server.focused?.id)
@@ -702,9 +733,6 @@ class MacWindowSystem: WindowSystem {
                                   hyper: KeyboardOptions.hyperSet(server.config), keyHeld: router.hyperKeyHeld)
     }
 
-    func setFrame(_ c: Client, _ frame: CGRect, size: Bool) {
-        writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: frame, setSize: size)
-    }
 
     func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void) {
         guard let q = writer(for: c.pid) else { done(nil); return }

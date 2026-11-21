@@ -570,9 +570,14 @@ public final class AppWatcher {
     /// Every app's windows listed again; `fullscreen`: and each one's macOS fullscreen told, read on the
     /// app's own thread.
     public func refreshAll(recheckRejected: Bool = false, fullscreen: Bool = false) {
+        var workers: [AppWorker] = []
         for w in apps.values {
             if kill(w.pid, 0) != 0 && errno == ESRCH { unregister(pid: w.pid); continue }
-            w.requestRefresh(recheck: recheckRejected, fullscreen: fullscreen)
+            workers.append(w)
+        }
+        // Waking each app's thread is a run loop wake-up with a contended lock: done off the main thread.
+        Self.wakeQueue.async {
+            for w in workers { w.requestRefresh(recheck: recheckRejected, fullscreen: fullscreen) }
         }
         guard !caughtUp else { return }
         caughtUp = true
@@ -580,6 +585,8 @@ public final class AppWatcher {
             register(a, initial: false)
         }
     }
+
+    private static let wakeQueue = DispatchQueue(label: "mango.refresh", qos: .userInitiated)
 
     public func refresh(pid: pid_t, recheckRejected: Bool = false) {
         guard let w = apps[pid] else { return }

@@ -46,8 +46,14 @@ public final class TabBarManager {
             seen.insert(strip.above)
             if let (panel, view, old) = panels[strip.above] {
                 if old != strip || restyle {
+                    // a pure move: the segments (absolute) moved with the strip
                     var moved = old
+                    let dx = strip.frame.minX - old.frame.minX, dy = strip.frame.minY - old.frame.minY
                     moved.frame.origin = strip.frame.origin
+                    for i in moved.segments.indices {
+                        moved.segments[i].frame.origin.x += dx
+                        moved.segments[i].frame.origin.y += dy
+                    }
                     apply(strip, to: panel, view: view, style: style, redraw: moved != strip || restyle)
                     panels[strip.above] = (panel, view, strip)
                 }

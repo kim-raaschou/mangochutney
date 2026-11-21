@@ -88,7 +88,6 @@ package protocol WindowSystem: AnyObject {
     func publishInput(_ state: InputState)
     func publishGlobalKeys(_ keys: [GlobalKey])
     func settle(_ c: Client)
-    func setFrame(_ c: Client, _ frame: CGRect, size: Bool)
     func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void)
     func clientSendClose(_ c: Client)
     func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool)
