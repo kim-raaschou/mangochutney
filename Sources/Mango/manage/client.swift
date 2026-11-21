@@ -218,7 +218,8 @@ package extension MangoServer {
         return findClientByDirection(tc, arg, true)
     }
 
-    package func clientFocusTop(_ m: Monitor) -> Client? {
+    package func clientFocusTop(_ m: Monitor?) -> Client? {
+        guard let m else { return nil }
         for id in focusStack {
             if let c = clientByIdAll(id), !c.iskilling, !c.isunglobal, VISIBLEON(c, m) { return c }
         }

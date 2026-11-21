@@ -751,6 +751,18 @@ final class FidelityTests: MangoTestCase {
         XCTAssertTrue(r.server.monitorFromCycle(MON_PREV) === last)
     }
 
+    func testFocusingAnEmptyMonitorClearsThePointersFocus() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        let a = r.map(1)
+        r.server.config.warpcursor = false
+        r.server.system.seatPointerNotifyEnter(a.id)
+        r.server.setSelectedMonitor(r.monitor)
+        _ = r.server.focusMonitor(Arg(i: MON_NEXT))
+        XCTAssertTrue(r.server.selectedMonitor === side)
+        XCTAssertNil(r.server.system.pointerFocusedSurface, "wlr_seat_pointer_notify_clear_focus: the next motion over a focuses it again")
+    }
+
     func testADialogOpensOnItsParentsMonitor() {
         let r = EngineRig()
         let side = twoMonitors(r)

@@ -386,7 +386,8 @@ package extension MangoServer {
         let c = arg.tc ?? clientFocusTop(selectedMonitor)
         if c == nil {
             selectedMonitor.sel = nil
-            system.keyboardNotifyClearFocus()   // not in mango: the port's wlr_seat_*_notify_clear_focus
+            system.seatPointerClearFocus()
+            system.keyboardNotifyClearFocus()
             clientFocus(nil, false)
         } else {
             clientFocus(c, true)

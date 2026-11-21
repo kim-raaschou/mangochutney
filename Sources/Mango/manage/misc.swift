@@ -17,7 +17,7 @@ package extension MangoServer {
         }
         let hits = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon))
             .filter { !$0.parked && clientGeom($0).contains(p) }
-        // for (layer = NUM_LAYERS - 1; layer >= 0; layer--): the topmost layer under the point
+        // not in mango: node_at_point's walk from the top layer down, as the topmost layer among the hits
         guard let layer = hits.map({ clientTargetLayer($0) }).max() else { return nil }
         let top = hits.filter { clientTargetLayer($0) == layer }
         // not in mango: within the layer the window server's stacking, else the focus stack
