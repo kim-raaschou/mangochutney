@@ -85,6 +85,10 @@ class MacWindowSystem: WindowSystem {
         return clock
     }()
     var parkAtCommit: Set<ClientID> = []
+    /// The windows shown again at a frame and the write that puts them in view; the windows leaving
+    /// at that frame wait for them (commitFrame).
+    var arriving: [ClientID: Int] = [:]
+    var parkWhenArrived: Set<ClientID> = []
     lazy var edgePlates: EdgePlates = {
         let plates = EdgePlates()
         plates.onClick = { [weak self] id in

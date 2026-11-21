@@ -4,6 +4,25 @@ import XCTest
 
 @MainActor
 final class EngineWriteTests: MangoTestCase {
+    func testTheWindowLeavingWaitsTillTheOneComingBackStandsInView() {
+        let r = EngineRig()
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
+        r.window(1); r.window(2)
+        r.arrange()
+        r.settle()
+        let shown = r.server.clientsAll.first { !$0.parked }!, hidden = r.server.clientsAll.first { $0.parked }!
+        let tile = shown.frame
+        _ = r.server.focusStack(Arg(i: 1))
+        r.arrange()
+        XCTAssertEqual(r.app.frames[hidden.id], tile, "the window coming back is written")
+        XCTAssertFalse(shown.parked, "the one leaving stays till its app has answered")
+        XCTAssertEqual(r.app.frames[shown.id], tile)
+        r.settle()
+        XCTAssertTrue(shown.parked, "and is parked then")
+        XCTAssertFalse(r.screen.frame.intersects(r.app.frames[shown.id]!.insetBy(dx: 1, dy: 1)))
+        XCTAssertFalse(hidden.parked)
+    }
+
     func testQuittingBringsHiddenWindowsBack() {
         let r = EngineRig()
         r.window(1)

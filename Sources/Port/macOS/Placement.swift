@@ -67,24 +67,55 @@ extension MacWindowSystem {
             let (frame, parked) = (c.frame, c.parked)
             place(c, c.mac.box)
             changed = changed || c.frame != frame || c.parked != parked
+            if c.mac.comingBack { arriving[c.id] = c.mac.writeSerial }
         }
         let ids = parkAtCommit
         parkAtCommit.removeAll()
+        // wlroots shows the frame at once; here each app moves its own window. The windows leaving wait
+        // till the ones coming back stand in view, or the desktop shows between them.
+        if stillArriving() {
+            parkWhenArrived.formUnion(ids)
+        } else {
+            changed = parkDisabled(ids) || changed
+        }
+        // A disabled scene the port could not park when it was disabled (macOS had the window in
+        // fullscreen, or an F tag was viewed) is parked at the first frame that can.
+        for c in server.clientsAll where !c.parked && (!c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled)
+            && !c.leftToMacOS && !fullscreenTagViewed(c) && !ids.contains(c.id) && !parkWhenArrived.contains(c.id) {
+            park(c)
+            changed = changed || c.parked
+        }
+        // the borders follow the windows as they are now shown, not as the frame left them before
+        if changed { server.updateBorders() }
+    }
+
+    /// Parks the clients whose scene is still disabled; whether any of them moved.
+    func parkDisabled(_ ids: Set<ClientID>) -> Bool {
+        var changed = false
         for id in ids {
             guard let c = server.clientByIdAll(id), !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled else { continue }
             let parked = c.parked
             park(c)
             changed = changed || c.parked != parked
         }
-        // A disabled scene the port could not park when it was disabled (macOS had the window in
-        // fullscreen, or an F tag was viewed) is parked at the first frame that can.
-        for c in server.clientsAll where !c.parked && (!c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled)
-            && !c.leftToMacOS && !fullscreenTagViewed(c) && !ids.contains(c.id) {
-            park(c)
-            changed = changed || c.parked
+        return changed
+    }
+
+    /// Whether a window shown again is not yet where it was written: its app has not answered.
+    func stillArriving() -> Bool {
+        arriving = arriving.filter { id, serial in
+            guard let c = server.clientByIdAll(id), c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled, !c.parked else { return false }
+            return c.mac.confirmedSerial < serial
         }
-        // the borders follow the windows as they are now shown, not as the frame left them before
-        if changed { server.updateBorders() }
+        return !arriving.isEmpty
+    }
+
+    /// The windows that waited for the ones coming back are parked once those stand in view.
+    func parkArrived() {
+        guard !parkWhenArrived.isEmpty, !stillArriving() else { return }
+        let ids = parkWhenArrived
+        parkWhenArrived.removeAll()
+        if parkDisabled(ids) { server.updateBorders() }
     }
 
     /// Where mango clips the window at its monitor's edge (client_is_ignore_output_clip is false) and
@@ -165,7 +196,9 @@ extension MacWindowSystem {
         w.writeSerial &+= 1
         let serial = w.writeSerial
         q.setFrame(c.element, id: c.id, frame: frame, setSize: setSize, animating: animating) { [weak self, weak c] r in
-            guard let self, let c, self.server.clientByIdAll(c.id) === c else { return }
+            guard let self else { return }
+            defer { self.parkArrived() }
+            guard let c, self.server.clientByIdAll(c.id) === c else { return }
             c.mac.applied = r
             c.mac.confirmedSerial = serial
             then?(c)
