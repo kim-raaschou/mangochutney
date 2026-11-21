@@ -56,9 +56,22 @@ let package = Package(
             dependencies: ["MmsgPort"],
             path: "Sources/Mango/mmsg"
         ),
+        // mango with wlroots faked (FakeWlroots) and no port: what the tests of mango stand on.
+        .target(
+            name: "MangoTestKit",
+            dependencies: ["Mango"],
+            path: "Tests/MangoTestKit"
+        ),
+        // mango's own behaviour, on the core alone: the port is not imported. One file per mango
+        // source file, one MARK per mango function.
+        .testTarget(
+            name: "MangoTests",
+            dependencies: ["Mango", "MangoTestKit"],
+            path: "Tests/MangoTests"
+        ),
         .testTarget(
             name: "MangoCoreTests",
-            dependencies: ["Mango", "Port"],
+            dependencies: ["Mango", "Port", "MangoTestKit"],
             path: "Tests/MangoCoreTests"
         ),
     ]
