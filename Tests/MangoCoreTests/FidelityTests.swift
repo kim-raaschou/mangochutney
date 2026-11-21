@@ -476,6 +476,36 @@ final class FidelityTests: MangoTestCase {
         let b = r.map(2, frame: CGRect(x: 10, y: 40, width: 600, height: 400))
         let offset = min(w.width / 20, w.height / 20).rounded(.towardZero)
         XCTAssertEqual(b.floatGeom.minX, a.floatGeom.minX + offset, accuracy: 1, "moved off the first")
+        XCTAssertEqual(b.geom.origin, b.floatGeom.origin, "set_float_malposition moves geom with float_geom")
+        XCTAssertEqual(b.pending.origin, b.floatGeom.origin, "and the window is put there")
+    }
+
+    /// mango's set_float_malposition moves a fullscreen client's float_geom to the monitor's corner (docs/afvigelser.md §6).
+    func testAFullscreenFloatingRuleKeepsItsPlaceForLater() {
+        let r = EngineRig()
+        rules(r, "window_rule=is_floating:1,is_fullscreen:1,app_id:^test$")
+        let w = r.monitor.screen.workArea
+        let a = r.map(1, frame: CGRect(x: 10, y: 40, width: 600, height: 400))
+        XCTAssertTrue(a.isfullscreen)
+        XCTAssertEqual(a.floatGeom.midX, w.midX, accuracy: 1, "not the monitor's corner")
+        XCTAssertEqual(a.floatGeom.midY, w.midY, accuracy: 1)
+    }
+
+    func testANewWindowHasNoDropDirection() {
+        let r = EngineRig()
+        XCTAssertEqual(r.map(1).dropDirection, UNDIR, "init_client_properties: UNDIR")
+    }
+
+    func testClosingAWindowElsewhereFocusesTheSelectedMonitorsTop() {
+        let r = EngineRig()
+        let side = twoMonitors(r)
+        let a = r.map(1)
+        let b = r.map(2)
+        r.server.clientSetMonitor(b, side, 0, focus: false)
+        r.server.setSelectedMonitor(r.monitor)
+        r.monitor.sel = nil
+        r.server.handleClientUnmap(b)
+        XCTAssertEqual(r.monitor.sel, a.id, "client_set_monitor(c, NULL, 0, true) ends in client_focus(client_focus_top(selmon))")
     }
 
     private func rules(_ r: EngineRig, _ text: String) {

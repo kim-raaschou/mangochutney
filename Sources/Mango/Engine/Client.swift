@@ -88,7 +88,7 @@ public final class Client {
     public var isleftstack = false
     public var scrollerStackProportion: Float = 0
     public var scrollerOldStackProportion: Float = 0
-    package var dropDirection: Int32 = UP
+    package var dropDirection: Int32 = UNDIR
     package var dragToTile = false
     package var dragTileFloatBackupGeom: CGRect = .zero
     package var enableDropAreaDraw = false

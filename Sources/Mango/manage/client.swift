@@ -220,7 +220,7 @@ package extension MangoServer {
 
     package func clientFocusTop(_ m: Monitor) -> Client? {
         for id in focusStack {
-            if let c = clientByIdAll(id), !c.isunglobal, VISIBLEON(c, m) { return c }
+            if let c = clientByIdAll(id), !c.iskilling, !c.isunglobal, VISIBLEON(c, m) { return c }
         }
         return nil
     }
@@ -387,20 +387,23 @@ package extension MangoServer {
 
     func setFloatMalposition(_ tc: Client) {
         guard let m = tc.mon else { return }
+        // not in mango: a fullscreen or maximized client keeps its float_geom (a mango bug, docs/afvigelser.md §6)
+        if ISFULLSCREEN(tc) { return }
         let w = m.w
         let offset = min(w.width / 20, w.height / 20).rounded(.towardZero)
-        var x = tc.floatGeom.minX, y = tc.floatGeom.minY
+        var x = tc.geom.minX, y = tc.geom.minY
         var xreverse: CGFloat = 1, yreverse: CGFloat = 1
         for c in clients where c.isfloating && c !== tc && VISIBLEON(c, m)
-            && abs(x - c.floatGeom.minX) < offset && abs(y - c.floatGeom.minY) < offset {
-            x = c.floatGeom.minX + offset * xreverse
-            y = c.floatGeom.minY + offset * yreverse
+            && abs(x - c.geom.minX) < offset && abs(y - c.geom.minY) < offset {
+            x = c.geom.minX + offset * xreverse
+            y = c.geom.minY + offset * yreverse
             if x < w.minX { x += offset; xreverse = 1 }
             if y < w.minY { y += offset; yreverse = 1 }
-            if x + tc.floatGeom.width > w.maxX { x -= offset; xreverse = -1 }
-            if y + tc.floatGeom.height > w.maxY { y -= offset; yreverse = -1 }
+            if x + tc.geom.width > w.maxX { x -= offset; xreverse = -1 }
+            if y + tc.geom.height > w.maxY { y -= offset; yreverse = -1 }
         }
-        tc.floatGeom.origin = CGPoint(x: x, y: y)
+        tc.geom.origin = CGPoint(x: x, y: y)
+        tc.floatGeom.origin = tc.geom.origin
     }
 
     package func clientResetMonTags(_ c: Client, _ mon: Monitor, _ newtags: UInt32) {
@@ -684,7 +687,10 @@ package extension MangoServer {
         }
 
         // not in mango: c left clients and focus_stack above; no fade-out, swallowing or scene nodes
+        let unmappedFrom = c.mon
         clientSetMonitor(c, nil, 0, focus: true)
+        // not in mango: client_set_monitor's focus step, which clientIsParked skips for a client off the list
+        if unmappedFrom != nil && !replaced { clientFocus(clientFocusTop(selectedMonitor), true) }
 
         // not in mango: of init_client_properties only iskilling and drag_to_tile; the port keeps an away window's state
         c.iskilling = false
