@@ -81,6 +81,20 @@ final class BorderInsideTheTileTests: MangoTestCase {
         XCTAssertEqual(frames(r, borders: true), frames(r, borders: false))
     }
 
+    func testEveryMonocleWindowHasItsBorder() {
+        let r = rig(2, layout: .monocle)
+        r.server.renderBorder = true
+        r.server.drawsOverlays = true
+        let f = r.window(900_520, floating: true)
+        r.monitor.sel = f.id
+        r.arrange()
+        r.server.updateBorders()
+        let ids = Set((r.server.system as! FakeWindowSystem).borderSpecs.map(\.id))
+        let shown = Set(r.server.clientsAll.filter { !$0.parked }.map(\.id))
+        XCTAssertTrue(shown.contains(900_500) && shown.contains(900_520))
+        XCTAssertEqual(ids, shown, "client_draw_border has no layout test: the top tiled window keeps its border")
+    }
+
     func testMonocleNoRadius() {
         let r = rig(2, layout: .monocle)
         r.server.config.borderRadius = 6

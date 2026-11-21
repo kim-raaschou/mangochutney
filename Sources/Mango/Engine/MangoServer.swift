@@ -249,20 +249,15 @@ public final class MangoServer {
         guard renderBorder, config.borderpx > 0 else { system.drawBorders([]); return }
         var specs: [BorderSpec] = []
         for m in monitors {
-            let tiledCount = tiledClients(m).count
-            for c in visibleClients(m) + specialClients(m) where !c.parked {
+            for c in clients where c.mon === m && c.platform.sceneNodeEnabled && !c.parked {
                 let width = borderWidth(c, on: m)
                 guard width > 0 else { continue }
-                let focusedHere = m === selectedMonitor && m.sel == c.id
-                if m.layout.isMonocleLike && !c.isfloating && m.sel != c.id && tiledCount > 1 {
-                    if isMonocleLayout(m) { continue }
-                }
                 var f = animationCurrent(c).insetBy(dx: c.bw, dy: c.bw)
                 let top = !barsInsideBorder ? 0
                     : (c.isTabFocus && c.tabBarEnabled ? CGFloat(config.tabBarHeight) : 0) + (clientCheckTabNodeVisible(c, on: m) ? CGFloat(config.groupBarHeight) : 0)
                 f = CGRect(x: f.minX, y: f.minY - top, width: f.width, height: f.height + top)
                 let radius = clientNoRadiusActive(c) ? 0 : CGFloat(config.borderRadius)
-                // compute_edge_offsets: the border is cut at the monitor's edge
+                // not in mango: compute_edge_offsets as a clip to the monitor, which the port applies
                 specs.append(BorderSpec(id: c.id, frame: f, color: getBorderColor(c), width: width, radius: radius,
                                         split: clientDrawSplitBorder(c, on: m),
                                         clip: clientIsIgnoreOutputClip(c) ? nil : m.m))
@@ -277,7 +272,7 @@ public final class MangoServer {
         let layout = m.pertag.ltidxs[tag]
         if !ISTILED(c) || layout != .dwindle || !config.dwindleManualSplit || c.isfullscreen { return nil }
         guard let dnode = dwindleFindLeaf(m.pertag.dwindleRoot[tag], c) else { return nil }
-        return (dnode.customLeafSplitH ? .right : .bottom, c.isurgent ? config.urgentcolor : config.splitcolor)
+        return (dnode.customLeafSplitH ? .right : .bottom, config.splitcolor)
     }
 
 

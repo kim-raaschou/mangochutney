@@ -195,6 +195,19 @@ final class AnimationChoiceTests: MangoTestCase {
         XCTAssertTrue(c.parked, "hidden on the next frame")
     }
 
+    func testTheBorderSlidesOutWithItsWindow() {
+        let (r, c) = rig()
+        r.server.config.borderpx = 2
+        r.server.renderBorder = true
+        r.server.drawsOverlays = true
+        let fake = r.server.system as! FakeWindowSystem
+        r.arrange()
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
+        XCTAssertTrue(c.animation.tagouting, "sliding out")
+        r.server.updateBorders()
+        XCTAssertNotNil(fake.borderSpecs.first { $0.id == c.id }, "client_set_clip draws the border while the scene is enabled")
+    }
+
     func testSpecialAndScratchpadSlideInFromAbove() {
         let (r, c) = rig()
         c.isPendingOpenAnimation = false

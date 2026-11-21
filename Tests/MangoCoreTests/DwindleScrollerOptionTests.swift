@@ -59,7 +59,8 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         r.server.dwindleSetSplitDirection(c, true, false)
         XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.side, horizontal ? .bottom : .right)
         c.isurgent = true
-        XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.color, r.server.config.urgentcolor)
+        XCTAssertEqual(r.server.clientDrawSplitBorder(c, on: r.monitor)?.color, r.server.config.splitcolor,
+                       "mango colours the indicator at map and on reload, not when the client turns urgent")
         c.isfloating = true
         XCTAssertNil(r.server.clientDrawSplitBorder(c, on: r.monitor), "tiled windows only")
     }

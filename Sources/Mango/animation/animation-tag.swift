@@ -44,7 +44,7 @@ package extension MangoServer {
         let tagSwitch = !inPlace && !c.animation.tagFromRule && wantAnimation && m.pertag.prevtag != 0
             && m.pertag.curtag != 0 && clientAnimationsEnabled(c)
 
-        if !ISTILED(c) || (!c.isClipToHide || !(c.mon?.layout.isScroller ?? false)) {
+        if !ISTILED(c) || (!c.isClipToHide || !(c.mon.map(isScrollerLayout) ?? false)) {
             c.isClipToHide = false
             clientUpdateVisibility(c)
         }

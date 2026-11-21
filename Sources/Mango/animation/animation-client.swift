@@ -71,7 +71,6 @@ package extension MangoServer {
         return m.pertag.ltidxs[tag] == .rightTile
     }
 
-    // not in mango: nil is UNDIR
     func isSpecialAnimationRule(_ c: Client) -> Int32 {
         guard let m = c.mon else { return UNDIR }   // not in mango: c->mon is always set here
         let visibleTilingClients = m.visibleTilingClients
