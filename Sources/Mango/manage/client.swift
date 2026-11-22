@@ -613,8 +613,9 @@ package extension MangoServer {
             overviewBackupSurface(c)
         }
 
-        // not in mango: arrange, not resize, until a floating client's geom is its float_geom (docs/afvigelser.md, arrange)
-        if let cm = c.mon { arrange(cm, false, false) }
+        // make sure the animation is open type
+        c.isPendingOpenAnimation = true
+        resize(c, c.geom, ResizeOpts(interact: false))
         printstatus(.arrangge)
     }
 

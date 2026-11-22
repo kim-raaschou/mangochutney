@@ -1,0 +1,6 @@
+# overcircle in the overview with a single window sets the tab layout: a second window opened there shows it.
+open a
+dispatch toggleoverview
+dispatch overcircle,next
+open b
+check

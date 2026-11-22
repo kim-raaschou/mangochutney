@@ -210,8 +210,7 @@ Hvor koden står, når den ikke står som i mango.
   listemedlemskab; `groupParked` er portens mærke (`clientsAll`), og porten parkerer et parkeret
   medlems vindue på gruppens skærm (`client_group_active`). En klient, der har været
   væk (macOS-fuldskærm, minimeret, skjult), genbruges af porten, så af `init_client_properties` i
-  unmap nulstilles kun `iskilling` og `drag_to_tile`. `handle_client_map` slutter med `arrange` på
-  skærmen, hvor mango slutter med `resize(c, c->geom)`. Ingen macOS-del: swallowing, foreign toplevel,
+  unmap nulstilles kun `iskilling` og `drag_to_tile`. Ingen macOS-del: swallowing, foreign toplevel,
   scene-noderne ved map, `client_reparent_group`, regel-felterne MangoCompat lister.
 - **Layer shell (`layer.c`):** macOS har ingen layer shell; filen har ingen macOS-del.
 - **Hvad der er under markøren:** mangos `node_at_point` går scenen igennem fra øverste lag; porten
