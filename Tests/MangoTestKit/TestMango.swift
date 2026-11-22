@@ -166,7 +166,10 @@ package final class TestMango {
     /// mango's answer to mmsg: `mmsg("get", "all-clients")` is `mmsg get all-clients`. The line goes
     /// through mango's ipc handle_command as mmsg sends it, and its answer comes back as mmsg prints it.
     @discardableResult
-    package func mmsg(_ args: String...) -> String {
+    package func mmsg(_ args: String...) -> String { mmsg(args) }
+
+    @discardableResult
+    package func mmsg(_ args: [String]) -> String {
         var fds: [Int32] = [0, 0]
         guard socketpair(AF_UNIX, SOCK_STREAM, 0, &fds) == 0 else { fatalError("socketpair") }
         defer { close(fds[0]); close(fds[1]) }

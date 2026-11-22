@@ -11,7 +11,7 @@ final class FacitTests: XCTestCase {
         XCTAssertFalse(Facit.all.isEmpty)
         for name in Facit.all {
             let facit = try Facit(name)
-            let ours = TestMango.play(facit)
+            let (ours, gets) = TestMango.play(facit)
 
             for (mango, us) in zip(facit.checks, ours) {
                 compare(mango.clients, us.clients, "\(name).mango:\(us.line)", key: "title")
@@ -20,6 +20,19 @@ final class FacitTests: XCTestCase {
                         "\(name).mango:\(us.line)", key: "name")
             }
             XCTAssertEqual(ours.count, facit.checks.count, "\(name).mango: checks")
+            for (mango, us) in zip(facit.gets, gets) { differ(mango.answer, us.answer, "\(name).mango:\(us.line)") }
+            XCTAssertEqual(gets.count, facit.gets.count, "\(name).mango: gets")
+        }
+    }
+
+    /// mango's answer and ours to a `get`, field by field: `ipc-get.mango:9 all_tags.0.tags.2.client_count: mango 1, ours 0`.
+    func differ(_ mango: Any?, _ ours: Any?, _ at: String) {
+        if let m = mango as? [String: Any], let o = ours as? [String: Any] {
+            for key in Set(m.keys).union(o.keys).sorted() { differ(m[key], o[key], at + (at.contains(" ") ? "." : " ") + key) }
+        } else if let m = mango as? [Any], let o = ours as? [Any], m.count == o.count {
+            for (i, (a, b)) in zip(m, o).enumerated() { differ(a, b, at + (at.contains(" ") ? "." : " ") + "\(i)") }
+        } else if !(mango as AnyObject).isEqual(ours) {
+            XCTFail("\(at): mango \(json(mango)), ours \(json(ours))")
         }
     }
 

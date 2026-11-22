@@ -1,0 +1,854 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "screens": [
+  {
+   "name": "HEADLESS-2",
+   "x": 1920,
+   "y": 0,
+   "width": 1920,
+   "height": 1080
+  },
+  {
+   "name": "HEADLESS-1",
+   "x": 0,
+   "y": 0,
+   "width": 1920,
+   "height": 1080
+  }
+ ],
+ "pointer": {
+  "x": 1920,
+  "y": 100
+ },
+ "checks": [
+  {
+   "after_line": 29,
+   "clients": [
+    {
+     "title": "b",
+     "monitor": "HEADLESS-2",
+     "tags": [
+      1
+     ],
+     "x": 1930,
+     "y": 10,
+     "width": 1900,
+     "height": 1060,
+     "is_focused": false,
+     "is_visible": true,
+     "is_floating": false,
+     "is_fullscreen": false,
+     "is_fakefullscreen": false,
+     "is_maximized": false,
+     "is_minimized": false,
+     "is_global": false,
+     "is_unglobal": false,
+     "is_overlay": false,
+     "is_urgent": false,
+     "is_scratchpad": false,
+     "is_namedscratchpad": false,
+     "is_group": false,
+     "is_group_focus": false,
+     "scroller_proportion": 0.899999976158142
+    },
+    {
+     "title": "a",
+     "monitor": "HEADLESS-2",
+     "tags": [
+      3
+     ],
+     "x": 2988,
+     "y": 10,
+     "width": 842,
+     "height": 1060,
+     "is_focused": false,
+     "is_visible": false,
+     "is_floating": false,
+     "is_fullscreen": false,
+     "is_fakefullscreen": false,
+     "is_maximized": false,
+     "is_minimized": false,
+     "is_global": false,
+     "is_unglobal": false,
+     "is_overlay": false,
+     "is_urgent": false,
+     "is_scratchpad": false,
+     "is_namedscratchpad": false,
+     "is_group": false,
+     "is_group_focus": false,
+     "scroller_proportion": 0.899999976158142
+    }
+   ],
+   "monitors": [
+    {
+     "name": "HEADLESS-1",
+     "active": true,
+     "x": 0,
+     "y": 0,
+     "width": 1920,
+     "height": 1080,
+     "layout_symbol": "T",
+     "layout_index": 0,
+     "tag_num": 9,
+     "tags": [
+      {
+       "index": 1,
+       "is_active": true,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 2,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 3,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 4,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 5,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 6,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 7,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 8,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 9,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      }
+     ],
+     "active_tags": [
+      1
+     ],
+     "active_client": null,
+     "hide_clients": 0,
+     "keymode": "resize"
+    },
+    {
+     "name": "HEADLESS-2",
+     "active": false,
+     "x": 1920,
+     "y": 0,
+     "width": 1920,
+     "height": 1080,
+     "layout_symbol": "T",
+     "layout_index": 0,
+     "tag_num": 9,
+     "tags": [
+      {
+       "index": 1,
+       "is_active": true,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 1
+      },
+      {
+       "index": 2,
+       "is_active": true,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 3,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 1
+      },
+      {
+       "index": 4,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 5,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 6,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 7,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 8,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      },
+      {
+       "index": 9,
+       "is_active": false,
+       "is_urgent": false,
+       "layout": "T",
+       "client_count": 0
+      }
+     ],
+     "active_tags": [
+      1,
+      2
+     ],
+     "active_client": "b",
+     "hide_clients": 0,
+     "keymode": "resize"
+    }
+   ],
+   "cursor": {
+    "x": 960,
+    "y": 540
+   }
+  }
+ ],
+ "gets": [
+  {
+   "after_line": 9,
+   "answer": {
+    "all_tags": [
+     {
+      "monitor": "HEADLESS-1",
+      "tags": [
+       {
+        "index": 1,
+        "is_active": true,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 2,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 3,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 4,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 5,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 6,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 7,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 8,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 9,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       }
+      ]
+     },
+     {
+      "monitor": "HEADLESS-2",
+      "tags": [
+       {
+        "index": 1,
+        "is_active": true,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 1
+       },
+       {
+        "index": 2,
+        "is_active": true,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 3,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 1
+       },
+       {
+        "index": 4,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 5,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 6,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 7,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 8,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 9,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "after_line": 10,
+   "answer": {
+    "monitor": "HEADLESS-1",
+    "tag_index": 1,
+    "is_active": true,
+    "is_urgent": false,
+    "client_count": 0,
+    "focused_client": false
+   }
+  },
+  {
+   "after_line": 11,
+   "answer": {
+    "monitor": "HEADLESS-1",
+    "tag_index": 3,
+    "is_active": false,
+    "is_urgent": false,
+    "client_count": 0,
+    "focused_client": false
+   }
+  },
+  {
+   "after_line": 12,
+   "answer": {
+    "error": "invalid monitor or tag index"
+   }
+  },
+  {
+   "after_line": 13,
+   "answer": {
+    "error": "invalid monitor or tag index"
+   }
+  },
+  {
+   "after_line": 14,
+   "answer": {
+    "keymode": "default"
+   }
+  },
+  {
+   "after_line": 16,
+   "answer": {
+    "keymode": "resize"
+   }
+  },
+  {
+   "after_line": 17,
+   "answer": {
+    "title": "b",
+    "appid": "b",
+    "monitor": "HEADLESS-2",
+    "tags": [
+     1
+    ],
+    "is_xwayland": false,
+    "is_swallowing": false,
+    "is_swallowedby": false,
+    "is_group": false,
+    "is_group_focus": false,
+    "is_visible": true,
+    "is_focused": true,
+    "is_fullscreen": false,
+    "is_floating": false,
+    "is_maximized": false,
+    "is_global": false,
+    "is_unglobal": false,
+    "is_overlay": false,
+    "is_fakefullscreen": false,
+    "is_minimized": false,
+    "is_urgent": false,
+    "is_scratchpad": false,
+    "is_namedscratchpad": false,
+    "x": 1930,
+    "y": 10,
+    "width": 1900,
+    "height": 1060,
+    "scroller_proportion": 0.899999976158142
+   }
+  },
+  {
+   "after_line": 18,
+   "answer": {
+    "name": "HEADLESS-1",
+    "active": false,
+    "is_hdr": false,
+    "is_vrr": false,
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1080,
+    "scale": 1,
+    "transform": "normal",
+    "layout_index": 0,
+    "layout_symbol": "T",
+    "last_open_surface": "",
+    "tag_num": 9,
+    "hide_clients": 0,
+    "tags": [
+     {
+      "index": 1,
+      "is_active": true,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     },
+     {
+      "index": 2,
+      "is_active": false,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     },
+     {
+      "index": 3,
+      "is_active": false,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     },
+     {
+      "index": 4,
+      "is_active": false,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     },
+     {
+      "index": 5,
+      "is_active": false,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     },
+     {
+      "index": 6,
+      "is_active": false,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     },
+     {
+      "index": 7,
+      "is_active": false,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     },
+     {
+      "index": 8,
+      "is_active": false,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     },
+     {
+      "index": 9,
+      "is_active": false,
+      "is_urgent": false,
+      "layout": "T",
+      "client_count": 0
+     }
+    ],
+    "active_tags": [
+     1
+    ],
+    "active_client": {
+     "title": null,
+     "appid": null
+    },
+    "keymode": "resize",
+    "keyboardlayout": "English (US)"
+   }
+  },
+  {
+   "after_line": 19,
+   "answer": {
+    "error": "monitor not found"
+   }
+  },
+  {
+   "after_line": 20,
+   "answer": {
+    "title": "a",
+    "appid": "a",
+    "monitor": "HEADLESS-2",
+    "tags": [
+     3
+    ],
+    "is_xwayland": false,
+    "is_swallowing": false,
+    "is_swallowedby": false,
+    "is_group": false,
+    "is_group_focus": false,
+    "is_visible": false,
+    "is_focused": false,
+    "is_fullscreen": false,
+    "is_floating": false,
+    "is_maximized": false,
+    "is_global": false,
+    "is_unglobal": false,
+    "is_overlay": false,
+    "is_fakefullscreen": false,
+    "is_minimized": false,
+    "is_urgent": false,
+    "is_scratchpad": false,
+    "is_namedscratchpad": false,
+    "x": 2988,
+    "y": 10,
+    "width": 842,
+    "height": 1060,
+    "scroller_proportion": 0.899999976158142
+   }
+  },
+  {
+   "after_line": 21,
+   "answer": {
+    "error": "client not found"
+   }
+  },
+  {
+   "after_line": 22,
+   "answer": {
+    "monitor": "HEADLESS-2",
+    "last_open_surface": ""
+   }
+  },
+  {
+   "after_line": 23,
+   "answer": {
+    "monitor": "HEADLESS-2",
+    "last_open_surface": ""
+   }
+  },
+  {
+   "after_line": 24,
+   "answer": {
+    "layouts": [
+     {
+      "symbol": "T",
+      "name": "tile"
+     },
+     {
+      "symbol": "S",
+      "name": "scroller"
+     },
+     {
+      "symbol": "G",
+      "name": "grid"
+     },
+     {
+      "symbol": "M",
+      "name": "monocle"
+     },
+     {
+      "symbol": "K",
+      "name": "deck"
+     },
+     {
+      "symbol": "CT",
+      "name": "center_tile"
+     },
+     {
+      "symbol": "RT",
+      "name": "right_tile"
+     },
+     {
+      "symbol": "VS",
+      "name": "vertical_scroller"
+     },
+     {
+      "symbol": "VT",
+      "name": "vertical_tile"
+     },
+     {
+      "symbol": "VG",
+      "name": "vertical_grid"
+     },
+     {
+      "symbol": "VK",
+      "name": "vertical_deck"
+     },
+     {
+      "symbol": "DW",
+      "name": "dwindle"
+     },
+     {
+      "symbol": "F",
+      "name": "fair"
+     },
+     {
+      "symbol": "VF",
+      "name": "vertical_fair"
+     }
+    ]
+   }
+  },
+  {
+   "after_line": 25,
+   "answer": {
+    "x": 1920,
+    "y": 100,
+    "monitor": "HEADLESS-2"
+   }
+  },
+  {
+   "after_line": 27,
+   "answer": {
+    "error": "no focused client"
+   }
+  },
+  {
+   "after_line": 28,
+   "answer": {
+    "all_tags": [
+     {
+      "monitor": "HEADLESS-1",
+      "tags": [
+       {
+        "index": 1,
+        "is_active": true,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 2,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 3,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 4,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 5,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 6,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 7,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 8,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 9,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       }
+      ]
+     },
+     {
+      "monitor": "HEADLESS-2",
+      "tags": [
+       {
+        "index": 1,
+        "is_active": true,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 1
+       },
+       {
+        "index": 2,
+        "is_active": true,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 3,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 1
+       },
+       {
+        "index": 4,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 5,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 6,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 7,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 8,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       },
+       {
+        "index": 9,
+        "is_active": false,
+        "is_urgent": false,
+        "layout": "T",
+        "client_count": 0
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

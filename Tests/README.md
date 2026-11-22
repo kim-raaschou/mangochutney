@@ -72,7 +72,8 @@ ours e.height 351
 | `click left` | a button down and up; `button left down` / `button left up` alone |
 | `scroll down` | one notch of the wheel (up, down, left, right) |
 | `check` | mango's clients, monitors and pointer are compared here |
-| `ours a.height 351` | where we answer otherwise on purpose: a mango bug we fix (`docs/afvigelser.md` §6) |
+| `get all-tags` | mango's whole answer to `mmsg get all-tags` is compared here (`get client @b` names a window) |
+| `ours a.height 351` | where we answer otherwise on purpose: a mango bug we fix (`docs/afvigelser.md` §6); after a `get`, a path into its answer (`ours clients.3.height 351`) |
 
 Keys and the pointer reach mango as a virtual keyboard and pointer (`recorder/facit-input.c`), and
 reach our mango as the port gives them (`TestMango.key`, `pointer`, `move`, `button`, `scroll`); the

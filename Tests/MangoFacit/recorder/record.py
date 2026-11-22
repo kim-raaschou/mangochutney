@@ -19,6 +19,7 @@ A scenario is a few lines, run top to bottom:
     click left                    a button down and up; `button left down` / `button left up` alone
     scroll down                   one notch of the wheel (up, down, left, right)
     check                         mango's state now goes in the facit
+    get all-tags                  mango's answer to `mmsg get all-tags` goes in the facit (`@b` names a client)
     ours b.height 352             not recorded: where our answer differs on purpose (read by the tests)
 
 The recording waits for mango to settle after each step: it asks again till two answers agree.
@@ -56,7 +57,7 @@ def parse(path):
             monitors = int(rest)
         elif word == "ours":
             pass
-        elif word in ("open", "close", "dispatch", "check", "key", "keydown", "keyup", "pointer", "move", "click",
+        elif word in ("open", "close", "dispatch", "check", "key", "keydown", "keyup", "pointer", "move", "click", "get",
                       "button", "scroll"):
             steps.append((n, word, rest))
         else:
@@ -97,15 +98,20 @@ def snapshot(line):
     }
 
 
+def client_id(title):
+    """mango's id of the window titled `title`."""
+    ids = [c["id"] for c in get("all-clients")["clients"] if c["title"] == title]
+    if not ids:
+        sys.exit(f"no window titled {title!r}")
+    return ids[0]
+
+
 def target(rest):
     """`@b func,args` is mango's `func,args client,<id>`, with the id of the window titled b."""
     if not rest.startswith("@"):
         return rest
     title, _, rest = rest[1:].partition(" ")
-    ids = [c["id"] for c in get("all-clients")["clients"] if c["title"] == title]
-    if not ids:
-        sys.exit(f"no window titled {title!r}")
-    return f"{rest} client,{ids[0]}"
+    return f"{rest} client,{client_id(title)}"
 
 
 class Input:
@@ -145,6 +151,15 @@ class Input:
             self.send(f"scroll {rest}")
 
 
+def answer(value):
+    """An mmsg answer without mango's bookkeeping (ids, pids, a foreign toplevel's random id)."""
+    if isinstance(value, dict):
+        return {k: answer(v) for k, v in value.items() if k not in ("id", "pid", "foreign_toplevel_id")}
+    if isinstance(value, list):
+        return [answer(v) for v in value]
+    return value
+
+
 def titles():
     return [c["title"] for c in get("all-clients")["clients"]]
 
@@ -156,7 +171,7 @@ def play(scenario, out):
     given = [m["name"] for m in reversed(get("all-monitors")["monitors"])]
     # Where wlroots put the pointer at the start: the platform's, not mango's.
     start = get("cursorpos")
-    windows, checks, keys = {}, [], None
+    windows, checks, keys, gets = {}, [], None, []
     layout = (sum(s["width"] for s in screens(monitors)), max(s["height"] for s in screens(monitors)))
     for n, word, rest in steps:
         if word == "open":
@@ -172,12 +187,16 @@ def play(scenario, out):
             mmsg("dispatch", target(rest))
         elif word == "check":
             checks.append(snapshot(n))
+        elif word == "get":
+            settled()
+            words = [str(client_id(w[1:])) if w.startswith("@") else w for w in rest.split()]
+            gets.append({"after_line": n, "answer": answer(json.loads(mmsg("get", *words)))})
         else:
             keys = keys or Input(layout)
             keys.step(word, rest)
         settled()
     json.dump({"mango": "0.18.5 (21f80a9)", "screens": sorted(screens(monitors), key=lambda s: given.index(s["name"])),
-               "pointer": {"x": start["x"], "y": start["y"]}, "checks": checks}, open(out, "w"), indent=1)
+               "pointer": {"x": start["x"], "y": start["y"]}, "checks": checks, "gets": gets}, open(out, "w"), indent=1)
     if keys:
         keys.proc.kill()
     for w in windows.values():

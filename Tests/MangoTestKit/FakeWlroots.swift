@@ -148,7 +148,7 @@ package final class FakeWlroots: WindowSystem {
     package var canCapture: Bool { false }
     package func askToCapture() {}
     package func setKeyboardOptions(_ options: String) {}
-    package func ipcGetLayoutStr() -> String { "us" }
+    package func ipcGetLayoutStr() -> String { "English (US)" }   // xkb's name of the us layout
     package var inputDevices: [InputDevice] { [] }
     package var mouseButtons: Int { 0 }
     package func startInput() {}

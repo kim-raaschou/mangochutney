@@ -1,0 +1,29 @@
+# mmsg get's other answers: the tags, one tag, the keymode, the focused client, a monitor, a client,
+# the last open surface, the layouts and the pointer's monitor.
+monitors 2
+config bind=SUPER,r,setkeymode,resize
+open a
+open b
+dispatch @a tagsilent,3
+dispatch toggleview,2
+get all-tags
+get tag HEADLESS-1 1
+get tag HEADLESS-1 3
+get tag HEADLESS-1 10
+get tag NOPE 1
+get keymode
+key super+r
+get keymode
+get focusing-client
+get monitor HEADLESS-1
+get monitor NOPE
+get client @a
+get client 999
+get last_open_surface
+get last_open_surface HEADLESS-2
+get layouts
+get cursorpos
+dispatch focusmon,right
+get focusing-client
+get all-tags
+check

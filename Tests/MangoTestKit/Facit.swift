@@ -6,6 +6,16 @@ import Foundation
 /// at each `check` (Tests/MangoFacit/record wrote them). The screens are in the order the backend
 /// gave them to mango.
 package struct Facit {
+    /// An mmsg answer without mango's bookkeeping (ids, pids, a foreign toplevel's random id), as the
+    /// recorder keeps it.
+    package static func answer(_ value: Any) -> Any {
+        if let d = value as? [String: Any] {
+            return d.filter { !["id", "pid", "foreign_toplevel_id"].contains($0.key) }.mapValues(answer)
+        }
+        if let a = value as? [Any] { return a.map(answer) }
+        return value
+    }
+
     /// The answers at one `check`: lists of fields, as mmsg printed them. Checks go by their order in
     /// the scenario, so a comment or an `ours` line needs no new recording.
     package struct Check {
@@ -21,6 +31,8 @@ package struct Facit {
     /// Where wlroots put the pointer when mango started.
     package let pointer: CGPoint
     package let checks: [Check]
+    /// mango's answers at the `get` steps, without its bookkeeping (Facit.answer).
+    package let gets: [(line: Int, answer: Any)]
 
     package static let directory = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("MangoFacit")
@@ -41,19 +53,29 @@ package struct Facit {
             return Screen(displayID: CGDirectDisplayID(i + 1), name: s["name"] as! String, frame: frame, workArea: frame,
                           scale: 1, isMain: frame.origin == .zero)
         }
+        var gets = (json["gets"] as? [[String: Any]] ?? []).map { (line: $0["after_line"] as! Int, answer: $0["answer"]!) }
         let p = json["pointer"] as! [String: Any]
         pointer = CGPoint(x: p["x"] as! Double, y: p["y"] as! Double)
         var checks = (json["checks"] as! [[String: Any]]).map {
             Check(line: $0["after_line"] as! Int, clients: $0["clients"] as! [[String: Any]],
                   monitors: $0["monitors"] as! [[String: Any]], cursor: $0["cursor"] as! [String: Any])
         }
-        // `ours <title|monitor|cursor>.<field> <json>` after a check: where we answer otherwise on purpose
-        // (a mango bug we fix, docs/afvigelser.md §6, or a listed deviation).
-        var c = -1
+        // `ours <title|monitor|cursor>.<field> <json>` after a check, or `ours <path> <json>` after a get
+        // (`clients.3.height`): where we answer otherwise on purpose (a mango bug we fix,
+        // docs/afvigelser.md §6, or a listed deviation).
+        var c = -1, g = -1, afterGet = false
         for line in lines {
-            if line.trimmingCharacters(in: .whitespaces) == "check" { c += 1; continue }
-            guard line.hasPrefix("ours "), checks.indices.contains(c) else { continue }
+            let step = line.trimmingCharacters(in: .whitespaces)
+            if step == "check" { c += 1; afterGet = false; continue }
+            if step.hasPrefix("get ") { g += 1; afterGet = true; continue }
+            guard line.hasPrefix("ours ") else { continue }
             let words = line.split(separator: " ", maxSplits: 3).map(String.init)
+            if afterGet {
+                let value = try JSONSerialization.jsonObject(with: Data(words[2].utf8), options: .fragmentsAllowed)
+                gets[g].answer = Facit.set(gets[g].answer, at: words[1].split(separator: ".").map(String.init), to: value)
+                continue
+            }
+            guard checks.indices.contains(c) else { continue }
             let item = String(words[1].prefix { $0 != "." })
             let field = String(words[1].drop { $0 != "." }.dropFirst())
             let value = try JSONSerialization.jsonObject(with: Data(words[2].utf8), options: .fragmentsAllowed)
@@ -62,13 +84,29 @@ package struct Facit {
             if item == "cursor" { checks[c].cursor[field] = value }
         }
         self.checks = checks
+        self.gets = gets
+    }
+
+    /// `value` with the field at `path` (keys, or indices of a list) set to `new`.
+    static func set(_ value: Any, at path: [String], to new: Any) -> Any {
+        guard let key = path.first else { return new }
+        if var d = value as? [String: Any] {
+            d[key] = set(d[key] as Any, at: Array(path.dropFirst()), to: new)
+            return d
+        }
+        if var a = value as? [Any], let i = Int(key), a.indices.contains(i) {
+            a[i] = set(a[i], at: Array(path.dropFirst()), to: new)
+            return a
+        }
+        return value
     }
 }
 
 extension TestMango {
     /// Plays a scenario as the recorder played it on mango, and answers each `check` as mmsg would:
     /// the fields mango's facit holds, of `get all-clients`, `get all-monitors` and `get cursorpos`.
-    package static func play(_ facit: Facit) -> [Facit.Check] {
+    /// Our answers at the `get` steps come with them, as the recorder keeps mango's.
+    package static func play(_ facit: Facit) -> (checks: [Facit.Check], gets: [(line: Int, answer: Any)]) {
         let steps = facit.lines.enumerated().map { ($0.offset + 1, $0.element.trimmingCharacters(in: .whitespaces)) }
             .filter { !$0.1.isEmpty && !$0.1.hasPrefix("#") }
         let config = steps.compactMap { $0.1.hasPrefix("config ") ? String($0.1.dropFirst(7)) : nil }
@@ -76,6 +114,7 @@ extension TestMango {
         mango.wlroots.pointer = facit.pointer
 
         var answers: [Facit.Check] = []
+        var gets: [(line: Int, answer: Any)] = []
         for (line, step) in steps {
             let word = step.prefix { $0 != " " }
             let rest = step.dropFirst(word.count).trimmingCharacters(in: .whitespaces)
@@ -107,6 +146,11 @@ extension TestMango {
                 if word == "click" || words[1] == "up" { mango.button(button, down: false) }
             case "scroll":
                 mango.scroll(vertical: rest == "up" || rest == "down", delta: rest == "up" || rest == "left" ? -15 : 15)
+            case "get":
+                let words = rest.split(separator: " ").map { w in
+                    w.hasPrefix("@") ? "\(mango.client(String(w.dropFirst())).id)" : String(w)
+                }
+                gets.append((line, Facit.answer(mango.json(mango.mmsg(["get"] + words)))))
             case "check":
                 let expected = facit.checks.indices.contains(answers.count) ? facit.checks[answers.count] : nil
                 answers.append(Facit.Check(line: line,
@@ -121,7 +165,7 @@ extension TestMango {
             mango.wlroots.closed = []
             mango.frame()
         }
-        return answers
+        return (answers, gets)
     }
 
     /// `mmsg get <what>`'s list under `key`, with the fields `like` has. active_client is its title.

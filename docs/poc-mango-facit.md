@@ -201,6 +201,24 @@ vores parser og portens side af config'en, som vores `mango -p` gør, og sammenl
 | Config | 49,6 % | 73,6 % (resten er mest filovervågning, fejl-nag og reload) |
 | **I alt** | **65,6 %** | **70,4 %** |
 
+## Flere mmsg-svar (2026-11-22)
+
+Trinnet `get <emne>` gemmer mangos hele svar på `mmsg get <emne>` (uden id'er, pid'er og
+foreign-toplevel-id'et, som er tilfældigt), og testen sammenligner felt for felt. To scenarier
+(`ipc-get*.mango`) spørger på `all-tags`, `tag`, `keymode`, `focusing-client`, `monitor`, `client`,
+`last_open_surface`, `layouts` og `cursorpos`, også fejlsvarene og en gruppe, scratchpad, fullscreen,
+global og overview. Alle svar er mangos, felt for felt; testlagets xkb-navn for layoutet er rettet
+til `English (US)`.
+
+`watch` er ikke med: vores `watch` sender med vilje én linje pr. tur og kun ved ændring (§2), mens
+mango sender ved hvert `printstatus`, så strømmene kan ikke sammenlignes linje for linje.
+Sluttilstanden dækkes af `get`.
+
+| Område | Før | Efter |
+|---|---|---|
+| IPC | 38,6 % | 49,0 % (resten er `watch`, socket og enheder) |
+| **I alt** | **70,4 %** | **71,0 %** |
+
 ## Hvad det koster
 
 - **Opsætningen** (én gang): en colima-profil `mangofacit` (4 CPU, 4 GB), som `record` selv
