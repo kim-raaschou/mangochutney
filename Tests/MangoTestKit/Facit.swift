@@ -33,6 +33,8 @@ package struct Facit {
     package let checks: [Check]
     /// mango's answers at the `get` steps, without its bookkeeping (Facit.answer).
     package let gets: [(line: Int, answer: Any)]
+    /// The outputs `output add` gave mango, where mango placed them.
+    package let outputs: [Screen]
 
     package static let directory = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("MangoFacit")
@@ -54,6 +56,11 @@ package struct Facit {
                           scale: 1, isMain: frame.origin == .zero)
         }
         var gets = (json["gets"] as? [[String: Any]] ?? []).map { (line: $0["after_line"] as! Int, answer: $0["answer"]!) }
+        outputs = (json["outputs"] as? [[String: Any]] ?? []).enumerated().map { i, s in
+            let frame = CGRect(x: s["x"] as! Int, y: s["y"] as! Int, width: s["width"] as! Int, height: s["height"] as! Int)
+            return Screen(displayID: CGDirectDisplayID(100 + i), name: s["name"] as! String, frame: frame, workArea: frame,
+                          scale: 1, isMain: false)
+        }
         let p = json["pointer"] as! [String: Any]
         pointer = CGPoint(x: p["x"] as! Double, y: p["y"] as! Double)
         var checks = (json["checks"] as! [[String: Any]]).map {
@@ -109,20 +116,49 @@ extension TestMango {
     package static func play(_ facit: Facit) -> (checks: [Facit.Check], gets: [(line: Int, answer: Any)]) {
         let steps = facit.lines.enumerated().map { ($0.offset + 1, $0.element.trimmingCharacters(in: .whitespaces)) }
             .filter { !$0.1.isEmpty && !$0.1.hasPrefix("#") }
-        let config = steps.compactMap { $0.1.hasPrefix("config ") ? String($0.1.dropFirst(7)) : nil }
+        var config = steps.compactMap { $0.1.hasPrefix("config ") ? String($0.1.dropFirst(7)) : nil }
         let mango = TestMango(config.joined(separator: "\n"), screens: facit.screens)
         mango.wlroots.pointer = facit.pointer
+        // The config file a reload reads, as the recorder keeps it beside mango.
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("facit-\(facit.name)-\(UUID().uuidString).conf")
+        mango.server.configURL = file
+        defer { try? FileManager.default.removeItem(at: file) }
+        let port = ConfigParser.port
+        ConfigParser.port = FakeKeymap()   // the binds' keys, at a reload as at the start
+        defer { ConfigParser.port = port }
 
         var answers: [Facit.Check] = []
         var gets: [(line: Int, answer: Any)] = []
+        var added = 0
         for (line, step) in steps {
             let word = step.prefix { $0 != " " }
             let rest = step.dropFirst(word.count).trimmingCharacters(in: .whitespaces)
             switch word {
             case "open":
-                let dialog = rest.hasSuffix(" dialog")
-                let title = dialog ? String(rest.dropLast(7)) : rest
-                mango.map(title, size: dialog ? CGSize(width: 400, height: 300) : CGSize(width: 800, height: 600), dialog: dialog)
+                let words = rest.split(separator: " ").map(String.init)
+                let dialog = words.contains("dialog")
+                let own = words.dropFirst().first { $0.contains("x") }.map { $0.split(separator: "x").compactMap { Double($0) } }
+                let size = own.map { CGSize(width: $0[0], height: $0[1]) }
+                    ?? (dialog ? CGSize(width: 400, height: 300) : CGSize(width: 800, height: 600))
+                mango.map(words[0], size: size, dialog: dialog)
+            case "request":
+                let words = rest.split(separator: " ").map(String.init)
+                let c = mango.client(words[0])
+                switch words[1] {
+                case "minimize": mango.server.handleClientRequestMinimize(c, true)
+                case "title": c.title = words[2]; mango.server.handleClientSetTitle(c)
+                case "activate": mango.server.handleClientActivationRequest(c)   // with a token mango trusts
+                default: break
+                }
+            case "output":
+                // a display macOS adds, where mango's create_virtual_output adds an output
+                mango.wlroots.screens.append(facit.outputs[added])
+                added += 1
+                mango.server.rebuildMonitors(screens: mango.wlroots.screens)
+            case "reload":
+                config.append(rest)
+                try? ("animations=0\n" + config.joined(separator: "\n") + "\n").write(to: file, atomically: true, encoding: .utf8)
+                mango.mmsg("dispatch", "reload_config")
             case "close":
                 mango.unmap(rest)
             case "dispatch":

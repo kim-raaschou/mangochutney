@@ -15,7 +15,7 @@
  },
  "checks": [
   {
-   "after_line": 10,
+   "after_line": 11,
    "clients": [
     {
      "title": "a",
@@ -162,7 +162,7 @@
    }
   },
   {
-   "after_line": 12,
+   "after_line": 13,
    "clients": [
     {
      "title": "a",
@@ -336,7 +336,7 @@
    }
   },
   {
-   "after_line": 14,
+   "after_line": 15,
    "clients": [
     {
      "title": "a",
@@ -537,7 +537,7 @@
    }
   },
   {
-   "after_line": 16,
+   "after_line": 17,
    "clients": [
     {
      "title": "a",
@@ -765,7 +765,7 @@
    }
   },
   {
-   "after_line": 18,
+   "after_line": 19,
    "clients": [
     {
      "title": "a",
@@ -1020,7 +1020,7 @@
    }
   },
   {
-   "after_line": 20,
+   "after_line": 22,
    "clients": [
     {
      "title": "a",
@@ -1274,5 +1274,7 @@
     "y": 100
    }
   }
- ]
+ ],
+ "gets": [],
+ "outputs": []
 }

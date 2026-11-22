@@ -13,10 +13,13 @@ if [ ! -x /build/mango/build/mango ] || [ "$(cat /build/commit 2>/dev/null)" != 
 fi
 
 if [ ! -x /build/facit-client ] || [ /tool/facit-client.c -nt /build/facit-client ]; then
-    proto=$(pkg-config --variable=pkgdatadir wayland-protocols)/stable/xdg-shell/xdg-shell.xml
-    wayland-scanner client-header "$proto" /build/xdg-shell-client-protocol.h
-    wayland-scanner private-code "$proto" /build/xdg-shell-protocol.c
-    gcc -O1 -I/build -o /build/facit-client /tool/facit-client.c /build/xdg-shell-protocol.c -lwayland-client
+    protos=$(pkg-config --variable=pkgdatadir wayland-protocols)
+    for p in stable/xdg-shell/xdg-shell staging/xdg-activation/xdg-activation-v1; do
+        wayland-scanner client-header "$protos/$p.xml" /build/$(basename $p)-client-protocol.h
+        wayland-scanner private-code "$protos/$p.xml" /build/$(basename $p)-protocol.c
+    done
+    gcc -O1 -I/build -o /build/facit-client /tool/facit-client.c /build/xdg-shell-protocol.c \
+        /build/xdg-activation-v1-protocol.c -lwayland-client
 fi
 
 if [ ! -x /build/facit-input ] || [ /tool/facit-input.c -nt /build/facit-input ]; then

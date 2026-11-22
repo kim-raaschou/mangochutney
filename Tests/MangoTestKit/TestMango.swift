@@ -200,8 +200,10 @@ package final class TestMango {
     /// A client's box, with its border (mango's geom).
     package func geom(_ title: String) -> CGRect { client(title).geom }
 
-    /// One output frame on every monitor mango asked to draw on.
+    /// The clients' commits of the sizes mango configured, then one output frame on every monitor mango
+    /// asked to draw on.
     package func frame() {
+        wlroots.commitConfigured()
         let due = wlroots.takeFramesDue()
         for m in server.monitors where due.contains(m.screen.displayID) { server.handleOutputFrame(m) }
     }

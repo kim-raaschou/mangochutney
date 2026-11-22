@@ -1,0 +1,12 @@
+# windows of their own sizes: wide, a small and a large dialog, one larger than the screen made to float.
+config window_rule=is_floating:1,title:^d$
+open a 1900x500
+check
+open b 300x200 dialog
+check
+open c 1000x900 dialog
+check
+open d 2400x1400
+check
+dispatch @a togglefloating
+check

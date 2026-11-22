@@ -1,0 +1,21 @@
+# reload_config with new lines: gaps, borders, the layout, tag_num and a new bind take effect at once.
+open a
+open b
+open c
+check
+reload gap_inner_horizontal=30
+reload gap_outer_vertical=40
+reload border_px=8
+check
+reload circle_layout=scroller,tile
+reload bind=SUPER,j,focusstack,next
+key super+j
+check
+reload tag_num=4
+dispatch view,4
+check
+reload smart_gaps=1
+dispatch view,1
+dispatch killclient
+dispatch killclient
+check

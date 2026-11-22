@@ -60,8 +60,12 @@ ours e.height 351
 | Step | What it does |
 |---|---|
 | `config <line>` | a line of mango's config |
-| `monitors 2` | two outputs side by side (one when not given) |
-| `open a [dialog]` | a window titled `a` (a dialog has a fixed 400x300 and floats) |
+| `monitors 2` | two outputs side by side (one when not given); `monitors 2560x1440 1280x1024` gives their sizes |
+| `open a [1200x500] [dialog]` | a window titled `a`, of its own size (800x600 unless given; a dialog has a fixed size, 400x300 unless given, and floats) |
+| `request a minimize` | the app asks for itself: `minimize`, or `title <new title>` |
+| `request a activate by c` | `a` asks to be activated with a token the focused `c` gave it (xdg_activation_v1) |
+| `reload gap_inner_horizontal=20` | a line added to the config, then `reload_config` |
+| `output add EXTRA` | a new output (mango's `create_virtual_output`; a display plugged in for ours), placed by its `monitor_rule` |
 | `close a` | the window goes |
 | `dispatch focusstack,next` | `mmsg dispatch focusstack,next` |
 | `dispatch @b killclient` | aimed at the window titled `b`: `mmsg dispatch killclient client,<its id>` |

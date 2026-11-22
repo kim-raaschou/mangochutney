@@ -1,0 +1,14 @@
+# monitors of different sizes: windows sent across, the pointer and focus moved across.
+monitors 2560x1440 1280x1024
+open a
+open b
+check
+dispatch tagmon,right
+check
+dispatch focusmon,right
+open c
+check
+dispatch tagmon,left
+check
+pointer 3000,900
+check

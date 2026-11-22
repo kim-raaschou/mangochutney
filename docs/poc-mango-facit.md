@@ -219,6 +219,34 @@ Sluttilstanden dækkes af `get`.
 | IPC | 38,6 % | 49,0 % (resten er `watch`, socket og enheder) |
 | **I alt** | **70,4 %** | **71,0 %** |
 
+## Reload, skærme og appens egne ønsker (2026-11-22)
+
+Nye trin: `open a 1900x500` (en egen størrelse), `monitors 2560x1440 1280x1024`, `output add EXTRA`
+(en skærm sat til), `reload <linje>` og `request a minimize | title x | activate by c`. Testklienten
+tager nu ønsker på stdin og sender dem til mango, som en app gør.
+
+- 7 scenarier: egne størrelser og store dialoger, appens ønsker, aktivering med `focus_on_activate`
+  til og fra, reload af mellemrum, rammer, layout, `tag_num` og en ny bind, skærme af forskellig
+  størrelse, en skærm, der sættes til, og et vindue flyttet ind over en anden skærm. Alle 127 scenarier er optaget igen med den nye klient;
+  mangos svar er uændrede.
+- **Fundet og rettet i kernen:** mangos `node_at_point` går hele scenen igennem, så et flydende
+  vindue, der er flyttet ind over en anden skærm, er under musen dér. Vores `nodeAtPoint` så kun
+  vinduerne på skærmen under punktet og fokuserede vinduet bag ved. Nu ser den alle vinduer med en
+  synlig node, hvor de står (`manage/misc.swift`); låst af `monitor-span.mango`.
+- **Rettet i testlaget:** den falske wlroots gav et vindue den nye størrelse straks; i wlroots (og i
+  porten) tager vinduet den først, når appen har svaret. Nu sker det ved næste frame.
+- **Ikke med:** mangos aktivering uden et gyldigt token (kun urgent) ligger i dens protokol-lag,
+  som porten erstatter; `disable_monitor` og søskende kan macOS ikke (MangoCompat); og at fjerne en
+  skærm kan headless-mango kun for alle på én gang, hvor vores grænse med vilje ignorerer en tom
+  skærmliste. Mangos ønske om fullscreen fra appen har ingen modpart i kernen (native fullscreen er
+  fravalgt).
+
+| Område | Før | Efter |
+|---|---|---|
+| Config | 73,6 % | 76,3 % |
+| manage | 80,0 % | 81,5 % |
+| **I alt** | **71,0 %** | **71,8 %** |
+
 ## Hvad det koster
 
 - **Opsætningen** (én gang): en colima-profil `mangofacit` (4 CPU, 4 GB), som `record` selv

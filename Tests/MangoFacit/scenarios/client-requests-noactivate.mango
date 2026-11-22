@@ -1,0 +1,10 @@
+# a virtual keyboard first, so the windows get the keyboard as on a Mac (an activation token needs its serial).
+# with focus_on_activate off an app that asks to be activated is marked urgent instead.
+config focus_on_activate=0
+key shift
+open a
+open b
+request a activate by b
+check
+dispatch @a focusid
+check

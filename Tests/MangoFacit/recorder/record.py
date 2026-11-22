@@ -8,7 +8,12 @@ A scenario is a few lines, run top to bottom:
 
     config new_is_master=0        a line of mango's config (before mango starts)
     monitors 2                    two outputs side by side (before mango starts; one when not given)
-    open a [dialog]               a window titled a (facit-client)
+    monitors 2560x1440 1920x1080  outputs of these sizes side by side, their tops level
+    open a [1200x500] [dialog]    a window titled a (facit-client), of its own size (800x600 unless given)
+    request a minimize            the app asks for itself: minimize, or title <new title>
+    request a activate by c       a asks to be activated with a token the focused c gave it (xdg_activation_v1)
+    reload gap_inner_horizontal=20   a line added to the config file, then `mmsg dispatch reload_config`
+    output add EXTRA              a new output (create_virtual_output); its place goes in the facit
     close a                       the window goes (its client is killed)
     dispatch focusstack,next      as `mmsg dispatch focusstack,next`
     dispatch @b killclient        aimed at the window titled b: `mmsg dispatch killclient client,<its id>`
@@ -27,8 +32,14 @@ That is a poll, here in the recorder only; the tests that read the facit wait fo
 """
 import json, os, re, subprocess, sys, time
 
-def screens(n):
-    return [{"name": f"HEADLESS-{i + 1}", "x": 1920 * i, "y": 0, "width": 1920, "height": 1080} for i in range(n)]
+def screens(spec):
+    """The outputs of `monitors`: a count of 1920x1080 ones, or their sizes, side by side."""
+    sizes = [(1920, 1080)] * int(spec) if spec.isdigit() else [tuple(map(int, s.split("x"))) for s in spec.split()]
+    x, out = 0, []
+    for i, (w, h) in enumerate(sizes):
+        out.append({"name": f"HEADLESS-{i + 1}", "x": x, "y": 0, "width": w, "height": h})
+        x += w
+    return out
 
 
 def base_config(n):
@@ -45,7 +56,7 @@ MONITOR_FIELDS = ["name", "active", "x", "y", "width", "height", "layout_symbol"
 
 
 def parse(path):
-    config, steps, monitors = [], [], 1
+    config, steps, monitors = [], [], "1"
     for n, raw in enumerate(open(path), 1):
         line = raw.strip()
         if not line or line.startswith("#"):
@@ -54,10 +65,10 @@ def parse(path):
         if word == "config":
             config.append(rest)
         elif word == "monitors":
-            monitors = int(rest)
+            monitors = rest
         elif word == "ours":
             pass
-        elif word in ("open", "close", "dispatch", "check", "key", "keydown", "keyup", "pointer", "move", "click", "get",
+        elif word in ("open", "close", "dispatch", "check", "request", "reload", "output", "key", "keydown", "keyup", "pointer", "move", "click", "get",
                       "button", "scroll"):
             steps.append((n, word, rest))
         else:
@@ -167,16 +178,18 @@ def titles():
 def play(scenario, out):
     """Runs inside mango (mango -s): WAYLAND_DISPLAY and MANGO_INSTANCE_SIGNATURE are set."""
     _, steps, monitors = parse(scenario)
+    conf = f"/tmp/{os.path.splitext(os.path.basename(scenario))[0]}.conf"
     # The order the backend gave the outputs in: mango puts each new one first in its list.
     given = [m["name"] for m in reversed(get("all-monitors")["monitors"])]
     # Where wlroots put the pointer at the start: the platform's, not mango's.
     start = get("cursorpos")
-    windows, checks, keys, gets = {}, [], None, []
+    windows, checks, keys, gets, outputs = {}, [], None, [], []
     layout = (sum(s["width"] for s in screens(monitors)), max(s["height"] for s in screens(monitors)))
     for n, word, rest in steps:
         if word == "open":
             title, *kind = rest.split()
-            windows[title] = subprocess.Popen(["/build/facit-client", title, *kind])
+            windows[title] = subprocess.Popen(["/build/facit-client", title, *kind], stdin=subprocess.PIPE,
+                                              stdout=subprocess.PIPE, text=True)
             while title not in titles():
                 time.sleep(0.01)
         elif word == "close":
@@ -185,6 +198,31 @@ def play(scenario, out):
                 time.sleep(0.01)
         elif word == "dispatch":
             mmsg("dispatch", target(rest))
+        elif word == "request" and " activate by " in rest:
+            title, _, giver = rest.partition(" activate by ")
+            windows[giver].stdin.write("token\n")
+            windows[giver].stdin.flush()
+            token = windows[giver].stdout.readline().strip()
+            windows[title].stdin.write(f"activate {token}\n")
+            windows[title].stdin.flush()
+        elif word == "request":
+            title, _, what = rest.partition(" ")
+            windows[title].stdin.write(what + "\n")
+            windows[title].stdin.flush()
+            if what.startswith("title "):
+                new = what.split()[1]
+                windows[new] = windows.pop(title)
+                while new not in titles():
+                    time.sleep(0.01)
+        elif word == "output":
+            name = rest.split()[1]
+            mmsg("dispatch", f"create_virtual_output,{name}")
+            settled()
+            m = next(m for m in get("all-monitors")["monitors"] if m["name"] == name)
+            outputs.append({"name": name, "x": m["x"], "y": m["y"], "width": m["width"], "height": m["height"]})
+        elif word == "reload":
+            open(conf, "a").write(rest + "\n")
+            mmsg("dispatch", "reload_config")
         elif word == "check":
             checks.append(snapshot(n))
         elif word == "get":
@@ -196,7 +234,8 @@ def play(scenario, out):
             keys.step(word, rest)
         settled()
     json.dump({"mango": "0.18.5 (21f80a9)", "screens": sorted(screens(monitors), key=lambda s: given.index(s["name"])),
-               "pointer": {"x": start["x"], "y": start["y"]}, "checks": checks, "gets": gets}, open(out, "w"), indent=1)
+               "pointer": {"x": start["x"], "y": start["y"]}, "checks": checks, "gets": gets,
+               "outputs": outputs}, open(out, "w"), indent=1)
     if keys:
         keys.proc.kill()
     for w in windows.values():
@@ -220,7 +259,7 @@ def record(scenario):
     conf = f"/tmp/{name}.conf"
     open(conf, "w").write("\n".join(base_config(monitors) + config) + "\n")
     out = f"/facit/{name}.json"
-    env = dict(os.environ, WLR_BACKENDS="headless", WLR_HEADLESS_OUTPUTS=str(monitors),
+    env = dict(os.environ, WLR_BACKENDS="headless", WLR_HEADLESS_OUTPUTS=str(len(screens(monitors))),
                XDG_RUNTIME_DIR="/tmp/xdg", WLR_LIBINPUT_NO_DEVICES="1",
                # scenefx draws with GLES: Mesa in software on vkms (drm-shim.c)
                WLR_RENDER_DRM_DEVICE="/dev/dri/card0", WLR_RENDERER_ALLOW_SOFTWARE="1",

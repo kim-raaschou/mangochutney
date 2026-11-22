@@ -12,6 +12,8 @@ package final class FakeSurface: PlatformWindow {
     package var sceneSurfaceEnabled = true
     /// The xdg toplevel's min and max size.
     package var sizeHints = ClientSizeHints()
+    /// The size mango configured, which the client takes when it commits (TestMango.frame).
+    package var configured: CGSize?
 
     package init(frame: CGRect, isFloatType: Bool) {
         self.frame = frame
@@ -101,10 +103,20 @@ package final class FakeWlroots: WindowSystem {
 
     package func clientGetParent(_ c: Client) -> Client? { nil }
     package func toplevelFromWlrSurface(_ surface: ClientID) -> Client? { server.clientByIdAll(surface) }
-    /// The client takes the size mango configures (xdg_toplevel configure), as the facit client does.
+    /// The size mango configures (xdg_toplevel configure); the client takes it when it commits, after
+    /// mango's turn (TestMango.frame), as the facit client does.
     package func clientSetSize(_ c: Client, _ width: CGFloat, _ height: CGFloat, _ forceConfigure: Bool) -> UInt32 {
-        surface(c).frame.size = CGSize(width: width, height: height)
+        surface(c).configured = CGSize(width: width, height: height)
         return 0
+    }
+
+    /// The clients commit the sizes they were configured to.
+    package func commitConfigured() {
+        for c in server.clientsAll {
+            guard let s = c.platform as? FakeSurface, let size = s.configured else { continue }
+            s.frame.size = size
+            s.configured = nil
+        }
     }
     package func clientSizeHints(_ c: Client) -> ClientSizeHints { (c.platform as? FakeSurface)?.sizeHints ?? ClientSizeHints() }
     package func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool) {}

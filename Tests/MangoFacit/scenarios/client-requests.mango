@@ -1,0 +1,14 @@
+# a virtual keyboard first, so the windows get the keyboard as on a Mac (an activation token needs its serial).
+# the app's own requests: to be minimized (mango leaves it), a new title, to be activated.
+key shift
+open a
+open b
+open c
+request b minimize
+check
+request a title a2
+check
+request a2 activate by c
+check
+dispatch @b focusid
+check

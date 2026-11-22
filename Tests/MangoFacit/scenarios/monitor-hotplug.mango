@@ -1,0 +1,14 @@
+# an output comes (create_virtual_output), as a display plugged in; windows go to it and come from it.
+config monitor_rule=name:EXTRA,x:1920,y:0,width:1280,height:1024,refresh:60
+open a
+open b
+check
+output add EXTRA
+check
+dispatch tagmon,right
+check
+open c
+check
+dispatch focusmon,left
+dispatch tagmon,right
+check

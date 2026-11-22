@@ -15,7 +15,7 @@
  },
  "checks": [
   {
-   "after_line": 5,
+   "after_line": 6,
    "clients": [
     {
      "title": "a",
@@ -162,7 +162,7 @@
    }
   },
   {
-   "after_line": 7,
+   "after_line": 8,
    "clients": [
     {
      "title": "a",
@@ -308,5 +308,7 @@
     "y": 100
    }
   }
- ]
+ ],
+ "gets": [],
+ "outputs": []
 }
