@@ -34,18 +34,6 @@ final class ConfigParseFidelityTests: MangoTestCase {
     }
 
     // D2: a negative window-rule value is mango's unset -1.
-    func testANegativeWindowRuleFlagIsUnset() {
-        let r = EngineRig()
-        r.server.config.windowRules = parse("""
-        window_rule=app_id:test,is_floating:1
-        window_rule=app_id:test,is_floating:-1,no_border:-1
-        """).config.windowRules
-        XCTAssertNil(r.server.config.windowRules[1].isfloating)
-        let c = r.window(910_001)
-        _ = r.server.clientSetRules(c)
-        XCTAssertTrue(c.isfloating, "the second rule leaves the first one's value")
-        XCTAssertFalse(c.noBorder)
-    }
 
     // D3: parse_double_array clears the curve first and fills it until it fails.
     func testABadCurveIsZeroedAndFilledAsFarAsItGoes() {
@@ -79,30 +67,6 @@ final class ConfigParseFidelityTests: MangoTestCase {
         XCTAssertFalse(r.monitor.pertag.noHide[2])
         XCTAssertTrue(r.monitor.pertag.noHide[1], "id:* is the last rule for tag 1")
         XCTAssertFalse(r.monitor.pertag.noHide[3], "-1 clamps to 0")
-    }
-
-    func testAnEmptyAppIdOrTitleMatchesEveryWindow() {
-        let rules = parse("""
-        window_rule=is_floating:1,title:
-        window_rule=is_floating:1,app_id:
-        """).config.windowRules
-        XCTAssertEqual(rules.count, 2)
-        for rule in rules {
-            XCTAssertTrue(rule.isWindowRuleMatches(appId: "com.example", appName: "Example", title: "Anything"))
-        }
-    }
-
-    func testAZeroTagRuleProportionIsSkipped() {
-        let r = EngineRig()
-        r.server.config.tagRules = parse("""
-        tag_rule=id:1,scroller_default_proportion:0,scroller_default_proportion_single:0
-        tag_rule=id:2,scroller_default_proportion:0.5
-        """).config.tagRules
-        r.server.parseTagrule(r.monitor)
-        XCTAssertEqual(r.monitor.pertag.scrollerDefaultProportion[1], Float(r.server.config.scrollerDefaultProportion))
-        XCTAssertEqual(r.monitor.pertag.scrollerDefaultProportionSingle[1],
-                       Float(r.server.config.scrollerDefaultProportionSingle))
-        XCTAssertEqual(r.monitor.pertag.scrollerDefaultProportion[2], 0.5)
     }
 
     func testAZeroRuleProportionLeavesAnEarlierOne() {
@@ -153,17 +117,6 @@ final class ConfigParseFidelityTests: MangoTestCase {
         XCTAssertEqual(parse("circle_layout=tile,").config.circleLayout, [])
     }
 
-    func testKeyModeIsTakenAsGivenAndCutAt27() {
-        let empty = parse("key_mode= \nbind=SUPER,a,quit").config
-        XCTAssertEqual(empty.keyBindings.first?.mode, "", "an empty key_mode is the mode \"\"")
-        let long = parse("key_mode=abcdefghijklmnopqrstuvwxyz0123\nbind=SUPER,a,quit").config
-        XCTAssertEqual(long.keyBindings.first?.mode, "abcdefghijklmnopqrstuvwxyz0")
-
-        let r = EngineRig()
-        _ = r.server.dispatch(Dispatch(name: "setkeymode", args: ["abcdefghijklmnopqrstuvwxyz0123"]), target: nil)
-        XCTAssertEqual(r.server.keyMode, "abcdefghijklmnopqrstuvwxyz0")
-    }
-
     func testKeywordsAreMatchedByPrefix() {
         let c = parse("""
         envfoo=A,b
@@ -186,46 +139,11 @@ final class ConfigParseFidelityTests: MangoTestCase {
                        "exec is matched whole (strncmp with 9)")
     }
 
-    func testATomlMousebindSectionTakesFlags() {
-        let p = parse("""
-        [mousebind.default.sym]
-        "SUPER+btn_left" = "moveresize,curmove"
-        """, name: "t.toml")
-        XCTAssertEqual(p.errors, [], p.errors.map(\.description).joined(separator: "\n"))
-        XCTAssertEqual(p.config.mouseBindings.count, 1)
-    }
-
-    func testEveryErrorOfALineIsPrintedThenOneIndex() {
-        let p = parse("bind=FOO,nosuchkey_x,nosuchdispatch")
-        XCTAssertEqual(p.errors.map(\.message.plain),
-                       ["Unknown key: nosuchkey_x", "Unknown modifier: FOO", "Unknown dispatch in bind: nosuchdispatch"])
-        XCTAssertEqual(p.errors.map(\.reportsLine), [false, false, true])
-
-        let rule = parse("window_rule=app_id:x,foo:1,bar:2")
-        XCTAssertEqual(rule.errors.map(\.reportsLine), [false, true])
-        XCTAssertEqual(rule.config.windowRules.count, 1)
-
-        let code = parse("bind=code:999+SUPER,a,quit")
-        XCTAssertEqual(code.config.keyBindings.count, 1, "the binding is made")
-        XCTAssertEqual(code.errors.map(\.message.plain), ["unknown modifier keycode: code:999"])
-        XCTAssertEqual(code.errors.map(\.reportsLine), [false], "parse_option returns true: no [Index]")
-    }
-
     func testAMissingSourceIsOneMessageWithoutIndex() {
         let p = parse("source=/nonexistent/mango-missing.conf\nborder_px=2")
         XCTAssertEqual(p.errors.map(\.message.plain), ["Failed to open config file: /nonexistent/mango-missing.conf"])
         XCTAssertEqual(p.errors.map(\.reportsLine), [false])
         XCTAssertEqual(p.config.borderpx, 2)
-    }
-
-    func testASourcedDirectoryReadsAsNothing() throws {
-        let dir = try makeTempDir()
-        let p = parse("source=\(dir.path)")
-        XCTAssertEqual(p.errors, [])
-    }
-
-    func testAnEmptyKeyIsAnUnknownKeyword() {
-        XCTAssertEqual(parse(" =x").errors.map(\.message.plain), ["Unknown keyword: "])
     }
 
     func testTomlArrayStopsAtTheFirstFailingElement() {
@@ -255,15 +173,6 @@ final class ConfigParseFidelityTests: MangoTestCase {
         XCTAssertEqual(p.config.keyBindings.map(\.mode), ["default"])
     }
 
-    func testParseButtonCodeForms() {
-        var errors: [String] = []
-        XCTAssertNil(BindingParser.parseButton("code:abc") { errors.append($0) })
-        XCTAssertNil(BindingParser.parseButton("code:-1") { errors.append($0) })
-        XCTAssertEqual(errors.map(\.plain), ["Invalid code format: code:abc", "Invalid code format: code:-1"])
-        XCTAssertEqual(BindingParser.parseButton("code:272"), .left)
-        XCTAssertEqual(BindingParser.parseButton("code:+273"), .right)
-    }
-
     func testParseColorIsStrtol() {
         XCTAssertNil(parseColor("0x"))
         XCTAssertNil(parseColor("-1"))
@@ -272,44 +181,8 @@ final class ConfigParseFidelityTests: MangoTestCase {
         XCTAssertNil(parseColor("0xzz"))
     }
 
-    func testSimpleBindingConflictsGoByTheFirstBinding() {
-        let p = parse("""
-        mousebind=SUPER,btn_left,killclient
-        mousebind=SUPER,btn_right,killclient
-        mousebind=SUPER,btn_right,killclient
-        mousebind=SUPER,btn_left,killclient
-        """)
-        XCTAssertEqual(p.errors.map(\.line), [4, 3], "pairs (1, 4) then (2, 3), as check_simple_binding_conflicts")
-    }
-
     // mango parse_option checks switchbind, monitor_rule, layer_rule and device_rule as it does every
     // line, though macOS gives none of them an effect
-    func testRulesAndSwitchbindsWithoutAMacOSPartAreCheckedAsMangoChecksThem() {
-        let p = parse("""
-        switchbind=fold,frobnicate,x
-        switchbind=fold,spawn
-        layer_rule=layer_name:rofi,bogus:1
-        device_rule=name:x,type:mouse
-        device_rule=name:x,nocolon
-        monitor_rule=width:1920
-        switchbind=fold,spawn,swaylock
-        """)
-        XCTAssertEqual(p.errors.map(\.message.plain), [
-            "Unknown dispatch in switchbind: frobnicate",
-            "Invalid switchbind format: fold,spawn",
-            "Unknown layer rule option:bogus",
-            "Invalid device rule type: mouse (expected one of keyboard, pointer, trackpad, touch, switch, tablet, pad)",
-            "Invalid device rule format: nocolon",
-            "Monitor rule must have at least one of the following options: name, make, model, serial",
-        ])
-        XCTAssertEqual(p.errors.map(\.line), [1, 2, 3, 4, 5, 6])
-        XCTAssertEqual(p.config.switchBindings.map(\.fold), [FOLD])
-    }
 
     // mango parse_key with bindsym: a name xkb does not know is NoSymbol, with no message of its own
-    func testAnUnknownKeysymInABindsIsRejectedWithoutAMessage() {
-        let p = parse("binds=SUPER,notakey,quit\nbind=SUPER,notakey,quit")
-        XCTAssertEqual(p.errors.map(\.message.plain), ["", "Unknown key: notakey"])
-        XCTAssertEqual(p.errors.map(\.reportsLine), [true, true])
-    }
 }

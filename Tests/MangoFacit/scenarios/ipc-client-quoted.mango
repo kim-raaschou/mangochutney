@@ -1,0 +1,10 @@
+# mmsg get client: a title with quotes, a tag of its own and a scroller proportion that is a float.
+dispatch setlayout,scroller
+open a
+open b
+dispatch set_proportion,0.8
+request b title Safari"quoted"
+dispatch @Safari"quoted" tagsilent,2
+get client @Safari"quoted"
+get client 999
+get all-clients

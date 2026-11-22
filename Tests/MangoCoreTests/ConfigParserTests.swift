@@ -114,25 +114,6 @@ final class ConfigParserTests: MangoTestCase {
         }
     }
 
-    func testCommentsQuotesAndLineFormat() {
-        let parsed = parse("""
-        # full comment
-           # indented comment
-
-        gap_inner_horizontal = 7   # inline comment
-        jump_labels="AB #CD"
-        not a valid line
-        border_px=3#not a comment because no whitespace before
-        """)
-        XCTAssertEqual(parsed.config.gappih, 7)
-        XCTAssertEqual(parsed.config.jumpLabels, "AB #CD")
-        XCTAssertEqual(parsed.errors.map(\.line), [2, 6], parsed.errors.map(\.description).joined(separator: "\n"))
-        XCTAssertEqual(parsed.errors.last?.line, 6)
-        XCTAssertEqual(parsed.errors.first?.file, "test.conf")
-        XCTAssertTrue(parsed.errors.first?.message.hasPrefix("Invalid line format") ?? false)
-        XCTAssertEqual(parsed.config.borderpx, 3)
-    }
-
     /// A value's "\r" is trimmed as mango's trim_whitespace does. An empty line of a CRLF file is
     /// "\r\n", which mango does not skip: "Invalid line format" for each. Ours skips it as an empty
     /// line (a mango bug, docs/afvigelser.md §6).
@@ -192,14 +173,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parse("source_optional=\(file.path)\n").errors, [])
     }
 
-    /// mango's window_rule keeps an empty monitor: an empty regex, which every monitor matches.
-    func testWindowRuleEmptyMonitorMatchesEveryMonitor() {
-        let rule = parse("window_rule=app_id:x,monitor:").config.windowRules.first
-        XCTAssertEqual(rule?.monitor, MonitorSpec(name: ""))
-        let screen = Screen(displayID: 1, name: "Built-in", frame: .zero, workArea: .zero, scale: 1, isMain: true)
-        XCTAssertEqual(rule?.monitor?.matchMonitorSpec(screen), true)
-    }
-
     /// mango regex_match: an invalid pattern matches nothing and is reported (PCRE2 there, ICU here).
     func testInvalidRegexIsReported() throws {
         keepConfigErrorsInTests()
@@ -246,14 +219,6 @@ final class ConfigParserTests: MangoTestCase {
         let parsed = parse("env=A,~/x\nsource=~/x.conf\n")
         XCTAssertEqual(parsed.errors.map(\.message), ["HOME environment variable not set.", "HOME environment variable not set."])
         XCTAssertTrue(parsed.config.envVars.isEmpty)
-    }
-
-    func testClampAtEnd() {
-        let parsed = parse("border_px=500\ndefault_master_factor=2\ntag_num=0")
-        XCTAssertEqual(parsed.errors, [])
-        XCTAssertEqual(parsed.config.borderpx, 200)
-        XCTAssertEqual(parsed.config.defaultMfact, 0.9)
-        XCTAssertEqual(parsed.config.tagNum, 1)
     }
 
     func testVariables() {
@@ -508,22 +473,6 @@ final class ConfigParserTests: MangoTestCase {
     }
 
     // mango same_axisbind_key / same_gesturebind_key: ALLDIR meets every direction, UNDIR only UNDIR
-    func testAxisAndGestureConflictsFollowMangosDirections() {
-        let parsed = parse("""
-        axisbind=SUPER,diagonal,quit
-        axisbind=SUPER,alldir,killclient
-        axisbind=SUPER+SHIFT,sideways,quit
-        axisbind=SUPER+SHIFT,Up,killclient
-        axisbind=SUPER+SHIFT,crooked,killclient
-        gesturebind=none,diagonal,3,quit
-        gesturebind=none,up,3,killclient
-        gesturebind=none,alldir,3,toggleoverview
-        gesturebind=none,sideways,3,quit
-        """)
-        XCTAssertEqual(parsed.errors.map(\.line), [2, 5, 8, 9, 8, 9], "by the first binding of each pair\n" + parsed.errors.map(\.description).joined(separator: "\n"))
-        XCTAssertTrue(parsed.errors[0].message.hasPrefix("axisbind conflict in keymode default:"))
-        XCTAssertTrue(parsed.errors[2].message.hasPrefix("gesturebind conflict in keymode default:"))
-    }
 
     func testMouseAxisGestureBindings() {
         let parsed = parse("""
@@ -604,50 +553,6 @@ final class ConfigParserTests: MangoTestCase {
         let parsed = parse("does_not_exist=1")
         XCTAssertEqual(parsed.errors.map(\.description.plain), ["test.conf:1: Unknown keyword: does_not_exist"])
         XCTAssertEqual(parsed.errors.first?.message, "Unknown keyword: \u{1B}[1m\u{1B}[31mdoes_not_exist\u{1B}[0m", "mango's colours round the value")
-    }
-
-    func testWaylandOnlyKeysAreIgnored() {
-        let parsed = parse("""
-        blur=1
-        blur_params_radius=5
-        shadows=1
-        shadows_color=0x000000ff
-        layer_animations=1
-        xkb_rules_layout=us,de
-        repeat_rate=25
-        cursor_size=24
-        cursor_theme=Adwaita
-        trackpad_natural_scrolling=1
-        mouse_accel_profile=2
-        tap_to_click=1
-        drag_lock=1
-        hdr_depth=10
-        xwayland_persistence=1
-        group_bar_height=20
-        tab_bar_decorate_font_desc=Sans 10
-        title_message_bar_height=52
-        jump_label_decorate_fg_color=0xffffffff
-        dim_enable=1
-        idle_inhibit_ignore_visible=0
-        sync_obj_enable=1
-        allow_tearing=1
-        numlock_on=1
-        disable_middle_paste=1
-        allow_lock_transparent=1
-        touch_enable=1
-        button_map=0
-        send_events_mode=0
-        axis_scroll_factor=1.0
-        animation_curve_opacity_fade_in=0.46,1.0,0.29,1
-        layer_rule=animation_type_open:zoom,layer_name:rofi
-        monitor_rule=name:eDP-1,width:1920,height:1080,refresh:60
-        device_rule=name:foo,type:keyboard
-        switchbind=fold,spawn,swaylock
-        """)
-        XCTAssertEqual(parsed.errors, [], parsed.errors.map(\.description).joined(separator: "\n"))
-        // mango checks a monitor_rule it cannot apply on macOS: width, height and refresh go together
-        XCTAssertEqual(parse("monitor_rule=name:eDP-1,width:1920,height:1080").errors.map(\.message.plain),
-                       ["Monitor rule must set width, height and refresh together"])
     }
 
     func testConfigOptionsApply() {

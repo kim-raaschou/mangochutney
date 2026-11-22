@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Config line too long in /configs/toml-statement-too-long.toml\n"
+}

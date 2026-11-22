@@ -8,16 +8,6 @@ final class InputDecisionTests: MangoTestCase {
         KeyBinding(mode: mode, mods: mods, keyName: "k\(code)", keyCodes: [code], flags: flags, dispatch: Dispatch(name: name))
     }
 
-    func testKeyboardCheckKeybinding() {
-        let bs = [bind(.superKey, 38, flags: .allowConflict, "setkeymode"), bind(.superKey, 38, "second")]
-        let out = Keyboard.keyboardCheckKeybinding(bs, mode: "default", keyCode: 38, mods: .superKey, isDown: true,
-                                                   keyModifier: nil, lastHoldKeycodeIsThisKey: true)
-        XCTAssertEqual(out.map(\.dispatch.name), ["setkeymode"])
-        let mod = Keyboard.keyboardCheckKeybinding([bind([], 55, "tap")], mode: "default", keyCode: 55, mods: .superKey,
-                                                   isDown: true, keyModifier: .superKey, lastHoldKeycodeIsThisKey: true)
-        XCTAssertEqual(mod.map(\.dispatch.name), ["tap"])
-    }
-
     func testButtonPressOrder() {
         let mb = MouseBinding(mode: "default", mods: .superKey, button: .left, dispatch: Dispatch(name: "moveresize"))
         let p = CGPoint(x: 10, y: 10), ov = CGRect(x: 0, y: 0, width: 100, height: 100)

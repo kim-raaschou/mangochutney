@@ -1,0 +1,13 @@
+# enable_floating_snap: a plain click on a floating window's strip does not snap it, a drag of the strip does.
+config enable_floating_snap=1
+open a
+dispatch togglefloating
+dispatch movewin,-540,0
+check
+pointer 822,540
+click left
+check
+button left down
+move 10,0
+button left up
+check

@@ -1,0 +1,16 @@
+# a config line with an inline comment, a quoted value holding a # and a # with no space before it: the gap, the jump labels and the border (a dialog's size with it).
+config gap_inner_horizontal = 7   # inline comment
+config jump_labels="AB #CD"
+config border_px=3#not a comment because no whitespace before
+config bind=ALT,o,togglejump
+open a
+open b
+open c
+open d
+open e
+check
+key alt+o
+key c
+check
+open g dialog
+check

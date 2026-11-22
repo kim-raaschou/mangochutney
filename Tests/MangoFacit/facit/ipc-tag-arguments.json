@@ -1,0 +1,96 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "screens": [
+  {
+   "name": "HEADLESS-2",
+   "x": 1920,
+   "y": 0,
+   "width": 1920,
+   "height": 1080
+  },
+  {
+   "name": "HEADLESS-1",
+   "x": 0,
+   "y": 0,
+   "width": 1920,
+   "height": 1080
+  }
+ ],
+ "pointer": {
+  "x": 1920,
+  "y": 100
+ },
+ "checks": [],
+ "gets": [
+  {
+   "after_line": 9,
+   "answer": {
+    "monitor": "HEADLESS-1",
+    "tag_index": 2,
+    "is_active": false,
+    "is_urgent": false,
+    "client_count": 1,
+    "focused_client": false
+   }
+  },
+  {
+   "after_line": 10,
+   "answer": {
+    "monitor": "HEADLESS-1",
+    "tag_index": 1,
+    "is_active": true,
+    "is_urgent": false,
+    "client_count": 1,
+    "focused_client": true
+   }
+  },
+  {
+   "after_line": 11,
+   "answer": {
+    "error": "invalid monitor or tag index"
+   }
+  },
+  {
+   "after_line": 12,
+   "answer": {
+    "error": "usage: get tag <monitor> <index>"
+   }
+  },
+  {
+   "after_line": 13,
+   "answer": {
+    "error": "invalid monitor or tag index"
+   }
+  },
+  {
+   "after_line": 14,
+   "answer": {
+    "error": "usage: get tag <monitor> <index>"
+   }
+  },
+  {
+   "after_line": 15,
+   "answer": {
+    "monitor": "HEADLESS-2",
+    "tag_index": 1,
+    "is_active": true,
+    "is_urgent": false,
+    "client_count": 1,
+    "focused_client": true
+   }
+  },
+  {
+   "after_line": 16,
+   "answer": {
+    "error": "usage: get tag <monitor> <index>"
+   }
+  },
+  {
+   "after_line": 17,
+   "answer": {
+    "error": "unknown command"
+   }
+  }
+ ],
+ "outputs": []
+}

@@ -1,0 +1,5 @@
+# a bind on a modifier key alone runs at its press, though the key is then its own modifier.
+config bind=NONE,Super_L,togglefloating
+open a
+key super
+check

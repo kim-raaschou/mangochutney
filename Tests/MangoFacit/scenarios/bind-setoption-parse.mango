@@ -1,0 +1,15 @@
+# setoption reads its words as a config option: a window_rule, a tag_rule, a var and a source_optional of no file; a $name in its own value is not expanded.
+open a
+open b
+dispatch setoption,var,G,90
+dispatch setoption,gap_inner_horizontal,$G
+check
+dispatch setoption,source_optional,/nowhere/none.conf
+dispatch setoption,window_rule,app_id:^x$,is_floating:1
+open x
+check
+dispatch setoption,tag_rule,id:2,layout_name:scroller
+dispatch view,2
+open c
+check
+get all-tags

@@ -1,0 +1,10 @@
+# the keymode of a TOML bind section ends with the section: the bind under [global] is the default mode's (the conflicts name the modes)
+[bind.resize]
+"SUPER+Left" = "resizewin,-10,0"
+
+[global]
+bind = "SUPER,Left,killclient"
+bind = "SUPER,q,killclient"
+
+[bind.default]
+"SUPER+q" = "togglefloating"

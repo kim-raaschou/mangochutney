@@ -1,0 +1,7 @@
+# a window_rule with an empty title or app_id matches every window.
+config window_rule=is_floating:1,title:
+config window_rule=is_global:1,app_id:
+open a
+check
+open b
+check

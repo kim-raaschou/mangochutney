@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[WARN]: axisbind conflict in keymode default:\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 2\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 3\n[WARN]: axisbind conflict in keymode default:\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 4\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 6\n[WARN]: gesturebind conflict in keymode default:\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 7\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 9\n[WARN]: gesturebind conflict in keymode default:\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 7\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 10\n[WARN]: gesturebind conflict in keymode default:\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 8\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 9\n[WARN]: gesturebind conflict in keymode default:\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 9\n  File \"/configs/parser-axis-gesture-conflict.conf\", line 10\n"
+}

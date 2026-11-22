@@ -1,0 +1,47 @@
+# numbers as atof and atoi read them: nan, inf, an overflow and a word; a hex float, a leading and a trailing dot, a trailing letter; and an int from a fraction.
+# ours: inf and nan read as 0, as Swift cannot turn them into an integer (docs/afvigelser.md, Config).
+open a
+open b
+reload default_master_factor=0.3
+check
+reload default_master_factor=nan
+check
+ours b.width 187
+ours a.width 1708
+ours a.x 202
+reload default_master_factor=0.3
+reload default_master_factor=inf
+check
+ours b.width 187
+ours a.width 1708
+ours a.x 202
+reload default_master_factor=0.3
+reload default_master_factor=-inf
+check
+reload default_master_factor=0.3
+reload default_master_factor=1e999
+check
+ours b.width 187
+ours a.width 1708
+ours a.x 202
+reload default_master_factor=0.3
+reload default_master_factor=infinity
+check
+ours b.width 187
+ours a.width 1708
+ours a.x 202
+reload default_master_factor=0.3
+reload default_master_factor=abc
+check
+reload default_master_factor=0x1p-1
+check
+reload default_master_factor=.7
+check
+reload default_master_factor=0.6f
+check
+reload default_master_factor=5.
+check
+reload border_px=2.9
+open c
+dispatch togglefloating
+check

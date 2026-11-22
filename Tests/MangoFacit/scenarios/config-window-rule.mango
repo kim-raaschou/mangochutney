@@ -1,0 +1,16 @@
+# window_rule: floating with a width, a height as a ratio and an offset; window_rule_once by title, with two tags, a monitor and no border, and only for the first window.
+monitors 2
+config window_rule=is_floating:1,app_id:^a$,width:800,height:0.5,offset_x:-20
+config window_rule_once=title:^b$,tags:2|3,monitor:name:HEADLESS-2,no_border:1,animation_type_open:zoom
+config window_rule_once=app_id:^d$,is_floating:1
+dispatch focusmon,HEADLESS-1
+open a
+check
+open b
+get client @b
+open c
+open d
+check
+close d
+open d
+check

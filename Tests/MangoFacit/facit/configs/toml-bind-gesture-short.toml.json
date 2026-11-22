@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "\u2570\u2500[Index] /configs/toml-bind-gesture-short.toml:3\n   \u2570\u2500\"left+3\" = \"focusdir,right\"\n\n"
+}

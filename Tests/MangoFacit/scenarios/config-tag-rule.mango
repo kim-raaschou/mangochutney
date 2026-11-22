@@ -1,0 +1,20 @@
+# tag_rule: a layout, a master count over the limit, a master factor, a monitor's name as a regex and a layout mango does not have.
+config tag_rule=id:3,layout_name:scroller,master_count:200,master_factor:0.6,monitor_name:HEADLESS.*,no_hide:1
+config tag_rule=id:2,layout_name:tile,master_count:200
+config tag_rule=id:4,layout_name:tile,master_factor:0.6
+config tag_rule=id:5,layout_name:scroller,monitor_name:DELL.*
+config tag_rule=id:1,layout_name:spiral
+get all-tags
+open a
+open b
+check
+dispatch view,2
+open c
+open d
+check
+dispatch view,4
+open e
+open f
+check
+dispatch view,3
+check

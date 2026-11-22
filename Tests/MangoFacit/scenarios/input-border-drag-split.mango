@@ -1,0 +1,10 @@
+# dragging a tiled window's strip moves the split: the left window grows and the right one shrinks.
+open a
+open b
+check
+pointer 1057,540
+button left down
+move 1,0
+move 120,0
+button left up
+check

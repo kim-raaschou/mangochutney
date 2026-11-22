@@ -1,0 +1,129 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "screens": [
+  {
+   "name": "HEADLESS-1",
+   "x": 0,
+   "y": 0,
+   "width": 1920,
+   "height": 1080
+  }
+ ],
+ "pointer": {
+  "x": 100,
+  "y": 100
+ },
+ "checks": [],
+ "gets": [
+  {
+   "after_line": 8,
+   "answer": {
+    "title": "Safari\"quoted\"",
+    "appid": "b",
+    "monitor": "HEADLESS-1",
+    "tags": [
+     2
+    ],
+    "is_xwayland": false,
+    "is_swallowing": false,
+    "is_swallowedby": false,
+    "is_group": false,
+    "is_group_focus": false,
+    "is_visible": false,
+    "is_focused": false,
+    "is_fullscreen": false,
+    "is_floating": false,
+    "is_maximized": false,
+    "is_global": false,
+    "is_unglobal": false,
+    "is_overlay": false,
+    "is_fakefullscreen": false,
+    "is_minimized": false,
+    "is_urgent": false,
+    "is_scratchpad": false,
+    "is_namedscratchpad": false,
+    "x": 400,
+    "y": 10,
+    "width": 1500,
+    "height": 1060,
+    "scroller_proportion": 0.800000011920929
+   }
+  },
+  {
+   "after_line": 9,
+   "answer": {
+    "error": "client not found"
+   }
+  },
+  {
+   "after_line": 10,
+   "answer": {
+    "clients": [
+     {
+      "title": "a",
+      "appid": "a",
+      "monitor": "HEADLESS-1",
+      "tags": [
+       1
+      ],
+      "is_xwayland": false,
+      "is_swallowing": false,
+      "is_swallowedby": false,
+      "is_group": false,
+      "is_group_focus": false,
+      "is_visible": true,
+      "is_focused": true,
+      "is_fullscreen": false,
+      "is_floating": false,
+      "is_maximized": false,
+      "is_global": false,
+      "is_unglobal": false,
+      "is_overlay": false,
+      "is_fakefullscreen": false,
+      "is_minimized": false,
+      "is_urgent": false,
+      "is_scratchpad": false,
+      "is_namedscratchpad": false,
+      "x": 116,
+      "y": 10,
+      "width": 1687,
+      "height": 1060,
+      "scroller_proportion": 0.899999976158142
+     },
+     {
+      "title": "Safari\"quoted\"",
+      "appid": "b",
+      "monitor": "HEADLESS-1",
+      "tags": [
+       2
+      ],
+      "is_xwayland": false,
+      "is_swallowing": false,
+      "is_swallowedby": false,
+      "is_group": false,
+      "is_group_focus": false,
+      "is_visible": false,
+      "is_focused": false,
+      "is_fullscreen": false,
+      "is_floating": false,
+      "is_maximized": false,
+      "is_global": false,
+      "is_unglobal": false,
+      "is_overlay": false,
+      "is_fakefullscreen": false,
+      "is_minimized": false,
+      "is_urgent": false,
+      "is_scratchpad": false,
+      "is_namedscratchpad": false,
+      "x": 400,
+      "y": 10,
+      "width": 1500,
+      "height": 1060,
+      "scroller_proportion": 0.800000011920929
+     }
+    ]
+   }
+  }
+ ],
+ "outputs": []
+}

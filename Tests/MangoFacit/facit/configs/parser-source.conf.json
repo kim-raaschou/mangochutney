@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Failed to open config file: ./sourced/missing.conf\n[ERROR]: Unknown keyword: unknown_thing\n\u2570\u2500[Index] /configs/sourced/bad.conf:1\n   \u2570\u2500unknown_thing=1\n\n\n[WARN]: Key binding conflict in keymode resize:\n  File \"/configs/parser-source.conf\", line 8\n  File \"/configs/parser-source.conf\", line 12\n"
+}

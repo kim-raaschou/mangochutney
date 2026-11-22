@@ -1,0 +1,10 @@
+# switcher in the overview opens nothing: the click after it still picks a window of the overview.
+open a
+open b
+open c
+dispatch toggleoverview
+check
+dispatch switcher,next
+pointer 1400,250
+click left
+check

@@ -1,0 +1,11 @@
+# a tag_rule's scroller proportion of 0 is skipped: tag 1 keeps the defaults, tag 2 has its 0.5.
+config tag_rule=id:1,layout_name:scroller,scroller_default_proportion:0,scroller_default_proportion_single:0
+config tag_rule=id:2,layout_name:scroller,scroller_default_proportion:0.5
+open a
+check
+open b
+check
+dispatch view,2
+open c
+open d
+check

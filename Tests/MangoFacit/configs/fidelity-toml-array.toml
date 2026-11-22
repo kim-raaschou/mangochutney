@@ -1,0 +1,3 @@
+# a TOML array of dispatchers stops at the first element that fails
+[bind.default]
+"SUPER+a" = ["spawn,x", "nosuchdispatch", "spawn,y"]

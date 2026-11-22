@@ -1,0 +1,18 @@
+# setoption clamps as the config does: a scratchpad_width_ratio of 0 is 0.1, and a hotarea_size of -3 is 1, so the corner's own pixel toggles the overview.
+config enable_hotarea=1
+config hotarea_corner=0
+open a
+open b
+open c
+dispatch setoption,scratchpad_width_ratio,0
+dispatch setoption,overcircle_center_ratio,5
+dispatch minimized
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+dispatch setoption,hotarea_size,-3
+pointer 3,3
+move -2,-2
+check
+move -1,-1
+check

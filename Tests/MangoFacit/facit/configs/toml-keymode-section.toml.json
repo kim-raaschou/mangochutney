@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[WARN]: Key binding conflict in keymode default:\n  File \"/configs/toml-keymode-section.toml\", line 7\n  File \"/configs/toml-keymode-section.toml\", line 10\n"
+}

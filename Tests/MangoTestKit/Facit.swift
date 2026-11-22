@@ -76,7 +76,7 @@ package struct Facit {
             if step == "check" { c += 1; afterGet = false; continue }
             if step.hasPrefix("get ") { g += 1; afterGet = true; continue }
             guard line.hasPrefix("ours ") else { continue }
-            let words = line.split(separator: " ", maxSplits: 3).map(String.init)
+            let words = line.split(separator: " ", maxSplits: 2).map(String.init)
             if afterGet {
                 let value = try JSONSerialization.jsonObject(with: Data(words[2].utf8), options: .fragmentsAllowed)
                 gets[g].answer = Facit.set(gets[g].answer, at: words[1].split(separator: ".").map(String.init), to: value)
@@ -275,7 +275,9 @@ package struct ConfigFacit {
                 end()
                 errors.append(Error(tag: tag, message: "", line: nil))
                 message = [String(line.dropFirst(tag.count + 4))]
-            } else if line.hasPrefix("╰─[Index] "), !errors.isEmpty {
+            } else if line.hasPrefix("╰─[Index] ") {
+                // an [Index] with no message before it: mango_error printed an empty one
+                if message.isEmpty { errors.append(Error(tag: "ERROR", message: "", line: nil)) }
                 end()
                 errors[errors.count - 1].line = Int(line.split(separator: ":").last ?? "")
             } else if !message.isEmpty {

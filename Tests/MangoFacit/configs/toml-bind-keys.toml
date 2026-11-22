@@ -1,0 +1,14 @@
+# TOML bind keys: modifiers+key, a key alone, a gesture's motion and fingers, a switch; keybind is bind, and flags follow the keymode
+[keybind.default.release.pass]
+"SUPER+a" = "spawn,x"
+
+[bind.default.sym]
+"SUPER+b" = "spawn,y"
+"SUPER+SHIFT+Return" = "spawn,z"
+"XF86AudioMute" = "spawn,mute"
+
+[gesturebind.default]
+"none+left+3" = "focusdir,left"
+
+[switchbind.default]
+"fold" = "spawn,swaylock"

@@ -1,0 +1,27 @@
+# key_mode: the key and mouse binds after it are that mode's, and common's are every mode's.
+config bind=SUPER,r,setkeymode,resize
+config key_mode=resize
+config bind=NONE,Left,resizewin,-10,0
+config bind=NONE,Escape,setkeymode,default
+config mousebind=NONE,btn_middle,togglefloating
+config key_mode=common
+config bind=SUPER,q,togglefullscreen
+open a
+open b
+pointer 500,500
+key Left
+click middle
+check
+key super+r
+get keymode
+key Left
+check
+click middle
+check
+key super+q
+check
+key super+q
+key Escape
+get keymode
+key super+q
+check

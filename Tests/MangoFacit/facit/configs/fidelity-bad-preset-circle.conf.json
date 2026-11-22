@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Invalid float value in scroller_proportion_preset: x\n\u2570\u2500[Index] /configs/fidelity-bad-preset-circle.conf:3\n   \u2570\u2500scroller_proportion_preset=0.5,x\n\n\n[ERROR]: Invalid scroller_proportion_preset format: 0.5,,0.8\n\u2570\u2500[Index] /configs/fidelity-bad-preset-circle.conf:4\n   \u2570\u2500scroller_proportion_preset=0.5,,0.8\n\n\n[ERROR]: Invalid circle_layout format: tile,,scroller\n\u2570\u2500[Index] /configs/fidelity-bad-preset-circle.conf:6\n   \u2570\u2500circle_layout=tile,,scroller\n\n\n[ERROR]: Invalid circle_layout format: tile,\n\u2570\u2500[Index] /configs/fidelity-bad-preset-circle.conf:7\n   \u2570\u2500circle_layout=tile,\n\n\n"
+}

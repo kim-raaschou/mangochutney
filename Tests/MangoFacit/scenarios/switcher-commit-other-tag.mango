@@ -1,0 +1,12 @@
+# the switcher over every tag: a click on the tile of a window on another tag closes it, views that tag and focuses the window.
+open a
+open b
+open c
+dispatch @c tagsilent,2
+dispatch @a focusid
+dispatch @b focusid
+check
+dispatch switcher,all_tag_prev
+pointer 1340,540
+click left
+check

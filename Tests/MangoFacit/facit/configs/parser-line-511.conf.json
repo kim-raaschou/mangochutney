@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Invalid line format: nope\n\n\u2570\u2500[Index] /configs/parser-line-511.conf:4\n   \u2570\u2500nope\n\n\n"
+}

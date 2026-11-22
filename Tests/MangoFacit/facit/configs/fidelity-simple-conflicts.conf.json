@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[WARN]: mousebind conflict in keymode default:\n  File \"/configs/fidelity-simple-conflicts.conf\", line 2\n  File \"/configs/fidelity-simple-conflicts.conf\", line 5\n[WARN]: mousebind conflict in keymode default:\n  File \"/configs/fidelity-simple-conflicts.conf\", line 3\n  File \"/configs/fidelity-simple-conflicts.conf\", line 4\n"
+}

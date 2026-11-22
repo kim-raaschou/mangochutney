@@ -1,0 +1,33 @@
+# enable_border_resize, a tiled window: no strip in its middle or on an edge that faces no window; the strip on the shared edge, inside the window, at its corner and on its border, moves the split.
+open a
+open b
+pointer 500,500
+button left down
+move 1,0
+pointer 620,500
+button left up
+check
+pointer 12,500
+button left down
+move 1,0
+pointer 132,500
+button left up
+check
+pointer 1056,500
+button left down
+move 1,0
+pointer 1176,500
+button left up
+check
+pointer 1178,12
+button left down
+move 1,1
+pointer 1228,62
+button left up
+check
+pointer 1231,500
+button left down
+move -1,0
+pointer 1061,500
+button left up
+check

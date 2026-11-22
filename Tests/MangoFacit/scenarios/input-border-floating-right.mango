@@ -1,0 +1,9 @@
+# enable_border_resize: dragging a floating window's right edge changes its width alone.
+open a
+dispatch togglefloating
+check
+pointer 1358,540
+button left down
+pointer 1408,570
+button left up
+check

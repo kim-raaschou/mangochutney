@@ -1,0 +1,13 @@
+# a bool given as -1 is off and as 2 is on: no sloppy focus, smart gaps; tag_carousel is not clamped, so -1 is on.
+config animations=-1
+config sloppy_focus=-1
+config smart_gaps=2
+config animation_fade_in=-1
+config tag_carousel=-1
+open a
+check
+open b
+pointer 1500,500
+check
+dispatch viewtoleft
+check

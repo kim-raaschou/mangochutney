@@ -1,0 +1,14 @@
+# hide_clients of a monitor counts every minimized client, another monitor's too, once it is arranged.
+monitors 2
+dispatch focusmon,HEADLESS-1
+open a
+dispatch focusmon,HEADLESS-2
+open n
+get monitor HEADLESS-1
+dispatch @n minimized
+get monitor HEADLESS-1
+get monitor HEADLESS-2
+dispatch focusmon,HEADLESS-1
+open b
+get monitor HEADLESS-1
+get monitor HEADLESS-2

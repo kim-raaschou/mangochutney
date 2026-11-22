@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Unknown dispatch in bind: nosuchdispatch\n\u2570\u2500[Index] /configs/fidelity-toml-array.toml:3\n   \u2570\u2500\"SUPER+a\" = [\"spawn,x\", \"nosuchdispatch\", \"spawn,y\"]\n\n"
+}

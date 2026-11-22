@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Unknown key: nosuchkey_x\n[ERROR]: Unknown modifier: FOO\n[ERROR]: Unknown dispatch in bind: nosuchdispatch\n\u2570\u2500[Index] /configs/fidelity-line-errors.conf:2\n   \u2570\u2500bind=FOO,nosuchkey_x,nosuchdispatch\n\n\n[ERROR]: Unknown window rule option:foo\n[ERROR]: Unknown window rule option:bar\n\u2570\u2500[Index] /configs/fidelity-line-errors.conf:3\n   \u2570\u2500window_rule=app_id:x,foo:1,bar:2\n\n\n[ERROR]: unknown modifier keycode: code:999\n[WARN]: Key binding conflict in keymode default:\n  File \"/configs/fidelity-line-errors.conf\", line 4\n  File \"/configs/fidelity-line-errors.conf\", line 5\n"
+}

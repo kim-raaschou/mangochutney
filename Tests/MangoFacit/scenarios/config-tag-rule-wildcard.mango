@@ -1,0 +1,7 @@
+# tag_rule with id:* is every tag's.
+config tag_rule=id:*,layout_name:monocle
+get all-tags
+dispatch view,5
+open a
+open b
+check

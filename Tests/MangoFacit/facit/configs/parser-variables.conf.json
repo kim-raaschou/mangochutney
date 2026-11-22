@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Invalid variable name (allowed: [A-Za-z_][A-Za-z0-9_]*): 1bad\n\u2570\u2500[Index] /configs/parser-variables.conf:8\n   \u2570\u2500var=1bad,x\n\n\n"
+}

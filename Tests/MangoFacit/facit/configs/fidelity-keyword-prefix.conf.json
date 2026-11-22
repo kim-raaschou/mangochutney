@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Unknown bind flag: |\n[WARN]: Key binding conflict in keymode default:\n  File \"/configs/fidelity-keyword-prefix.conf\", line 10\n  File \"/configs/fidelity-keyword-prefix.conf\", line 11\n[WARN]: mousebind conflict in keymode default:\n  File \"/configs/fidelity-keyword-prefix.conf\", line 4\n  File \"/configs/fidelity-keyword-prefix.conf\", line 5\n[WARN]: axisbind conflict in keymode default:\n  File \"/configs/fidelity-keyword-prefix.conf\", line 6\n  File \"/configs/fidelity-keyword-prefix.conf\", line 7\n[WARN]: gesturebind conflict in keymode default:\n  File \"/configs/fidelity-keyword-prefix.conf\", line 8\n  File \"/configs/fidelity-keyword-prefix.conf\", line 9\n"
+}

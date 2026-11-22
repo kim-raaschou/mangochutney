@@ -1,0 +1,8 @@
+# a window_rule's scroller proportion of 0, or a negative single one, leaves an earlier rule's.
+config window_rule=app_id:^a$,scroller_proportion:0.5,scroller_proportion_single:0.6
+config window_rule=app_id:^a$,scroller_proportion:0,scroller_proportion_single:-0.5
+dispatch setlayout,scroller
+open a
+check
+open b
+check

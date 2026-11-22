@@ -143,24 +143,12 @@ final class IPCTests: MangoTestCase {
         XCTAssertThrowsError(try other.ipcInit())
     }
 
-    func testGetVersion() throws {
-        XCTAssertEqual(query("get version"), #"{"version":"0.18.5(21f80a9)"}"#)
-    }
-
     func testGetAllTags() throws {
         let line = try XCTUnwrap(query("get all-tags"))
         XCTAssertTrue(line.hasPrefix(#"{"all_tags":[{"monitor":"HDMI-A-1","tags":[{"index":1,"is_active":true,"is_urgent":false,"layout":"T","client_count":1}"#), line)
         let all = try XCTUnwrap(object(line)["all_tags"] as? [[String: Any]])
         XCTAssertEqual(all.map { $0["monitor"] as? String }, ["HDMI-A-1", "DP-1"], "mango's monitor list: the newest first")
         XCTAssertEqual((all[0]["tags"] as? [Any])?.count, 9)
-    }
-
-    func testGetTagsForMonitor() throws {
-        let obj = try object(query("get tags HDMI-A-1"))
-        XCTAssertEqual(obj["monitor"] as? String, "HDMI-A-1")
-        XCTAssertEqual(obj["active_tags"] as? [Int], [1])
-        XCTAssertEqual((obj["tags"] as? [Any])?.count, 9)
-        XCTAssertEqual(query("get tags nope"), #"{"error":"monitor not found"}"#)
     }
 
     func testGetClient() throws {
@@ -383,13 +371,6 @@ final class IPCTests: MangoTestCase {
     }
 
     // mango pre_calculate_before_arrange: hide_clients counts the minimized clients.
-    func testHideClientsCountsTheMinimized() throws {
-        XCTAssertEqual(try object(query("get monitor DP-1"))["hide_clients"] as? Int, 0)
-        rig.server.setMinimized(rig.server.clientByIdAll(3)!)
-        rig.server.arrangeAll(false)
-        XCTAssertEqual(try object(query("get monitor DP-1"))["hide_clients"] as? Int, 1, "any monitor's")
-        XCTAssertEqual(try object(query("get monitor HDMI-A-1"))["hide_clients"] as? Int, 1)
-    }
 
     // mango build_client_json: x, y, width and height are c->geom, with the border.
 

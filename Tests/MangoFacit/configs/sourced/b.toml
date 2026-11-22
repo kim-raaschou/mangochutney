@@ -1,0 +1,7 @@
+# sourced by toml-source-chain.conf; its own source is read from the first config's directory
+[var]
+tm = "SUPER"
+
+[global]
+gap_inner_vertical = 9
+source = "./sourced/c.conf"

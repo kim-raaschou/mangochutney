@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Unknown window rule option:bogus_option\n\u2570\u2500[Index] /configs/parser-window-rule.conf:5\n   \u2570\u2500window_rule=app_id:y,bogus_option:1,is_term:1\n\n\n[ERROR]: Unknown window rule option:bogus\n\u2570\u2500[Index] /configs/parser-window-rule.conf:6\n   \u2570\u2500window_rule=app_id:y,bogus:1\n\n\n"
+}

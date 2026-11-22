@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Bind keymode is required, e.g. [bind.default]\n\u2570\u2500[Index] /configs/toml-errors.toml:2\n   \u2570\u2500[bind]\n\n[ERROR]: Unknown bind flag: fast\n\u2570\u2500[Index] /configs/toml-errors.toml:4\n   \u2570\u2500[bind.default.fast]\n\n[ERROR]: Unknown toml rule type: window\n\u2570\u2500[Index] /configs/toml-errors.toml:6\n   \u2570\u2500[rule.window]\n\n[ERROR]: Unknown toml section: nonsense\n\u2570\u2500[Index] /configs/toml-errors.toml:8\n   \u2570\u2500[nonsense]\n\n[ERROR]: Invalid toml line format: just text\n\u2570\u2500[Index] /configs/toml-errors.toml:11\n   \u2570\u2500just text\n\n"
+}

@@ -75,13 +75,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.id, 496, 400), [])
     }
 
-    func testSizeZeroIsTheBorder() {
-        let (r, a, _) = sideBySide()
-        r.server.config.borderResizeSize = 0
-        XCTAssertEqual(r.server.clientResizeEdgeAt(a, nil, 502, 400), .right)
-        XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.id, 496, 400), [], "inside the window: not the border")
-    }
-
     func testHoverSetsTheCursorAndLeavingGivesItBack() {
         let (r, _, _) = sideBySide()
         motion(r, CGPoint(x: 496, y: 400), time: 1)
@@ -132,45 +125,6 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertEqual(fake(r).cursorName, .some("col-resize"))
         r.server.release(at: CGPoint(x: 496, y: 400), mods: [])
         XCTAssertNil(r.server.grabClient)
-    }
-
-    func testDraggingAFloatingEdgeChangesOnlyThatEdge() {
-        let (r, c) = floating()
-        r.arrange()
-        let before = c.frame
-        r.server.press(at: CGPoint(x: before.maxX - 2, y: before.midY), mods: [])
-        XCTAssertNotNil(r.server.grabClient)
-        XCTAssertEqual(r.server.resizeEdge, .right)
-        motion(r, CGPoint(x: before.maxX + 48, y: before.midY + 30), time: 100)
-        XCTAssertEqual(c.frame.width, before.width + 50, accuracy: 1)
-        XCTAssertEqual(c.frame.height, before.height)
-        XCTAssertEqual(c.frame.minX, before.minX)
-        r.server.release(at: CGPoint(x: before.maxX + 48, y: before.midY + 30), mods: [])
-
-        let f = c.frame
-        r.server.press(at: CGPoint(x: f.minX + 2, y: f.midY), mods: [])
-        XCTAssertNotNil(r.server.grabClient)
-        XCTAssertEqual(r.server.resizeEdge, .left)
-        motion(r, CGPoint(x: f.minX + 32, y: f.midY), time: 200)
-        XCTAssertEqual(c.frame.maxX, f.maxX, accuracy: 1, "the right side stays")
-        XCTAssertEqual(c.frame.width, f.width - 30, accuracy: 1)
-    }
-
-    func testAPlainClickOnAStripDoesNotSnap() {
-        let (r, c) = floating()
-        r.server.config.enableFloatingSnap = true
-        c.frame = CGRect(x: 20, y: 300, width: 400, height: 300)
-        r.app.frames[c.id] = c.frame
-        bordered(r, c)
-        let strip = CGPoint(x: c.frame.maxX - 2, y: c.frame.midY)
-        r.server.press(at: strip, mods: [])
-        r.server.release(at: strip, mods: [])
-        XCTAssertEqual(c.floatGeom.minX, 20 - c.bw, "a plain click: no snap")
-        r.server.press(at: strip, mods: [])
-        let moved = CGPoint(x: strip.x + 10, y: strip.y)
-        motion(r, moved, time: 100)
-        r.server.release(at: moved, mods: [])
-        XCTAssertLessThan(c.floatGeom.minX, 20 - c.bw, "moved: the window snaps to the screen's edge")
     }
 
     func testDraggingATiledStripMovesTheSplit() throws {

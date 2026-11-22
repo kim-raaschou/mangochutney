@@ -1,0 +1,17 @@
+# mmsg get monitor, cursorpos, keymode, tag, all-monitors, all-clients and all-layers, with two monitors.
+monitors 2
+dispatch focusmon,HEADLESS-2
+open n
+dispatch focusmon,HEADLESS-1
+open a
+open b
+dispatch @b tagsilent,2
+get monitor HEADLESS-1
+get monitor X
+get cursorpos
+get keymode
+get tag HEADLESS-1 2
+get tag HEADLESS-1 10
+get all-monitors
+get all-clients
+get all-layers

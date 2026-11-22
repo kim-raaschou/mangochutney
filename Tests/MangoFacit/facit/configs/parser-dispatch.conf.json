@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Unknown dispatch in bind: nonsense\n\u2570\u2500[Index] /configs/parser-dispatch.conf:6\n   \u2570\u2500bind=SUPER,e,nonsense,1\n\n\n"
+}

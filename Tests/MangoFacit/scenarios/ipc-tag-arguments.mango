@@ -1,0 +1,19 @@
+# mmsg get tag: a comma is a space, and a name of several words, a missing index and no words at all are answered each their way.
+# ours: get tag takes the number as the last field, as macOS's monitor names have spaces (docs/afvigelser.md §3).
+monitors 2
+dispatch focusmon,HEADLESS-2
+open n
+dispatch focusmon,HEADLESS-1
+open a
+open b
+dispatch @b tagsilent,2
+get tag HEADLESS-1 2
+get tag HEADLESS-1,1
+get tag HEADLESS-1 10
+get tag Other Display 1
+ours error "invalid monitor or tag index"
+get tag Other 1
+get tag HEADLESS-1
+get tag HEADLESS-2 1
+get tag HEADLESS-2
+get tag

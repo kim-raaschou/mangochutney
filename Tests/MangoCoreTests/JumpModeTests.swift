@@ -70,28 +70,11 @@ final class JumpModeTests: MangoTestCase {
         }
     }
 
-    func testAKeyOfNoClientDoesNothing() {
-        let (r, _) = rig(1)
-        jump(r)
-        r.server.handleKeyboardKey([.overviewKey(.jump(25))])
-        XCTAssertTrue(r.server.anyOverview)
-        XCTAssertTrue(r.monitor.isJumpMode)
-    }
-
     func testEscapeIsToggleJump() {
         let (r, _) = rig()
         jump(r)
         r.server.handleKeyboardKey([.overviewKey(.escape)])
         XCTAssertFalse(r.server.anyOverview)
-        XCTAssertFalse(r.monitor.isJumpMode)
-    }
-
-    func testAPassthroughBindingThatLeavesOverviewEndsJumpModeFirst() {
-        let (r, _) = rig()
-        jump(r)
-        let leave = KeyBinding(mods: [], keyName: "escape", keyCodes: [53], dispatch: Dispatch(name: "leaveoverview", args: []))
-        r.server.handleKeyboardKey([.binding(leave, held: false), .overviewKey(.escape)])
-        XCTAssertFalse(r.server.anyOverview, "is_jump_mode is asked after the binding has left overview")
         XCTAssertFalse(r.monitor.isJumpMode)
     }
 

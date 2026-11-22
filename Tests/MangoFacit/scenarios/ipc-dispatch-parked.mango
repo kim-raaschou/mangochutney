@@ -1,0 +1,13 @@
+# a dispatch aimed at a parked group member (c): togglefloating finds no client, focusid finds it; a focusdir of no direction changes nothing.
+open a
+open b
+open c
+dispatch @a groupjoin,left
+dispatch @b focusid
+check
+dispatch @c togglefloating
+check
+dispatch @c focusid
+check
+dispatch focusdir,sideways
+check

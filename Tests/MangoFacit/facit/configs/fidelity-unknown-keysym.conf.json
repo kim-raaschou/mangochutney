@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "\u2570\u2500[Index] /configs/fidelity-unknown-keysym.conf:2\n   \u2570\u2500binds=SUPER,notakey,quit\n\n\n[ERROR]: Unknown key: notakey\n\u2570\u2500[Index] /configs/fidelity-unknown-keysym.conf:3\n   \u2570\u2500bind=SUPER,notakey,quit\n\n\n"
+}

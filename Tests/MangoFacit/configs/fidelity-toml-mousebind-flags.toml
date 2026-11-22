@@ -1,0 +1,6 @@
+# a TOML mousebind section takes flags after its keymode, and makes a binding (the conflict shows it)
+[mousebind.default.sym]
+"SUPER+btn_left" = "moveresize,curmove"
+
+[mousebind.default]
+"SUPER+btn_left" = "moveresize,curresize"

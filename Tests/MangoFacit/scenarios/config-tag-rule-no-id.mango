@@ -1,0 +1,7 @@
+# tag_rule without an id is tag 0's: no tag from 1 has its layout.
+config tag_rule=layout_name:grid
+get all-tags
+open a
+open b
+open c
+check

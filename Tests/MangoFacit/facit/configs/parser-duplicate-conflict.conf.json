@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[WARN]: Key binding conflict in keymode default:\n  File \"/configs/parser-duplicate-conflict.conf\", line 2\n  File \"/configs/parser-duplicate-conflict.conf\", line 3\n[WARN]: Key binding conflict in keymode common:\n  File \"/configs/parser-duplicate-conflict.conf\", line 12\n  File \"/configs/parser-duplicate-conflict.conf\", line 14\n[WARN]: Key binding conflict in keymode default:\n  File \"/configs/parser-duplicate-conflict.conf\", line 6\n  File \"/configs/parser-duplicate-conflict.conf\", line 7\n[WARN]: mousebind conflict in keymode other:\n  File \"/configs/parser-duplicate-conflict.conf\", line 15\n  File \"/configs/parser-duplicate-conflict.conf\", line 16\n"
+}

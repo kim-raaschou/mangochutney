@@ -1,0 +1,4 @@
+# setkeymode with a long name: the mode is cut at 27 bytes.
+dispatch setkeymode,abcdefghijklmnopqrstuvwxyz0123
+get keymode
+check

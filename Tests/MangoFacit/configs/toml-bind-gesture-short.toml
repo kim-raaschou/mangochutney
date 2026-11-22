@@ -1,0 +1,3 @@
+# a TOML gesture bind key without its modifiers is refused, with no message of its own
+[gesturebind.default]
+"left+3" = "focusdir,right"

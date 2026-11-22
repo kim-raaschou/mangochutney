@@ -1,0 +1,9 @@
+# enable_border_resize, a floating window: a drag of the top edge changes the top alone, whatever the pointer does sideways.
+open a
+dispatch togglefloating
+check
+pointer 950,238
+button left down
+pointer 990,213
+button left up
+check

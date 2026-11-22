@@ -1,0 +1,7 @@
+# a bindc that sets the keymode ends the key's binds: the second bind of the same key does not run.
+config bindc=SUPER,j,setkeymode,resize
+config bind=SUPER,j,togglefloating
+open a
+key super+j
+get keymode
+check

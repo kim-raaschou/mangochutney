@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Monitor rule must set width, height and refresh together\n\u2570\u2500[Index] /configs/parser-monitor-rule-refresh.conf:2\n   \u2570\u2500monitor_rule=name:eDP-1,width:1920,height:1080\n\n\n"
+}

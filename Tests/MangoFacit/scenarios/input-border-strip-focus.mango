@@ -1,0 +1,12 @@
+# sloppy focus and the strip: the pointer on a window's border is on that window, and the gap between two windows is no window's.
+open a
+open b
+pointer 1500,500
+check
+pointer 1061,500
+check
+pointer 1066,500
+check
+pointer 1500,500
+pointer 1066,500
+check

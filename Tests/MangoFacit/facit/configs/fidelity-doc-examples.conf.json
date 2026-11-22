@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[WARN]: Key binding conflict in keymode default:\n  File \"/configs/fidelity-doc-examples.conf\", line 37\n  File \"/configs/fidelity-doc-examples.conf\", line 38\n[WARN]: Key binding conflict in keymode default:\n  File \"/configs/fidelity-doc-examples.conf\", line 24\n  File \"/configs/fidelity-doc-examples.conf\", line 58\n[WARN]: Key binding conflict in keymode default:\n  File \"/configs/fidelity-doc-examples.conf\", line 51\n  File \"/configs/fidelity-doc-examples.conf\", line 52\n[WARN]: switchbind conflict in keymode resize:\n  File \"/configs/fidelity-doc-examples.conf\", line 164\n  File \"/configs/fidelity-doc-examples.conf\", line 165\n"
+}

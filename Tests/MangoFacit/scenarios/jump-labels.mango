@@ -1,0 +1,15 @@
+# jump_labels: the windows get its characters in order, and each one's key jumps to its window.
+config jump_labels=qw
+open a
+open b
+open c
+dispatch togglejump
+check
+key w
+check
+dispatch togglejump
+key q
+check
+dispatch togglejump
+key h
+check

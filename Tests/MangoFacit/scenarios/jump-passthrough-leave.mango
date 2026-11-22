@@ -1,0 +1,8 @@
+# jump mode: a passthrough bind on Escape that leaves the overview ends jump mode first, so the key does not toggle it again.
+config bindp=NONE,Escape,leaveoverview
+open a
+open b
+dispatch togglejump
+check
+key Escape
+check

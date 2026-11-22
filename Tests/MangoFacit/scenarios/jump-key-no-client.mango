@@ -1,0 +1,8 @@
+# jump mode: a label's key with no window of that label does nothing; Escape then leaves.
+open a
+dispatch togglejump
+check
+key z
+check
+key Escape
+check

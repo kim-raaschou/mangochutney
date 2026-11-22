@@ -1,0 +1,23 @@
+# a bind's arguments: spaces around them go, an empty one ends them, movewin takes its first two and a dispatcher may have none.
+config bind=SUPER,a,view, 1 ,0
+config bind=SUPER,b,focusdir,left,,x
+config bind=SUPER,c,movewin,1,2,3,4,5,,6
+config bind=SUPER,d,dwindle_toggle_current_split
+open a
+open b
+open c
+dispatch view,2
+key super+a
+check
+dispatch @a focusid
+key super+b
+check
+dispatch togglefloating
+check
+key super+c
+check
+dispatch togglefloating
+dispatch setlayout,dwindle
+check
+key super+d
+check

@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Failed to parse animation_curve_move: 0.46,1.0,0.29\n\u2570\u2500[Index] /configs/fidelity-bad-curve.conf:2\n   \u2570\u2500animation_curve_move=0.46,1.0,0.29\n\n\n[ERROR]: Invalid number in array: x\n[ERROR]: Failed to parse animation_curve_open: x\n\u2570\u2500[Index] /configs/fidelity-bad-curve.conf:3\n   \u2570\u2500animation_curve_open=x\n\n\n[ERROR]: Invalid number in array (must be non-negative): -1\n[ERROR]: Failed to parse animation_curve_tag: 0.1,-1,0.2,0.3\n\u2570\u2500[Index] /configs/fidelity-bad-curve.conf:4\n   \u2570\u2500animation_curve_tag=0.1,-1,0.2,0.3\n\n\n"
+}

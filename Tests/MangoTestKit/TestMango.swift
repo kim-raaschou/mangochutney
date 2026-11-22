@@ -30,7 +30,7 @@ package final class TestMango {
         defer { ConfigParser.port = port }
         let parsed = ConfigParser.parse(text: "animations=0\n" + config,
                                         baseDirectory: URL(fileURLWithPath: NSTemporaryDirectory()), fileName: "config.conf")
-        for error in parsed.errors { XCTFail("config: \(error)", file: file, line: line) }
+        for error in parsed.errors where error.verbosity == .error { XCTFail("config: \(error)", file: file, line: line) }   // mango starts on warnings
         server.config = parsed.config
         wlroots = FakeWlroots(server, screens: screens)
         server.system = wlroots
@@ -131,13 +131,20 @@ package final class TestMango {
         time += 1000
         let from = wlroots.pointer
         wlroots.pointer = p
+        cursorMoved()
         server.pointerProcessMotion(time, p.x - from.x, p.y - from.y)
+    }
+
+    /// wlroots draws the cursor itself on a headless output: a move damages the output it is on.
+    private func cursorMoved() {
+        if let m = server.monitorAtPoint(wlroots.pointer) { wlroots.outputScheduleFrame(m) }
     }
 
     /// The pointer moved by `d`, as mango's handle_cursor_motion takes a relative motion.
     package func move(by d: CGVector) {
         time += 1000
         wlroots.pointer = CGPoint(x: wlroots.pointer.x + d.dx, y: wlroots.pointer.y + d.dy)
+        cursorMoved()
         server.handleCursorMotion(time, d.dx, d.dy)
     }
 

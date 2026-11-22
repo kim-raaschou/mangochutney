@@ -1,0 +1,26 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "screens": [
+  {
+   "name": "HEADLESS-1",
+   "x": 0,
+   "y": 0,
+   "width": 1920,
+   "height": 1080
+  }
+ ],
+ "pointer": {
+  "x": 100,
+  "y": 100
+ },
+ "checks": [],
+ "gets": [
+  {
+   "after_line": 2,
+   "answer": {
+    "version": "0.18.5(21f80a9)"
+   }
+  }
+ ],
+ "outputs": []
+}

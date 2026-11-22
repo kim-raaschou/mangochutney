@@ -222,48 +222,4 @@ final class TOMLConfigTests: MangoTestCase {
         XCTAssertEqual(p.config.keyBindings.map(\.flags), [[.release, .passthrough], [.keysym]])
     }
 
-    func testKeyModeOfABindSectionEndsWithTheSection() {
-        let p = parse("""
-        [bind.resize]
-        "SUPER+Left" = "resizewin,-10,0"
-        [global]
-        bind = "SUPER,q,killclient"
-        """)
-        XCTAssertEqual(p.errors, [])
-        XCTAssertEqual(p.config.keyBindings.map(\.mode), ["resize", "default"])
-    }
-
-    func testErrorsLikeMango() {
-        let p = parse("""
-        [bind]
-        "SUPER+a" = "spawn,x"
-        [bind.default.fast]
-        "SUPER+b" = "spawn,y"
-        [rule.window]
-        app_id = "x"
-        [nonsense]
-        a = 1
-        [global]
-        just text
-        """)
-        XCTAssertEqual(p.errors.map(\.message.plain), [
-            "Bind keymode is required, e.g. [bind.default]",
-            "Unknown bind flag: fast",
-            "Unknown toml rule type: window",
-            "Unknown toml section: nonsense",
-            "Invalid toml line format: just text",
-        ])
-        XCTAssertEqual(p.errors.map(\.line), [1, 3, 5, 7, 10])
-        XCTAssertTrue(p.config.keyBindings.isEmpty, "skipped sections add nothing")
-    }
-
-    /// mango's statement buffer is 8192 bytes: a longer statement is "Config line too long" and the
-    /// rest of the file is not read.
-    func testTooLongStatementStopsTheFile() {
-        let elements = Array(repeating: "  \"tile\",", count: 1100).joined(separator: "\n")
-        let p = parse("[global]\ncircle_layout = [\n\(elements)\n]\njust text\n")
-        XCTAssertEqual(p.errors.map(\.message.plain), ["Config line too long in t.toml"], "the file stops")
-        XCTAssertNotEqual(p.config.circleLayout.count, 1100)
-    }
-
 }

@@ -1,0 +1,10 @@
+# focusmon to an empty monitor, warp_cursor=0: the pointer stays over the window it left, and its next motion there focuses that window again.
+monitors 2
+config warp_cursor=0
+dispatch focusmon,HEADLESS-1
+open a
+pointer 500,500
+dispatch focusmon,right
+check
+move 1,1
+check

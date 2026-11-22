@@ -1,0 +1,22 @@
+# enable_border_resize: no strip on a fullscreen window or in the overview.
+open a
+open b
+dispatch togglefullscreen
+check
+pointer 1915,500
+button left down
+move -1,0
+pointer 1800,500
+button left up
+check
+dispatch togglefullscreen
+dispatch toggleoverview
+check
+pointer 1056,500
+button left down
+move 1,0
+pointer 1176,500
+button left up
+check
+dispatch leaveoverview
+check

@@ -1,0 +1,11 @@
+# a window_rule with an empty monitor: an empty regex, which every monitor matches.
+monitors 2
+config window_rule=app_id:^a$,monitor:
+dispatch focusmon,HEADLESS-1
+open a
+check
+dispatch focusmon,HEADLESS-2
+open b
+close a
+open a
+check

@@ -1,0 +1,5 @@
+# a negative window_rule flag is unset: the later rule leaves the first one's floating, and the border stays.
+config window_rule=app_id:^a$,is_floating:1
+config window_rule=app_id:^a$,is_floating:-1,no_border:-1
+open a
+check

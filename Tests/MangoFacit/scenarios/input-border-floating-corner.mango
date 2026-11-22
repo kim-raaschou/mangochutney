@@ -1,0 +1,9 @@
+# enable_border_resize, a floating window: a press on the border's top left corner and a drag resize it both ways.
+open a
+dispatch togglefloating
+check
+pointer 557,237
+button left down
+pointer 507,197
+button left up
+check

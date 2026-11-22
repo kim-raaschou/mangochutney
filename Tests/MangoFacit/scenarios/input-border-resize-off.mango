@@ -1,0 +1,10 @@
+# enable_border_resize=0: a press on the strip and a drag resize nothing.
+config enable_border_resize=0
+open a
+open b
+pointer 1056,500
+button left down
+move 1,0
+pointer 1176,500
+button left up
+check

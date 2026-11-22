@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Unknown keyword: execx\n\u2570\u2500[Index] /configs/fidelity-exec-whole.conf:2\n   \u2570\u2500execx=echo\n\n\n"
+}

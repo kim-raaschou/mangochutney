@@ -1,0 +1,9 @@
+# enable_border_resize: dragging a floating window's left edge keeps the right side.
+open a
+dispatch togglefloating
+check
+pointer 562,540
+button left down
+pointer 592,540
+button left up
+check

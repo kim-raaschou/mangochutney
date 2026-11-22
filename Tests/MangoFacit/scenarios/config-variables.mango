@@ -1,0 +1,12 @@
+# var: $name and ${name} expand in values and in a bind's modifiers.
+config var=gap,7
+config var=big,${gap}0
+config gap_inner_horizontal=$gap
+config gap_outer_horizontal=${big}
+config var=mod,SUPER+SHIFT
+config bind=$mod,a,togglefloating
+open a
+open b
+check
+key super+shift+a
+check

@@ -1,0 +1,10 @@
+# values out of range are clamped: border_px 500 is 200, default_master_factor 2 is 0.9 and tag_num 0 is 1.
+config border_px=500
+config default_master_factor=2
+config tag_num=0
+open a
+open b
+check
+get monitor HEADLESS-1
+dispatch togglefloating
+check

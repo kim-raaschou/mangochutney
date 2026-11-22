@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Invalid line format:    # indented comment\n\n\u2570\u2500[Index] /configs/parser-comments.conf:3\n   \u2570\u2500   # indented comment\n\n\n[ERROR]: Invalid line format: not a valid line\n\n\u2570\u2500[Index] /configs/parser-comments.conf:7\n   \u2570\u2500not a valid line\n\n\n"
+}

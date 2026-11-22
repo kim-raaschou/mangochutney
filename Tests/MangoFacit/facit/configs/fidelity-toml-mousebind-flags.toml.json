@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[WARN]: mousebind conflict in keymode default:\n  File \"/configs/fidelity-toml-mousebind-flags.toml\", line 3\n  File \"/configs/fidelity-toml-mousebind-flags.toml\", line 6\n"
+}

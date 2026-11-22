@@ -1,0 +1,10 @@
+# mmsg get tags <monitor>: the tags of a monitor that is not the selected one, and of none.
+monitors 2
+dispatch focusmon,HEADLESS-1
+open a
+dispatch focusmon,HEADLESS-2
+open b
+dispatch focusmon,HEADLESS-1
+get tags HEADLESS-2
+get tags HEADLESS-1
+get tags NOPE

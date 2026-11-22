@@ -1,0 +1,33 @@
+# options out of range are clamped: the scratchpad's ratios 0 and 7 are 0.1 and 1, the overview's gaps 5000 and -4 are 1000 and 0.
+config hotarea_size=0
+config overview_gap_inner=5000
+config overview_gap_outer=-4
+config overcircle_center_ratio=0.95
+config drag_corner=9
+config border_resize_size=99
+config snap_distance=-5
+config axis_bind_apply_timeout=5000
+config cursor_hide_timeout=99999
+config swipe_min_threshold=0
+config gesture_swipe_distance=10
+config gesture_swipe_cancel_ratio=2
+config gesture_swipe_min_speed_to_force=-3
+config scratchpad_width_ratio=0
+config scratchpad_height_ratio=7
+config special_dim=3
+config special_gap_outer_horizontal=-1
+config special_gap_inner_vertical=2000
+config tag_animation_direction=5
+open a
+open b
+open c
+dispatch minimized
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+dispatch toggleoverview
+check
+dispatch toggleoverview
+dispatch togglefloating
+pointer 500,500
+check

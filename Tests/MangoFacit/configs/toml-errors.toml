@@ -1,0 +1,11 @@
+# TOML sections mango refuses: no keymode, an unknown flag, rule type and section, and a line that is no pair
+[bind]
+"SUPER+a" = "spawn,x"
+[bind.default.fast]
+"SUPER+b" = "spawn,y"
+[rule.window]
+app_id = "x"
+[nonsense]
+a = 1
+[global]
+just text
