@@ -1,0 +1,9 @@
+# switch_layout with a circle_layout that names no layout leaves the layout.
+config circle_layout=tile,monocle
+open a
+dispatch switch_layout
+check
+dispatch setoption,circle_layout,spiral
+check
+dispatch switch_layout
+check

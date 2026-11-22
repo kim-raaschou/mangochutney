@@ -1,0 +1,7 @@
+# toggleoverlay does not float the window, and floating it and back leaves it an overlay.
+open a
+dispatch @a toggleoverlay
+check
+dispatch @a togglefloating
+dispatch @a togglefloating
+check

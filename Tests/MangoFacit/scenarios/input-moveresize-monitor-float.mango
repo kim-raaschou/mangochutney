@@ -1,0 +1,11 @@
+# without drag_tile_to_tile a tiled window dragged to the other monitor floats and joins the monitor it is let go on.
+monitors 2
+config mousebind=NONE,btn_middle,moveresize,curmove
+config drag_tile_to_tile=0
+open a
+check
+pointer 2880,500
+button middle down
+pointer 900,500
+button middle up
+check

@@ -1,0 +1,8 @@
+# view of one of two tags in view makes it the current tag and the other the tag before.
+config view_current_to_back=1
+open a
+dispatch toggleview,2
+dispatch view,2
+check
+dispatch view,2
+check

@@ -1,0 +1,7 @@
+# a click on nothing in the overview keeps the overview.
+open a
+dispatch toggleoverview
+pointer 1,1079
+check
+click left
+check

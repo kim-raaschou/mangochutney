@@ -1,0 +1,12 @@
+# scroller: a view of a tag scrolls its focused window into view, also one that came to the tag while it was away.
+dispatch setlayout,scroller
+open a
+open b
+open c
+open d
+check
+dispatch view,2
+open e
+dispatch @e tagsilent,1
+dispatch view,1
+check

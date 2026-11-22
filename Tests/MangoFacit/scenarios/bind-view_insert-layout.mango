@@ -1,0 +1,9 @@
+# view_insert,next moves the next tag's windows and layout one tag up and views the emptied tag.
+open a
+dispatch view,2
+dispatch setlayout,grid
+open b
+dispatch view,1
+check
+dispatch view_insert,next
+check

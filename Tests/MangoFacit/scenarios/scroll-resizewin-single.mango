@@ -1,0 +1,7 @@
+# with scroller_ignore_proportion_single=0 resizewin leaves a lone column's proportion.
+config scroller_ignore_proportion_single=0
+dispatch setlayout,scroller
+open a
+check
+dispatch resizewin,+100,+0
+check

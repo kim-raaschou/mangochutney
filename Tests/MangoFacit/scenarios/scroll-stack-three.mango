@@ -1,0 +1,9 @@
+# three windows in one scroller column share its height alike.
+dispatch setlayout,scroller
+open a
+open b
+open c
+dispatch @b scroller_stack,left
+check
+dispatch @c scroller_stack,left
+check

@@ -1,0 +1,12 @@
+# restore_minimized takes the last minimized first; a window that floated before it was minimized floats again.
+open a
+open b
+open c
+dispatch @a togglefloating
+dispatch @a minimized
+dispatch @b minimized
+check
+dispatch restore_minimized
+check
+dispatch restore_minimized
+check

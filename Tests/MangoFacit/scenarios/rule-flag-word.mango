@@ -1,0 +1,4 @@
+# a rule flag that is a word and no number is 0.
+config window_rule=is_floating:yes,title:^a$
+open a
+check

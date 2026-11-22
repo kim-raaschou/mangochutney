@@ -1,0 +1,9 @@
+# confine_pointer: a pointer outside the new window goes to its middle, and is then kept inside its border.
+config window_rule=confine_pointer:1,title:^a$
+pointer 3,500
+open a
+check
+pointer 1915,540
+check
+pointer 960,5
+check

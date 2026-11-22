@@ -1,0 +1,7 @@
+# comboview adds tags to the view till a key is released; then it starts over.
+dispatch comboview,2
+dispatch comboview,3
+check
+key shift
+dispatch comboview,1
+check

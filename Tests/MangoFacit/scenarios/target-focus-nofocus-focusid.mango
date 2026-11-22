@@ -1,0 +1,16 @@
+# focusid onto a no_focus window leaves the focus and does not warp; focusstack warps, and stops before a no_focus window.
+config new_is_master=0
+config warp_cursor=1
+config window_rule=no_focus:1,title:^c$
+open a
+open b
+open c
+pointer 100,100
+dispatch @a focusid
+check
+dispatch @c focusid
+check
+dispatch focusstack,next
+check
+dispatch focusstack,next
+check

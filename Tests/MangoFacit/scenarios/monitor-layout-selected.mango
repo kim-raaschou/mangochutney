@@ -1,0 +1,11 @@
+# setlayout and incnmaster aimed at a window on another monitor change the selected monitor.
+monitors 2
+open a
+dispatch focusmon,left
+dispatch @a setlayout,monocle
+dispatch @a incnmaster,1
+check
+dispatch setlayout,tile
+open b
+open c
+check

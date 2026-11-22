@@ -1,0 +1,7 @@
+# a maximized window keeps the config's outer gaps with the gaps toggled off.
+open a
+open b
+dispatch togglegaps
+check
+dispatch @a togglemaximizescreen
+check

@@ -1,0 +1,11 @@
+# toggle_special_tag views the special tag alone; a new window opens on it; the last one gone views the tags before.
+open a
+dispatch toggle_special_tag
+check
+open s
+check
+close s
+check
+dispatch toggle_special_tag
+dispatch toggle_special_tag
+check

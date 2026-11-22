@@ -1,0 +1,13 @@
+# smartresizewin floats a tiled window; a floating one grows till the gap before the next floating window.
+open a
+dispatch smartresizewin,right
+check
+open b
+dispatch @b togglefloating
+dispatch @a movewin,100,200
+dispatch @a resizewin,300,300
+dispatch @b movewin,450,250
+dispatch @b resizewin,300,300
+check
+dispatch @a smartresizewin,right
+check

@@ -1,0 +1,14 @@
+# move_client past the monitor's edge without exchange_cross_monitor stays; with it the window goes beside those there.
+monitors 2
+open a
+dispatch move_client,left
+check
+dispatch focusmon,left
+open b
+open c
+dispatch @a focusid
+dispatch move_client,left
+check
+dispatch setoption,exchange_cross_monitor,1
+dispatch move_client,left
+check

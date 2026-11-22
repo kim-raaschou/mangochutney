@@ -1,0 +1,11 @@
+# scroller: a window floated and tiled again goes back to its place, whatever is focused.
+dispatch setlayout,scroller
+open a
+open b
+open c
+check
+dispatch @b togglefloating
+dispatch @c focusid
+check
+dispatch @b togglefloating
+check

@@ -1,0 +1,8 @@
+# scroller with smart_gaps: one column of two windows has no outer gap, and keeps the gap between the two.
+config smart_gaps=1
+dispatch setlayout,scroller
+open a
+open b
+check
+dispatch @b scroller_stack,left
+check

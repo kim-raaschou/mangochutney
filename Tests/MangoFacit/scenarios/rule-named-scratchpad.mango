@@ -1,0 +1,7 @@
+# is_named_scratchpad: the window opens shown, as a floating scratchpad; single_scratchpad hides the one before.
+config single_scratchpad=1
+config window_rule=is_named_scratchpad:1,title:^[st]$
+open s
+check
+open t
+check

@@ -1,0 +1,8 @@
+# smartkillclient on a window with several tags, none of them in view, leaves it and its tags.
+open a
+open b
+dispatch @a tagsilent,2
+dispatch @a toggletag,3
+check
+dispatch @a smartkillclient
+check

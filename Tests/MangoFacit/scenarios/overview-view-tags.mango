@@ -1,0 +1,14 @@
+# the overview shows every tag and refuses view; leaving it views the selected window's tag.
+config new_is_master=0
+open a
+dispatch view,2
+open b
+dispatch view,1
+dispatch toggleoverview
+check
+dispatch view,3
+check
+dispatch focusstack,next
+check
+dispatch toggleoverview
+check

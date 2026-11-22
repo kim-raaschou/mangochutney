@@ -1,0 +1,10 @@
+# setmfact sets the share of every window in view, and a new window takes it over.
+config new_is_master=0
+open a
+open b
+dispatch setmfact,1.4
+check
+open c
+check
+dispatch @c zoom
+check

@@ -1,0 +1,6 @@
+# tag_gather renumbers the tags in use so none between them is empty.
+config tag_gather=1
+open a
+open b
+dispatch @b tagsilent,9
+check

@@ -1,0 +1,9 @@
+# tag sends the window to a tag with a fullscreen window: its fullscreen ends, and the tag is viewed.
+dispatch view,2
+open a
+dispatch togglefullscreen
+dispatch view,1
+open b
+check
+dispatch tag,2
+check

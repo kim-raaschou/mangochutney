@@ -1,0 +1,10 @@
+# a boolean given as a word is 0: smart_gaps=true keeps the gaps, sloppy_focus=true does not focus under the pointer.
+config smart_gaps=true
+config sloppy_focus=true
+open a
+check
+open b
+pointer 1500,500
+check
+pointer 300,500
+check

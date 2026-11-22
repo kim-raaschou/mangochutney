@@ -1,0 +1,7 @@
+# layout names are matched by case: setlayout,Grid is no layout.
+open a
+open b
+dispatch setlayout,Grid
+check
+dispatch setlayout,grid
+check

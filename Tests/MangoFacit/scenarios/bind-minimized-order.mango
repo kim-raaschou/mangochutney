@@ -1,0 +1,9 @@
+# a minimized window goes first in the clients list and has no tags; restore_minimized takes the last minimized.
+open a
+open b
+open c
+dispatch @c minimized
+dispatch @a minimized
+check
+dispatch restore_minimized
+check

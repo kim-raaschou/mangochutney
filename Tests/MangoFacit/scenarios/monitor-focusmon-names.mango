@@ -1,0 +1,10 @@
+# focusmon takes a monitor's name as a regex, by case: another case is no match, and a digit matches the name that has it.
+monitors 2
+dispatch focusmon,headless-1
+check
+dispatch focusmon,3
+check
+dispatch focusmon,1
+check
+dispatch focusmon,2
+check

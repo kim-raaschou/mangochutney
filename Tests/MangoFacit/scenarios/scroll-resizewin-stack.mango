@@ -1,0 +1,8 @@
+# resizewin,+0,+100 on a window in a scroller column changes its share of the column.
+dispatch setlayout,scroller
+open a
+open b
+dispatch @b scroller_stack,left
+check
+dispatch @a resizewin,+0,+100
+check

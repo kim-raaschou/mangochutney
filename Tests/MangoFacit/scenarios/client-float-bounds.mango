@@ -1,0 +1,8 @@
+# a floating window moved half outside the monitor stays there; moved wholly outside it comes back inside.
+open a
+dispatch togglefloating
+dispatch resizewin,600,400
+dispatch movewin,1720,200
+check
+dispatch movewin,1970,200
+check

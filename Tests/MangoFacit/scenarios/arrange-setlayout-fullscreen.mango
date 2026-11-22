@@ -1,0 +1,12 @@
+# setlayout,scroller keeps a tiled window fullscreen and ends a floating one's; setlayout,tile ends the tiled one's.
+open a
+open b
+dispatch @b togglefloating
+dispatch @b togglefullscreen
+check
+dispatch @a togglefullscreen
+check
+dispatch setlayout,scroller
+check
+dispatch setlayout,tile
+check

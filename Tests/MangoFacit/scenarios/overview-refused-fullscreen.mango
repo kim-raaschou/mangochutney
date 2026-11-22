@@ -1,0 +1,8 @@
+# the overview refuses togglefullscreen and togglemaximizescreen.
+open a
+dispatch toggleoverview
+dispatch @a togglefullscreen
+dispatch @a togglemaximizescreen
+check
+dispatch toggleoverview
+check

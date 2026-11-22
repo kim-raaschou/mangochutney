@@ -1,0 +1,9 @@
+# with two tags in view: toggletag,0 puts the window on all tags, and again on the current tag alone; toggleview,0 does nothing.
+open a
+dispatch toggleview,2
+dispatch toggletag,0
+check
+dispatch toggletag,0
+check
+dispatch toggleview,0
+check

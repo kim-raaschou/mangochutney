@@ -1,0 +1,9 @@
+# focus_cross_tag=1: focusdir,down past the edge goes to the next tag that has windows.
+config focus_cross_tag=1
+open a
+dispatch view,2
+open b
+dispatch view,1
+check
+dispatch focusdir,down
+check

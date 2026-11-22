@@ -1,0 +1,9 @@
+# tagmon onto a monitor that views two tags: the window takes both, and the monitor views the first of them.
+monitors 2
+dispatch focusmon,left
+dispatch toggleview,2
+dispatch focusmon,right
+open a
+check
+dispatch tagmon,left
+check

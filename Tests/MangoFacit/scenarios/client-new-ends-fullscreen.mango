@@ -1,0 +1,8 @@
+# a new floating window leaves a fullscreen window as it is; a new tiled window ends its fullscreen.
+config window_rule=is_floating:1,title:^b$
+open a
+dispatch togglefullscreen
+open b
+check
+open c
+check

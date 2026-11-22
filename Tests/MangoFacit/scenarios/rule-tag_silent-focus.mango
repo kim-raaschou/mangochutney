@@ -1,0 +1,11 @@
+# is_tag_silent: the new window is focused only when its tag is in view; is_open_silent: never.
+config window_rule=is_tag_silent:1,tags:1,title:^b$
+config window_rule=is_tag_silent:1,tags:3,title:^c$
+config window_rule=is_open_silent:1,title:^d$
+open a
+open b
+check
+open c
+check
+open d
+check

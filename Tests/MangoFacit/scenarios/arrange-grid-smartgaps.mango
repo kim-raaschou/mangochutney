@@ -1,0 +1,5 @@
+# grid keeps its gaps around a single window with smart_gaps.
+config smart_gaps=1
+dispatch setlayout,grid
+open a
+check

@@ -1,0 +1,10 @@
+# dwindle: a fullscreen window keeps its place in the tree and is back there when it leaves fullscreen.
+dispatch setlayout,dwindle
+open a
+open b
+open c
+check
+dispatch @a togglefullscreen
+check
+dispatch @a togglefullscreen
+check

@@ -1,0 +1,10 @@
+# special_tag_cross_monitor: the special tag comes to the selected monitor with its layout, and the other monitor goes back to its tags.
+monitors 2
+config special_tag_cross_monitor=1
+open a
+dispatch tag_special_tag
+dispatch setlayout,grid
+check
+dispatch focusmon,left
+dispatch toggle_special_tag
+check

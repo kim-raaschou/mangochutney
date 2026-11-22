@@ -1,0 +1,12 @@
+# focus_cross_monitor: focusdir onto the other monitor focuses the window focused last there, not the nearest.
+monitors 2
+config focus_cross_monitor=1
+open b
+open c
+dispatch @c focusid
+dispatch @b focusid
+dispatch focusmon,left
+open a
+check
+dispatch focusdir,right
+check

@@ -1,0 +1,12 @@
+# switch_proportion_preset goes forward in the config's order, round, and prev goes forward too.
+config scroller_proportion_preset=0.8,0.5,1.0
+dispatch setlayout,scroller
+open a
+open b
+dispatch @a set_proportion,0.8
+dispatch @a switch_proportion_preset
+check
+dispatch @a switch_proportion_preset,prev
+check
+dispatch @a switch_proportion_preset,next
+check

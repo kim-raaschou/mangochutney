@@ -1,0 +1,7 @@
+# a window rule's monitor that matches several monitors: the last one matched gets the window, not the selected one.
+monitors 2
+config window_rule=monitor:HEADLESS,title:^a$
+dispatch focusmon,left
+check
+open a
+check

@@ -1,0 +1,9 @@
+# zoom moves the window first in the clients list; zoom on the first swaps it with the next.
+config new_is_master=0
+open a
+open b
+open c
+dispatch @c zoom
+check
+dispatch @c zoom
+check

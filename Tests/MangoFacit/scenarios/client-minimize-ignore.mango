@@ -1,0 +1,9 @@
+# a minimize request is refused with ignore_minimize (mango's default) and taken without it.
+config window_rule=ignore_minimize:0,title:^b$
+open a
+open b
+open c
+request a minimize
+check
+request b minimize
+check

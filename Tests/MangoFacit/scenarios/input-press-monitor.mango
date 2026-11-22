@@ -1,0 +1,10 @@
+# with no sloppy focus a press over a window on the other monitor selects that monitor and focuses the window.
+monitors 2
+config sloppy_focus=0
+open b
+dispatch focusmon,left
+open a
+pointer 2880,540
+check
+click left
+check

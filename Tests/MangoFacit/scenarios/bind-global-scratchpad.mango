@@ -1,0 +1,8 @@
+# toggleglobal takes a shown scratchpad window out of the scratchpad.
+open a
+open b
+dispatch @a minimized
+dispatch toggle_scratchpad
+check
+dispatch @a toggleglobal
+check

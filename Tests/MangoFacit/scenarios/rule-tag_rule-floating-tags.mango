@@ -1,0 +1,10 @@
+# open_as_floating goes by the tag the window opens on, not by the tag in view.
+config tag_rule=id:3,open_as_floating:1
+config window_rule=is_tag_silent:1,tags:3,title:^b$
+config window_rule=is_tag_silent:1,tags:2,title:^c$
+open a
+open b
+check
+dispatch view,3
+open c
+check

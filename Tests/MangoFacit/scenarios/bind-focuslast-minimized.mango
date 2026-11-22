@@ -1,0 +1,11 @@
+# focuslast skips a minimized window.
+open a
+open b
+open c
+dispatch @a focusid
+dispatch @b focusid
+dispatch @c focusid
+dispatch @b minimized
+check
+dispatch focuslast
+check

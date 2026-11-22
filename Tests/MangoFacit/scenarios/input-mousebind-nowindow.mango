@@ -1,0 +1,7 @@
+# a mouse bind runs with no window under the pointer.
+config mousebind=NONE,btn_middle,togglegaps
+open a
+pointer 3,500
+check
+click middle
+check

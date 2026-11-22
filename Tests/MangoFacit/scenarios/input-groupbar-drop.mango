@@ -1,0 +1,13 @@
+# a tiled window dragged onto another window's group bar joins its group, also without drag_tile_to_tile.
+config new_is_master=0
+config mousebind=NONE,btn_middle,moveresize,curmove
+config drag_tile_to_tile=0
+config always_show_group_bar=1
+open a
+open b
+check
+pointer 1500,500
+button middle down
+pointer 500,25
+button middle up
+check

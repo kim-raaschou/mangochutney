@@ -1,0 +1,10 @@
+# a virtual keyboard first (an activation token needs its serial).
+# focus_on_activate on: a window on another tag that asks to be activated gets its tag viewed and the focus.
+config focus_on_activate=1
+key shift
+open a
+open b
+dispatch @b tagsilent,2
+check
+request b activate by a
+check

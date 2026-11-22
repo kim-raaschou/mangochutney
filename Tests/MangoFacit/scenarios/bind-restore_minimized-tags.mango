@@ -1,0 +1,8 @@
+# restore_minimized puts the window on the focused window's tags.
+open a
+open b
+dispatch @a minimized
+dispatch toggletag,2
+check
+dispatch restore_minimized
+check

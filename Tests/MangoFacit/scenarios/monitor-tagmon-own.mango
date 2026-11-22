@@ -1,0 +1,7 @@
+# tagmon by name onto the window's own monitor, keeping its tag: the monitor views the window's tag.
+open a
+open b
+dispatch @a tagsilent,2
+check
+dispatch @a tagmon,HEADLESS-1,1
+check

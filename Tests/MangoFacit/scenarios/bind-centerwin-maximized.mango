@@ -1,0 +1,10 @@
+# centerwin leaves a maximized floating window: it is back where it was when the maximize ends.
+config window_rule=is_floating:1,title:^f$
+open f
+dispatch movewin,100,100
+check
+dispatch togglemaximizescreen
+dispatch centerwin
+check
+dispatch togglemaximizescreen
+check

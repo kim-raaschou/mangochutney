@@ -1,0 +1,7 @@
+# a reload with a smaller tag_num moves the windows of the tags that are gone to the last tag.
+open a
+open b
+dispatch @a tagsilent,8
+check
+reload tag_num=5
+check

@@ -1,0 +1,11 @@
+# toggleview keeps the current tag and its layout; view then makes it the tag before.
+config view_current_to_back=1
+open a
+dispatch view,2
+dispatch setlayout,scroller
+dispatch toggleview,1
+check
+dispatch view,1
+check
+dispatch view,1
+check

@@ -1,0 +1,10 @@
+# without special_tag_cross_monitor the special tag's windows stay on their monitor.
+monitors 2
+open a
+dispatch tag_special_tag
+check
+dispatch focusmon,left
+dispatch toggle_special_tag
+check
+dispatch toggle_special_tag
+check

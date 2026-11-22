@@ -1,0 +1,10 @@
+# a virtual keyboard first (an activation token needs its serial).
+# focus_on_activate off: a window on another tag that asks to be activated is marked urgent; the view and focus stay.
+config focus_on_activate=0
+key shift
+open a
+open b
+dispatch @b tagsilent,2
+check
+request b activate by a
+check
