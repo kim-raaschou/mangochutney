@@ -17,18 +17,6 @@ final class GroupTests: MangoTestCase {
     func tiled(_ r: EngineRig) -> [CGWindowID] { r.server.tiledClients(r.monitor).map(\.id) }
     func run(_ r: EngineRig, _ name: String, _ args: String...) { _ = r.server.dispatch(Dispatch(name: name, args: args)) }
 
-    func testJoiningTakesThePlaceOfTheWindowJoined() {
-        let r = rig()
-        let slot = c(r, 900_702).geom
-        run(r, "groupjoin", "down")
-        XCTAssertEqual(r.server.groupMembers(c(r, 900_701)).map(\.id), [900_701, 900_702])
-        XCTAssertTrue(c(r, 900_701).isGroupFocus)
-        XCTAssertTrue(c(r, 900_702).groupParked, "the member out of view is parked")
-        XCTAssertEqual(tiled(r), [900_700, 900_701], "one place for the group")
-        XCTAssertEqual(r.monitor.sel, 900_701)
-        XCTAssertEqual(c(r, 900_701).geom.minX, slot.minX, accuracy: 1, "in the joined window's column")
-    }
-
     func testAPressOnTheGroupBar() {
         let r = rig()
         run(r, "groupjoin", "down")

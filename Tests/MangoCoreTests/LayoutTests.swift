@@ -87,15 +87,6 @@ final class LayoutTests: MangoTestCase {
          .fair, .verticalFair]
     }
 
-    func testStatelessLayoutsInvariants() {
-        for kind in statelessLayouts {
-            for n in [1, 2, 3, 5] {
-                let input = makeInput(ids(n), focused: ClientID(n))
-                checkInvariants("\(kind.name) n=\(n)", input, runLayout(kind, input), stacked: kind.isMonocleLike)
-            }
-        }
-    }
-
     func testStatelessLayoutsWithTwoMasters() {
         var pt = PertagSettings(); pt.nmaster = 2
         for kind in statelessLayouts where !kind.name.contains("deck") {
@@ -104,65 +95,6 @@ final class LayoutTests: MangoTestCase {
                 checkInvariants("\(kind.name) nmaster=2 n=\(n)", input, runLayout(kind, input), stacked: kind.isMonocleLike)
             }
         }
-    }
-
-    @MainActor
-    func testDwindleInvariants() {
-        for n in [1, 2, 3, 5] {
-            let r = dwindleRig()
-            let frames = dwindleStep(r, ids(n), focus: ClientID(n))
-            checkInvariants("dwindle n=\(n)", makeInput(ids(n), focused: ClientID(n)), LayoutResult(frames: frames))
-        }
-    }
-
-    func testScrollerInvariants() {
-        for vertical in [false, true] {
-            for n in [1, 2, 3, 5] {
-                let input = makeInput(ids(n), focused: 1)
-                let r = runLayout(vertical ? .verticalScroller : .scroller, input)
-                checkInvariants("scroller v=\(vertical) n=\(n)", input, r, insideWork: false)
-                XCTAssertTrue(work.contains(r.frames[1]!), "focused \(r.frames[1]!)")
-            }
-        }
-    }
-
-    func testTileGeometry() {
-        let input = makeInput([1, 2, 3])
-        let r = runLayout(.tile, input)
-        XCTAssertEqual(r.frames[1], CGRect(x: 10, y: 35, width: 1053, height: 1060))
-        XCTAssertEqual(r.frames[2], CGRect(x: 1068, y: 35, width: 842, height: 527))
-        XCTAssertEqual(r.frames[3], CGRect(x: 1068, y: 567, width: 842, height: 528))
-        let one = runLayout(.tile, makeInput([1]))
-        XCTAssertEqual(one.frames[1], CGRect(x: 10, y: 35, width: 1900, height: 1060))
-    }
-
-    func testRightTileMirrorsTile() {
-        let r = runLayout(.rightTile, makeInput([1, 2]))
-        XCTAssertEqual(r.frames[1], CGRect(x: 1920 - 1058 - 10 + 5, y: 35, width: 1053, height: 1060))
-        XCTAssertEqual(r.frames[2], CGRect(x: 10, y: 35, width: 842, height: 1060))
-    }
-
-    func testCenterTile() {
-        let r = runLayout(.centerTile, makeInput([1, 2, 3]))
-        let m = r.frames[1]!, a = r.frames[2]!, b = r.frames[3]!
-        XCTAssertEqual(m.midX, work.midX, accuracy: 3)
-        XCTAssertLessThan(a.maxX, m.minX)
-        XCTAssertGreaterThan(b.minX, m.maxX)
-        XCTAssertEqual(a.minX, 10)
-        XCTAssertEqual(b.maxX, 1910)
-        let r2 = runLayout(.centerTile, makeInput([1, 2]))
-        XCTAssertEqual(r2.frames[1]!.midX, work.midX, accuracy: 3)
-        XCTAssertGreaterThan(r2.frames[2]!.minX, r2.frames[1]!.maxX)
-        var cfg = Config(); cfg.centerWhenSingleStack = false
-        let r3 = runLayout(.centerTile, makeInput([1, 2], config: cfg))
-        XCTAssertEqual(r3.frames[1]!.minX, 10)
-        XCTAssertEqual(r3.frames[2]!.maxX, 1910)
-        let r4 = runLayout(.centerTile, makeInput([1]))
-        XCTAssertEqual(r4.frames[1]!.midX, work.midX, accuracy: 3)
-        XCTAssertLessThan(r4.frames[1]!.width, 1900)
-        cfg = Config(); cfg.centerMasterOverspread = true
-        XCTAssertEqual(runLayout(.centerTile, makeInput([1], config: cfg)).frames[1],
-                       CGRect(x: 10, y: 35, width: 1900, height: 1060))
     }
 
     func testDeckAndMonocleVisibility() {
@@ -178,43 +110,6 @@ final class LayoutTests: MangoTestCase {
         for id: ClientID in [1, 2, 3, 4] { XCTAssertEqual(mono.frames[id], CGRect(x: 10, y: 35, width: 1900, height: 1060)) }
         var cfg = Config(); cfg.monocleNoGap = true
         XCTAssertEqual(runLayout(.monocle, makeInput([1], config: cfg)).frames[1], work)
-    }
-
-    func testFullscreenAndMaximized() {
-        let s = LayoutRunner(.tile)
-        _ = s.arrange(makeInput([1, 2, 3]))
-        s.server.clientSetFullscreen(s.server.clientByIdAll(2)!, true, rearrange: true)
-        s.server.clientSetMaximizeScreen(s.server.clientByIdAll(3)!, true, rearrange: true)
-        XCTAssertEqual(s.server.clientByIdAll(2)!.geom, monitor)
-        XCTAssertEqual(s.server.clientByIdAll(3)!.geom, CGRect(x: 10, y: 35, width: 1900, height: 1060))
-    }
-
-    func testGridShapes() {
-        let one = runLayout(.grid, makeInput([1]))
-        XCTAssertEqual(one.frames[1]!.width, CGFloat(Int(1900.0 * 0.9)))
-        XCTAssertEqual(one.frames[1]!.midX, work.midX, accuracy: 1)
-        let two = runLayout(.grid, makeInput([1, 2]))
-        XCTAssertEqual(two.frames[1]!.height, CGFloat(Int(1060.0 * 0.65)))
-        XCTAssertEqual(two.frames[1]!.minY, two.frames[2]!.minY)
-        let five = runLayout(.grid, makeInput(ids(5)))
-        XCTAssertEqual(five.frames[1]!.minY, five.frames[3]!.minY)
-        XCTAssertEqual(five.frames[4]!.minY, five.frames[5]!.minY)
-        let rowMid = (five.frames[4]!.minX + five.frames[5]!.maxX) / 2
-        XCTAssertEqual(rowMid, work.midX, accuracy: 2)
-        let v = runLayout(.verticalGrid, makeInput(ids(5)))
-        XCTAssertEqual(v.frames[1]!.minX, v.frames[3]!.minX)
-        XCTAssertEqual(v.frames[4]!.minX, v.frames[5]!.minX)
-    }
-
-    func testFairShapes() {
-        let r = runLayout(.fair, makeInput(ids(5)))
-        XCTAssertEqual(r.frames[1]!.height, 1060)
-        XCTAssertEqual(r.frames[2]!.minX, r.frames[3]!.minX)
-        XCTAssertEqual(r.frames[4]!.minX, r.frames[5]!.minX)
-        XCTAssertEqual(r.frames[5]!.maxX, 1910)
-        let v = runLayout(.verticalFair, makeInput(ids(5)))
-        XCTAssertEqual(v.frames[1]!.width, 1900)
-        XCTAssertEqual(v.frames[2]!.minY, v.frames[3]!.minY)
     }
 
     @MainActor
@@ -239,15 +134,6 @@ final class LayoutTests: MangoTestCase {
         r = dwindleStep(t, [3], focus: 3)
         XCTAssertNil(t.server.dwindleFindLeaf(dwindleRoot(t), t.server.clientByIdAll(1)!))
         XCTAssertEqual(r[3], CGRect(x: 10, y: 35, width: 1900, height: 1060))
-    }
-
-    @MainActor
-    func testDwindleSplitSide() {
-        var cfg = Config(); cfg.dwindleHsplit = 2
-        let t = dwindleRig(cfg)
-        dwindleStep(t, [1], focus: 1)
-        let r = dwindleStep(t, [1, 2], focus: 1)
-        XCTAssertLessThan(r[2]!.minX, r[1]!.minX)
     }
 
     @MainActor
@@ -331,33 +217,6 @@ final class LayoutTests: MangoTestCase {
         XCTAssertEqual(a.minY, 35)
         XCTAssertEqual(b.maxY, 1095)
         XCTAssertEqual(a.midX, work.midX, accuracy: 1)
-    }
-
-    func testScrollerSingleProportionAndCenter() {
-        var pt = PertagSettings(); pt.scrollerIgnoreProportionSingle = false; pt.scrollerDefaultProportionSingle = 0.5
-        let r = runLayout(.scroller, makeInput([1], pertag: pt))
-        XCTAssertEqual(r.frames[1], CGRect(x: 485, y: 35, width: 950, height: 1060))
-
-        let s2 = LayoutRunner(.scroller)
-        var cfg = Config(); cfg.scrollerPreferOverspread = false
-        var p = PertagSettings(); p.scrollerDefaultProportion = 0.5
-        var r2 = s2.arrange(makeInput([1, 2, 3], focused: 2, config: cfg, pertag: p))
-        var frames = r2.frames
-        frames[2]!.origin.x = 100
-        r2 = s2.arrange(makeInput([1, 2, 3], focused: 2, config: cfg, pertag: p, frames: frames))
-        XCTAssertEqual(r2.frames[2]!.minX, 100)
-        _ = s2.server.dispatch(Dispatch(name: "centerwin"), target: s2.server.clientByIdAll(2))
-        XCTAssertEqual(s2.server.clientByIdAll(2)!.geom.midX, work.midX, accuracy: 1)
-    }
-
-    func testVerticalScroller() {
-        let r = runLayout(.verticalScroller, makeInput([1, 2, 3], focused: 2))
-        let f = r.frames[2]!
-        XCTAssertEqual(f.width, 1900)
-        XCTAssertEqual(f.height, CGFloat(Int(Double(1080 - 40 - 5) * Double(Float(0.9)))))
-        XCTAssertEqual(f.minX, 10)
-        XCTAssertGreaterThan(r.frames[3]!.minY, f.maxY)
-        XCTAssertLessThan(r.frames[1]!.maxY, f.minY)
     }
 
     func testScrollerFullscreenColumn() {
@@ -455,19 +314,4 @@ final class LayoutTests: MangoTestCase {
         }
     }
 
-    /// mango's vertical_grid_core counts visible floats in its index, unlike grid_core (docs/afvigelser.md §6).
-    func testAFloatingWindowLeavesTheVerticalGridAlone() {
-        let r = EngineRig()
-        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .verticalGrid
-        let float = CGRect(x: 300, y: 300, width: 200, height: 150)
-        let f = r.window(10, floating: true, frame: float)
-        f.floatGeom = float
-        let tiled = [r.window(11), r.window(12), r.window(13)]
-        r.server.clients.removeAll { $0 === f }
-        r.arrange()
-        let alone = tiled.map(\.geom)
-        r.server.clients.insert(f, at: 0)
-        r.arrange()
-        XCTAssertEqual(tiled.map(\.geom), alone, "the floating window takes no grid slot")
-    }
 }

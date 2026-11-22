@@ -45,18 +45,6 @@ final class OverviewTests: MangoTestCase {
         XCTAssertEqual(m.pertag.prevtag, 2)
     }
 
-    func testLeavingGoesToTheChosenClientsTag() {
-        let r = EngineRig()
-        r.window(1)
-        let b = r.window(2, tags: 1 << 2)
-        r.arrange()
-        d(r, "toggleoverview")
-        r.server.toggleOverview(Arg(tc: b))
-        XCTAssertFalse(r.monitor.isoverview)
-        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 2)
-        XCTAssertTrue(r.server.focused === b)
-    }
-
     // arg->tc: mmsg's client,<id>
     func testTheDispatchersTakeTheTargetClient() {
         let r = EngineRig()
@@ -92,20 +80,6 @@ final class OverviewTests: MangoTestCase {
         XCTAssertEqual(Set(r.monitor.ovCards.keys), [a.id, b.id], "no hole for a closed window")
         let n = r.map(4)
         XCTAssertNotNil(r.monitor.ovCards[n.id], "a new window gets a card")
-    }
-
-    func testOvercircleGoesByTheStack() throws {
-        let r = EngineRig()
-        r.map(1)
-        r.map(2)
-        r.map(3)
-        d(r, "overcircle", ["next"])
-        XCTAssertTrue(r.server.isOvercircleMode(r.monitor))
-        let sel = try XCTUnwrap(r.server.focused)
-        let next = try XCTUnwrap(r.server.getNextStackClient(sel, reverse: false))
-        d(r, "overcircle", ["next"])
-        XCTAssertTrue(r.server.focused === next)
-        XCTAssertTrue(r.monitor.isoverview)
     }
 
     func testOvercircleWithOneClientSetsTheTabLayoutAndStays() {

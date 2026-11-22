@@ -1,4 +1,4 @@
-# focusdir onto the other monitor lands on its last focused window; focusmon with a target.
+# focusdir towards the other monitor with focus_cross_monitor off keeps the focus; focusmon with a target.
 monitors 2
 open a
 dispatch focusmon,right

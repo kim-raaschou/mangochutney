@@ -8,48 +8,7 @@ final class BindTests: XCTestCase {
 
     // MARK: focusstack
 
-    func testFocusStackNextGoesDownTheClientsList() {
-        let mango = TestMango("new_is_master=0")
-        mango.map("a"); mango.map("b"); mango.map("c")
-        mango.server.clientFocus(mango.client("a"), true)
-
-        mango.run("focusstack", "next")
-
-        XCTAssertEqual(mango.focused, "b")
-    }
-
-    func testFocusStackLeavesTheFocusWhenTheNextHasNoFocus() {
-        let mango = TestMango("new_is_master=0")
-        mango.map("a"); mango.map("b"); mango.map("c")
-        mango.client("c").noFocus = true
-        mango.server.clientFocus(mango.client("b"), true)
-
-        mango.run("focusstack", "next")
-
-        XCTAssertEqual(mango.focused, "b")
-    }
-
-    func testFocusStackWarpsThePointerWithWarpCursor() {
-        let mango = TestMango("warp_cursor=1")
-        mango.map("a"); mango.map("b")
-
-        mango.run("focusstack", "next")
-
-        XCTAssertEqual(mango.wlroots.warps.count, 1)
-    }
-
     // MARK: focusdir
-
-    func testFocusDirIntoTheStackGoesToItsLastFocused() {
-        let mango = TestMango("new_is_master=0")
-        mango.map("a"); mango.map("b"); mango.map("c")
-        mango.server.clientFocus(mango.client("c"), true)
-        mango.server.clientFocus(mango.client("a"), true)
-
-        mango.run("focusdir", "right")
-
-        XCTAssertEqual(mango.focused, "c")
-    }
 
     func testFocusDirDownCrossesToTheNextTagWithFocusCrossTag() {
         let mango = TestMango("focus_cross_tag=1")

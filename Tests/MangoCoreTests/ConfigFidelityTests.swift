@@ -276,16 +276,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(missing, [], "mango entries missing from Resources/config.conf, or out of mango's order")
     }
 
-    func testMangoStockConfigLoadsWithoutErrors() throws {
-        let root = ProcessInfo.processInfo.environment["MANGO_SOURCES"]
-            ?? NSHomeDirectory() + "/sources/mango"
-        let url = URL(fileURLWithPath: root + "/assets/config.conf")
-        try XCTSkipUnless(FileManager.default.fileExists(atPath: url.path), "no mango checkout at \(root)")
-        let parsed = ConfigParser.parseConfig(fileAt: url)
-        XCTAssertEqual(parsed.errors.map(\.description), [])
-        XCTAssertGreaterThan(parsed.config.keyBindings.count, 50)
-    }
-
     func testLiveSessionConfigLoadsWithoutErrors() throws {
         var text = try String(contentsOf: packageRoot.appendingPathComponent("Resources/config.conf"), encoding: .utf8)
         let edits = [

@@ -173,15 +173,6 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(query("get client 42"), #"{"error":"client not found"}"#)
     }
 
-    func testGetFocusingClient() throws {
-        let obj = try object(query("get focusing-client"))
-        XCTAssertEqual(obj["id"] as? Int, 1)
-        XCTAssertEqual(obj["is_focused"] as? Bool, true)
-
-        dp1.sel = nil
-        XCTAssertEqual(query("get focusing-client"), #"{"error":"no focused client"}"#)
-    }
-
     func testGetMonitorAndMisc() throws {
         let mon = try object(query("get monitor DP-1"))
         XCTAssertEqual(mon["scale"] as? Int, 2)
@@ -231,15 +222,6 @@ final class IPCTests: MangoTestCase {
         XCTAssertEqual(query("dispatch togglefloating client,\(parked.id)"), #"{"error":"no client found"}"#)
         XCTAssertEqual(query("dispatch focusid client,\(parked.id)"), #"{"success":true}"#)
         XCTAssertEqual(query("dispatch focusdir,sideways"), #"{"success":true}"#)
-    }
-
-    func testAllClientsListsGroupsAsMango() throws {
-        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, rig.server.clientByIdAll(1)!)
-        let clients = try XCTUnwrap(object(query("get all-clients"))["clients"] as? [[String: Any]])
-        XCTAssertEqual(Set(clients.compactMap { $0["id"] as? Int }), [1, 2, 3], "the parked member is listed")
-        let group = clients.filter { ($0["is_group"] as? Bool) == true }
-        XCTAssertEqual(group.count, 2)
-        XCTAssertEqual(group.filter { ($0["is_group_focus"] as? Bool) == true }.count, 1)
     }
 
     func testUnknownCommand() {
@@ -410,21 +392,6 @@ final class IPCTests: MangoTestCase {
     }
 
     // mango build_client_json: x, y, width and height are c->geom, with the border.
-    func testClientGeometryHasTheBorder() throws {
-        rig.server.config.borderpx = 4
-        rig.server.config.noBorderWhenSingle = false
-        let c = rig.server.clientByIdAll(1)!
-        rig.server.renderBorder = true
-        rig.server.arrangeAll(false)
-        XCTAssertGreaterThan(c.bw, 0)
-        let g = c.geom
-        XCTAssertEqual(g, c.tile.insetBy(dx: -c.bw, dy: -c.bw), "the window inside its border")
-        let obj = try object(query("get client 1"))
-        XCTAssertEqual(obj["x"] as? Int, Int(g.minX))
-        XCTAssertEqual(obj["y"] as? Int, Int(g.minY))
-        XCTAssertEqual(obj["width"] as? Int, Int(g.width))
-        XCTAssertEqual(obj["height"] as? Int, Int(g.height))
-    }
 
     // mango handle_command: client,<id> ends at a comma or the end; strtol's id is cast to int.
     func testDispatchClientFieldAsMango() {

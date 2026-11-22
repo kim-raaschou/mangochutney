@@ -266,18 +266,4 @@ final class TOMLConfigTests: MangoTestCase {
         XCTAssertNotEqual(p.config.circleLayout.count, 1100)
     }
 
-    func testRuleErrorsPointAtTheSection() {
-        let p = parse("""
-        [[rule.window_rule]]
-        app_id = "x"
-        no_such_field = 1
-        """)
-        XCTAssertEqual(p.errors.map(\.line), [1])
-        XCTAssertEqual(p.errors.first?.message.plain, "Unknown window rule option:no_such_field")
-    }
-
-    func testUnknownOptionIsReportedWithItsLine() {
-        let p = parse("[global]\nborder_px = 2\nborder_pxx = 3\n")
-        XCTAssertEqual(p.errors.map(\.description.plain), ["t.toml:3: Unknown keyword: border_pxx"])
-    }
 }

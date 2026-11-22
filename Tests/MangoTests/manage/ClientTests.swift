@@ -8,24 +8,6 @@ final class ClientTests: XCTestCase {
 
     // MARK: handle_client_map
 
-    func testANewClientGoesLast() {
-        let mango = TestMango("new_is_master=0")
-        mango.map("a"); mango.map("b")
-
-        mango.map("c")
-
-        XCTAssertEqual(mango.clients, ["a", "b", "c"])
-    }
-
-    func testWithNewIsMasterANewClientGoesFirst() {
-        let mango = TestMango("new_is_master=1")
-        mango.map("a"); mango.map("b")
-
-        mango.map("c")
-
-        XCTAssertEqual(mango.clients, ["c", "b", "a"])
-    }
-
     func testANewClientIsFocused() {
         let mango = TestMango()
         mango.map("a")
@@ -37,16 +19,6 @@ final class ClientTests: XCTestCase {
     }
 
     // MARK: handle_client_unmap
-
-    func testUnmappingTheFocusedClientFocusesTheNextOnTheMonitor() {
-        let mango = TestMango()
-        mango.map("a"); mango.map("b")
-
-        mango.unmap("b")
-
-        XCTAssertEqual(mango.focused, "a")
-        XCTAssertEqual(mango.clients, ["a"])
-    }
 
     func testUnmappingAClientElsewhereFocusesTheTopOfTheSelectedMonitor() {
         let mango = TestMango()

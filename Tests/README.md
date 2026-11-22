@@ -12,20 +12,22 @@ does what mango asks and remembers it, nothing more.
 
 ## A test of mango
 
-One file per mango source file, at the same path (`src/dispatch/bind.c` is
-`MangoTests/dispatch/BindTests.swift`), and one `// MARK:` per mango function.
+What mango itself can answer is asked of mango: a scenario in `Tests/MangoFacit` (below). A Swift
+test of mango is for what mango's answers cannot show: the focus stack, internal state, what mango
+asks of wlroots. One file per mango source file, at the same path (`src/manage/client.c` is
+`MangoTests/manage/ClientTests.swift`), and one `// MARK:` per mango function.
 
 ```swift
-// MARK: focusstack
+// MARK: handle_client_map
 
-func testFocusStackNextGoesDownTheClientsList() {
-    let mango = TestMango("new_is_master=0")
-    mango.map("a"); mango.map("b"); mango.map("c")
-    mango.server.clientFocus(mango.client("a"), true)
+func testANewClientIsFocused() {
+    let mango = TestMango()
+    mango.map("a")
 
-    mango.run("focusstack", "next")
+    mango.map("b")
 
     XCTAssertEqual(mango.focused, "b")
+    XCTAssertEqual(mango.focusStack, ["b", "a"])
 }
 ```
 

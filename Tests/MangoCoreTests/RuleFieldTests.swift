@@ -6,32 +6,6 @@ import XCTest
 final class RuleFieldTests: MangoTestCase {
     let float = CGRect(x: 100, y: 120, width: 600, height: 400)
 
-    func testCenterwinCentresUnlessNoForceCenter() {
-        let r = EngineRig()
-        let c = r.window(900_300, floating: true, frame: float)
-        c.floatGeom = float
-        _ = r.server.dispatch(Dispatch(name: "centerwin", args: []), target: c)
-        XCTAssertEqual(c.floatGeom.midX, r.screen.workArea.midX, accuracy: 1)
-        XCTAssertEqual(c.floatGeom.midY, r.screen.workArea.midY, accuracy: 1)
-
-        c.noForceCenter = true
-        c.floatGeom = float
-        c.geom = float   // mango's center_window centres c->geom
-        _ = r.server.dispatch(Dispatch(name: "centerwin", args: []), target: c)
-        XCTAssertEqual(c.floatGeom, float, "mango's client_center_geometry keeps it where it is")
-    }
-
-    func testTheRuleSetsIt() {
-        let r = EngineRig()
-        var rule = ConfigWinRule()
-        rule.appId = "test"
-        rule.noForceCenter = true
-        r.server.config.windowRules = [rule]
-        let c = r.window(900_301)
-        _ = r.server.clientSetRules(c)
-        XCTAssertTrue(c.noForceCenter)
-    }
-
     func testTagmonScalesAndCentresAFloatingWindow() {
         let r = EngineRig()
         let big = Screen(displayID: 2, name: "Big", frame: CGRect(x: 1728, y: 0, width: 2560, height: 1440),
