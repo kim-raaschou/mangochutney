@@ -1,5 +1,5 @@
 # default_master_factor=nan in the config: where mango puts the split.
-# ours: inf and nan read as 0, as Swift cannot turn them into an integer (docs/afvigelser.md, Config).
+# ours: nan reads as 0, as Swift cannot turn it into an integer (docs/afvigelser.md, Config).
 config default_master_factor=nan
 open a
 open b

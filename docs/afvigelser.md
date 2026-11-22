@@ -199,12 +199,13 @@ Hvor koden står, når den ikke står som i mango.
   `variable_expand.swift`, `conflict_check.swift`, `reapply.swift`, `watcher.swift`, `error_store.swift`,
   `error_nag.swift`, `toml_parse.swift`, `parse.swift`; `IPC/ipc.swift`). Mærket i koden: `parse_option`
   er en tabel; regex er ICU's (`NSRegularExpression`) for PCRE2, med ICU's fejltekst uden offset og
-  den tomme pattern som `(?:)`; `inf` og `nan`, som `strtod` læser, bliver 0, for Swift går ned ved
-  omregning til heltal, hvor mangos C giver skrald; `monitor_rule`, `layer_rule` og `device_rule`
+  den tomme pattern som `(?:)`; `nan`, som `strtod` læser, bliver 0, og `inf` også, undtagen hvor mango
+  klemmer værdien, før den bruges (der bliver den grænsen, som i mango), for Swift går ned ved omregning
+  til heltal, hvor mangos C giver skrald; `monitor_rule`, `layer_rule` og `device_rule`
   tjekkes som i mango, men gemmes ikke (macOS har ingen del); `parse_tag_mask`'s `TAGMASK` er alle tags
   undtagen tag0 (ingen server ved parsning). Uden macOS-del: xkb/keymap, `cleanup.c`, `preset.c`,
   inotify. Uden `HOME` læser mango ingen config; porten vælger `/.config/mango/config.conf`.
-  `inf` og `nan` bliver også 0 i kommatal-nøgler, hvor mango klemmer værdien (`CLAMP_FLOAT`).
+  `nan` bliver også 0 i kommatal-nøgler, hvor mango klemmer værdien (`CLAMP_FLOAT`).
 - **Klienter:** mangos `manage/client.c` står i kernen (`manage/client.swift`) i mangos
   rækkefølge. `client_park` giver medlemmet `mon` nil, som mango, og `client_is_parked` er
   listemedlemskab; `groupParked` er portens mærke (`clientsAll`), og porten parkerer et parkeret

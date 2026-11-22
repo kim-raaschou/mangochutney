@@ -135,7 +135,7 @@ extension ParserState {
             } else if key == "height" {
                 height = min(max(ValueParse.atoi(val), 1), Int(Int32.max))
             } else if key == "refresh" {
-                refresh = min(max(Float(ValueParse.atof(val)), 0.001), 1000.0)
+                refresh = min(max(Float(ValueParse.atof(val, keepingInf: true)), 0.001), 1000.0)
             } else if key == "custom" {
                 custom = min(max(ValueParse.atoi(val), 0), 1)
             } else {
@@ -206,11 +206,11 @@ extension ParserState {
             } else if key == "master_count" {
                 rule.masterCount = min(max(ValueParse.atoi(val), 1), 99)
             } else if key == "master_factor" {
-                rule.masterFactor = min(max(ValueParse.atof(val), 0.1), 0.9)
+                rule.masterFactor = min(max(ValueParse.atof(val, keepingInf: true), 0.1), 0.9)
             } else if key == "scroller_default_proportion" {
-                rule.scrollerDefaultProportion = min(max(ValueParse.atof(val), 0.0), 1.0)
+                rule.scrollerDefaultProportion = min(max(ValueParse.atof(val, keepingInf: true), 0.0), 1.0)
             } else if key == "scroller_default_proportion_single" {
-                rule.scrollerDefaultProportionSingle = min(max(ValueParse.atof(val), 0.0), 1.0)
+                rule.scrollerDefaultProportionSingle = min(max(ValueParse.atof(val, keepingInf: true), 0.0), 1.0)
             } else if key == "scroller_ignore_proportion_single" {
                 rule.scrollerIgnoreProportionSingle = ValueParse.atoi(val) > 0
             } else {
@@ -713,7 +713,7 @@ public enum ConfigOptions {
             config.scrollerProportionPreset = []
             var out: [Double] = []
             for token in value.split(separator: ",").map(String.init) where out.count < floatCount {
-                guard let d = ValueParse.scanDouble(token) else {
+                guard let d = ValueParse.scanDouble(token, keepingInf: true) else {
                     return .invalid("Invalid float value in scroller_proportion_preset: \(mangoHighlight(token))")
                 }
                 out.append(min(max(d, 0.1), 1.0))
@@ -874,7 +874,7 @@ public enum ConfigOptions {
 
     package static func double(_ kp: WritableKeyPath<Config, Double>, _ range: ClosedRange<Double>? = nil) -> Setter {
         { config, value in
-            let d = ValueParse.atof(value)
+            let d = ValueParse.atof(value, keepingInf: true)   // not in mango: inf kept, each one is clamped
             config[keyPath: kp] = range.map { min(max(d, $0.lowerBound), $0.upperBound) } ?? d
             return .applied
         }

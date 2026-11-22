@@ -253,19 +253,20 @@ package enum ValueParse {
         return Int(Int32(truncatingIfNeeded: v))
     }
 
-    static func atof(_ s: String) -> Double {
-        finite(strtod(s)?.0 ?? 0)
+    static func atof(_ s: String, keepingInf: Bool = false) -> Double {
+        finite(strtod(s)?.0 ?? 0, keepingInf: keepingInf)
     }
 
     /// sscanf's %f: nil where no number is read.
-    static func scanDouble(_ s: String) -> Double? {
-        strtod(s).map { finite($0.0) }
+    static func scanDouble(_ s: String, keepingInf: Bool = false) -> Double? {
+        strtod(s).map { finite($0.0, keepingInf: keepingInf) }
     }
 
     // not in mango: inf and nan, which strtod reads, are 0, as Swift traps where mango's C converts
-    // them to an int (default_master_factor=nan, then tile)
-    static func finite(_ d: Double) -> Double {
-        d.isFinite ? d : 0
+    // them to an int (default_master_factor=nan, then tile); `keepingInf` for a value clamped before
+    // it is used, where mango's clamp makes inf a bound
+    static func finite(_ d: Double, keepingInf: Bool = false) -> Double {
+        d.isFinite || (keepingInf && d.isInfinite) ? d : 0
     }
 
     /// strtod: the number and the text after it, nil where no number is read (endptr == str).

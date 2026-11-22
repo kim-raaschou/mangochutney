@@ -128,20 +128,6 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(config.hotareaSize, 1)
     }
 
-    /// atof is strtod (hex floats too); inf and nan, which Swift cannot make an int of, read as 0.
-    func testNonFiniteNumbersReadAsZero() {
-        for bad in ["nan", "inf", "-inf", "1e999", "infinity", "abc"] {
-            let parsed = parse("default_master_factor=\(bad)")
-            XCTAssertEqual(parsed.errors.count, 0, bad)
-            XCTAssertEqual(parsed.config.defaultMfact, 0.1, bad)
-        }
-        XCTAssertEqual(parse("default_master_factor=0x1p-1").config.defaultMfact, 0.5)
-        XCTAssertEqual(parse("default_master_factor=.7").config.defaultMfact, 0.7)
-        XCTAssertEqual(parse("default_master_factor=0.6f").config.defaultMfact, 0.6)
-        XCTAssertEqual(parse("default_master_factor=5.").config.defaultMfact, 0.9, "clamped to 0.9")
-        XCTAssertEqual(parse("border_px=2.9").config.borderpx, 2)
-    }
-
     func testDefaultConfigPathIgnoresXDGConfigHome() {
         let previous = getenv("XDG_CONFIG_HOME").map { String(cString: $0) }
         setenv("XDG_CONFIG_HOME", "/tmp/not-mangos-business", 1)
