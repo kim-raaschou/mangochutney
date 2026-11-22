@@ -11,12 +11,14 @@
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 cd "$here"
-[ $# -gt 0 ] || set -- scenarios/*.mango
+[ $# -gt 0 ] || set -- scenarios/*.mango configs/*.conf configs/*.toml
+mkdir -p facit/configs
 
 docker --context colima-mangofacit build -q -t mango-facit recorder >/dev/null
 docker --context colima-mangofacit run --rm --device /dev/dri \
     -v "${MANGO_SOURCE:-$HOME/sources/mango}:/mango:ro" \
     -v mango-facit-build:/build \
     -v "$here/scenarios:/scenarios:ro" \
+    -v "$here/configs:/configs:ro" \
     -v "$here/facit:/facit" \
     mango-facit sh -c "/tool/build.sh && python3 /tool/record.py $(printf '/%s ' "$@")"

@@ -179,6 +179,28 @@ dem. Trin: `key`, `keydown`/`keyup`, `pointer`, `move`, `click`/`button` og `scr
 | Config | 41,2 % | 49,6 % |
 | **I alt** | **58,4 %** | **65,6 %** |
 
+## Config (2026-11-22)
+
+`mango -c <fil> -p` tjekker en config og skriver hver fejl med linje. Optageren gemmer exitkoden og
+fejlene for hver fil i `configs/` (`.conf` og `.toml`), og `ConfigFacitTests` læser samme fil med
+vores parser og portens side af config'en, som vores `mango -p` gør, og sammenligner fejl for fejl.
+
+- 10 filer: mangos egen `config.conf` og `config.toml` (begge fejlfri hos mango og os), farver,
+  bindinger af alle slags, regler, tal, lister, variabler, `source`, konflikter i alle fem slags
+  bindinger, TOML med fejl og CRLF. Ca. 90 fejl og advarsler giver præcis mangos tekst og linje.
+- Tre steder svarer vi anderledes med vilje, og de er markeret i filen (`# ours: drop …`):
+  - CRLF: mango afviser hver tom linje med `\r` (en mango-fejl, allerede i §6). Mango bekræfter
+    nu selv §6's beskrivelse.
+  - `F13`: mango advarer om en tast uden keycode i layoutet; vores bindinger følger portens taster
+    (§3).
+  - `dim_unfocused_color`: macOS kan ikke dæmpe vinduer, så porten ignorerer nøglen og læser ikke
+    værdien; mango afviser en ugyldig farve.
+
+| Område | Før | Efter |
+|---|---|---|
+| Config | 49,6 % | 73,6 % (resten er mest filovervågning, fejl-nag og reload) |
+| **I alt** | **65,6 %** | **70,4 %** |
+
 ## Hvad det koster
 
 - **Opsætningen** (én gang): en colima-profil `mangofacit` (4 CPU, 4 GB), som `record` selv

@@ -80,6 +80,12 @@ key names are xkb's us keymap with evdev codes (`FakeKeymap`). As in mango, a vi
 modifiers do not count for mouse and axis binds, and its mode key's release neither leaves overcircle
 nor commits the switcher.
 
+A config file in `Tests/MangoFacit/configs` (`.conf` or `.toml`) is checked by mango as
+`mango -c <file> -p` checks it: its exit and its errors are the facit (`facit/configs/<file>.json`).
+`ConfigFacitTests` reads the same file with our parser and the macOS port's side of the config, as our
+`mango -p` reads it, and compares error by error. `# ours: drop <error>` and `# ours: add <error>` in
+the file mark where we judge otherwise on purpose, the error written as the test prints it.
+
 A new scenario is recorded with `Tests/MangoFacit/record scenarios/<name>.mango` (the header of
 `record` says what it needs); `make test` only reads the facit and needs no container. The checks go
 by their order, so a comment or an `ours` line needs no new recording.

@@ -1,0 +1,45 @@
+# TOML: sections, keymodes, bind flags, rules and the errors mango gives for each
+[global]
+gappih = 5
+nosuchkey = 1
+focused_opacity = "abc"
+border_radius = [1, 2]
+quoted = "a \"b\" c"
+
+[bind.default]
+"SUPER+j" = "focusstack,next"
+"SUPER+nosuchkey" = "killclient"
+"HYPERX+j" = "killclient"
+"SUPER+k" = "nosuchfunc"
+"SUPER+j" = "focusstack,prev"
+
+[bind.resize]
+"none+l" = "setmfact,+0.05"
+
+[bind.default.l]
+"SUPER+l" = "togglefloating"
+
+[bind.default.bogus]
+"SUPER+m" = "togglefloating"
+
+[mousebind.default]
+"SUPER+btn_nosuch" = "moveresize,curmove"
+
+[axisbind.default]
+"SUPER+SIDEWAYS" = "viewtoleft"
+
+[[rule.window_rule]]
+isfloating = 1
+title = "^a$"
+
+[[rule.window_rule]]
+nosuchfield = 1
+
+[[rule.monitor_rule]]
+name = "X"
+width = 1920
+
+[nosuchsection]
+a = 1
+
+not a toml line

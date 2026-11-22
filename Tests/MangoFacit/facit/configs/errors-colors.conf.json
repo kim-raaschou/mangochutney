@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Invalid urgentcolor format: #ff0000\n\u2570\u2500[Index] /configs/errors-colors.conf:6\n   \u2570\u2500urgent_color=#ff0000\n\n\n[ERROR]: Invalid scratchpadcolor format: 0xzz0000ff\n\u2570\u2500[Index] /configs/errors-colors.conf:7\n   \u2570\u2500scratchpad_color=0xzz0000ff\n\n\n[ERROR]: Invalid line format: overlay_color=\n\n\u2570\u2500[Index] /configs/errors-colors.conf:9\n   \u2570\u2500overlay_color=\n\n\n[ERROR]: Invalid rootcolor format: red\n\u2570\u2500[Index] /configs/errors-colors.conf:11\n   \u2570\u2500root_color=red\n\n\n[ERROR]: Invalid dim_unfocused_color format: nothex\n\u2570\u2500[Index] /configs/errors-colors.conf:14\n   \u2570\u2500dim_unfocused_color=nothex\n\n\n[ERROR]: Invalid group_bar_decorate_bg_color format: 0xgg\n\u2570\u2500[Index] /configs/errors-colors.conf:18\n   \u2570\u2500group_bar_decorate_bg_color=0xgg\n\n\n[ERROR]: Invalid group_bar_button_color format: 0x\n\u2570\u2500[Index] /configs/errors-colors.conf:21\n   \u2570\u2500group_bar_button_color=0x\n\n\n"
+}

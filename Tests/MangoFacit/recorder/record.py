@@ -2,6 +2,7 @@
 """Records what mango does in each scenario: its answer to `mmsg get` after each `check`.
 
     record.py /scenarios/tile.mango ...      one mango per scenario, facit to /facit/<name>.json
+    record.py /configs/errors.conf ...       `mango -c <file> -p`, facit to /facit/configs/<file>.json
 
 A scenario is a few lines, run top to bottom:
 
@@ -23,7 +24,7 @@ A scenario is a few lines, run top to bottom:
 The recording waits for mango to settle after each step: it asks again till two answers agree.
 That is a poll, here in the recorder only; the tests that read the facit wait for nothing.
 """
-import json, os, subprocess, sys, time
+import json, os, re, subprocess, sys, time
 
 def screens(n):
     return [{"name": f"HEADLESS-{i + 1}", "x": 1920 * i, "y": 0, "width": 1920, "height": 1080} for i in range(n)]
@@ -184,6 +185,16 @@ def play(scenario, out):
     mmsg("dispatch", "quit")
 
 
+def check_config(path):
+    """A config file of configs/: what `mango -c <file> -p` printed (its colours taken off) and its exit."""
+    name = os.path.basename(path)
+    run = subprocess.run(["/build/mango/build/mango", "-c", path, "-p"], capture_output=True, text=True, timeout=30)
+    output = re.sub(r"\x1b\[[0-9;]*m", "", run.stderr)
+    json.dump({"mango": "0.18.5 (21f80a9)", "exit": run.returncode, "output": output},
+              open(f"/facit/configs/{name}.json", "w"), indent=1)
+    print(f"{name}: exit {run.returncode}, {output.count('[ERROR]:')} errors, {output.count('[WARN]:')} warnings")
+
+
 def record(scenario):
     name = os.path.splitext(os.path.basename(scenario))[0]
     config, _, monitors = parse(scenario)
@@ -217,4 +228,4 @@ if __name__ == "__main__":
         play(sys.argv[2], sys.argv[3])
     else:
         for s in sys.argv[1:]:
-            record(s)
+            check_config(s) if s.endswith((".conf", ".toml")) else record(s)

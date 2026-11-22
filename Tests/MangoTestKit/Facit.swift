@@ -150,3 +150,85 @@ extension TestMango {
         (try? JSONSerialization.jsonObject(with: Data(answer.utf8)) as? [String: Any]) ?? [:]
     }
 }
+
+/// A config file of Tests/MangoFacit/configs (.conf or .toml) and how mango 0.18.5 judged it: `mango -c <file> -p`, its
+/// exit and its errors as it printed them.
+package struct ConfigFacit {
+    /// One mango_error: its tag, its message and the line report_config_line_error named (nil for none).
+    package struct Error: Equatable, CustomStringConvertible {
+        package var tag: String
+        package var message: String
+        package var line: Int?
+        package var description: String { "[\(tag)]: \(message)" + (line.map { " (line \($0))" } ?? "") }
+    }
+
+    package let name: String
+    package let url: URL
+    package let exit: Int
+    package let errors: [Error]
+
+    package static var all: [String] {
+        let files = (try? FileManager.default.contentsOfDirectory(atPath: Facit.directory.appendingPathComponent("configs").path)) ?? []
+        return files.filter { $0.hasSuffix(".conf") || $0.hasSuffix(".toml") }.sorted()
+    }
+
+    package init(_ name: String) throws {
+        self.name = name
+        url = Facit.directory.appendingPathComponent("configs/\(name)")
+        let data = try Data(contentsOf: Facit.directory.appendingPathComponent("facit/configs/\(name).json"))
+        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        exit = json["exit"] as! Int
+        errors = ConfigFacit.errors(in: (json["output"] as! String).replacingOccurrences(of: "/configs/\(name)", with: name))
+    }
+
+    /// mango's output read back: `[ERROR]: <message>`, then `╰─[Index] <file>:<line>` and the line.
+    static func errors(in output: String) -> [Error] {
+        var errors: [Error] = []
+        var message: [String] = []
+        func end() {
+            guard !errors.isEmpty, !message.isEmpty else { return }
+            errors[errors.count - 1].message = message.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            message = []
+        }
+        for line in output.components(separatedBy: "\n") {
+            if let tag = ["ERROR", "WARN"].first(where: { line.hasPrefix("[\($0)]: ") }) {
+                end()
+                errors.append(Error(tag: tag, message: "", line: nil))
+                message = [String(line.dropFirst(tag.count + 4))]
+            } else if line.hasPrefix("╰─[Index] "), !errors.isEmpty {
+                end()
+                errors[errors.count - 1].line = Int(line.split(separator: ":").last ?? "")
+            } else if !message.isEmpty {
+                message.append(line)
+            }
+        }
+        end()
+        return errors
+    }
+
+    /// `# ours: drop <error>` and `# ours: add <error>` in the file: where we judge otherwise on purpose
+    /// (a listed deviation), the error as `description` writes it.
+    package var expected: [Error] {
+        let lines = ((try? String(contentsOf: url, encoding: .utf8))?.components(separatedBy: "\n") ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let drop = Set(lines.compactMap { $0.hasPrefix("# ours: drop ") ? String($0.dropFirst(13)) : nil })
+        let add = lines.compactMap { $0.hasPrefix("# ours: add ") ? String($0.dropFirst(12)) : nil }
+        return errors.filter { !drop.contains($0.description) } + add.compactMap { ConfigFacit.errors(in: $0).first }
+    }
+
+    /// Our mango's judgement of the same file, read as mango -p reads it, with `port` the config's
+    /// boundary (the macOS port's, as `mango -p` has it).
+    package static func ours(_ url: URL, port: any ConfigPort) -> (exit: Int, errors: [Error]) {
+        let saved = ConfigParser.port
+        ConfigParser.port = port
+        defer { ConfigParser.port = saved }
+        let parsed = ConfigParser.parseConfig(fileAt: url)
+        let errors = parsed.errors.map { e in
+            Error(tag: e.verbosity == .error ? "ERROR" : "WARN",
+                  message: e.message.replacingOccurrences(of: "\u{1B}\\[[0-9;]*m", with: "", options: .regularExpression)
+                      .replacingOccurrences(of: url.path, with: url.lastPathComponent)
+                      .trimmingCharacters(in: .whitespacesAndNewlines),
+                  line: e.reportsLine ? e.line : nil)
+        }
+        return (errors.isEmpty ? 0 : 1, errors)
+    }
+}

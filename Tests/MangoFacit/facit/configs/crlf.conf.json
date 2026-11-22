@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Unknown keyword: gappih\n\u2570\u2500[Index] /configs/crlf.conf:4\n   \u2570\u2500gappih=5\n\n\n[ERROR]: Unknown keyword: gappiv\n\u2570\u2500[Index] /configs/crlf.conf:5\n   \u2570\u2500gappiv=5\n\n\n[ERROR]: Invalid line format: \n\n\u2570\u2500[Index] /configs/crlf.conf:6\n   \u2570\u2500\n\n\n[ERROR]: Invalid line format: \n\n\u2570\u2500[Index] /configs/crlf.conf:8\n   \u2570\u2500\n\n\n"
+}
