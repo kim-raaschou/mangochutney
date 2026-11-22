@@ -1,0 +1,5 @@
+# a window_rule with global_key_binding: the window opens as any other.
+config window_rule=app_id:^a$,global_key_binding:alt-a
+open a
+open b
+check

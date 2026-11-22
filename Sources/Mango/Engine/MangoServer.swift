@@ -199,7 +199,7 @@ public final class MangoServer {
     }
 
     // not in mango: selected_monitor->sel as a client
-    package var focused: Client? { selectedMonitor.sel.flatMap { clientByIdAll($0) } }
+    package var focused: Client? { selectedMonitor?.sel.flatMap { clientByIdAll($0) } }
 
 
     /// Not in mango: arrange on every monitor.
