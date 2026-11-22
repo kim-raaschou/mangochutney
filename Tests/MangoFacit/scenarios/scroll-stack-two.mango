@@ -1,0 +1,6 @@
+# scroller_stack with two windows: one column, the two sharing its height.
+dispatch setlayout,scroller
+open a
+open b
+dispatch scroller_stack,left
+check

@@ -375,52 +375,6 @@ final class ScratchpadPlaceTests: MangoTestCase {
 
     func toggle(_ r: EngineRig) { _ = r.server.dispatch(Dispatch(name: "toggle_scratchpad", args: [])) }
 
-    func testAMovedScratchpadComesBackWhereItWasPut() {
-        let r = rig()
-        toggle(r)
-        let c = r.server.clientByIdAll(2)!
-        let w = r.screen.workArea
-        XCTAssertEqual(c.geom.width, (w.width * CGFloat(r.server.config.scratchpadWidthRatio)).rounded(), "first time: the ratio")
-        XCTAssertEqual(c.geom.midX, w.midX, accuracy: 1, "and centred")
-        let first = c.geom
-        _ = r.server.dispatch(Dispatch(name: "movewin", args: ["-100", "-50"]), target: c)
-        let moved = c.geom
-        XCTAssertNotEqual(moved, first, "the move holds (it was centred again before)")
-        toggle(r)
-        toggle(r)
-        XCTAssertEqual(c.geom, moved, "where it was put, as in mango")
-    }
-
-    func testOnAnotherDisplayItIsScaledAndCentred() {
-        let r = rig()
-        let big = Screen(displayID: 2, name: "Big", frame: CGRect(x: 1728, y: 0, width: 2560, height: 1440),
-                         workArea: CGRect(x: 1728, y: 25, width: 2560, height: 1415), scale: 2, isMain: false)
-        r.server.rebuildMonitors(screens: [r.screen, big])
-        r.server.config.scratchpadCrossMonitor = true
-        toggle(r)
-        let c = r.server.clientByIdAll(2)!
-        _ = r.server.dispatch(Dispatch(name: "movewin", args: ["-100", "-50"]), target: c)
-        let small = c.floatGeom
-        toggle(r)
-        r.server.selectedMonitor = r.server.monitors.first { $0.screen.displayID == 2 }!
-        toggle(r)
-        XCTAssertTrue(c.mon === r.server.selectedMonitor)
-        XCTAssertEqual(c.floatGeom.width, (small.width * 2560 / r.screen.workArea.width).rounded(.down), accuracy: 1)
-        XCTAssertEqual(c.floatGeom.midX, big.workArea.midX, accuracy: 1, "centred on the new display")
-        XCTAssertEqual(c.floatGeom.midY, big.workArea.midY, accuracy: 1)
-    }
-
-    func testAnActivationShowsTheScratchpad() {
-        let r = rig()
-        r.server.config.focusOnActivate = true
-        let c = r.server.clientByIdAll(2)!
-        XCTAssertFalse(SCRATCHPAD_SHOWN(c))
-        r.server.handleClientActivationRequest(c)
-        XCTAssertTrue(c.isInScratchpad, "still in the scratchpad")
-        XCTAssertTrue(SCRATCHPAD_SHOWN(c), "and shown")
-        XCTAssertEqual(r.server.focused?.id, 2)
-    }
-
     func testRestoringAMinimizedWindowForgetsItsPlace() {
         let r = rig()
         let c = r.server.clientByIdAll(2)!
@@ -430,16 +384,4 @@ final class ScratchpadPlaceTests: MangoTestCase {
         XCTAssertFalse(c.iscustomsize, "as mango, for whichever window it restores")
     }
 
-    func testAScratchpadTakenOutIsSizedAnew() {
-        let r = rig()
-        toggle(r)
-        let c = r.server.clientByIdAll(2)!
-        _ = r.server.dispatch(Dispatch(name: "movewin", args: ["-100", "-50"]), target: c)
-        _ = r.server.dispatch(Dispatch(name: "restore_minimized", args: []), target: c)
-        XCTAssertFalse(c.iscustomsize, "out of the scratchpad")
-        r.server.clientFocus(c, true)
-        _ = r.server.dispatch(Dispatch(name: "minimized", args: []))
-        toggle(r)
-        XCTAssertEqual(c.geom.midX, r.screen.workArea.midX, accuracy: 1, "centred again")
-    }
 }

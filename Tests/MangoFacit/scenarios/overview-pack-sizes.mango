@@ -1,0 +1,9 @@
+# the overview with five windows of different sizes: the cards keep each window's proportions and are never larger than it.
+open a 1600x900 dialog
+open b 800x600 dialog
+open c 1200x1000 dialog
+open d 400x800 dialog
+open e 1000x700 dialog
+check
+dispatch toggleoverview
+check

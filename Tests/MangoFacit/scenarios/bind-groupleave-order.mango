@@ -1,0 +1,10 @@
+# groupleave: the window that leaves goes right after the group in the tiling order.
+config new_is_master=0
+open a
+open b
+open c
+dispatch focusdir,up
+dispatch groupjoin,down
+check
+dispatch groupleave
+check

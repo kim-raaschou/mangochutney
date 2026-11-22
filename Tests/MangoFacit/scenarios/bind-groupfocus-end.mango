@@ -1,0 +1,16 @@
+# groupfocus swaps the member in view and does not wrap at the group's end.
+config new_is_master=0
+open a
+open b
+open c
+dispatch focusdir,up
+dispatch groupjoin,down
+check
+dispatch groupfocus,next
+check
+dispatch groupfocus,next
+check
+dispatch groupfocus,prev
+check
+dispatch groupfocus,prev
+check

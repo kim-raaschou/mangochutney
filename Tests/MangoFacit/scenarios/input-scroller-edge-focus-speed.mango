@@ -1,0 +1,16 @@
+# edge_scroller_focus_allow_speed: a slow pointer onto a window past the monitor's edge does not focus it, a fast one does.
+config scroller_default_proportion=0.6
+config edge_scroller_focus_allow_speed=20
+dispatch setlayout,scroller
+open a
+open b
+open c
+dispatch focusdir,left
+dispatch focusdir,left
+pointer 1140,500
+check
+move 15,0
+check
+move -15,0
+move 30,0
+check

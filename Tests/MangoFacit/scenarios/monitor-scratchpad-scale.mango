@@ -1,0 +1,13 @@
+# scratchpad_cross_monitor: a moved scratchpad window shown on a monitor of another size is scaled with it and centred.
+monitors 2560x1440 1920x1080
+config scratchpad_cross_monitor=1
+open a
+open b
+dispatch minimized
+dispatch toggle_scratchpad
+dispatch movewin,-100,-50
+check
+dispatch toggle_scratchpad
+dispatch focusmon,left
+dispatch toggle_scratchpad
+check

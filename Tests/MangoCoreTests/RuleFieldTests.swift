@@ -6,21 +6,6 @@ import XCTest
 final class RuleFieldTests: MangoTestCase {
     let float = CGRect(x: 100, y: 120, width: 600, height: 400)
 
-    func testTagmonScalesAndCentresAFloatingWindow() {
-        let r = EngineRig()
-        let big = Screen(displayID: 2, name: "Big", frame: CGRect(x: 1728, y: 0, width: 2560, height: 1440),
-                         workArea: CGRect(x: 1728, y: 25, width: 2560, height: 1415), scale: 2, isMain: false)
-        r.server.rebuildMonitors(screens: [r.screen, big])
-        let c = r.window(900_302, floating: true, frame: float)
-        c.floatGeom = float
-        r.server.clientFocus(c, false)
-        _ = r.server.tagMonitor(Arg(i: UNDIR, v: "Big", tc: c))
-        XCTAssertEqual(c.floatGeom.width, (600 * 2560 / r.screen.workArea.width).rounded(.down))
-        XCTAssertEqual(c.floatGeom.height, (400 * 1415 / r.screen.workArea.height).rounded(.down))
-        XCTAssertEqual(c.floatGeom.midX, big.workArea.midX, accuracy: 1)
-        XCTAssertEqual(c.floatGeom.midY, big.workArea.midY, accuracy: 1)
-    }
-
     func otherApp(_ r: EngineRig, _ id: CGWindowID, pid: pid_t, bundleId: String) -> Client {
         let w = DiscoveredWindow(id: id, pid: pid, element: r.app.element(for: id), bundleId: bundleId, appName: "OBS",
                                  title: "OBS", subrole: "AXStandardWindow", isDialog: false, frame: float, isminimized: false, isfullscreen: false, isAppHidden: false)
@@ -94,43 +79,4 @@ final class DragCornerTests: MangoTestCase {
         return c
     }
 
-    func testTheDefaultPullsTheBottomRightCornerFromTheCorner() {
-        let r = EngineRig()
-        let c = grab(r, at: CGPoint(x: 300, y: 300))
-        XCTAssertEqual(CGPoint(x: r.server.grabOffsetX, y: r.server.grabOffsetY), CGPoint(x: 800, y: 600), "drag_warp_cursor: the pointer goes to the corner")
-        r.server.motion(to: CGPoint(x: 850, y: 640), time: 0)
-        XCTAssertEqual(c.floatGeom, CGRect(x: 200, y: 200, width: 650, height: 440))
-    }
-
-    func testCornerZeroPullsTheTopLeft() {
-        let r = EngineRig()
-        r.server.config.dragCorner = 0
-        r.server.config.dragWarpCursor = false
-        let c = grab(r, at: CGPoint(x: 700, y: 500))
-        r.server.motion(to: CGPoint(x: 650, y: 470), time: 0)
-        XCTAssertEqual(c.floatGeom, CGRect(x: 150, y: 170, width: 650, height: 430), "the bottom right stays")
-    }
-
-    func testCornerFourTakesTheNearest() {
-        let r = EngineRig()
-        r.server.config.dragCorner = 4
-        _ = grab(r, at: CGPoint(x: 750, y: 250))
-        XCTAssertEqual(r.server.resizeEdge, [.right, .top])
-        XCTAssertEqual(CGPoint(x: r.server.grabOffsetX, y: r.server.grabOffsetY), CGPoint(x: 800, y: 200))
-    }
-
-    func testTheWarpGoesToTheBordersOuterCorner() {
-        let r = EngineRig()
-        r.server.renderBorder = true
-        let c = r.window(900_320, floating: true, frame: start)
-        let bw = r.server.borderWidth(c, on: r.monitor)
-        c.bw = bw
-        c.geom = start.insetBy(dx: -bw, dy: -bw)
-        c.floatGeom = c.geom
-        r.server.mousebind(resize, at: CGPoint(x: 300, y: 300))
-        XCTAssertGreaterThan(bw, 0)
-        XCTAssertEqual(CGPoint(x: r.server.grabOffsetX, y: r.server.grabOffsetY), CGPoint(x: 800 + bw, y: 600 + bw))
-        r.server.motion(to: CGPoint(x: 850 + bw, y: 640 + bw), time: 0)
-        XCTAssertEqual(c.floatGeom, CGRect(x: 200, y: 200, width: 650, height: 440).insetBy(dx: -bw, dy: -bw), "float_geom has the border")
-    }
 }

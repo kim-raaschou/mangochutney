@@ -1,0 +1,13 @@
+# drag_corner=4: the corner nearest the pointer is the one pulled, here the top right.
+config mousebind=NONE,btn_right,moveresize,curresize
+config drag_corner=4
+open a
+dispatch togglefloating
+check
+pointer 1314,286
+button right down
+check
+move 30,-20
+check
+button right up
+check

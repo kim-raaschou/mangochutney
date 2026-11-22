@@ -1,0 +1,10 @@
+# a virtual keyboard first (an activation token needs its serial).
+# focus_on_activate: a window in the scratchpad that asks to be activated is shown, still a scratchpad window, and focused.
+config focus_on_activate=1
+key shift
+open a
+open b
+dispatch minimized
+check
+request b activate by a
+check

@@ -1,0 +1,4 @@
+# the overview with a single small window: the card keeps the window's size, centred.
+open d dialog
+dispatch toggleoverview
+check

@@ -1,0 +1,8 @@
+# tagmon to a monitor of another size: a floating window is scaled with the monitor and centred on it.
+monitors 2560x1440 1920x1080
+open a 600x400
+dispatch togglefloating
+dispatch movewin,-400,-200
+check
+dispatch tagmon,left
+check

@@ -1,0 +1,12 @@
+# the overview keeps the tag viewed before for the way back: view_current_to_back after entering and leaving.
+config view_current_to_back=1
+open a
+dispatch view,2
+open b
+dispatch view,1
+dispatch toggleoverview
+check
+dispatch toggleoverview
+check
+dispatch view,1
+check

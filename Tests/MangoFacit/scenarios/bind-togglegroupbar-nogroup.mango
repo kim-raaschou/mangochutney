@@ -1,0 +1,11 @@
+# togglegroupbar with no group: every window's bar takes room above it, and gives it back.
+config new_is_master=0
+open a
+open b
+open c
+dispatch focusdir,up
+check
+dispatch togglegroupbar
+check
+dispatch togglegroupbar
+check

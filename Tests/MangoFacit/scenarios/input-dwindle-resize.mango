@@ -1,0 +1,15 @@
+# dwindle: a resize drag in the right window; the first motion starts the drag, the next moves the split line.
+config mousebind=NONE,btn_right,moveresize,curresize
+config dwindle_smart_resize=0
+dispatch setlayout,dwindle
+open a
+open b
+check
+pointer 1436,540
+button right down
+move 1,0
+check
+move 100,0
+check
+button right up
+check

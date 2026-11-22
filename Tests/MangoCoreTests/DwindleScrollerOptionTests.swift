@@ -28,19 +28,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         r.server.motion(to: p, time: time)
     }
 
-    func testADragMovesTheSplitLineWithThePointer() {
-        let r = dwindle(2)
-        let before = r.server.clientByIdAll(900_400)!.geom.width
-        XCTAssertEqual(dragRight(r, by: 100), before + 100, accuracy: 2)
-    }
-
-    func testSmartResizeInvertsBeyondTheSplitLine() {
-        let r = dwindle(2)
-        r.server.config.dwindleSmartResize = true
-        let before = r.server.clientByIdAll(900_400)!.geom.width
-        XCTAssertEqual(dragRight(r, by: 100), before - 100, accuracy: 2)
-    }
-
     func testATiledDragLaysOutOnEveryMotion() {
         let r = dwindle(2)
         let width = dragRight(r, by: 100)
@@ -90,30 +77,6 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         }
         let f = r.server.clientByIdAll(id)!.frame
         r.server.cursorMotion(to: CGPoint(x: f.minX + 50, y: f.midY), time: 1, dx: Double(speed))
-    }
-
-    func testAWindowOffTheEdgeTakesTheFocusByDefault() {
-        let r = scroller()
-        move(r, to: 900_411, speed: 0)
-        XCTAssertEqual(r.monitor.sel, 900_411)
-    }
-
-    func testWithoutEdgeFocusItDoesNot() {
-        let r = scroller()
-        r.server.config.edgeScrollerPointerFocus = false
-        move(r, to: 900_411, speed: 50)
-        XCTAssertEqual(r.monitor.sel, 900_410)
-        move(r, to: 900_410, speed: 0)
-        XCTAssertEqual(r.monitor.sel, 900_410, "inside: as always")
-    }
-
-    func testOnlyFastEnough() {
-        let r = scroller()
-        r.server.config.edgeScrollerFocusAllowSpeed = 20
-        move(r, to: 900_411, speed: 5)
-        XCTAssertEqual(r.monitor.sel, 900_410, "too slow")
-        move(r, to: 900_411, speed: 30)
-        XCTAssertEqual(r.monitor.sel, 900_411)
     }
 
     func testTheLock() {

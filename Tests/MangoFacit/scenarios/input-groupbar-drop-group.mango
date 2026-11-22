@@ -1,0 +1,14 @@
+# a tiled window dragged onto a group's bar joins the group as its third member.
+config new_is_master=0
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+open b
+open c
+dispatch focusdir,up
+dispatch groupjoin,down
+check
+pointer 500,500
+button middle down
+pointer 1436,25
+button middle up
+check

@@ -17,19 +17,6 @@ final class OverviewTests: MangoTestCase {
     }
 
     // overview_client_on_current_tags: a global client is on the current tags, the special tag is not
-    func testOnlyCurrentTakesAGlobalClientAndNotTheSpecialTag() {
-        let r = EngineRig()
-        let a = r.window(1), g = r.window(2, tags: 1 << 1), off = r.window(3, tags: 1 << 2)
-        let s = r.window(4, tags: TAG0_MASK)
-        g.isglobal = true
-        r.arrange()
-        d(r, "toggleoverview", ["1"])
-        XCTAssertTrue(r.monitor.isoverview)
-        XCTAssertTrue(a.overviewBackedUp)
-        XCTAssertTrue(g.overviewBackedUp, "isglobal")
-        XCTAssertFalse(off.overviewBackedUp, "not on the current tags")
-        XCTAssertFalse(s.overviewBackedUp, "TAG0_MASK")
-    }
 
     // fix_mon_tagset_from_overview runs on entering too
     func testEnteringKeepsThePreviousTagForTheWayBack() {
@@ -46,16 +33,6 @@ final class OverviewTests: MangoTestCase {
     }
 
     // arg->tc: mmsg's client,<id>
-    func testTheDispatchersTakeTheTargetClient() {
-        let r = EngineRig()
-        r.window(1)
-        let b = r.window(2, tags: 1 << 2)
-        r.arrange()
-        d(r, "toggleoverview")
-        _ = r.server.dispatch(Dispatch(name: "leaveoverview"), target: b)
-        XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 1 << 2)
-        XCTAssertTrue(r.server.focused === b)
-    }
 
     // a mango bug, docs/afvigelser.md §6: mango gives it overview_backup's zero state
     func testAClientMappedInTheOverviewKeepsItsState() {
@@ -71,27 +48,6 @@ final class OverviewTests: MangoTestCase {
     }
 
     // overview_scale reads the clients at each arrange
-    func testTheCardsFollowTheClients() {
-        let r = EngineRig()
-        let a = r.map(1), b = r.map(2), c = r.map(3)
-        d(r, "toggleoverview")
-        XCTAssertEqual(Set(r.monitor.ovCards.keys), [a.id, b.id, c.id])
-        r.server.mac.windowDestroyed(id: c.id)
-        XCTAssertEqual(Set(r.monitor.ovCards.keys), [a.id, b.id], "no hole for a closed window")
-        let n = r.map(4)
-        XCTAssertNotNil(r.monitor.ovCards[n.id], "a new window gets a card")
-    }
-
-    func testOvercircleWithOneClientSetsTheTabLayoutAndStays() {
-        let r = EngineRig()
-        let a = r.map(1)
-        d(r, "toggleoverview")
-        XCTAssertFalse(r.monitor.ovTabLayout)
-        d(r, "overcircle", ["next"])
-        XCTAssertTrue(r.monitor.ovTabLayout, "set before get_next_stack_client finds none")
-        XCTAssertTrue(r.monitor.isoverview)
-        XCTAssertTrue(r.server.focused === a)
-    }
 
     func testOvercircleInTheHotAreasOverviewLeaves() {
         let r = EngineRig()
@@ -129,22 +85,6 @@ final class OverviewTests: MangoTestCase {
         r.server.handleKeyboardKey([.leaveOvercircle])
         XCTAssertFalse(r.monitor.isoverview)
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], r.server.getTagsFirstTag(sel.tags))
-    }
-
-    func testEachMonitorHasItsOwnOverview() {
-        let r = EngineRig()
-        let side = twoMonitors(r)
-        r.server.selectedMonitor = side
-        r.map(1)
-        d(r, "toggleoverview")
-        r.server.selectedMonitor = r.monitor
-        r.map(2)
-        d(r, "toggleoverview")
-        XCTAssertTrue(side.isoverview)
-        XCTAssertTrue(r.monitor.isoverview, "toggle_overview acts on the selected monitor")
-        d(r, "toggleoverview")
-        XCTAssertFalse(r.monitor.isoverview)
-        XCTAssertTrue(side.isoverview)
     }
 
     // a mango bug, docs/afvigelser.md §6: mango toggles the selected monitor's overview

@@ -1,0 +1,7 @@
+# scroller: a fullscreen window takes the monitor and the next column starts past its edge.
+dispatch setlayout,scroller
+open a
+open b
+dispatch focusdir,left
+dispatch togglefullscreen
+check

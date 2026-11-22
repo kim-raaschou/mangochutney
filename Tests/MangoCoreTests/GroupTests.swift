@@ -69,29 +69,6 @@ final class GroupTests: MangoTestCase {
         XCTAssertEqual((r.server.system as! FakeWindowSystem).closed, [900_701])
     }
 
-    func testGroupfocusSwapsTheMemberInView() {
-        let r = rig()
-        run(r, "groupjoin", "down")
-        run(r, "groupfocus", "next")
-        XCTAssertEqual(r.monitor.sel, 900_702)
-        XCTAssertTrue(c(r, 900_701).groupParked)
-        XCTAssertEqual(tiled(r), [900_700, 900_702])
-        run(r, "groupfocus", "next")
-        XCTAssertEqual(r.monitor.sel, 900_702, "no wrapping, as mango")
-        run(r, "groupfocus", "prev")
-        XCTAssertEqual(r.monitor.sel, 900_701)
-    }
-
-    func testLeavingPutsItRightAfterTheGroup() {
-        let r = rig()
-        run(r, "groupjoin", "down")
-        run(r, "groupleave")
-        XCTAssertFalse(c(r, 900_701).isGroupMember)
-        XCTAssertFalse(c(r, 900_702).isGroupMember)
-        XCTAssertEqual(tiled(r), [900_700, 900_702, 900_701])
-        XCTAssertEqual(r.monitor.sel, 900_702, "the one left keeps the focus")
-    }
-
     /// mango's wl_list_insert(rc->flink.next) puts it two places behind (docs/afvigelser.md §6).
     func testGroupLeavePutsTheWindowRightBehindTheGroup() {
         let r = rig()
@@ -135,16 +112,6 @@ final class GroupTests: MangoTestCase {
         XCTAssertFalse(c(r, 900_702).groupParked)
     }
 
-    func testTheGroupBarTakesRoomAbove() {
-        let r = rig()
-        let master = c(r, 900_700).geom
-        run(r, "togglegroupbar")
-        XCTAssertEqual(c(r, 900_700).geom.minY, master.minY + 33, accuracy: 1)
-        XCTAssertEqual(c(r, 900_700).geom.height, master.height - 33, accuracy: 1)
-        run(r, "togglegroupbar")
-        XCTAssertEqual(c(r, 900_700).geom.minY, master.minY, accuracy: 1)
-    }
-
     func groupBar(_ r: EngineRig) -> TabStrip? {
         r.server.drawsOverlays = true
         r.server.drawBars()
@@ -170,17 +137,4 @@ final class GroupTests: MangoTestCase {
                        "the port's: reaching under the window's corners")
     }
 
-    func testDroppingOnAGroupBarJoinsTheGroup() {
-        let r = rig()
-        run(r, "groupjoin", "down")
-        let shown = c(r, 900_701).frame
-        let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
-        let f = c(r, 900_700).geom
-        r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
-        let bar = CGPoint(x: shown.midX, y: shown.minY - 10)
-        r.server.motion(to: bar, time: 1)
-        r.server.release(at: bar)
-        XCTAssertEqual(Set(r.server.groupMembers(c(r, 900_700)).map(\.id)), [900_700, 900_701, 900_702])
-        XCTAssertEqual(tiled(r), [900_700])
-    }
 }

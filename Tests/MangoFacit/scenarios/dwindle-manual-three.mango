@@ -1,0 +1,7 @@
+# dwindle_manual_split with three windows opened one after the other.
+config dwindle_manual_split=1
+dispatch setlayout,dwindle
+open a
+open b
+open c
+check

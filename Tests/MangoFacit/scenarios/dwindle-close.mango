@@ -1,0 +1,12 @@
+# dwindle: the third window splits the second; a closed window's sibling takes its node's room.
+dispatch setlayout,dwindle
+open a
+check
+open b
+check
+open c
+check
+close b
+check
+close a
+check

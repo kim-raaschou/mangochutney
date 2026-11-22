@@ -1,0 +1,15 @@
+# toggleoverview,1 takes a global window of another tag, not a window of another tag nor one on the special tag.
+config new_is_master=0
+open s
+dispatch tag_special_silent
+open a
+open g
+open o
+dispatch @o tagsilent,3
+dispatch @g tagsilent,2
+dispatch @g toggleglobal
+check
+dispatch toggleoverview,1
+check
+dispatch toggleoverview,1
+check

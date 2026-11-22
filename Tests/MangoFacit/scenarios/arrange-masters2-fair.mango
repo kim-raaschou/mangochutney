@@ -1,0 +1,12 @@
+# fair with default_master_count=2 and 1, 2, 3 and 5 windows.
+config default_master_count=2
+dispatch setlayout,fair
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check

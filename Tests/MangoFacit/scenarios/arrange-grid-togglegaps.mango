@@ -1,0 +1,16 @@
+# grid and vertical_grid without gaps after togglegaps, and with incgaps.
+config new_is_master=0
+dispatch setlayout,grid
+open a
+open b
+open c
+open d
+check
+dispatch togglegaps
+check
+dispatch setlayout,vertical_grid
+check
+dispatch togglegaps
+dispatch setlayout,grid
+dispatch incgaps,30
+check

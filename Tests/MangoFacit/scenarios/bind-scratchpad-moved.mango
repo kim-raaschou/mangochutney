@@ -1,0 +1,12 @@
+# a scratchpad window moved while shown comes back where it was put.
+open a
+open b
+dispatch minimized
+dispatch toggle_scratchpad
+check
+dispatch movewin,-100,-50
+check
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+check

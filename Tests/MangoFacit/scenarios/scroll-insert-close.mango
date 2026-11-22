@@ -1,0 +1,14 @@
+# scroller: a new window gets its column right after the focused one; closed windows leave no hole.
+dispatch setlayout,scroller
+open a
+open b
+open c
+check
+dispatch focusdir,left
+open d
+check
+dispatch focusdir,left
+check
+close b
+close c
+check

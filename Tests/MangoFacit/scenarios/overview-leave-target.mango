@@ -1,0 +1,8 @@
+# leaveoverview aimed at a window of another tag views that tag and focuses the window.
+open a
+open b
+dispatch @b tagsilent,3
+dispatch toggleoverview
+check
+dispatch @b leaveoverview
+check

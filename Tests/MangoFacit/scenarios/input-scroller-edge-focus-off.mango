@@ -1,0 +1,17 @@
+# edge_scroller_pointer_focus=0: a window reaching past the monitor's edge does not take the focus from the pointer; one inside does, as always.
+config scroller_default_proportion=0.4
+config edge_scroller_pointer_focus=0
+dispatch setlayout,scroller
+open a
+open b
+open c
+dispatch focusdir,left
+dispatch focusdir,left
+pointer 400,500
+check
+pointer 1700,500
+check
+pointer 1000,500
+check
+pointer 1700,500
+check

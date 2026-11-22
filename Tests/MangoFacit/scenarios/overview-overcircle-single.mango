@@ -1,0 +1,6 @@
+# overcircle in the overview with a single window: the overview stays and the window keeps the focus.
+open a
+dispatch toggleoverview
+check
+dispatch overcircle,next
+check

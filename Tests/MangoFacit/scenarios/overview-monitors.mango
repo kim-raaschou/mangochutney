@@ -1,0 +1,11 @@
+# each monitor has its own overview; toggleoverview acts on the selected monitor.
+monitors 2
+open a
+dispatch toggleoverview
+check
+dispatch focusmon,left
+open b
+dispatch toggleoverview
+check
+dispatch toggleoverview
+check

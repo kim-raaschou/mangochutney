@@ -1,0 +1,11 @@
+# the overview's cards follow the windows: a closed window leaves no hole and a new one gets a card.
+config new_is_master=0
+open a
+open b
+open c
+dispatch toggleoverview
+check
+close c
+check
+open d
+check

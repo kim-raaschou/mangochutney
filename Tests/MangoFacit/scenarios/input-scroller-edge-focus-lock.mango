@@ -1,0 +1,16 @@
+# the edge focus locks: after it, the next window past the edge does not take the focus until the pointer has been over a window inside.
+config scroller_default_proportion=0.6
+dispatch setlayout,scroller
+open a
+open b
+open c
+dispatch focusdir,left
+dispatch focusdir,left
+pointer 500,500
+pointer 1800,500
+check
+pointer 1912,500
+check
+pointer 1000,500
+pointer 1912,500
+check

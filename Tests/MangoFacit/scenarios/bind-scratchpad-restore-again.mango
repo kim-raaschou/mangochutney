@@ -1,0 +1,12 @@
+# a moved scratchpad window taken out with restore_minimized and minimized again is sized and centred anew.
+open a
+open b
+dispatch minimized
+dispatch toggle_scratchpad
+dispatch movewin,-100,-50
+check
+dispatch @b restore_minimized
+check
+dispatch @b minimized
+dispatch toggle_scratchpad
+check

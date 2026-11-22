@@ -1,0 +1,12 @@
+# scroller: the pointer moved onto a window that reaches past the monitor's edge gives it the focus (edge_scroller_pointer_focus is on by default).
+config scroller_default_proportion=0.6
+dispatch setlayout,scroller
+open a
+open b
+open c
+dispatch focusdir,left
+dispatch focusdir,left
+pointer 500,500
+check
+pointer 1800,500
+check

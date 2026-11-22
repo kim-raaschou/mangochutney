@@ -1,0 +1,12 @@
+# a resize drag of a floating window: drag_warp_cursor takes the pointer to the border's outer bottom right corner, which then follows the pointer.
+config mousebind=NONE,btn_right,moveresize,curresize
+open a
+dispatch togglefloating
+check
+pointer 656,336
+button right down
+check
+move 50,40
+check
+button right up
+check

@@ -1,0 +1,15 @@
+# monocle without tabs keeps its gaps: every window has the whole area; deck and vertical_deck without tabs put the stack one behind the other.
+config new_is_master=0
+config monocle_tab_mode=0
+config deck_tab_mode=0
+dispatch setlayout,monocle
+open a
+open b
+open c
+open d
+dispatch focusstack,prev
+check
+dispatch setlayout,deck
+check
+dispatch setlayout,vertical_deck
+check

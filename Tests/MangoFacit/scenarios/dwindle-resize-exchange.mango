@@ -1,0 +1,11 @@
+# dwindle: resizewin moves the split ratio and clamps it; exchange_client swaps the two windows' places.
+dispatch setlayout,dwindle
+open a
+open b
+check
+dispatch @a resizewin,+190,+0
+check
+dispatch @a resizewin,+10000,+0
+check
+dispatch @a exchange_client,right
+check
