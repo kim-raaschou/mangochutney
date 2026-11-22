@@ -1,0 +1,13 @@
+# without drag_tile_to_tile a tile dragged with the mouse stays floating where it is let go, at its floating size.
+config new_is_master=0
+config mousebind=NONE,btn_middle,moveresize,curmove
+config drag_tile_to_tile=0
+open a
+open b
+open c
+pointer 1440,300
+button middle down
+check
+pointer 500,500
+button middle up
+check

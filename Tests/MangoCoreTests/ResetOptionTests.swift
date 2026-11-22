@@ -47,15 +47,4 @@ final class ResetOptionTests: MangoTestCase {
         XCTAssertEqual(ProcessInfo.processInfo.environment[key], "~x", "only ~/ is expanded, and when the config is read")
     }
 
-    func testTheTagRulesAreReappliedAfterTheMasterReset() {
-        let r = EngineRig()
-        r.server.config.defaultMfact = 0.55
-        var rule = ConfigTagRule()
-        rule.id = 2
-        rule.masterFactor = 0.7
-        r.server.config.tagRules = [rule]
-        r.server.resetOption()
-        XCTAssertEqual(r.monitor.pertag.mfacts[2], 0.7, accuracy: 0.0001)
-        XCTAssertEqual(r.monitor.pertag.mfacts[1], 0.55, accuracy: 0.0001)
-    }
 }

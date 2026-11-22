@@ -22,18 +22,6 @@ final class PointerFocusTests: MangoTestCase {
         XCTAssertEqual(r.server.system.pointerFocusedSurface, a.id, "the pointer has entered a")
     }
 
-    func testFocusByKeyStaysWhileThePointerStaysInItsWindow() {
-        let (r, a, b) = sideBySide()
-        r.server.motion(to: CGPoint(x: 300, y: 400), time: 1)
-        XCTAssertEqual(r.monitor.sel, a.id, "entering a focuses it")
-        r.server.clientFocus(b, false)
-        r.server.motion(to: CGPoint(x: 310, y: 410), time: 2)
-        XCTAssertEqual(r.monitor.sel, b.id, "client_focus's pointer_process_motion(0) re-entered a: no new surface")
-        r.server.motion(to: CGPoint(x: 800, y: 400), time: 3)
-        r.server.motion(to: CGPoint(x: 300, y: 400), time: 4)
-        XCTAssertEqual(r.monitor.sel, a.id, "entering a again focuses it")
-    }
-
     func testUnmapRestoresThePointerFocus() {
         let (r, a, b) = sideBySide()
         r.server.motion(to: CGPoint(x: 800, y: 400), time: 1)

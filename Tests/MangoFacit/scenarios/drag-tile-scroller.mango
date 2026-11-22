@@ -1,0 +1,20 @@
+# a tile let go near a scroller tile's bottom edge is stacked below it, near its top edge above it.
+config new_is_master=0
+config mousebind=NONE,btn_middle,moveresize,curmove
+dispatch setlayout,scroller
+open a
+open b
+open c
+dispatch @a focusid
+check
+pointer 1800,500
+button middle down
+check
+pointer 800,1060
+button middle up
+check
+pointer 1800,500
+button middle down
+pointer 800,15
+button middle up
+check

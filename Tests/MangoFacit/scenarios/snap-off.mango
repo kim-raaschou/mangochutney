@@ -1,0 +1,9 @@
+# enable_floating_snap is off by default: a floating window let go near the monitor's edge stays where it is.
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+dispatch togglefloating
+pointer 960,540
+button middle down
+pointer 419,327
+button middle up
+check

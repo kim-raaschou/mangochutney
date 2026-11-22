@@ -27,14 +27,6 @@ final class UnmanagedGlobalTests: MangoTestCase {
         XCTAssertFalse(r.app.writes.contains { $0.id == pet })
     }
 
-    func testFocusNavigationAndTheOverviewSkipIt() {
-        let r = EngineRig()
-        let w = r.window(a)
-        let u = r.window(pet)
-        u.isunglobal = true
-        XCTAssertTrue(r.server.clientFocusTop(r.monitor) === w)
-    }
-
     func testAMinimizeIsMangosWhenIgnoreMinimizeIsOff() {
         let r = EngineRig()
         let c = r.window(a)

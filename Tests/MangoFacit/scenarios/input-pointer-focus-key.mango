@@ -1,0 +1,21 @@
+# sloppy focus only when the pointer enters another window: a move inside the window it is over focuses nothing, a focus by key stays, and a window closed under the pointer leaves the focus to the next one.
+config new_is_master=0
+config warp_cursor=0
+open a
+open b
+pointer 500,500
+check
+pointer 1500,500
+pointer 500,500
+check
+dispatch focusstack,next
+check
+move 10,10
+check
+pointer 1500,500
+pointer 500,500
+check
+close a
+check
+move 10,10
+check

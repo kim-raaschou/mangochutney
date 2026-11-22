@@ -1,0 +1,10 @@
+# a tile picked up at its middle shrinks to 300 by 300 around the pointer and goes back in its tile when let go there.
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+open b
+check
+pointer 480,540
+button middle down
+check
+button middle up
+check

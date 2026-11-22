@@ -1,0 +1,19 @@
+# a click on a monocle tab focuses its window: three tabs share the bar's width side by side, the first takes the remainder.
+config new_is_master=0
+dispatch setlayout,monocle
+open a
+open b
+open c
+check
+pointer 643,25
+click left
+check
+pointer 644,25
+click left
+check
+pointer 1277,25
+click left
+check
+pointer 1276,25
+click left
+check

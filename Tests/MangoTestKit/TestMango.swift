@@ -34,6 +34,7 @@ package final class TestMango {
         server.config = parsed.config
         wlroots = FakeWlroots(server, screens: screens)
         server.system = wlroots
+        server.drawsOverlays = true   // the bars are scene nodes in mango; the fake keeps them, it draws nothing
         server.started = true
         server.rebuildMonitors(screens: wlroots.screens)
     }
@@ -57,7 +58,7 @@ package final class TestMango {
 
     private var nextID: ClientID = 1
 
-    /// A new toplevel, mapped as mango's mapnotify maps it. The title names it in the tests.
+    /// A new toplevel, mapped as mango's mapnotify maps it, an app of its own. The title names it in the tests.
     @discardableResult
     package func map(_ title: String, size: CGSize = CGSize(width: 800, height: 600), dialog: Bool = false) -> Client {
         let frame = CGRect(origin: .zero, size: size)
@@ -66,9 +67,10 @@ package final class TestMango {
             surface.sizeHints.minWidth = size.width; surface.sizeHints.maxWidth = size.width
             surface.sizeHints.minHeight = size.height; surface.sizeHints.maxHeight = size.height
         }
-        let c = Client(id: nextID, pid: 1, platform: surface, bundleId: "",
+        let c = Client(id: nextID, pid: pid_t(nextID), platform: surface, bundleId: "",
                        appName: title, title: title, monitor: server.selectedMonitor, tags: 0, frame: frame)
         nextID += 1
+        wlroots.stacking.append(c.id)
         server.handleClientMap(c)
         return c
     }
@@ -152,7 +154,8 @@ package final class TestMango {
     /// modifiers do not count for the pointer (keyboard_hard_modifiers).
     package func button(_ button: Int, down: Bool) {
         time += 1000
-        server.pointerProcessButtonPress(button: button, pressed: down, at: wlroots.pointer, mods: wlroots.keyboardHardModifiers())
+        let bar = down ? wlroots.barAt(wlroots.pointer) : nil
+        server.pointerProcessButtonPress(button: button, pressed: down, at: wlroots.pointer, mods: wlroots.keyboardHardModifiers(), bar: bar)
     }
 
     /// One notch of a wheel, as handle_cursor_axis takes it: an axis binding runs, else nothing here.

@@ -1,0 +1,17 @@
+# float_full_to_top: floating and fullscreen windows share the top layer, where the one raised last lies over the other.
+config new_is_master=0
+config warp_cursor=0
+config float_full_to_top=1
+open a
+open b
+open f
+dispatch togglefloating
+pointer 1000,500
+check
+dispatch @b togglefullscreen
+move 5,5
+check
+dispatch @f focusid
+check
+pointer 5,5
+check

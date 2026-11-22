@@ -64,18 +64,6 @@ final class TabStripTests: MangoTestCase {
         XCTAssertFalse(r.server.clientByIdAll(900_102)!.parked, "the master focused: the stack keeps its last focused member")
     }
 
-    func testOneWindowHasNoStrip() {
-        let r = rig(.monocle, windows: 1)
-        XCTAssertTrue(r.server.tabChain(r.monitor).isEmpty)
-    }
-
-    func testTheDeckTabsItsStackNotItsMaster() {
-        let r = rig(.deck, windows: 3)
-        r.arrange()
-        let ids = r.server.tabChain(r.monitor).map(\.id)
-        XCTAssertEqual(ids, [900_101, 900_102], "the master (first) is not a member")
-    }
-
     func testTheSelectedMemberIsFocusedElseTheOneShownLast() {
         let r = rig(.monocle, windows: 3)
         r.arrange()
@@ -88,10 +76,6 @@ final class TabStripTests: MangoTestCase {
         for c in r.server.tabChain(r.monitor) { c.isTabFocus = false }
         r.server.tabSyncMonitor(r.monitor)
         XCTAssertEqual(r.server.tabFocus(r.monitor)?.id, 900_100, "none shown yet: the first")
-    }
-
-    func cmd(_ code: UInt16, modifier: Bool = false, down: Bool = true) -> KeyEvent {
-        KeyEvent(keyCode: code, mods: down ? .superKey : [], isDown: down, isRepeat: false, isModifierKey: modifier)
     }
 
     func testTheStripSitsOnTheFocusedMemberOnly() {
@@ -192,11 +176,6 @@ final class TabStripTests: MangoTestCase {
                        "client_check_tab_node_visible: focused is cur == selected_monitor->sel")
     }
 
-    func testSegmentsShareTheWidthLikeMango() {
-        let f = TabStripLayout.segmentFrames(width: 100, count: 3)
-        XCTAssertEqual(f.map(\.width), [34, 33, 33])
-        XCTAssertEqual(f.map(\.minX), [0, 34, 67])
-    }
 }
 
 @MainActor

@@ -1,0 +1,19 @@
+# a tile picked up with the mouse floats 300 by 300 around the pointer; let go on a stack tile's lower half it goes after it, on its upper half before it.
+config new_is_master=0
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+open b
+open c
+check
+pointer 1440,300
+button middle down
+check
+pointer 1440,1000
+check
+button middle up
+check
+pointer 1440,800
+button middle down
+pointer 1440,200
+button middle up
+check

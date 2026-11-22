@@ -1,0 +1,16 @@
+# enable_floating_snap: a floating window let go near another floating window snaps to its opposite edge, on that axis alone.
+config enable_floating_snap=1
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+dispatch togglefloating
+dispatch resizewin,-508,-408
+open b
+dispatch togglefloating
+dispatch resizewin,-508,-408
+check
+pointer 600,300
+button middle down
+pointer 912,350
+check
+button middle up
+check

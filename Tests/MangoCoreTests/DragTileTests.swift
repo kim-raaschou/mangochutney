@@ -55,49 +55,6 @@ final class DragTileTests: MangoTestCase {
         return r
     }
 
-    func frame(_ r: EngineRig, _ id: CGWindowID) -> CGRect { r.server.clientByIdAll(id)!.geom }
-
-    func drag(_ r: EngineRig, _ id: CGWindowID, to p: CGPoint) {
-        let move = MouseBinding(mods: [.superKey], button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
-        let f = frame(r, id)
-        r.server.mousebind(move, at: CGPoint(x: f.midX, y: f.midY))
-        XCTAssertTrue(r.server.clientByIdAll(id)!.isfloating, "it floats while it is dragged")
-        r.server.motion(to: p, time: 1)
-        r.server.buttonReleased(at: p)
-    }
-
-    func tiledOrder(_ r: EngineRig) -> [CGWindowID] { r.server.tiledClients(r.monitor).map(\.id) }
-
-    func testDroppedAboveAStackTileItGoesBeforeIt() {
-        let r = rig()
-        let lower = frame(r, 900_502)
-        drag(r, 900_501, to: CGPoint(x: lower.midX, y: lower.maxY - 10))
-        XCTAssertFalse(r.server.clientByIdAll(900_501)!.isfloating)
-        XCTAssertEqual(tiledOrder(r), [900_500, 900_502, 900_501], "below the lower half: after it")
-    }
-
-    func testDroppedOnTheMasterItTakesItsPlace() {
-        let r = rig()
-        let master = frame(r, 900_500)
-        drag(r, 900_502, to: CGPoint(x: master.midX, y: master.midY))
-        XCTAssertEqual(tiledOrder(r), [900_502, 900_500, 900_501])
-        XCTAssertEqual(r.monitor.sel, 900_502)
-    }
-
-    func testTheScrollerStacksItAboveOrBelow() {
-        let r = rig(.scroller)
-        r.server.clientFocus(r.server.clientByIdAll(900_500)!, false)
-        r.arrange()
-        let f = frame(r, 900_500)
-        let c = r.server.clientByIdAll(900_502)!
-        r.server.fake.fakePointer = CGPoint(x: 1, y: 1)
-        XCTAssertTrue(r.server.pointerBeginMoveResize(c, CurMove, 1, 1, []))
-        let p = CGPoint(x: f.midX, y: f.maxY - 5)
-        r.server.motion(to: p, time: 1)
-        r.server.buttonReleased(at: p)
-        XCTAssertEqual(r.server.scrollerStack(of: 900_500), [900_500, 900_502], "nearest edge the bottom: below it, in its stack")
-    }
-
     func testAPickedUpTileShrinksAroundThePointer() {
         let r = rig()
         r.app.writes.removeAll()
@@ -110,18 +67,4 @@ final class DragTileTests: MangoTestCase {
         XCTAssertEqual(r.app.writes.last { $0.id == 900_501 }?.frame, inside)
     }
 
-    func testWithoutDragTileToTileItStaysFloating() {
-        let r = rig()
-        r.server.config.dragTileToTile = false
-        drag(r, 900_501, to: CGPoint(x: 300, y: 300))
-        XCTAssertTrue(r.server.clientByIdAll(900_501)!.isfloating)
-    }
-
-    func testTheFloatingPlaceComesBack() {
-        let r = rig()
-        let before = CGRect(x: 10, y: 50, width: 300, height: 200)
-        r.server.clientByIdAll(900_501)!.floatGeom = before
-        drag(r, 900_501, to: CGPoint(x: frame(r, 900_500).midX, y: frame(r, 900_500).midY))
-        XCTAssertEqual(r.server.clientByIdAll(900_501)!.floatGeom, before, "mango's drag_tile_float_backup_geom")
-    }
 }

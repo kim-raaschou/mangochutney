@@ -17,19 +17,6 @@ final class FloatingSnapTests: MangoTestCase {
         XCTAssertEqual(s.minY, 37, "23 below the work area's top (the menu bar)")
     }
 
-    func testAnEdgeFurtherAwayStays() {
-        let f = CGRect(x: 200, y: 300, width: 400, height: 300)
-        XCTAssertEqual(snap(f), f)
-        XCTAssertEqual(snap(CGRect(x: 20, y: 300, width: 400, height: 300), distance: 10).minX, 20)
-    }
-
-    func testItSnapsToAnotherFloatingWindowsOppositeEdge() {
-        let other = CGRect(x: 100, y: 400, width: 300, height: 200)
-        let f = CGRect(x: 412, y: 450, width: 300, height: 200)
-        XCTAssertEqual(snap(f, others: [other]).minX, 400, "its left edge on the other's right edge")
-        XCTAssertEqual(snap(f, others: [other]).minY, 450, "nothing near vertically")
-    }
-
     func testTheNearerSideWinsAndATieGoesRightOrDown() {
         let wide = CGRect(x: 10, y: 400, width: 1710, height: 200)
         XCTAssertEqual(snap(wide).maxX, 1728)
@@ -51,13 +38,6 @@ final class EngineSnapAndSmallDragTests: MangoTestCase {
         r.settle()
         XCTAssertEqual(c.floatGeom.minX, 0)
         XCTAssertEqual(r.app.frames[1]?.minX, 0, "written to the window")
-    }
-
-    func testSnapIsOffByDefaultAsInMango() {
-        let r = EngineRig()
-        let c = r.window(1, floating: true, frame: CGRect(x: 15, y: 300, width: 500, height: 400))
-        r.server.applyWindowSnap(c)
-        XCTAssertEqual(c.floatGeom.minX, 15)
     }
 
     func testATileMovedWithTheMouseShrinksAroundThePointerAndGoesBackOnDrop() {

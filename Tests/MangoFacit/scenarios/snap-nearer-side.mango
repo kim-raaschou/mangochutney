@@ -1,0 +1,24 @@
+# enable_floating_snap: with both sides within snap_distance the nearer one wins, and a tie goes right.
+config enable_floating_snap=1
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+dispatch togglefloating
+dispatch resizewin,+1092,+0
+check
+pointer 960,540
+button middle down
+pointer 414,540
+check
+button middle up
+check
+dispatch resizewin,+2,+0
+button middle down
+pointer 404,540
+check
+button middle up
+check
+button middle down
+pointer 394,540
+check
+button middle up
+check

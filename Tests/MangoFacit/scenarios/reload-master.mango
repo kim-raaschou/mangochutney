@@ -1,0 +1,24 @@
+# reload_config puts every tag's master factor and master count back to the defaults, and then the tag rules on top.
+config new_is_master=0
+config tag_rule=id:2,master_factor:0.7
+open a
+open b
+dispatch setmfact,-0.2
+check
+dispatch view,2
+open c
+open d
+dispatch setmfact,-0.2
+check
+dispatch view,3
+open e
+open f
+open g
+dispatch incnmaster,1
+check
+reload default_master_factor=0.6
+check
+dispatch view,2
+check
+dispatch view,1
+check

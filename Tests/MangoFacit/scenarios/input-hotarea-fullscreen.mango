@@ -1,0 +1,10 @@
+# the hot area is quiet under a focused fullscreen window (hotarea_disable_on_fullscreen, mango's default) and works again without it.
+config enable_hotarea=1
+open a
+dispatch togglefullscreen
+pointer 300,500
+move -295,572
+check
+dispatch togglefullscreen
+move 1,1
+check

@@ -1,0 +1,34 @@
+# enable_floating_snap: a floating window let go within snap_distance of the monitor's edges snaps to them; at the distance or further it stays.
+config enable_floating_snap=1
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+dispatch togglefloating
+check
+pointer 960,540
+button middle down
+pointer 424,327
+check
+button middle up
+check
+pointer 400,300
+button middle down
+pointer 600,600
+button middle up
+check
+button middle down
+pointer 430,600
+button middle up
+check
+button middle down
+pointer 429,600
+button middle up
+check
+button middle down
+pointer 1526,757
+button middle up
+check
+reload snap_distance=10
+button middle down
+pointer 434,585
+button middle up
+check

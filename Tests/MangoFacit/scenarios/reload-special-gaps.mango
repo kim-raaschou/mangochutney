@@ -1,0 +1,12 @@
+# reload_config sets the gaps anew, the special tag's too.
+open a
+open s
+dispatch tag_special_tag
+check
+reload special_gap_outer_vertical=13
+reload special_gap_inner_horizontal=11
+reload gap_inner_horizontal=11
+check
+dispatch toggle_special_tag
+open b
+check

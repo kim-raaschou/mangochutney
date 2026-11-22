@@ -56,7 +56,31 @@ package final class FakeWlroots: WindowSystem {
 
     /// The surface under the pointer, as the test sets it.
     package var surfaceUnderPointer: ClientID?
-    package func surfaceAt(_ p: CGPoint) -> ClientID? { surfaceUnderPointer }
+    /// The scene's stacking, bottom first: a client mapped goes on top, a raise moves it there.
+    package var stacking: [ClientID] = []
+    /// The topmost shown surface under `p` (wlr_scene_node_at): the highest layer, and in it the last
+    /// raised; unless the test sets one.
+    package func surfaceAt(_ p: CGPoint) -> ClientID? {
+        if let surfaceUnderPointer { return surfaceUnderPointer }
+        let hits = stacking.enumerated().compactMap { i, id -> (layer: Int, i: Int, id: ClientID)? in
+            guard let c = server.clientByIdAll(id), c.platform.sceneNodeEnabled, !c.parked,
+                  c.frame.insetBy(dx: -c.bw, dy: -c.bw).contains(p) else { return nil }
+            return (server.clientTargetLayer(c).rawValue, i, id)
+        }
+        return hits.max { ($0.layer, $0.i) < ($1.layer, $1.i) }?.id
+    }
+
+    /// The bar segment under `p`, as the scene finds a group or tab bar's node.
+    package func barAt(_ p: CGPoint) -> BarButton? {
+        for (strips, isTab) in [(tabBars, true), (groupBars, false)] {
+            for strip in strips {
+                if let s = strip.segments.first(where: { $0.frame.contains(p) }) {
+                    return BarButton(client: ClientID(s.id), isTab: isTab, onClose: false)
+                }
+            }
+        }
+        return nil
+    }
 
     package private(set) var activated: Set<ClientID> = []
     package func clientActivateSurface(_ c: Client, _ activated: Bool) {
@@ -122,7 +146,10 @@ package final class FakeWlroots: WindowSystem {
     package func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool) {}
     package func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) {}
     package func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void) { done(c.geom) }
-    package func raise(_ c: Client) {}
+    package func raise(_ c: Client) {
+        stacking.removeAll { $0 == c.id }
+        stacking.append(c.id)
+    }
     package func restack() {}
     package func settle(_ c: Client) {}
     package func grabBegan(_ c: Client) {}

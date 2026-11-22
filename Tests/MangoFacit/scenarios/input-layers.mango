@@ -1,0 +1,22 @@
+# the window under the pointer is the one of the topmost layer: maximized over the focused tile, floating over maximized, fullscreen over floating, overlay over fullscreen.
+config new_is_master=0
+config warp_cursor=0
+open a
+open b
+open f
+dispatch togglefloating
+open o
+dispatch toggleoverlay
+dispatch @a togglemaximizescreen
+dispatch @b focusid
+pointer 5,5
+check
+pointer 1500,100
+check
+pointer 1000,500
+check
+dispatch @b togglefullscreen
+move 5,5
+check
+pointer 1500,800
+check

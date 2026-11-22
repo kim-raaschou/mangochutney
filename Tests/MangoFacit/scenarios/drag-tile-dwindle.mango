@@ -1,0 +1,19 @@
+# a tile let go on a wide dwindle tile splits it left or right by the half the pointer is in; without dwindle_drop_simple_split by the nearest edge.
+config new_is_master=0
+config mousebind=NONE,btn_middle,moveresize,curmove
+dispatch setlayout,dwindle
+open a
+open b
+check
+pointer 1440,500
+button middle down
+pointer 1500,30
+check
+button middle up
+check
+reload dwindle_drop_simple_split=0
+pointer 1440,500
+button middle down
+pointer 1500,30
+button middle up
+check

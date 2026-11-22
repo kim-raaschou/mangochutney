@@ -1,0 +1,22 @@
+# a tile let go on the master takes its place; on a master that is alone it goes left or right of it.
+config new_is_master=0
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+open b
+open c
+pointer 1440,800
+button middle down
+pointer 500,500
+button middle up
+check
+close b
+pointer 1440,500
+button middle down
+pointer 1500,500
+button middle up
+check
+pointer 1440,500
+button middle down
+pointer 500,500
+button middle up
+check

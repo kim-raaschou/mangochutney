@@ -1,0 +1,17 @@
+# while the special tag shows, the pointer reaches its windows only: a window of the tag in view, under the dim, gets no sloppy focus.
+config new_is_master=0
+open a
+open s
+dispatch tag_special_tag
+open t
+check
+pointer 14,500
+check
+pointer 500,500
+check
+pointer 14,500
+check
+dispatch toggle_special_tag
+check
+move 1,1
+check

@@ -1,0 +1,19 @@
+# a tile dragged and dropped keeps the floating place it had before the drag.
+config new_is_master=0
+config mousebind=NONE,btn_middle,moveresize,curmove
+open a
+open b
+open c
+dispatch @b togglefloating
+dispatch @b movewin,-300,-200
+dispatch @b resizewin,-200,-100
+check
+dispatch @b togglefloating
+check
+pointer 1440,300
+button middle down
+pointer 500,500
+button middle up
+check
+dispatch @b togglefloating
+check

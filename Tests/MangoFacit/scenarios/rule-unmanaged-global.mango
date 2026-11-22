@@ -1,0 +1,21 @@
+# window_rule is_unmanaged_global: the window is no tile and keeps its place, shows on every tag as on the tag in view, and focusstack, the overview and the focus after a close pass it by.
+config new_is_master=0
+config window_rule=is_unmanaged_global:1,title:^pet$
+open a
+open b
+open pet 120x90
+check
+dispatch focusstack,next
+check
+dispatch focusstack,next
+check
+dispatch view,2
+check
+dispatch view,1
+check
+dispatch toggleoverview
+check
+dispatch toggleoverview
+check
+dispatch killclient
+check

@@ -1,0 +1,17 @@
+# floating lies over tiled, and of two floating windows at the same place the one focused last is the one under the pointer.
+config new_is_master=0
+config warp_cursor=0
+open t
+open f
+dispatch togglefloating
+open g
+dispatch togglefloating
+dispatch @t focusid
+pointer 5,5
+pointer 960,540
+check
+dispatch @f focusid
+dispatch @t focusid
+pointer 5,5
+pointer 960,540
+check
