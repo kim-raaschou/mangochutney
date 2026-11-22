@@ -247,6 +247,26 @@ tager nu ønsker på stdin og sender dem til mango, som en app gør.
 | manage | 80,0 % | 81,5 % |
 | **I alt** | **71,0 %** | **71,8 %** |
 
+## Flytningen af testene (2026-11-22)
+
+Fable delte alle mango-tests op i dækket (COVERED), kan skrives (WRITABLE) og skal blive (KEEP). Scenarier
+og config-filer blev skrevet til de skrivbare, optaget fra mango, og hver Swift-test blev holdt op mod
+sit facit, før den blev slettet. En test, der også påstår noget, facit ikke ser (fokus-stakken, interne
+felter, porten, tegning, læste værdier), er blevet.
+
+| | Før facit | Nu |
+|---|---|---|
+| Swift-testlinjer (MangoCoreTests og MangoTests) | 14.084 | 11.703 |
+| Testfunktioner | 867 | 683 |
+| Scenarier | 0 | 292 (4.138 linjer) |
+| Config-filer | 0 | 56 |
+| Dækning, hele suiten | 89,0 % | 92,7 % |
+| Dækning, facit alene | 0 | 75,1 % |
+
+Mango var enig med alle de Swift-tests, der blev flyttet. Undervejs fandt facit to fejl mere i kernen,
+begge rettet: `handle_client_map` sluttede med `arrange`, hvor mango slutter med `resize`, og `focused`
+gik ned ved en `global_key_binding`-regel, før der var en skærm.
+
 ## Hvad det koster
 
 - **Opsætningen** (én gang): en colima-profil `mangofacit` (4 CPU, 4 GB), som `record` selv
