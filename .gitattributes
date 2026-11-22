@@ -2,3 +2,5 @@
 * text=auto eol=lf
 # mango's own assets/config.conf is CRLF; ours keeps its line endings.
 Resources/config.conf -text
+# A config facit that tests CRLF keeps its line endings.
+Tests/MangoFacit/configs/crlf.conf -text
