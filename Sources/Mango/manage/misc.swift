@@ -15,7 +15,8 @@ package extension MangoServer {
             let hits = mon.ovCards.filter { $0.value.contains(p) }.compactMap { clientByIdAll($0.key) }
             return hits.first { $0.isfloating } ?? hits.first
         }
-        let hits = (isSpecialActive(mon) ? specialClients(mon) : visibleClients(mon))
+        // not in mango: the scene's enabled client nodes where they stand, on any monitor
+        let hits = (isSpecialActive(mon) ? specialClients(mon) : clients.filter { $0.platform.sceneNodeEnabled })
             .filter { !$0.parked && clientGeom($0).contains(p) }
         // not in mango: node_at_point's walk from the top layer down, as the topmost layer among the hits
         guard let layer = hits.map({ clientTargetLayer($0) }).max() else { return nil }

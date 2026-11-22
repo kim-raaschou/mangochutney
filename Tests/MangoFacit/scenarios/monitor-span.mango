@@ -1,0 +1,15 @@
+# a floating window of one monitor moved over the other: the pointer over it is over the window
+# (node_at_point walks the scene, not the monitor under the point).
+monitors 2
+open a
+dispatch focusmon,right
+open c
+dispatch focusmon,left
+open b
+dispatch @b togglefloating
+dispatch @b movewin,640,0
+check
+pointer 1000,500
+check
+pointer 300,900
+check
