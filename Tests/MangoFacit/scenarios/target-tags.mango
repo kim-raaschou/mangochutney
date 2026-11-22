@@ -1,0 +1,19 @@
+# tagging a window that has not the focus.
+open a
+open b
+open c
+dispatch @a tag,2
+check
+dispatch @b tagsilent,3
+check
+dispatch @c toggletag,2
+check
+dispatch @c tagtoright
+check
+dispatch @c tagtoleft
+check
+dispatch @a focusid
+dispatch tag_special_silent
+check
+dispatch @a tag,1
+check

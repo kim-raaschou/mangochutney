@@ -1,0 +1,12 @@
+# exchange_stack_client and focus_window_or_workspace and overcircle from a target.
+dispatch setlayout,scroller
+open a
+open b
+open c
+dispatch @c scroller_stack,left
+dispatch @b exchange_stack_client,next
+check
+dispatch @a focus_window_or_workspace,right
+check
+dispatch @a overcircle,next
+check

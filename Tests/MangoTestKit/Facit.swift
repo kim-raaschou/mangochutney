@@ -87,7 +87,7 @@ extension TestMango {
             case "close":
                 mango.unmap(rest)
             case "dispatch":
-                mango.mmsg("dispatch", rest)
+                mango.mmsg("dispatch", mango.target(rest))
             case "check":
                 let expected = facit.checks.indices.contains(answers.count) ? facit.checks[answers.count] : nil
                 answers.append(Facit.Check(line: line,
@@ -113,6 +113,15 @@ extension TestMango {
             if let active = item["active_client"] as? [String: Any] { item["active_client"] = active["title"] }
             return item.filter { fields?.contains($0.key) ?? true }
         }
+    }
+
+    /// `@b func,args` is mango's `func,args client,<id>`, with the id of the window titled b.
+    func target(_ rest: String) -> String {
+        guard rest.hasPrefix("@") else { return rest }
+        let title = rest.dropFirst().prefix { $0 != " " }
+        let clients = json(mmsg("get", "all-clients"))["clients"] as? [[String: Any]] ?? []
+        guard let id = clients.first(where: { "\($0["title"]!)" == title })?["id"] else { return rest }
+        return rest.dropFirst(title.count + 1).trimmingCharacters(in: .whitespaces) + " client,\(id)"
     }
 
     /// `mmsg get cursorpos`, its place.

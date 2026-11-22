@@ -1,0 +1,19 @@
+# the toggles on a window that has not the focus.
+open a
+open b
+open c
+dispatch @b togglefloating
+dispatch @a togglemaximizescreen
+check
+dispatch @b togglefloating
+check
+dispatch @c togglefullscreen
+check
+dispatch @c togglefullscreen
+dispatch @a togglefakefullscreen
+check
+dispatch @b toggleglobal
+dispatch @c toggleoverlay
+check
+dispatch @c zoom
+check

@@ -148,6 +148,10 @@ uden Swift. De gamle tests er **ikke slettet**: det er din beslutning.
 **Med små udvidelser af formatet** (kun hvad rigtig mango tilbyder) kan 20–35 P blive til F:
 1. `dispatch @b focusstack,next`: mål-klient via mangos `client,<id>`. Det giver mest for mindst
    arbejde.
+   **Bygget 2026-11-22:** `dispatch @b <func>` sendes som mangos `<func> client,<id>` (mango tager
+   kun målet med mellemrum til sidst). 17 nye scenarier (`target-*.mango`) over 30 dispatchere med
+   mål; alle grønne. Dækningen steg kun fra 57,8 % til 58,4 %: målet er få linjer, gevinsten er, at
+   ca. 30 tests, Fable fandt, nu kan holdes op mod mangos eget svar.
 2. Fokusstakken afsløret ved at lukke vinduer til sidst i et scenarie.
 3. `reload` med nye config-linjer.
 4. Skærme, der slås fra og til, og skærme med andre størrelser.

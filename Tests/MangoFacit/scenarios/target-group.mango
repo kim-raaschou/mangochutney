@@ -1,0 +1,17 @@
+# groups by target: join, focus a parked member (only focusid finds it), leave.
+open a
+open b
+open c
+dispatch @b focusid
+dispatch groupjoin,down
+check
+dispatch @c togglefloating
+check
+dispatch @c focusid
+check
+dispatch @a groupjoin,up
+check
+dispatch @a groupfocus,next
+check
+dispatch @c groupleave
+check

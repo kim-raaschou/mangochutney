@@ -1,0 +1,19 @@
+# a stack in the scroller: closing an unfocused member focuses its neighbour; set_proportion on a member.
+config scroller_ignore_proportion_single=0
+dispatch setlayout,scroller
+open a
+dispatch set_proportion,0.5
+check
+open b
+open c
+dispatch @c scroller_stack,left
+check
+dispatch @c set_proportion,0.5
+check
+dispatch @a set_proportion,0.6
+check
+dispatch @b switch_proportion_preset,next
+check
+dispatch @a focusid
+close c
+check

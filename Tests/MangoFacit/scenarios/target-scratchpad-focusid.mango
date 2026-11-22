@@ -1,0 +1,14 @@
+# focusid shows a minimized window; tiling a shown scratchpad takes it out; focusid views the tag alone.
+open a
+open b
+dispatch @a minimized
+check
+dispatch @a focusid
+check
+dispatch @a togglefloating
+check
+dispatch @b tagsilent,2
+dispatch toggleview,2
+check
+dispatch @b focusid
+check

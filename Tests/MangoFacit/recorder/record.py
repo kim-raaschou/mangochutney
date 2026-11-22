@@ -10,6 +10,7 @@ A scenario is a few lines, run top to bottom:
     open a [dialog]               a window titled a (facit-client)
     close a                       the window goes (its client is killed)
     dispatch focusstack,next      as `mmsg dispatch focusstack,next`
+    dispatch @b killclient        aimed at the window titled b: `mmsg dispatch killclient client,<its id>`
     check                         mango's state now goes in the facit
     ours b.height 352             not recorded: where our answer differs on purpose (read by the tests)
 
@@ -88,6 +89,17 @@ def snapshot(line):
     }
 
 
+def target(rest):
+    """`@b func,args` is mango's `func,args client,<id>`, with the id of the window titled b."""
+    if not rest.startswith("@"):
+        return rest
+    title, _, rest = rest[1:].partition(" ")
+    ids = [c["id"] for c in get("all-clients")["clients"] if c["title"] == title]
+    if not ids:
+        sys.exit(f"no window titled {title!r}")
+    return f"{rest} client,{ids[0]}"
+
+
 def titles():
     return [c["title"] for c in get("all-clients")["clients"]]
 
@@ -111,7 +123,7 @@ def play(scenario, out):
             while rest in titles():
                 time.sleep(0.01)
         elif word == "dispatch":
-            mmsg("dispatch", rest)
+            mmsg("dispatch", target(rest))
         elif word == "check":
             checks.append(snapshot(n))
         settled()

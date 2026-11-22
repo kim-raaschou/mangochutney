@@ -1,0 +1,18 @@
+# unfocused windows minimized: toggle_scratchpad shows one at a time, restore_minimized is last in first out.
+open a
+open b
+open c
+dispatch @a togglefloating
+dispatch @a minimized
+dispatch @b minimized
+check
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+check
+dispatch restore_minimized
+check
+dispatch restore_minimized
+check

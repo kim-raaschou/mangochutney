@@ -1,0 +1,15 @@
+# the focus stack built with focusid: exchange, focusdir into the stack and closing show it.
+config new_is_master=0
+open a
+open b
+open c
+dispatch @b focusid
+dispatch @c focusid
+dispatch @a focusid
+dispatch focusdir,right
+check
+dispatch @a focusid
+dispatch @b exchange_client,left
+check
+close a
+check

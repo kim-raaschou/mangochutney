@@ -1,0 +1,10 @@
+# focusid and focusstack on a target: focusstack counts from the target; focusid with none does nothing.
+open a
+open b
+open c
+dispatch @a focusid
+check
+dispatch @b focusstack,next
+check
+dispatch focusid
+check

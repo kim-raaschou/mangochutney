@@ -1,0 +1,12 @@
+# focusstack onto a no_focus window leaves the focus where it was; an unfocused new window goes last.
+config window_rule=no_focus:1,title:^c$
+config window_rule=is_open_silent:1,title:^d$
+open a
+open b
+open c
+dispatch @b focusid
+dispatch focusstack,next
+check
+open d
+close b
+check

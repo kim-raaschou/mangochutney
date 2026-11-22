@@ -1,0 +1,10 @@
+# a window that has not the focus sent to the other monitor; the special tag of the target's monitor.
+monitors 2
+open a
+open b
+dispatch @a tagmon,right
+check
+dispatch @a tagcrossmon,2,left
+check
+dispatch @b toggle_special_tag
+check

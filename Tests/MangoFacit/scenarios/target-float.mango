@@ -1,0 +1,21 @@
+# floating, moving and centring a window that has not the focus.
+open a
+open b
+open t
+dispatch @b togglefloating
+check
+dispatch @a togglefloating
+dispatch @a movewin,-300,-200
+check
+dispatch @b movewin,400,0
+dispatch @a smartmovewin,right
+check
+dispatch @t smartmovewin,left
+check
+dispatch @a centerwin
+check
+dispatch @a resizewin,100,50
+dispatch @b smartresizewin,right
+check
+dispatch @b toggle_all_floating
+check

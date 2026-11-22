@@ -1,0 +1,8 @@
+# centerwin leaves a no_force_center window where it is.
+config window_rule=no_force_center:1,title:^a$
+open a
+open b
+dispatch @a togglefloating
+dispatch @a movewin,-100,-50
+dispatch @a centerwin
+check

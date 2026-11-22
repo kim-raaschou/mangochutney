@@ -1,0 +1,12 @@
+# killclient and smartkillclient on a window that has not the focus; minimized windows counted.
+monitors 2
+open a
+open b
+open c
+open d
+dispatch @c minimized
+check
+dispatch @a killclient
+check
+dispatch @b smartkillclient
+check

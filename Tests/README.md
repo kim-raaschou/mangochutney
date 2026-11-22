@@ -64,6 +64,7 @@ ours e.height 351
 | `open a [dialog]` | a window titled `a` (a dialog has a fixed 400x300 and floats) |
 | `close a` | the window goes |
 | `dispatch focusstack,next` | `mmsg dispatch focusstack,next` |
+| `dispatch @b killclient` | aimed at the window titled `b`: `mmsg dispatch killclient client,<its id>` |
 | `check` | mango's clients, monitors and pointer are compared here |
 | `ours a.height 351` | where we answer otherwise on purpose: a mango bug we fix (`docs/afvigelser.md` §6) |
 

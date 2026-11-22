@@ -1,0 +1,13 @@
+# leaving the overview with a target views its tag and focuses it.
+open a
+open b
+dispatch @b tagsilent,3
+dispatch toggleoverview
+dispatch @b toggleoverview
+check
+dispatch view,1
+dispatch enteroverview
+dispatch @a leaveoverview
+check
+dispatch @b enteroverview
+check

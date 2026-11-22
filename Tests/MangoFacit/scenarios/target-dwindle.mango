@@ -1,0 +1,18 @@
+# the dwindle split dispatchers on a leaf that has not the focus; move_client by target.
+dispatch setlayout,dwindle
+open a
+open b
+open c
+check
+dispatch @b dwindle_toggle_current_split
+check
+dispatch @b dwindle_toggle_split_direction
+check
+dispatch @a dwindle_split_horizontal
+open d
+check
+dispatch @a dwindle_split_vertical
+open e
+check
+dispatch @a move_client,right
+check
