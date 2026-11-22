@@ -68,7 +68,10 @@ package final class FakeWlroots: WindowSystem {
 
     package func sceneNodeSetEnabled(_ c: Client, _ enabled: Bool) { surface(c).sceneNodeEnabled = enabled }
     package func sceneSurfaceSetEnabled(_ c: Client, _ enabled: Bool) { surface(c).sceneSurfaceEnabled = enabled }
-    package func sceneNodeSetPosition(_ c: Client, _ x: CGFloat, _ y: CGFloat) {}
+    /// The surface stands inside the border of the node mango placed (wlr_scene_node_set_position).
+    package func sceneNodeSetPosition(_ c: Client, _ x: CGFloat, _ y: CGFloat) {
+        surface(c).frame.origin = CGPoint(x: x + c.bw, y: y + c.bw)
+    }
     package func sceneSubsurfaceTreeSetClip(_ c: Client, _ clip: CGRect) {}
 
     package private(set) var borders: [BorderSpec] = []
@@ -98,7 +101,11 @@ package final class FakeWlroots: WindowSystem {
 
     package func clientGetParent(_ c: Client) -> Client? { nil }
     package func toplevelFromWlrSurface(_ surface: ClientID) -> Client? { server.clientByIdAll(surface) }
-    package func clientSetSize(_ c: Client, _ width: CGFloat, _ height: CGFloat, _ forceConfigure: Bool) -> UInt32 { 0 }
+    /// The client takes the size mango configures (xdg_toplevel configure), as the facit client does.
+    package func clientSetSize(_ c: Client, _ width: CGFloat, _ height: CGFloat, _ forceConfigure: Bool) -> UInt32 {
+        surface(c).frame.size = CGSize(width: width, height: height)
+        return 0
+    }
     package func clientSizeHints(_ c: Client) -> ClientSizeHints { (c.platform as? FakeSurface)?.sizeHints ?? ClientSizeHints() }
     package func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool) {}
     package func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) {}
@@ -121,7 +128,8 @@ package final class FakeWlroots: WindowSystem {
     package func closeSwitcherPanel() {}
     package func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateStyle, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? { nil }
     package func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel? { nil }
-    package func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode { MultiKeycode() }
+    /// xkb's keymap (us): the key that gives the character.
+    package func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode { MultiKeycode(keycode1: FakeKeymap.code(String(keysym))) }
     package func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) {}
     package func showDropArea(_ area: CGRect?, color: RGBA) {}
     package func nagSpawn(_ argv: [String], input: String) {}
@@ -146,7 +154,9 @@ package final class FakeWlroots: WindowSystem {
     package func startInput() {}
     package func watchGestures(_ on: Bool) {}
     package func keyboardCancelPendingReleaseBind() {}
-    package func publishInput(_ state: InputState) {}
+    /// What mango last told the event tap: its keymode and bindings.
+    package private(set) var input = InputState()
+    package func publishInput(_ state: InputState) { input = state }
     package func publishGlobalKeys(_ keys: [GlobalKey]) {}
 
     private func surface(_ c: Client) -> FakeSurface { c.platform as! FakeSurface }

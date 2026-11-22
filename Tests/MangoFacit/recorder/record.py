@@ -11,6 +11,12 @@ A scenario is a few lines, run top to bottom:
     close a                       the window goes (its client is killed)
     dispatch focusstack,next      as `mmsg dispatch focusstack,next`
     dispatch @b killclient        aimed at the window titled b: `mmsg dispatch killclient client,<its id>`
+    key super+shift+j             keys of a virtual keyboard: down in order, then up the other way
+    keydown super / keyup super   one key down or up, held across the steps between
+    pointer 500,300               the virtual pointer to 500,300 in the layout
+    move -400,500                 the pointer moved by -400,500 (kept off the layout's edges: no clamping)
+    click left                    a button down and up; `button left down` / `button left up` alone
+    scroll down                   one notch of the wheel (up, down, left, right)
     check                         mango's state now goes in the facit
     ours b.height 352             not recorded: where our answer differs on purpose (read by the tests)
 
@@ -49,7 +55,8 @@ def parse(path):
             monitors = int(rest)
         elif word == "ours":
             pass
-        elif word in ("open", "close", "dispatch", "check"):
+        elif word in ("open", "close", "dispatch", "check", "key", "keydown", "keyup", "pointer", "move", "click",
+                      "button", "scroll"):
             steps.append((n, word, rest))
         else:
             sys.exit(f"{path}:{n}: unknown step {word!r}")
@@ -100,6 +107,43 @@ def target(rest):
     return f"{rest} client,{ids[0]}"
 
 
+class Input:
+    """facit-input: mango's virtual keyboard and pointer, a command a line, each answered once mango has it."""
+    def __init__(self, layout):
+        self.layout = layout
+        self.proc = subprocess.Popen(["/build/facit-input"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        self.answer()
+
+    def answer(self):
+        if self.proc.stdout.readline().strip() != "ok":
+            sys.exit("facit-input failed")
+
+    def send(self, *lines):
+        for line in lines:
+            self.proc.stdin.write(line + "\n")
+            self.proc.stdin.flush()
+            self.answer()
+
+    def step(self, word, rest):
+        if word == "key":
+            keys = rest.split("+")
+            self.send(*[f"keydown {k}" for k in keys], *[f"keyup {k}" for k in reversed(keys)])
+        elif word in ("keydown", "keyup"):
+            self.send(f"{word} {rest}")
+        elif word == "pointer":
+            x, y = rest.split(",")
+            self.send(f"pointer {x} {y} {self.layout[0]} {self.layout[1]}")
+        elif word == "move":
+            dx, dy = rest.split(",")
+            self.send(f"motion {dx} {dy}")
+        elif word == "click":
+            self.send(f"button {rest} down", f"button {rest} up")
+        elif word == "button":
+            self.send(f"button {rest}")
+        elif word == "scroll":
+            self.send(f"scroll {rest}")
+
+
 def titles():
     return [c["title"] for c in get("all-clients")["clients"]]
 
@@ -111,7 +155,8 @@ def play(scenario, out):
     given = [m["name"] for m in reversed(get("all-monitors")["monitors"])]
     # Where wlroots put the pointer at the start: the platform's, not mango's.
     start = get("cursorpos")
-    windows, checks = {}, []
+    windows, checks, keys = {}, [], None
+    layout = (sum(s["width"] for s in screens(monitors)), max(s["height"] for s in screens(monitors)))
     for n, word, rest in steps:
         if word == "open":
             title, *kind = rest.split()
@@ -126,9 +171,14 @@ def play(scenario, out):
             mmsg("dispatch", target(rest))
         elif word == "check":
             checks.append(snapshot(n))
+        else:
+            keys = keys or Input(layout)
+            keys.step(word, rest)
         settled()
     json.dump({"mango": "0.18.5 (21f80a9)", "screens": sorted(screens(monitors), key=lambda s: given.index(s["name"])),
                "pointer": {"x": start["x"], "y": start["y"]}, "checks": checks}, open(out, "w"), indent=1)
+    if keys:
+        keys.proc.kill()
     for w in windows.values():
         w.kill()
     mmsg("dispatch", "quit")

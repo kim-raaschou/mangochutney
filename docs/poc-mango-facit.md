@@ -157,6 +157,28 @@ uden Swift. De gamle tests er **ikke slettet**: det er din beslutning.
 4. Skærme, der slås fra og til, og skærme med andre størrelser.
 5. `open a 1920x500` og klientens egne ønsker (activation, minimize).
 
+## Tastatur og mus (2026-11-22)
+
+Mango har `virtual-keyboard` og `virtual-pointer`, så optageren trykker taster og flytter musen i rigtig
+mango (`recorder/facit-input.c`). Afspilleren giver vores kerne de samme hændelser, som porten giver
+dem. Trin: `key`, `keydown`/`keyup`, `pointer`, `move`, `click`/`button` og `scroll`.
+
+- 11 scenarier (`input-*.mango`): key binds, keymodes, release-binds, sloppy og klik-fokus, axis-binds,
+  flyt og resize med en musebinding, resize ved rammen, hot area, switcheren og jump mode. Alle grønne.
+- Én rettelse i testlaget: den falske wlroots lod ikke vinduet følge mangos størrelse og plads, så
+  punktet under musen ramte forkert. Nu tager overfladen den størrelse, mango konfigurerer, og står,
+  hvor mango sætter noden, som wlroots og testklienten gør.
+- Grænser, som mango selv sætter: et virtuelt tastaturs modifiers tæller ikke for muse- og
+  axis-binds (`keyboard_hard_modifiers`), og dets mode-tast afslutter hverken overcircle eller
+  switcheren. Swipe-gester kan et virtuelt device ikke sende.
+
+| Område | Før | Efter |
+|---|---|---|
+| input | 12,1 % | 48,1 % (74 % uden trackpad, som ingen virtuel enhed når) |
+| switcher | 6,8 % | 78,0 % |
+| Config | 41,2 % | 49,6 % |
+| **I alt** | **58,4 %** | **65,6 %** |
+
 ## Hvad det koster
 
 - **Opsætningen** (én gang): en colima-profil `mangofacit` (4 CPU, 4 GB), som `record` selv

@@ -1,0 +1,18 @@
+# the switcher: opened and cycled by a key; a virtual keyboard's release does not commit it, a click does.
+config bind=ALT,Tab,switcher,next
+config bind=ALT+SHIFT,Tab,switcher,prev
+open a
+open b
+open c
+key alt+Tab
+check
+key alt+Tab
+check
+key alt+shift+Tab
+pointer 960,540
+click left
+check
+key alt+Tab
+pointer 10,10
+click left
+check

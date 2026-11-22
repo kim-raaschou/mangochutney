@@ -1,0 +1,17 @@
+# enable_border_resize: a press just inside a tiled window's left edge only focuses it; a floating window's right edge resizes it.
+open a
+open b
+open c
+check
+pointer 1070,500
+button left down
+pointer 1300,500
+button left up
+check
+dispatch @c togglefloating
+check
+pointer 1362,500
+button left down
+pointer 1500,560
+button left up
+check

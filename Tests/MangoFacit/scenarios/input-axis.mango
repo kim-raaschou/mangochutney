@@ -1,0 +1,15 @@
+# axis binds with no modifier: the wheel views the tags around that have windows.
+config axisbind=NONE,UP,viewtoleft_have_client
+config axisbind=NONE,DOWN,viewtoright_have_client
+open a
+dispatch tagsilent,3
+open b
+check
+scroll down
+check
+scroll down
+check
+scroll up
+check
+scroll left
+check

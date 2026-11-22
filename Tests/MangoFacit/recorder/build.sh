@@ -18,3 +18,12 @@ if [ ! -x /build/facit-client ] || [ /tool/facit-client.c -nt /build/facit-clien
     wayland-scanner private-code "$proto" /build/xdg-shell-protocol.c
     gcc -O1 -I/build -o /build/facit-client /tool/facit-client.c /build/xdg-shell-protocol.c -lwayland-client
 fi
+
+if [ ! -x /build/facit-input ] || [ /tool/facit-input.c -nt /build/facit-input ]; then
+    for p in virtual-keyboard-unstable-v1 wlr-virtual-pointer-unstable-v1; do
+        wayland-scanner client-header /tool/protocol/$p.xml /build/$p-client-protocol.h
+        wayland-scanner private-code /tool/protocol/$p.xml /build/$p-protocol.c
+    done
+    gcc -O1 -I/build -o /build/facit-input /tool/facit-input.c /build/virtual-keyboard-unstable-v1-protocol.c \
+        /build/wlr-virtual-pointer-unstable-v1-protocol.c -lwayland-client -lxkbcommon
+fi

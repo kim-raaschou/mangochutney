@@ -1,0 +1,12 @@
+# the hot area: the pointer moved into the lower left corner toggles the overview, once till it leaves.
+config enable_hotarea=1
+open a
+open b
+pointer 300,500
+move -295,572
+check
+move 1,1
+check
+move 500,-500
+move -500,500
+check

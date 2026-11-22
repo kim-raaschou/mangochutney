@@ -65,8 +65,20 @@ ours e.height 351
 | `close a` | the window goes |
 | `dispatch focusstack,next` | `mmsg dispatch focusstack,next` |
 | `dispatch @b killclient` | aimed at the window titled `b`: `mmsg dispatch killclient client,<its id>` |
+| `key super+shift+j` | keys of a virtual keyboard: down in order, then up the other way |
+| `keydown super` / `keyup super` | one key down or up, held across the steps between |
+| `pointer 500,300` | the virtual pointer to 500,300 in the layout |
+| `move -400,500` | the pointer moved by -400,500 (kept off the layout's edges) |
+| `click left` | a button down and up; `button left down` / `button left up` alone |
+| `scroll down` | one notch of the wheel (up, down, left, right) |
 | `check` | mango's clients, monitors and pointer are compared here |
 | `ours a.height 351` | where we answer otherwise on purpose: a mango bug we fix (`docs/afvigelser.md` §6) |
+
+Keys and the pointer reach mango as a virtual keyboard and pointer (`recorder/facit-input.c`), and
+reach our mango as the port gives them (`TestMango.key`, `pointer`, `move`, `button`, `scroll`); the
+key names are xkb's us keymap with evdev codes (`FakeKeymap`). As in mango, a virtual keyboard's
+modifiers do not count for mouse and axis binds, and its mode key's release neither leaves overcircle
+nor commits the switcher.
 
 A new scenario is recorded with `Tests/MangoFacit/record scenarios/<name>.mango` (the header of
 `record` says what it needs); `make test` only reads the facit and needs no container. The checks go

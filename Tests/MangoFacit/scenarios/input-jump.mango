@@ -1,0 +1,12 @@
+# jump mode: a key bind turns it on, a label's key jumps to its window, Escape leaves it.
+config bind=ALT,o,togglejump
+open a
+open b
+open c
+key alt+o
+check
+key j
+check
+key alt+o
+key Escape
+check

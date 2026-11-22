@@ -1,0 +1,23 @@
+# moving and resizing with a mouse bind of no modifier: a floating window, then a tiled one.
+config mousebind=NONE,btn_middle,moveresize,curmove
+config mousebind=NONE,btn_right,moveresize,curresize
+open a
+open b
+open c
+dispatch @a togglefloating
+check
+pointer 900,500
+button middle down
+pointer 1100,600
+check
+button middle up
+check
+button right down
+pointer 1300,800
+button right up
+check
+pointer 300,500
+button middle down
+pointer 1500,300
+button middle up
+check

@@ -25,6 +25,9 @@ package final class TestMango {
     /// mango started with these outputs, in the order the backend gives them.
     package init(_ config: String, screens: [Screen], file: StaticString = #filePath, line: UInt = #line) {
         server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/config.conf"))
+        let port = ConfigParser.port
+        ConfigParser.port = FakeKeymap()   // the binds' keys as xkb's us keymap has them
+        defer { ConfigParser.port = port }
         let parsed = ConfigParser.parse(text: "animations=0\n" + config,
                                         baseDirectory: URL(fileURLWithPath: NSTemporaryDirectory()), fileName: "config.conf")
         for error in parsed.errors { XCTFail("config: \(error)", file: file, line: line) }
@@ -84,6 +87,78 @@ package final class TestMango {
         if let error = server.dispatch(Dispatch(name: name, args: args), rescan: false) {
             XCTFail("\(name): \(error)", file: file, line: line)
         }
+    }
+
+    // MARK: Keys
+
+    private var keyboard = KeyboardState()
+    /// The modifiers the keyboard holds, as a virtual keyboard tells mango after each key.
+    private var held: Modifiers = []
+
+    /// A key of a virtual keyboard: `key("super", down: true)`. mango sees the modifiers held before the
+    /// key; a modifier key's own goes on after it.
+    package func key(_ name: String, down: Bool) {
+        guard let code = FakeKeymap.code(name) else { fatalError("no key \(name)") }
+        let own = FakeKeymap.modifiers[code]
+        var mods = held
+        if let own { if down { mods.formUnion(own) } else { mods.subtract(own) } }
+        server.publishInputState()
+        let s = wlroots.input
+        // keyboard.c leaves overcircle and the switcher on a mode key's release only for a real
+        // keyboard (!group->virtual_keyboard)
+        let k = KeyInput(keyCode: code, mods: mods, isDown: down, isRepeat: false, keyModifier: own)
+        let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: s.bindings, mode: s.keymode,
+                                           overcircleActive: false, switcherActive: false, tagCombo: s.tagCombo,
+                                           cursorHideOnKeypress: s.cursorHideOnKeypress)
+        server.handleKeyboardKey(d.actions)
+        if !d.handled {
+            let u = Keyboard.handleUnboundKey(k, state: &keyboard, jumpMode: s.jumpMode, isEscape: code == FakeKeymap.code("escape"),
+                                              isJumpKey: s.jumpKeycodes.contains(code), globalKeys: [])
+            if let a = u.action { server.handleKeyboardKey([a]) }
+        }
+        held = mods
+    }
+
+    // MARK: The pointer
+
+    /// A virtual pointer's clock: its events are a second apart, as a test's steps are.
+    private var time: UInt32 = 0
+    private var axisApplyTime: UInt32 = 0
+    private var axisApplyDir: Int32 = 0
+
+    /// The pointer to `p`, as mango's handle_cursor_motion_absolute takes a virtual pointer's motion.
+    package func pointer(to p: CGPoint) {
+        time += 1000
+        let from = wlroots.pointer
+        wlroots.pointer = p
+        server.pointerProcessMotion(time, p.x - from.x, p.y - from.y)
+    }
+
+    /// The pointer moved by `d`, as mango's handle_cursor_motion takes a relative motion.
+    package func move(by d: CGVector) {
+        time += 1000
+        wlroots.pointer = CGPoint(x: wlroots.pointer.x + d.dx, y: wlroots.pointer.y + d.dy)
+        server.handleCursorMotion(time, d.dx, d.dy)
+    }
+
+    /// A button down or up where the pointer is (0 left, 1 right, 2 middle). A virtual keyboard's
+    /// modifiers do not count for the pointer (keyboard_hard_modifiers).
+    package func button(_ button: Int, down: Bool) {
+        time += 1000
+        server.pointerProcessButtonPress(button: button, pressed: down, at: wlroots.pointer, mods: wlroots.keyboardHardModifiers())
+    }
+
+    /// One notch of a wheel, as handle_cursor_axis takes it: an axis binding runs, else nothing here.
+    package func scroll(vertical: Bool, delta: Double) {
+        time += 1000
+        server.publishInputState()
+        let s = wlroots.input
+        guard let axis = Pointer.handleCursorAxis(vertical: vertical, delta: delta, timeMsec: time,
+                                                  mods: wlroots.keyboardHardModifiers(), axisBindings: s.axisBindings,
+                                                  mode: s.keymode, axisBindApplyTimeout: s.axisBindApplyTimeout,
+                                                  axisApplyTime: &axisApplyTime, axisApplyDir: &axisApplyDir) else { return }
+        wlroots.keyboardCancelPendingReleaseBind()
+        if axis.fires { _ = server.dispatch(axis.binding.dispatch) }
     }
 
     // MARK: mmsg

@@ -88,6 +88,25 @@ extension TestMango {
                 mango.unmap(rest)
             case "dispatch":
                 mango.mmsg("dispatch", mango.target(rest))
+            case "key":
+                let keys = rest.split(separator: "+").map(String.init)
+                for k in keys { mango.key(k, down: true) }
+                for k in keys.reversed() { mango.key(k, down: false) }
+            case "keydown", "keyup":
+                mango.key(rest, down: word == "keydown")
+            case "pointer":
+                let xy = rest.split(separator: ",").compactMap { Double($0) }
+                mango.pointer(to: CGPoint(x: xy[0], y: xy[1]))
+            case "move":
+                let d = rest.split(separator: ",").compactMap { Double($0) }
+                mango.move(by: CGVector(dx: d[0], dy: d[1]))
+            case "click", "button":
+                let words = rest.split(separator: " ")
+                let button = ["left": 0, "right": 1, "middle": 2][String(words[0])]!
+                if word == "click" || words[1] == "down" { mango.button(button, down: true) }
+                if word == "click" || words[1] == "up" { mango.button(button, down: false) }
+            case "scroll":
+                mango.scroll(vertical: rest == "up" || rest == "down", delta: rest == "up" || rest == "left" ? -15 : 15)
             case "check":
                 let expected = facit.checks.indices.contains(answers.count) ? facit.checks[answers.count] : nil
                 answers.append(Facit.Check(line: line,

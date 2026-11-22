@@ -1,0 +1,27 @@
+# key binds pressed on a virtual keyboard: modifiers, shift, a bind with none, an unbound key.
+config bind=SUPER,j,focusstack,next
+config bind=SUPER,k,focusstack,prev
+config bind=SUPER+SHIFT,j,exchange_client,down
+config bind=SUPER,2,view,2,0
+config bind=SUPER+SHIFT,2,tag,2,0
+config bind=NONE,F5,togglefloating
+config bind=ALT,q,killclient,
+open a
+open b
+open c
+key super+j
+check
+key super+shift+j
+check
+key super+k
+check
+key F5
+check
+key super+shift+2
+check
+key super+2
+check
+key alt+q
+check
+key j
+check

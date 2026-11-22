@@ -1,0 +1,24 @@
+# keymodes: a bind changes the mode, the mode's binds count and the default's do not, common counts in both.
+config bind=SUPER,j,focusstack,next
+config bind=SUPER,r,setkeymode,resize
+config key_mode=resize
+config bind=NONE,l,setmfact,+0.05
+config bind=NONE,Escape,setkeymode,default
+config key_mode=common
+config bind=SUPER,t,togglefloating
+open a
+open b
+key super+r
+check
+key l
+check
+key super+j
+check
+key super+t
+check
+key Escape
+check
+key super+j
+check
+key l
+check

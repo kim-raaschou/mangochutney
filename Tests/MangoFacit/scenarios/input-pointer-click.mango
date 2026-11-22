@@ -1,0 +1,12 @@
+# with no sloppy focus a move does not focus; a click does; a right click with no bind only focuses.
+config sloppy_focus=0
+open a
+open b
+pointer 1500,500
+check
+click left
+check
+pointer 300,500
+check
+click right
+check

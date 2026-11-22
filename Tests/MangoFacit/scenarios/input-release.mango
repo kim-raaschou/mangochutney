@@ -1,0 +1,13 @@
+# a release bind fires when its key goes up with nothing pressed between; a key between cancels it.
+config bindr=SUPER,Super_L,toggleoverview
+config bind=SUPER,j,focusstack,next
+open a
+open b
+key super
+check
+key super
+check
+keydown super
+key j
+keyup super
+check
