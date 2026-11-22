@@ -1,0 +1,17 @@
+# dwindle_manual_split: the focused leaf's split direction decides where the next window goes.
+config dwindle_manual_split=1
+dispatch setlayout,dwindle
+open a
+open b
+check
+dispatch dwindle_split_vertical
+open c
+check
+dispatch dwindle_split_horizontal
+open d
+check
+dispatch dwindle_toggle_split_direction
+open e
+check
+dispatch dwindle_toggle_current_split
+check

@@ -1,0 +1,10 @@
+# a floating window keeps to its min/max size; no_size_hint lifts it.
+config window_rule=app_id:n,no_size_hint:1
+open d dialog
+dispatch resizewin,+200,+100
+check
+dispatch movewin,+50,+50
+check
+open n dialog
+dispatch resizewin,+200,+100
+check

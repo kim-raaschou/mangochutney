@@ -1,0 +1,15 @@
+# no_focus: the window never gets focus, also when it is the only one; is_unmanaged_global.
+config new_is_master=0
+config window_rule=app_id:b,no_focus:1
+config window_rule=app_id:c,is_unmanaged_global:1
+open a
+open b
+check
+dispatch focusstack,next
+check
+close a
+check
+open c
+check
+dispatch view,2
+check

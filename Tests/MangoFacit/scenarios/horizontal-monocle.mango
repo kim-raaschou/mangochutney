@@ -1,0 +1,23 @@
+# monocle with the default monocle_tab_mode=1: left/right go through focusstack.
+config new_is_master=0
+dispatch setlayout,monocle
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+dispatch focusdir,left
+check
+dispatch focusdir,right
+dispatch focusdir,right
+check
+dispatch focusstack,prev
+check
+dispatch incgaps,10
+check
+close a
+check

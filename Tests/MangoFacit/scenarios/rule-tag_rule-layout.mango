@@ -1,0 +1,20 @@
+# tag_rule: layout, master_count, master_factor and scroller_default_proportion per tag.
+config new_is_master=0
+config tag_rule=id:1,layout_name:grid
+config tag_rule=id:2,layout_name:tile,master_count:2,master_factor:0.7
+config tag_rule=id:3,layout_name:scroller,scroller_default_proportion:0.5
+open a
+open b
+open c
+check
+dispatch view,2
+open d
+open e
+open f
+check
+dispatch view,3
+open g
+open h
+check
+dispatch view,4
+check

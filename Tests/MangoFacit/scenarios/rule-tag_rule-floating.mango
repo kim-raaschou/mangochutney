@@ -1,0 +1,19 @@
+# tag_rule: open_as_floating, no_hide, no_render_border.
+config new_is_master=0
+config tag_rule=id:2,open_as_floating:1
+config tag_rule=id:3,no_hide:1
+config tag_rule=id:4,no_render_border:1
+open a
+dispatch view,2
+open b
+check
+open c
+check
+dispatch view,3
+open d
+dispatch view,1
+check
+dispatch view,4
+open e
+open f
+check

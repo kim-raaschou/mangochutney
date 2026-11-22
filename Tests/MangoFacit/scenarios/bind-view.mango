@@ -1,0 +1,24 @@
+# view, viewtoleft/right and the have_client variants; view,1|3 shows two tags.
+open a
+dispatch view,3
+open b
+dispatch view,2
+check
+dispatch viewtoleft
+check
+dispatch viewtoleft
+check
+dispatch viewtoright
+dispatch viewtoright
+dispatch viewtoright
+dispatch viewtoright
+check
+dispatch viewtoleft_have_client
+check
+dispatch viewprev_have_client
+check
+dispatch viewtoright_have_client
+dispatch viewnext_have_client
+check
+dispatch view,1|3
+check

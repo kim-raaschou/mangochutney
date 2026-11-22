@@ -1,0 +1,23 @@
+# smartmovewin and smartresizewin: steps of the screen, stopping at another floating window and the edge.
+config window_rule=app_id:f,is_floating:1,width:500,height:300
+config window_rule=app_id:g,is_floating:1,width:500,height:300,offset_x:100
+open f
+open g
+check
+dispatch smartmovewin,left
+check
+dispatch smartmovewin,left
+dispatch smartmovewin,left
+check
+dispatch smartmovewin,up
+check
+dispatch smartmovewin,down
+dispatch smartmovewin,down
+check
+dispatch smartresizewin,right
+check
+dispatch smartresizewin,down
+check
+dispatch smartresizewin,left
+dispatch smartresizewin,up
+check

@@ -1,0 +1,26 @@
+# right_tile with 1, 2, 3 and 5 windows, then nmaster, mfact and gaps.
+# ours: tile gives the last window of a column the rest of it (a mango bug, docs/afvigelser.md §6).
+config new_is_master=0
+dispatch setlayout,right_tile
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+dispatch incnmaster,1
+check
+ours e.height 351
+dispatch setmfact,-0.15
+check
+ours e.height 351
+dispatch setmfact,1.7
+dispatch incnmaster,-2
+check
+ours e.height 209
+dispatch incgaps,10
+check
+ours e.height 197

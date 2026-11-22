@@ -1,0 +1,19 @@
+# togglefullscreen; a new tiled window and setlayout end it; togglefloating on a fullscreen window.
+config new_is_master=0
+open a
+open b
+dispatch togglefullscreen
+check
+dispatch focusstack,next
+check
+open c
+check
+dispatch togglefullscreen
+dispatch setlayout,grid
+check
+dispatch togglefullscreen
+dispatch togglefullscreen
+check
+dispatch togglefullscreen
+dispatch togglefloating
+check

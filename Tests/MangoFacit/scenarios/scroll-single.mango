@@ -1,0 +1,17 @@
+# one window in the scroller: scroller_default_proportion_single, and set_proportion refused when not ignored.
+config scroller_default_proportion_single=0.6
+config scroller_ignore_proportion_single=0
+config scroller_proportion_preset=0.5,1.0
+dispatch setlayout,scroller
+open a
+check
+dispatch set_proportion,0.4
+check
+dispatch switch_proportion_preset
+check
+open b
+check
+dispatch set_proportion,0.4
+check
+close b
+check

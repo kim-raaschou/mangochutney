@@ -1,0 +1,16 @@
+# viewcrossmon and tagcrossmon by monitor name; view,<tag>,1 changes every monitor's view.
+monitors 2
+config new_is_master=0
+open a
+open b
+dispatch viewcrossmon,2,HEADLESS-2
+check
+open c
+dispatch tagcrossmon,3,HEADLESS-1
+check
+dispatch tagcrossmon,4,HEADLESS-1
+check
+dispatch view,5,1
+check
+dispatch view,1,1
+check

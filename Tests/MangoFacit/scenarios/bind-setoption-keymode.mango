@@ -1,0 +1,18 @@
+# setkeymode shows in the monitors; toggle_render_border; setoption with a layout key.
+config new_is_master=0
+open a
+open b
+dispatch setkeymode,resize
+check
+dispatch setkeymode,default
+check
+dispatch toggle_render_border
+check
+dispatch toggle_render_border
+dispatch setoption,new_is_master,1
+open c
+check
+dispatch setoption,smart_gaps,1
+close a
+close b
+check

@@ -1,0 +1,21 @@
+# focusmon by direction and by name; a window opens on the selected monitor; tagmon there and back, keeping its tag.
+monitors 2
+config new_is_master=0
+open a
+open b
+check
+dispatch focusmon,right
+check
+open c
+check
+dispatch focusmon,HEADLESS-1
+check
+dispatch tagmon,right
+check
+dispatch tagmon,left
+check
+dispatch tag,3
+dispatch tagmon,right,1
+check
+dispatch focusmon,left
+check

@@ -1,0 +1,19 @@
+# who gets focus when a window closes: the focused one, an unfocused one, the last one, one on a hidden tag.
+config new_is_master=0
+open a
+open b
+open c
+dispatch focusstack,next
+close a
+check
+close c
+check
+close b
+check
+open d
+dispatch view,2
+open e
+close d
+check
+dispatch view,1
+check

@@ -1,0 +1,20 @@
+# scratchpad_cross_monitor and special_tag_cross_monitor: the scratchpad and the special tag come to the selected monitor.
+monitors 2
+config new_is_master=0
+config scratchpad_cross_monitor=1
+config special_tag_cross_monitor=1
+open a
+open b
+dispatch minimized
+dispatch focusmon,right
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+dispatch focusmon,left
+dispatch tag_special_tag
+check
+dispatch focusmon,right
+dispatch toggle_special_tag
+check
+dispatch toggle_special_tag
+check

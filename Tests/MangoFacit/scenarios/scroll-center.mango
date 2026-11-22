@@ -1,0 +1,19 @@
+# scroller_focus_center, scroller_prefer_center, no overspread, wider scroller_structs.
+config scroller_focus_center=1
+config scroller_prefer_center=1
+config scroller_prefer_overspread=0
+config scroller_structs=40
+config scroller_default_proportion=0.6
+dispatch setlayout,scroller
+open a
+check
+open b
+check
+open c
+check
+dispatch focusdir,left
+check
+dispatch focusdir,left
+check
+dispatch exchange_client,right
+check

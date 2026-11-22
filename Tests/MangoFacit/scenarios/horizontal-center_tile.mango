@@ -1,0 +1,21 @@
+# center_tile with 1, 2, 3 and 5 windows (left and right stacks), then nmaster, mfact and gaps.
+config new_is_master=0
+dispatch setlayout,center_tile
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+dispatch incnmaster,1
+check
+dispatch setmfact,-0.15
+check
+dispatch setmfact,1.7
+dispatch incnmaster,-2
+check
+dispatch incgaps,10
+check

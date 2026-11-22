@@ -1,0 +1,19 @@
+# fullscreen, maximize and floating inside the scroller.
+config scroller_default_proportion=0.5
+dispatch setlayout,scroller
+open a
+open b
+open c
+dispatch togglefullscreen
+check
+dispatch focusdir,left
+check
+dispatch togglemaximizescreen
+check
+dispatch exchange_client,left
+check
+dispatch togglemaximizescreen
+dispatch togglefloating
+check
+dispatch togglefloating
+check

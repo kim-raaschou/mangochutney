@@ -1,0 +1,20 @@
+# toggleoverview shows every tag's windows; focus by direction; leaving goes to the focused window's tag.
+config new_is_master=0
+open a
+open b
+dispatch view,2
+open c
+open d
+dispatch toggleoverview
+check
+dispatch focusdir,left
+check
+dispatch focusdir,up
+check
+dispatch toggleoverview
+check
+dispatch toggleoverview
+dispatch focusstack,next
+check
+dispatch toggleoverview
+check

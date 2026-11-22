@@ -1,0 +1,22 @@
+# minimized sends a window to the scratchpad; toggle_scratchpad shows and hides; restore_minimized.
+config new_is_master=0
+open a
+open b
+open c
+dispatch minimized
+check
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+check
+dispatch minimized
+check
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+dispatch toggle_scratchpad
+check
+dispatch restore_minimized
+check
+dispatch restore_minimized
+check

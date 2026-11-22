@@ -1,0 +1,19 @@
+# the special tag: tag_special_tag, toggle_special_tag, a window opened on it, tag_special_silent, view,0.
+config new_is_master=0
+open a
+open b
+dispatch tag_special_tag
+check
+dispatch toggle_special_tag
+check
+dispatch toggle_special_tag
+open c
+check
+dispatch tag_special_tag
+check
+dispatch tag_special_silent
+check
+dispatch view,0
+check
+dispatch view,0
+check

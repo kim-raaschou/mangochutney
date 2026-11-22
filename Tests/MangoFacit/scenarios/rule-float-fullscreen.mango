@@ -1,0 +1,10 @@
+# a floating fullscreen rule, then out of fullscreen.
+# ours: out of fullscreen it stands where client_set_floating put it (a mango bug, docs/afvigelser.md §6).
+config window_rule=app_id:b,is_floating:1,is_fullscreen:1,width:600,height:400
+open a
+open b
+check
+dispatch togglefullscreen
+check
+ours b.x 660
+ours b.y 340

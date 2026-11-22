@@ -1,0 +1,11 @@
+# the default new_is_master=1: a new window is the master and takes focus; zoom from the master.
+open a
+check
+open b
+check
+open c
+check
+dispatch zoom
+check
+close b
+check

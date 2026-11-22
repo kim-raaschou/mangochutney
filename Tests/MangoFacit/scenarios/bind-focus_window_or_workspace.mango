@@ -1,0 +1,18 @@
+# focus_window_or_workspace: a window in that direction, else the next tag with windows, else the next tag.
+config new_is_master=0
+open a
+open b
+dispatch view,3
+open c
+dispatch view,1
+check
+dispatch focus_window_or_workspace,left
+check
+dispatch focus_window_or_workspace,right
+check
+dispatch focus_window_or_workspace,right
+check
+dispatch focus_window_or_workspace,right
+check
+dispatch focus_window_or_workspace,left
+check

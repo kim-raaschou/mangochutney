@@ -1,0 +1,20 @@
+# switch_layout, the last six and round to tile again.
+config new_is_master=0
+open a
+open b
+open c
+dispatch setlayout,vertical_tile
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check

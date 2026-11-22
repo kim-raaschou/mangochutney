@@ -1,0 +1,18 @@
+# viewtoleft and viewtoright: the tag beside, stopping at the first and the last tag; several tags move together; not from the special tag.
+open a
+dispatch viewtoright
+check
+dispatch viewtoleft
+check
+dispatch viewtoleft
+check
+dispatch view,9
+dispatch viewtoright
+check
+dispatch view,1|2
+dispatch viewtoright
+check
+dispatch view,1
+dispatch tag_special_tag
+dispatch viewtoright
+check

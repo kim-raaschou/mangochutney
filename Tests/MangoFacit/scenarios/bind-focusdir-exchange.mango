@@ -1,0 +1,24 @@
+# focusdir, exchange_client and move_client by direction in tile with four windows, two by two.
+config new_is_master=0
+config default_master_count=2
+open a
+open b
+open c
+open d
+check
+dispatch focusdir,left
+check
+dispatch focusdir,right
+check
+dispatch focusdir,up
+check
+dispatch exchange_client,left
+check
+dispatch move_client,right
+check
+dispatch focusdir,down
+dispatch exchange_client,down
+check
+dispatch focusdir,left
+dispatch focusdir,left
+check

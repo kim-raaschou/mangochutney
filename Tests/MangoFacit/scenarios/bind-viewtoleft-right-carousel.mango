@@ -1,0 +1,17 @@
+# tag_carousel: viewtoleft and viewtoright wrap at the ends, and the have_client variants wrap too.
+config tag_carousel=1
+open a
+open b
+dispatch tagsilent,4
+open c
+dispatch tagsilent,7
+dispatch view,9
+dispatch viewtoright
+check
+dispatch viewtoleft
+check
+dispatch view,7
+dispatch viewtoright_have_client
+check
+dispatch viewtoleft_have_client
+check

@@ -1,0 +1,16 @@
+# a floating window and a fullscreen window sent to the other monitor: the place and size they get there.
+monitors 2
+config window_rule=app_id:f,is_floating:1,width:600,height:400,offset_x:50
+open a
+open f
+dispatch tagmon,right
+check
+dispatch movewin,+100,+100
+dispatch tagmon,left
+check
+dispatch focusstack,next
+dispatch togglefullscreen
+dispatch tagmon,right
+check
+dispatch togglefullscreen
+check

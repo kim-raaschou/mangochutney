@@ -1,0 +1,18 @@
+# toggle_named_scratchpad by app id and by title; it comes to the viewed tag; with toggle_scratchpad.
+config new_is_master=0
+open a
+open b
+open c
+dispatch toggle_named_scratchpad,c,none
+check
+dispatch toggle_named_scratchpad,c,none
+check
+dispatch view,2
+dispatch toggle_named_scratchpad,c,none
+check
+dispatch toggle_named_scratchpad,none,b
+check
+dispatch toggle_scratchpad
+check
+dispatch toggle_named_scratchpad,c,none
+check

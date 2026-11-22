@@ -1,0 +1,17 @@
+# resizewin on tiled windows in vertical_tile and center_tile.
+config new_is_master=0
+dispatch setlayout,vertical_tile
+open a
+open b
+open c
+check
+dispatch resizewin,+0,+100
+check
+dispatch resizewin,+120,+0
+check
+dispatch setlayout,center_tile
+check
+dispatch resizewin,+100,+0
+check
+dispatch resizewin,+0,+60
+check

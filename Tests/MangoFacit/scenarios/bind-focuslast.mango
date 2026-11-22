@@ -1,0 +1,18 @@
+# focuslast goes to the previously focused window, across tags.
+config new_is_master=0
+open a
+open b
+open c
+dispatch focusstack,next
+check
+dispatch focuslast
+check
+dispatch focuslast
+check
+dispatch view,2
+open d
+check
+dispatch focuslast
+check
+dispatch focuslast
+check

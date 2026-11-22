@@ -1,0 +1,11 @@
+# is_named_scratchpad with a size: the window opens as a shown scratchpad; toggled away and back.
+config window_rule=app_id:s,is_named_scratchpad:1,width:800,height:500
+open a
+open s
+check
+dispatch toggle_named_scratchpad,s,none
+check
+dispatch toggle_named_scratchpad,s,none
+check
+dispatch togglefloating
+check

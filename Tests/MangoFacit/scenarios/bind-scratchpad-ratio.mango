@@ -1,0 +1,19 @@
+# scratchpad_width_ratio and scratchpad_height_ratio; single_scratchpad=0; the scratchpad follows the view.
+config new_is_master=0
+config scratchpad_width_ratio=0.5
+config scratchpad_height_ratio=0.4
+config single_scratchpad=0
+open a
+open b
+open c
+dispatch minimized
+dispatch minimized
+check
+dispatch toggle_scratchpad
+check
+dispatch view,2
+check
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+check

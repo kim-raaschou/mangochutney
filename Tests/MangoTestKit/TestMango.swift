@@ -18,13 +18,18 @@ package final class TestMango {
     nonisolated package static let screen = Screen(displayID: 1, name: "DP-1", frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
                                workArea: CGRect(x: 0, y: 0, width: 1920, height: 1080), scale: 1, isMain: true)
 
-    package init(_ config: String = "", screen: Screen = TestMango.screen, file: StaticString = #filePath, line: UInt = #line) {
+    package convenience init(_ config: String = "", screen: Screen = TestMango.screen, file: StaticString = #filePath, line: UInt = #line) {
+        self.init(config, screens: [screen], file: file, line: line)
+    }
+
+    /// mango started with these outputs, in the order the backend gives them.
+    package init(_ config: String, screens: [Screen], file: StaticString = #filePath, line: UInt = #line) {
         server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/config.conf"))
         let parsed = ConfigParser.parse(text: "animations=0\n" + config,
                                         baseDirectory: URL(fileURLWithPath: NSTemporaryDirectory()), fileName: "config.conf")
         for error in parsed.errors { XCTFail("config: \(error)", file: file, line: line) }
         server.config = parsed.config
-        wlroots = FakeWlroots(server, screens: [screen])
+        wlroots = FakeWlroots(server, screens: screens)
         server.system = wlroots
         server.started = true
         server.rebuildMonitors(screens: wlroots.screens)
@@ -53,7 +58,12 @@ package final class TestMango {
     @discardableResult
     package func map(_ title: String, size: CGSize = CGSize(width: 800, height: 600), dialog: Bool = false) -> Client {
         let frame = CGRect(origin: .zero, size: size)
-        let c = Client(id: nextID, pid: 1, platform: FakeSurface(frame: frame, isFloatType: dialog), bundleId: "",
+        let surface = FakeSurface(frame: frame, isFloatType: dialog)
+        if dialog {   // a dialog has a fixed size: its min and max are its size
+            surface.sizeHints.minWidth = size.width; surface.sizeHints.maxWidth = size.width
+            surface.sizeHints.minHeight = size.height; surface.sizeHints.maxHeight = size.height
+        }
+        let c = Client(id: nextID, pid: 1, platform: surface, bundleId: "",
                        appName: title, title: title, monitor: server.selectedMonitor, tags: 0, frame: frame)
         nextID += 1
         server.handleClientMap(c)
@@ -75,6 +85,25 @@ package final class TestMango {
             XCTFail("\(name): \(error)", file: file, line: line)
         }
     }
+
+    // MARK: mmsg
+
+    /// mango's answer to mmsg: `mmsg("get", "all-clients")` is `mmsg get all-clients`. The line goes
+    /// through mango's ipc handle_command as mmsg sends it, and its answer comes back as mmsg prints it.
+    @discardableResult
+    package func mmsg(_ args: String...) -> String {
+        var fds: [Int32] = [0, 0]
+        guard socketpair(AF_UNIX, SOCK_STREAM, 0, &fds) == 0 else { fatalError("socketpair") }
+        defer { close(fds[0]); close(fds[1]) }
+        ipc.handleCommand(fds[0], args.joined(separator: " ") + "\n")
+        shutdown(fds[0], SHUT_WR)
+        var answer: [UInt8] = []
+        var buffer = [UInt8](repeating: 0, count: 65536)
+        while case let n = read(fds[1], &buffer, buffer.count), n > 0 { answer += buffer[0..<n] }
+        return String(decoding: answer, as: UTF8.self)
+    }
+
+    private lazy var ipc = IPCServer(server: server, loop: wlroots.eventLoop, socketPath: "")
 
     // MARK: What a test looks at
 

@@ -1,0 +1,20 @@
+# toggletag puts a window on more tags (0 is all tags), toggleview shows more tags, comboview.
+config new_is_master=0
+open a
+open b
+dispatch toggletag,2
+check
+dispatch view,2
+check
+dispatch toggleview,1
+check
+dispatch toggleview,2
+check
+dispatch toggletag,0
+check
+dispatch toggletag,0
+check
+dispatch comboview,3
+check
+dispatch comboview,1
+check

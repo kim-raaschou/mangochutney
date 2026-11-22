@@ -1,0 +1,13 @@
+# tag_gather with tag_carousel: viewtoright wraps after the first empty tag.
+config tag_carousel=1
+config tag_gather=1
+open a
+open b
+dispatch tagsilent,2
+open c
+dispatch tagsilent,3
+dispatch view,4
+dispatch viewtoright
+check
+dispatch viewtoleft
+check

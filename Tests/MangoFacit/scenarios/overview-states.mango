@@ -1,0 +1,18 @@
+# fullscreen, floating and minimized windows through the overview and back; togglejump in and out.
+config new_is_master=0
+open a
+open b
+open d dialog
+open c
+dispatch togglefullscreen
+dispatch focusstack,next
+dispatch minimized
+check
+dispatch toggleoverview
+check
+dispatch toggleoverview
+check
+dispatch togglejump
+check
+dispatch togglejump
+check

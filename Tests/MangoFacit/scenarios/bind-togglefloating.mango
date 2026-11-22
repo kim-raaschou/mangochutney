@@ -1,0 +1,16 @@
+# togglefloating and toggle_all_floating on windows born tiled, and back.
+config new_is_master=0
+open a
+open b
+open c
+dispatch togglefloating
+check
+dispatch focusstack,next
+dispatch togglefloating
+check
+dispatch togglefloating
+check
+dispatch toggle_all_floating
+check
+dispatch toggle_all_floating
+check

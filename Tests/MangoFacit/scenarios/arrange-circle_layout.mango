@@ -1,0 +1,19 @@
+# circle_layout: switch_layout goes through the listed layouts only; setoption changes the list.
+config new_is_master=0
+config circle_layout=grid,monocle,scroller
+open a
+open b
+open c
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch setoption,circle_layout,deck,tile
+dispatch switch_layout
+check
+dispatch switch_layout
+check

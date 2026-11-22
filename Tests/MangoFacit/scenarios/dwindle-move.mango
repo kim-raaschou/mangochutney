@@ -1,0 +1,18 @@
+# move_client and exchange_client in dwindle, dwindle_toggle_current_split, resizewin, preserve_split on close.
+config dwindle_preserve_split=1
+dispatch setlayout,dwindle
+open a
+open b
+open c
+open d
+check
+dispatch move_client,left
+check
+dispatch exchange_client,up
+check
+dispatch dwindle_toggle_current_split
+check
+dispatch resizewin,+100,+50
+check
+close b
+check

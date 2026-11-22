@@ -1,0 +1,20 @@
+# overcircle opens the overview in its tab layout and goes through the windows; current_next keeps to the viewed tag.
+config new_is_master=0
+open a
+open b
+open c
+dispatch overcircle,next
+check
+dispatch overcircle,next
+check
+dispatch overcircle,prev
+dispatch overcircle,prev
+check
+dispatch toggleoverview
+check
+dispatch view,2
+open d
+dispatch overcircle,current_next
+check
+dispatch leaveoverview
+check

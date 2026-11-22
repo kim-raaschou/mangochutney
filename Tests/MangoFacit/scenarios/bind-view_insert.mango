@@ -1,0 +1,20 @@
+# tag_num=5 with tag_gather and tag_carousel; view_insert opens an empty tag between two used ones.
+config tag_num=5
+config tag_gather=1
+config tag_carousel=1
+open a
+dispatch view,2
+open b
+dispatch view,1
+check
+dispatch view_insert,next
+check
+dispatch view_insert,prev
+check
+dispatch viewtoright
+check
+dispatch viewtoright
+check
+dispatch view,5
+dispatch viewtoright
+check

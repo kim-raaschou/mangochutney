@@ -1,0 +1,16 @@
+# window_rule monitor and tag_rule monitor_name: a window opens on the named monitor and tag.
+monitors 2
+config new_is_master=0
+config window_rule=app_id:b,monitor:HEADLESS-2
+config window_rule=app_id:c,monitor:HEADLESS-2,tags:3
+config window_rule=app_id:d,monitor:HEADLESS-2,tags:4,is_tag_silent:1
+config tag_rule=id:1,monitor_name:HEADLESS-2,layout_name:grid
+open a
+open b
+check
+open c
+check
+open d
+check
+dispatch focusmon,right
+check

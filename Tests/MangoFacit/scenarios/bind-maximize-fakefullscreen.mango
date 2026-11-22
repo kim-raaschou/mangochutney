@@ -1,0 +1,21 @@
+# togglemaximizescreen and togglefakefullscreen, one after the other and with a new window.
+config new_is_master=0
+open a
+open b
+dispatch togglemaximizescreen
+check
+dispatch togglemaximizescreen
+check
+dispatch togglemaximizescreen
+dispatch togglefullscreen
+check
+dispatch togglemaximizescreen
+check
+open c
+check
+dispatch togglefakefullscreen
+check
+dispatch togglefullscreen
+check
+dispatch togglefakefullscreen
+check

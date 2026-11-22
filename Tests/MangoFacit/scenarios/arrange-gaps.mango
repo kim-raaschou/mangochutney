@@ -1,0 +1,22 @@
+# the four gap keys and border_px from the config; incgaps up and down; togglegaps; setoption.
+config new_is_master=0
+config gap_inner_horizontal=8
+config gap_inner_vertical=16
+config gap_outer_horizontal=24
+config gap_outer_vertical=32
+config border_px=2
+open a
+open b
+open c
+check
+dispatch incgaps,6
+check
+dispatch incgaps,-20
+check
+dispatch togglegaps
+check
+dispatch togglegaps
+dispatch setoption,gap_outer_horizontal,50
+check
+dispatch setoption,border_px,10
+check

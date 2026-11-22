@@ -1,0 +1,16 @@
+# window_rule: is_floating with width, height and offsets in pixels and as a share of the screen.
+config window_rule=app_id:b,is_floating:1,width:600,height:400,offset_x:50,offset_y:-50
+config window_rule=app_id:c,is_floating:1,width:0.5,height:0.5
+config window_rule=app_id:d,is_floating:1
+config window_rule=app_id:e,is_floating:1,width:600,height:400,offset_x:100,offset_y:100
+open a
+open b
+check
+open c
+check
+open d
+check
+open e
+check
+dispatch togglefloating
+check

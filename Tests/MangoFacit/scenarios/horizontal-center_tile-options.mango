@@ -1,0 +1,18 @@
+# center_tile with center_master_overspread=1 and center_when_single_stack=0.
+config new_is_master=0
+config center_master_overspread=1
+config center_when_single_stack=0
+dispatch setlayout,center_tile
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+close b
+close c
+close d
+check

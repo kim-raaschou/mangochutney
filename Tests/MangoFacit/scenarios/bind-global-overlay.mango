@@ -1,0 +1,20 @@
+# toggleglobal: the window follows the view and takes its tags; toggleoverlay, not while fullscreen.
+config new_is_master=0
+open a
+open b
+dispatch toggleglobal
+check
+dispatch view,2
+check
+open c
+check
+dispatch view,1
+check
+dispatch focusstack,next
+dispatch toggleglobal
+check
+dispatch toggleoverlay
+check
+dispatch togglefullscreen
+dispatch toggleoverlay
+check

@@ -1,0 +1,19 @@
+# a floating window takes no place in the layouts.
+# ours: vertical_grid leaves a floating window where it is (a mango bug, docs/afvigelser.md §6).
+config new_is_master=0
+open a
+open b
+open d dialog
+open c
+check
+dispatch setlayout,grid
+check
+dispatch setlayout,vertical_grid
+check
+ours c.y 276
+dispatch setlayout,scroller
+check
+dispatch setlayout,dwindle
+check
+dispatch setlayout,monocle
+check

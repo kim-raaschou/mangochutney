@@ -1,0 +1,19 @@
+# focus_cross_monitor and exchange_cross_monitor: focusdir and move_client past the edge of a monitor.
+monitors 2
+config new_is_master=0
+config focus_cross_monitor=1
+config exchange_cross_monitor=1
+open a
+open b
+dispatch focusmon,right
+open c
+check
+dispatch focusdir,left
+check
+dispatch focusdir,right
+check
+dispatch move_client,left
+check
+dispatch move_client,right
+dispatch move_client,right
+check

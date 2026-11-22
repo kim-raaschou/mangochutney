@@ -1,0 +1,19 @@
+# vertical_deck with 1, 2, 3 and 5 windows, focus through the stack, nmaster and mfact.
+config new_is_master=0
+dispatch setlayout,vertical_deck
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+dispatch focusstack,prev
+check
+dispatch incnmaster,1
+check
+dispatch setmfact,-0.15
+dispatch incgaps,10
+check

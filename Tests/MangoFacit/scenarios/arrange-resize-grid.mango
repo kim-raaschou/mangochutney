@@ -1,0 +1,22 @@
+# resizewin on tiled windows in grid, fair and vertical_grid.
+config new_is_master=0
+dispatch setlayout,grid
+open a
+open b
+open c
+open d
+open e
+check
+dispatch resizewin,+100,+0
+check
+dispatch resizewin,+0,+60
+check
+dispatch setlayout,fair
+check
+dispatch focusstack,next
+dispatch resizewin,+80,+40
+check
+dispatch setlayout,vertical_grid
+check
+dispatch resizewin,+80,+40
+check

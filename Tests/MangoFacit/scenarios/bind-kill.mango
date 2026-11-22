@@ -1,0 +1,17 @@
+# killclient closes the focused window; smartkillclient takes it off the viewed tags first.
+config new_is_master=0
+open a
+open b
+open c
+dispatch killclient
+check
+dispatch toggletag,2
+check
+dispatch smartkillclient
+check
+dispatch view,2
+check
+dispatch smartkillclient
+check
+dispatch view,1
+check

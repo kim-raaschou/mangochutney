@@ -1,0 +1,12 @@
+# viewtoright_have_client goes to the next tag with windows and stops after the last.
+open a
+open b
+dispatch tagsilent,4
+open c
+dispatch tagsilent,7
+dispatch viewtoright_have_client
+check
+dispatch viewtoright_have_client
+check
+dispatch viewtoright_have_client
+check

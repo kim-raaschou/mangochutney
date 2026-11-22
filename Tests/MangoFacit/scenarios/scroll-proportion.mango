@@ -1,0 +1,20 @@
+# set_proportion, switch_proportion_preset through the presets, centerwin.
+config scroller_proportion_preset=0.5,0.8,1.0
+config scroller_default_proportion=0.5
+dispatch setlayout,scroller
+open a
+open b
+open c
+check
+dispatch set_proportion,0.3
+check
+dispatch switch_proportion_preset
+check
+dispatch switch_proportion_preset
+check
+dispatch switch_proportion_preset
+dispatch switch_proportion_preset
+check
+dispatch focusdir,left
+dispatch centerwin
+check

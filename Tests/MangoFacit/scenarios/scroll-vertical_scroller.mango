@@ -1,0 +1,23 @@
+# vertical_scroller with 1, 2, 3 and 5 windows; focus moves the view; gaps.
+dispatch setlayout,vertical_scroller
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+dispatch focusdir,up
+check
+dispatch focusdir,up
+dispatch focusdir,up
+dispatch focusdir,up
+check
+dispatch focusstack,next
+check
+dispatch incgaps,10
+check
+close b
+check

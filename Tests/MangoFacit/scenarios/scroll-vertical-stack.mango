@@ -1,0 +1,17 @@
+# vertical_scroller: scroller_stack up and down, focus and resize in a row.
+config scroller_default_proportion=0.5
+dispatch setlayout,vertical_scroller
+open a
+open b
+open c
+check
+dispatch scroller_stack,up
+check
+dispatch focusdir,left
+check
+dispatch resizewin,+100,+0
+check
+dispatch scroller_stack,down
+check
+dispatch scroller_stack,left
+check

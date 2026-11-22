@@ -1,0 +1,23 @@
+# scroller with 1, 2, 3 and 5 windows; focus moves the view; gaps.
+dispatch setlayout,scroller
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+dispatch focusdir,left
+check
+dispatch focusdir,left
+dispatch focusdir,left
+dispatch focusdir,left
+check
+dispatch focusstack,next
+check
+dispatch incgaps,10
+check
+close b
+check

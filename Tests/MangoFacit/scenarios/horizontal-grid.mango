@@ -1,0 +1,19 @@
+# grid with 1, 2, 3, 5 and 7 windows, then gaps and a close.
+config new_is_master=0
+dispatch setlayout,grid
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+open f
+open g
+check
+dispatch incgaps,10
+check
+close c
+check

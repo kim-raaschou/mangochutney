@@ -1,0 +1,21 @@
+# switch_layout through the layouts in mango's order, with three windows.
+config new_is_master=0
+open a
+open b
+open c
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check
+dispatch switch_layout
+check

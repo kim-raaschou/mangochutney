@@ -1,0 +1,17 @@
+# resizewin on tiled windows in scroller and dwindle.
+config scroller_default_proportion=0.5
+dispatch setlayout,scroller
+open a
+open b
+open c
+check
+dispatch resizewin,+200,+0
+check
+dispatch resizewin,-400,+0
+check
+dispatch setlayout,dwindle
+check
+dispatch resizewin,+100,+0
+check
+dispatch resizewin,+0,-60
+check

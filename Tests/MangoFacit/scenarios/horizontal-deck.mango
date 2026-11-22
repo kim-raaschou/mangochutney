@@ -1,0 +1,22 @@
+# deck: the stack shows one window; with the default deck_tab_mode=1.
+config new_is_master=0
+dispatch setlayout,deck
+open a
+check
+open b
+check
+open c
+check
+open d
+open e
+check
+dispatch focusstack,prev
+check
+dispatch focusstack,next
+dispatch focusstack,next
+check
+dispatch incnmaster,1
+check
+dispatch setmfact,-0.15
+dispatch incgaps,10
+check

@@ -1,0 +1,13 @@
+# scroller_proportion and scroller_proportion_single from a window rule.
+config window_rule=app_id:b,scroller_proportion:0.4
+config window_rule=app_id:c,scroller_proportion_single:0.7
+dispatch setlayout,scroller
+open c
+check
+open b
+check
+open a
+check
+close c
+close a
+check

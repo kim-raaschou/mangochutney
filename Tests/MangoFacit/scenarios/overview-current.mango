@@ -1,0 +1,22 @@
+# toggleoverview,1 shows the viewed tags only; enteroverview and leaveoverview; overview gaps.
+config new_is_master=0
+config overview_gap_inner=20
+config overview_gap_outer=60
+open a
+open b
+open c
+dispatch view,2
+open d
+open e
+dispatch toggleoverview,1
+check
+dispatch toggleoverview,1
+check
+dispatch enteroverview
+check
+dispatch enteroverview
+check
+dispatch leaveoverview
+check
+dispatch leaveoverview
+check

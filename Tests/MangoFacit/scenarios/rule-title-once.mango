@@ -1,0 +1,16 @@
+# a rule by title, by app id and title together, and window_rule_once, which holds for the first window only.
+config new_is_master=0
+config window_rule=title:b,is_floating:1,width:500,height:300
+config window_rule_once=app_id:c,is_floating:1,width:500,height:300
+config window_rule=app_id:d,title:d,tags:2
+config window_rule=app_id:e,title:x,tags:3
+open b
+open c
+check
+close c
+open c
+check
+open d
+check
+open e
+check

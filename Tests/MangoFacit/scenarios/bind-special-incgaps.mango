@@ -1,0 +1,12 @@
+# incgaps on the special tag: mango adds to the normal gaps, we to the special ones (a mango bug, docs/afvigelser.md §6).
+config new_is_master=0
+open a
+open b
+dispatch tag_special_tag
+check
+dispatch incgaps,5
+check
+ours b.x 25
+ours b.y 25
+ours b.width 1870
+ours b.height 1030

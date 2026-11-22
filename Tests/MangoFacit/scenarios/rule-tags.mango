@@ -1,0 +1,17 @@
+# window_rule: tags (the view follows), is_tag_silent, is_open_silent, two tags.
+config new_is_master=0
+config window_rule=app_id:b,tags:3
+config window_rule=app_id:c,tags:4,is_tag_silent:1
+config window_rule=app_id:d,is_open_silent:1
+config window_rule=app_id:e,tags:2|5
+open a
+open b
+check
+open c
+check
+open d
+check
+open e
+check
+dispatch view,5
+check

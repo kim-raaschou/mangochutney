@@ -1,0 +1,22 @@
+#!/bin/sh
+# Records the facit of the scenarios given (all when none) from mango 0.18.5, run headless in a
+# container. Needs mango's source in ~/sources/mango and the colima profile mangofacit:
+#   colima start -p mangofacit --cpu 4 --memory 4
+#   colima ssh -p mangofacit -- sudo apt-get install -y linux-modules-extra-\$(uname -r)
+#   colima ssh -p mangofacit -- 'echo vkms | sudo tee /etc/modules-load.d/mango-facit.conf'
+#   colima ssh -p mangofacit -- sudo modprobe vkms
+# (mango draws with scenefx, which needs a DRM device: vkms gives one, Mesa draws in software.)
+#   Tests/MangoFacit/record                         all scenarios
+#   Tests/MangoFacit/record scenarios/tile.mango    one
+set -e
+here=$(cd "$(dirname "$0")" && pwd)
+cd "$here"
+[ $# -gt 0 ] || set -- scenarios/*.mango
+
+docker --context colima-mangofacit build -q -t mango-facit recorder >/dev/null
+docker --context colima-mangofacit run --rm --device /dev/dri \
+    -v "${MANGO_SOURCE:-$HOME/sources/mango}:/mango:ro" \
+    -v mango-facit-build:/build \
+    -v "$here/scenarios:/scenarios:ro" \
+    -v "$here/facit:/facit" \
+    mango-facit sh -c "/tool/build.sh && python3 /tool/record.py $(printf '/%s ' "$@")"

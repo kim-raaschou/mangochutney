@@ -1,0 +1,18 @@
+# default_master_factor and default_master_count; a tag has its own nmaster and mfact.
+config new_is_master=0
+config default_master_factor=0.7
+config default_master_count=2
+open a
+open b
+open c
+check
+dispatch incnmaster,-1
+dispatch setmfact,-0.3
+check
+dispatch view,2
+open d
+open e
+open f
+check
+dispatch view,1
+check

@@ -1,0 +1,16 @@
+# smart_gaps and no_border_when_single with one window, two, and one again.
+config new_is_master=0
+config smart_gaps=1
+config no_border_when_single=1
+open a
+check
+open b
+check
+close b
+check
+dispatch setlayout,dwindle
+check
+dispatch setlayout,vertical_tile
+check
+dispatch setlayout,scroller
+check

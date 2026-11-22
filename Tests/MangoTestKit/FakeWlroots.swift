@@ -10,6 +10,8 @@ package final class FakeSurface: PlatformWindow {
     package let isFloatType: Bool
     package var sceneNodeEnabled = true
     package var sceneSurfaceEnabled = true
+    /// The xdg toplevel's min and max size.
+    package var sizeHints = ClientSizeHints()
 
     package init(frame: CGRect, isFloatType: Bool) {
         self.frame = frame
@@ -87,7 +89,7 @@ package final class FakeWlroots: WindowSystem {
 
     // MARK: Clients
 
-    package private(set) var closed: [ClientID] = []
+    package var closed: [ClientID] = []
     package func clientSendClose(_ c: Client) { closed.append(c.id) }
 
     package private(set) var spawned: [String] = []
@@ -97,7 +99,7 @@ package final class FakeWlroots: WindowSystem {
     package func clientGetParent(_ c: Client) -> Client? { nil }
     package func toplevelFromWlrSurface(_ surface: ClientID) -> Client? { server.clientByIdAll(surface) }
     package func clientSetSize(_ c: Client, _ width: CGFloat, _ height: CGFloat, _ forceConfigure: Bool) -> UInt32 { 0 }
-    package func clientSizeHints(_ c: Client) -> ClientSizeHints { ClientSizeHints() }
+    package func clientSizeHints(_ c: Client) -> ClientSizeHints { (c.platform as? FakeSurface)?.sizeHints ?? ClientSizeHints() }
     package func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool) {}
     package func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) {}
     package func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void) { done(c.geom) }

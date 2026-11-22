@@ -1,0 +1,19 @@
+# movewin and resizewin on a floating window: relative, absolute, off the screen, centerwin.
+config window_rule=app_id:f,is_floating:1,width:600,height:400
+open a
+open f
+check
+dispatch movewin,+50,+30
+check
+dispatch movewin,100,100
+check
+dispatch resizewin,+100,-50
+check
+dispatch resizewin,800,500
+check
+dispatch movewin,-5000,+0
+check
+dispatch centerwin
+check
+dispatch resizewin,5000,5000
+check

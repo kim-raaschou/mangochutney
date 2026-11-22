@@ -1,0 +1,19 @@
+# focusstack wraps through the clients list; exchange_stack_client and zoom reorder it.
+config new_is_master=0
+open a
+open b
+open c
+check
+dispatch focusstack,next
+check
+dispatch focusstack,prev
+dispatch focusstack,prev
+check
+dispatch exchange_stack_client,next
+check
+dispatch exchange_stack_client,prev
+check
+dispatch zoom
+check
+dispatch zoom
+check

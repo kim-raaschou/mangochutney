@@ -1,0 +1,20 @@
+# scroller_stack puts a window in the column beside it and takes it out again; focus, exchange and resize in a column.
+config scroller_default_proportion=0.5
+dispatch setlayout,scroller
+open a
+open b
+open c
+check
+dispatch scroller_stack,left
+check
+dispatch focusdir,up
+check
+dispatch exchange_client,down
+check
+dispatch resizewin,+0,+100
+check
+dispatch scroller_stack,right
+check
+dispatch scroller_stack,left
+close b
+check

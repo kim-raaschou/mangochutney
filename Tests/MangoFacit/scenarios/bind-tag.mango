@@ -1,0 +1,21 @@
+# tag moves the focused window and the view follows; tagsilent does not; tagtoleft/right.
+config new_is_master=0
+open a
+open b
+open c
+dispatch tag,2
+check
+dispatch view,1
+check
+dispatch tagsilent,3
+check
+dispatch tagtoright
+check
+dispatch tagtoleft
+dispatch tagtoleft
+check
+dispatch view,3
+check
+dispatch tag,9
+dispatch tagtoright
+check

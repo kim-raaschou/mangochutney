@@ -1,0 +1,18 @@
+# each tag keeps its own layout; two tags viewed at once use the current tag's.
+config new_is_master=0
+open a
+dispatch setlayout,grid
+dispatch view,2
+check
+dispatch setlayout,scroller
+open b
+open c
+check
+dispatch view,1
+check
+dispatch toggleview,2
+check
+dispatch toggleview,1
+check
+dispatch view,3
+check

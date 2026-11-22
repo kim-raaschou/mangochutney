@@ -1,0 +1,21 @@
+# groupjoin, groupfocus through the members, groupleave, togglegroupbar.
+config new_is_master=0
+open a
+open b
+open c
+dispatch groupjoin,up
+check
+dispatch groupfocus,next
+check
+dispatch groupfocus,prev
+check
+dispatch focusdir,left
+dispatch groupjoin,right
+check
+dispatch groupfocus,next
+dispatch groupfocus,next
+check
+dispatch groupleave
+check
+dispatch togglegroupbar
+check

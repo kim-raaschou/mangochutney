@@ -1,0 +1,18 @@
+# monocle and deck without tabs, monocle without gap and border.
+config new_is_master=0
+config monocle_tab_mode=0
+config deck_tab_mode=0
+config monocle_no_gap=1
+config monocle_no_border=1
+dispatch setlayout,monocle
+open a
+check
+open b
+open c
+check
+dispatch focusstack,next
+check
+dispatch setlayout,deck
+check
+dispatch focusstack,next
+check

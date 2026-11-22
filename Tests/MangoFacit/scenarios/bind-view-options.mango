@@ -1,0 +1,18 @@
+# view_current_to_back=1 and tag_carousel=1: viewing the current tag goes back, the ends wrap.
+config view_current_to_back=1
+config tag_carousel=1
+open a
+dispatch view,3
+check
+dispatch view,3
+check
+dispatch viewtoleft
+check
+dispatch viewtoright
+check
+dispatch view,5
+open b
+dispatch viewtoright_have_client
+check
+dispatch viewtoleft_have_client
+check
