@@ -343,8 +343,17 @@ package extension MangoServer {
         let c1node = dwindleFindLeaf(m1.pertag.dwindleRoot[getMonCurtag(m1)], c1)
         let c2node = dwindleFindLeaf(m2.pertag.dwindleRoot[getMonCurtag(m2)], c2)
 
+        clientSwapLayoutProperties(c1, c2)
+
         c1node?.client = c2
         c2node?.client = c1
+
+        if m1 !== m2 {
+            clientSwapMonitorsAndTags(c1, c2)
+        }
+
+        wlListSwap(c1, c2)
+        finishExchangeArrangeAndFocus(c1, c2, m1, m2)
     }
 
     func dwindleResizeClient(_ m: Monitor, _ c: Client) {
