@@ -1190,7 +1190,8 @@ public indirect enum JSONValue: Equatable, Sendable {
         if d.isNaN || d.isInfinite { return "null" }
         if d == d.rounded() && abs(d) < 1e15 { return String(Int(d)) }
         let s15 = String(format: "%1.15g", d)
-        if Double(s15) == d { return s15 }
+        // cJSON's compare_double: equal within DBL_EPSILON of the larger
+        if let t = Double(s15), abs(t - d) <= max(abs(t), abs(d)) * Double.ulpOfOne { return s15 }
         return String(format: "%1.17g", d)
     }
 
