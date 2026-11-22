@@ -78,6 +78,7 @@ public final class Client {
     public var animationTypeOpen: AnimationType?
     public var scrollerProportion: Float = 0
     public var scrollerProportionSingle: Float = 0
+    public var isfocusing = false
     public var iscustomScrollerProportion = false
     public var iscustomScrollerProportionSingle = false
     public var masterSizeWeight: CGFloat = 0

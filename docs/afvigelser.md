@@ -266,9 +266,9 @@ Hvor koden står, når den ikke står som i mango.
   (`NagDisplay`: bjælken placeret og tegnet, knappernes fork, løkken med `-T`) er portens
   (`Nag.swift`).
 - **`client_focus`:** 1:1 med mangos trin og rækkefølge, `lift` skrevet ud ved hvert kald. Uden
-  macOS-del: `session_locked`, `isfocusing` og opacity,
+  macOS-del: `session_locked`, opacity,
   `client_check_tab_node_visible` (porten tegner bjælkerne ud fra `sel`), idle inhibit, vrr, foreign
-  toplevel, løkken over de andre skærme, `exclusive_focus` (layer shell), `client_wants_focus` (X11) og
+  toplevel, `exclusive_focus` (layer shell), `client_wants_focus` (X11) og
   pointer constraints. Uden klient
   kommer `printstatus` efter, at `sel` er ryddet, for portens status læser den med det samme.
 - **Title message bar:** mangos `draw/title_message_bar.c` står i kernen (`draw/title_message_bar.swift`),

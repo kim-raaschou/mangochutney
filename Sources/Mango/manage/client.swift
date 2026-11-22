@@ -761,15 +761,20 @@ package extension MangoServer {
         }
 
         if let c, let m = c.mon {
+            let lastFocusClient = selectedMonitor?.sel.flatMap { clientByIdAll($0) }
             selectedMonitor = m
             m.prevsel = m.sel
             m.sel = c.id
-            // not in mango: no isfocusing
+            c.isfocusing = true
 
             tabSyncFocus(c)
 
             // not in mango: client_check_tab_node_visible, idle inhibit, vrr and opacity; the port draws
             // the bars from sel
+
+            if let lastFocusClient, !lastFocusClient.iskilling, lastFocusClient !== c {
+                lastFocusClient.isfocusing = false
+            }
 
             // decide whether need to re-arrange
 
@@ -788,6 +793,13 @@ package extension MangoServer {
             c.isurgent = false
         }
 
+        // update other monitor focus disappear
+        for um in monitors where um !== selectedMonitor {   // not in mango: wlr_output->enabled; the port's monitors are enabled
+            if let sel = um.sel.flatMap({ clientByIdAll($0) }), !sel.iskilling, sel.isfocusing {
+                sel.isfocusing = false   // not in mango: no opacity or foreign toplevel
+            }
+        }
+
         /* Deactivate old client if focus is changing */
         if let old = oldKeyboardFocusSurface, c == nil || old !== c {
             // not in mango: no layer shell (exclusive_focus); client_wants_focus is X11's
@@ -802,6 +814,7 @@ package extension MangoServer {
         guard let c else {
             let sm: Monitor = selectedMonitor
             if let id = sm.sel, !(clientByIdAll(id).map { $0.isVisible(on: sm) && !$0.iskilling } ?? false) {
+                clientByIdAll(id)?.isfocusing = false
                 sm.sel = nil
             }
             printstatus(.arrangge)

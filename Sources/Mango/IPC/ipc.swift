@@ -644,7 +644,7 @@ package extension MangoServer {
             ("is_group", .bool(c.isGroupMember)),
             ("is_group_focus", .bool(c.isGroupMember && c.isGroupFocus)),
             ("is_visible", .bool(c.mon.map { VISIBLEON(c, $0) } ?? false)),
-            ("is_focused", .bool(c.mon === selectedMonitor && selectedMonitor.sel == c.id)),   // not in mango: no isfocusing, the selected monitor's sel
+            ("is_focused", .bool(c.isfocusing)),
             ("is_fullscreen", .bool(c.isfullscreen)),
             ("is_floating", .bool(c.isfloating)),
             ("is_maximized", .bool(c.ismaximizescreen)),
