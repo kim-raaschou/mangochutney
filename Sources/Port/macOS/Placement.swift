@@ -71,13 +71,22 @@ extension MacWindowSystem {
         }
         let ids = parkAtCommit
         parkAtCommit.removeAll()
-        // wlroots shows the frame at once; here each app moves its own window. The windows leaving wait
-        // till the ones coming back stand in view, or the desktop shows between them.
-        if stillArriving() {
-            parkWhenArrived.formUnion(ids)
-        } else {
-            changed = parkDisabled(ids) || changed
+        // wlroots shows the frame at once; here each app moves its own window. As mango skips a frame
+        // while a client it resized has not answered (handle_output_frame, with no animations and no
+        // grab), the windows leaving wait till the ones coming back on their monitor stand in view, or
+        // the desktop shows between them; at most mango's 100 ms (skip_frame_timeout).
+        var leave = ids
+        if !server.config.animations && server.grabClient == nil {
+            _ = stillArriving()
+            for m in server.monitors where arriving.keys.contains(where: { server.clientByIdAll($0)?.mon === m }) {
+                let waiting = ids.filter { server.clientByIdAll($0)?.mon === m }
+                guard !waiting.isEmpty else { continue }
+                parkWhenArrived.formUnion(waiting)
+                leave.subtract(waiting)
+                monitorCheckSkipFrameTimeout(m)
+            }
         }
+        changed = parkDisabled(leave) || changed
         // A disabled scene the port could not park when it was disabled (macOS had the window in
         // fullscreen, or an F tag was viewed) is parked at the first frame that can.
         for c in server.clientsAll where !c.parked && (!c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled)
@@ -110,12 +119,49 @@ extension MacWindowSystem {
         return !arriving.isEmpty
     }
 
-    /// The windows that waited for the ones coming back are parked once those stand in view.
+    /// The windows that waited for the ones coming back are parked once those on their monitor stand in
+    /// view (mango's frame no longer skipped).
     func parkArrived() {
-        guard !parkWhenArrived.isEmpty, !stillArriving() else { return }
-        let ids = parkWhenArrived
-        parkWhenArrived.removeAll()
+        guard !parkWhenArrived.isEmpty else { return }
+        _ = stillArriving()
+        let held = Set(arriving.keys.compactMap { server.clientByIdAll($0)?.mon?.screen.displayID })
+        let ids = parkWhenArrived.filter { id in
+            server.clientByIdAll(id)?.mon.map { !held.contains($0.screen.displayID) } ?? true
+        }
+        guard !ids.isEmpty else { return }
+        parkWhenArrived.subtract(ids)
+        for d in Set(skipFrameTimeout.keys).subtracting(held) { monitorStopSkipFrameTimer(d) }
         if parkDisabled(ids) { server.updateBorders() }
+    }
+
+    /// mango monitor_check_skip_frame_timeout (monitor.c): the frame waits for the clients resized on
+    /// the monitor, at most 100 ms; again from the start when more are resized. A timer, as mango's.
+    func monitorCheckSkipFrameTimeout(_ m: Monitor) {
+        let d = m.screen.displayID
+        let pending = arriving.keys.filter { server.clientByIdAll($0)?.mon === m }.count   // resizing_count_pending
+        if skipFrameTimeout[d] != nil && resizingCountCurrent[d] == pending { return }
+        skipFrameTimeout[d]?.cancel()
+        resizingCountCurrent[d] = pending
+        let timeout = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated { self?.monitorSkipFrameTimeoutCallback(d) }
+        }
+        skipFrameTimeout[d] = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100), execute: timeout)   // 100ms
+    }
+
+    /// mango monitor_skip_frame_timeout_callback (monitor.c): no client is waited for any longer, and
+    /// the frame is shown: the windows leaving are parked.
+    func monitorSkipFrameTimeoutCallback(_ d: CGDirectDisplayID) {
+        arriving.removeAll()
+        monitorStopSkipFrameTimer(d)
+        parkArrived()
+    }
+
+    /// mango monitor_stop_skip_frame_timer (monitor.c).
+    func monitorStopSkipFrameTimer(_ d: CGDirectDisplayID) {
+        skipFrameTimeout[d]?.cancel()
+        skipFrameTimeout[d] = nil
+        resizingCountCurrent[d] = nil
     }
 
     /// Where mango clips the window at its monitor's edge (client_is_ignore_output_clip is false) and

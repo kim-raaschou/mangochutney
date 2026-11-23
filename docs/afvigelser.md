@@ -238,10 +238,12 @@ Hvor koden står, når den ikke står som i mango.
   slukkede vinduer parkeres, når billedet afleveres (wlroots' output commit): et `arrange`s
   `resize` af ét vindue (`set_arrange_visible`s og layoutets) når appen som én skrivning, og et
   vindue parkeres først, når billedets synlige vinduer er skrevet, så intet hul viser skrivebordet,
-  når et vindue afløser et andet (monocle, faner). Uden macOS-del, mærket i
+  når et vindue afløser et andet (monocle, faner). Det er mangos frame-skip (`handle_output_frame`,
+  `monitor_check_skip_frame_timeout`): uden animationer og uden træk venter vinduerne, der skal væk,
+  på dem, der kommer frem på samme skærm, højst mangos 100 ms (`skip_frame_timeout`, en timer som
+  mangos); mango holder hele billedet, porten kun de vinduer, der skal væk. Uden macOS-del, mærket i
   koden: buffer-effekter, fokus-opacitet (`client_set_focus_opacity` giver false), pointer-enter ved
-  animationens slut, `force_render`, frame-skip mens klienter skifter størrelse
-  (`resizing_count_pending`), swallowing, størrelses-hints (`client_set_size_bound` får ingen fra
+  animationens slut, `force_render`, swallowing, størrelses-hints (`client_set_size_bound` får ingen fra
   macOS) og kortene i overviewet (`ov_card_tree`). Kanter og bjælker tegnes for alle vinduer på
   én gang efter billedet (`bordersDirty`), hvor mango tegner dem pr. vindue i `client_set_clip`.
   `find_animation_curve_at` løser kurven i stedet for at bage den; CLOSE- og fade-kurverne har

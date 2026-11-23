@@ -23,6 +23,40 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertFalse(hidden.parked)
     }
 
+    /// mango's skip_frame_timeout: the frame waits for a client at most 100 ms.
+    func testTheWindowLeavingWaitsAtMostMangosHundredMilliseconds() {
+        let r = EngineRig()
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
+        r.window(1); r.window(2)
+        r.arrange()
+        r.settle()
+        let shown = r.server.clientsAll.first { !$0.parked }!, hidden = r.server.clientsAll.first { $0.parked }!
+        r.app.appliesAfter = 1.0
+        _ = r.server.focusStack(Arg(i: 1))
+        r.arrange()
+        r.settle(0.05)
+        XCTAssertFalse(shown.parked, "its app has not answered: the one leaving waits")
+        r.settle(0.1)
+        XCTAssertTrue(shown.parked, "and is parked after mango's 100 ms, though the app has not answered yet")
+        XCTAssertFalse(hidden.parked)
+    }
+
+    /// mango skips no frame while it animates (handle_output_frame's !config.animations).
+    func testWithAnimationsTheWindowLeavingDoesNotWait() {
+        let r = EngineRig()
+        r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
+        r.window(1); r.window(2)
+        r.arrange()
+        r.settle()
+        let shown = r.server.clientsAll.first { !$0.parked }!
+        r.server.config.animations = true
+        r.app.appliesAfter = 1.0
+        _ = r.server.focusStack(Arg(i: 1))
+        r.arrange()
+        r.settle(0.05)
+        XCTAssertTrue(shown.parked, "no frame is held: the one leaving is parked at once")
+    }
+
     func testQuittingBringsHiddenWindowsBack() {
         let r = EngineRig()
         r.window(1)

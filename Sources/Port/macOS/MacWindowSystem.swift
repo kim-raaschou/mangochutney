@@ -89,6 +89,9 @@ class MacWindowSystem: WindowSystem {
     /// at that frame wait for them (commitFrame).
     var arriving: [ClientID: Int] = [:]
     var parkWhenArrived: Set<ClientID> = []
+    /// mango's skip_frame_timeout and resizing_count_current, per monitor (its display).
+    var skipFrameTimeout: [CGDirectDisplayID: DispatchWorkItem] = [:]
+    var resizingCountCurrent: [CGDirectDisplayID: Int] = [:]
     lazy var edgePlates: EdgePlates = {
         let plates = EdgePlates()
         plates.onClick = { [weak self] id in
