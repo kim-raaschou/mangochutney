@@ -108,15 +108,15 @@ package extension MangoServer {
             gc.cursorInUpperHalf = true
             gc.cursorInLeftHalf = false
         }
-        let bw = Float(max(1, gc.dragBeginGeom.width)), bh = Float(max(1, gc.dragBeginGeom.height))
-        let oldMfact = Float(gc.oldMasterMfactPer), oldMInner = Float(gc.oldMasterInnerPer), oldSInner = Float(gc.oldStackInnerPer)
+        let bw = Double(max(1, gc.dragBeginGeom.width)), bh = Double(max(1, gc.dragBeginGeom.height))
+        let oldMfact = Double(gc.oldMasterMfactPer), oldMInner = Double(gc.oldMasterInnerPer), oldSInner = Double(gc.oldStackInnerPer)
         var across: Float, along: Float
         if !vertical {
-            across = Float(ox) * (gc.ismaster ? oldMfact : 1 - oldMfact) / bw
-            along = Float(oy) * (gc.ismaster ? oldMInner : oldSInner) / bh
+            across = Float(Double(Float(ox)) * (gc.ismaster ? oldMfact : 1 - oldMfact) / bw)
+            along = Float(Double(Float(oy)) * (gc.ismaster ? oldMInner : oldSInner) / bh)
         } else {
-            along = Float(ox) * (gc.ismaster ? oldMInner : oldSInner) / bw
-            across = Float(oy) * (gc.ismaster ? oldMfact : 1 - oldMfact) / bh
+            along = Float(Double(Float(ox)) * (gc.ismaster ? oldMInner : oldSInner) / bw)
+            across = Float(Double(Float(oy)) * (gc.ismaster ? oldMfact : 1 - oldMfact) / bh)
         }
         let back: Bool, forth: Bool
         let first = vertical ? gc.cursorInLeftHalf : gc.cursorInUpperHalf
@@ -150,17 +150,17 @@ package extension MangoServer {
             if gc.ismaster && type == .centerTile { across *= 2 }
             if type == .rightTile { across = -across }
         }
-        let newMfact = max(0.1, min(0.9, oldMfact + across))
-        let newMInner = max(0.1, min(0.9, oldMInner + along))
-        let newSInner = max(0.1, min(0.9, oldSInner + along))
+        let newMfact: Float = max(0.1, min(0.9, Float(oldMfact + Double(across))))
+        let newMInner: Float = max(0.1, min(0.9, Float(oldMInner + Double(along))))
+        let newSInner: Float = max(0.1, min(0.9, Float(oldSInner + Double(along))))
         if isdrag {
             if gc.ismaster {
-                let cur = 1 - Float(gc.masterInnerPer), new = 1 - newMInner
+                let cur = Float(1 - Double(gc.masterInnerPer)), new = 1 - newMInner
                 if cur > 0.001 {
                     for tc in tiled where tc.ismaster && tc !== gc { tc.masterInnerPer *= CGFloat(new / cur) }
                 }
             } else {
-                let cur = 1 - Float(gc.stackInnerPer), new = 1 - newSInner
+                let cur = Float(1 - Double(gc.stackInnerPer)), new = 1 - newSInner
                 if cur > 0.001 {
                     for tc in tiled where !tc.ismaster && tc !== gc
                         && (vertical || type != .centerTile || tc.isleftstack == gc.isleftstack) {
@@ -172,10 +172,10 @@ package extension MangoServer {
             for tc in tiled where tc !== gc {
                 if !tc.ismaster && newSInner != 1 && oldSInner != 1
                     && (vertical || type != .centerTile || tc.isleftstack == gc.isleftstack) {
-                    tc.stackInnerPer = CGFloat((1 - newSInner) / (1 - oldSInner)) * tc.stackInnerPer
+                    tc.stackInnerPer = CGFloat(Double(1 - newSInner) / (1 - oldSInner) * Double(tc.stackInnerPer))
                 }
                 if tc.ismaster && newMInner != 1 && oldMInner != 1 {
-                    tc.masterInnerPer = CGFloat((1 - newMInner) / (1 - oldMInner)) * tc.masterInnerPer
+                    tc.masterInnerPer = CGFloat(Double(1 - newMInner) / (1 - oldMInner) * Double(tc.masterInnerPer))
                 }
             }
         }
