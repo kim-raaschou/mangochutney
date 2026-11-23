@@ -304,10 +304,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         if let real = windowServerFrame(c.id) {
             c.frame = real
             // macOS put it back where it stood before fullscreen: a window it shows is not parked
-            if c.parked && !Hider.isParked(real, in: m.screen.frame) {
-                c.parked = false
-                c.parkRetries = 0
-            }
+            if c.parked && !Hider.isParked(real, in: m.screen.frame) { shownByMacOS(c) }
         }
         server.arrange(m, false, false)
         // A window out of view was not parked while macOS had it in fullscreen; mango's scene is
@@ -320,7 +317,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         if c.animation.running { return }
         if server.grabClient === c && (server.cursorMode == CurMove || server.cursorMode == CurResize) { return }
         if c.parked { keepHidden(c, seenAt: actual); return }
-        if CACurrentMediaTime() < c.ignoreMovesUntil {
+        if answersPortsWrite(c) {
             if actual != c.frame {
                 c.frame = actual
                 server.updateBorders()

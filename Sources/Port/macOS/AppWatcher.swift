@@ -598,8 +598,10 @@ public final class AppWatcher {
         apps[pid]?.requestFocusReport()
     }
 
-    public func suppressGeometry(_ id: CGWindowID, until t: TimeInterval) {
-        shared.suppress(id, until: t)
+    /// The window's moves and resizes are dropped for `seconds`, on the host's time: the watcher's threads
+    /// read them as they come.
+    public func suppressGeometry(_ id: CGWindowID, for seconds: TimeInterval) {
+        shared.suppress(id, until: CACurrentMediaTime() + seconds)
     }
 }
 

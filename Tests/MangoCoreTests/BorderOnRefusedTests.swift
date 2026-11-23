@@ -49,11 +49,11 @@ final class BorderOnRefusedTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         r.frame()
         XCTAssertFalse(b.parked)
-        XCTAssertTrue(b.mac.comingBack, "written, not yet moved")
+        XCTAssertTrue(b.mac.placed.comingBack, "written, not yet moved")
         XCTAssertEqual(r.app.writes.last { $0.id == 2 }?.setSize, false, "back at its size: the position alone")
         XCTAssertFalse(r.server.mac.shownBorders(fake.borderSpecs).contains { $0.id == 2 }, "no border before the window")
-        r.settle(until: { !b.mac.comingBack })
-        XCTAssertFalse(b.mac.comingBack)
+        r.settle(until: { !b.mac.placed.comingBack })
+        XCTAssertFalse(b.mac.placed.comingBack)
         XCTAssertTrue(r.server.mac.shownBorders(fake.borderSpecs).contains { $0.id == 2 }, "the border with the window")
     }
     /// wlroots shows a border with its window in one frame: while the app has a frame it has not yet
@@ -67,16 +67,16 @@ final class BorderOnRefusedTests: MangoTestCase {
         r.arrange()
         r.settle()
         let before = r.app.frames[1]!
-        XCTAssertTrue(a.mac.inSync)
+        XCTAssertTrue(a.mac.placed.inSync)
         r.app.appliesAfter = 0.3
         r.map(2)
         r.arrange()
-        XCTAssertFalse(a.mac.inSync, "a new tile is written")
+        XCTAssertFalse(a.mac.placed.inSync, "a new tile is written")
         XCTAssertNotEqual(a.frame, before)
         XCTAssertEqual(r.server.mac.shownBorders(fake.borderSpecs).first { $0.id == 1 }?.frame, before,
                        "the border stays on the window till the app has moved it")
         r.settle(0.6)
-        XCTAssertTrue(a.mac.inSync)
+        XCTAssertTrue(a.mac.placed.inSync)
         XCTAssertEqual(r.server.mac.shownBorders(fake.borderSpecs).first { $0.id == 1 }?.frame, r.app.frames[1],
                        "and follows it when it has")
     }

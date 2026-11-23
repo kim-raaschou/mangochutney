@@ -577,7 +577,11 @@ final class FullscreenTagTests: MangoTestCase {
     func testWhatThePortKnewIsForgottenAndNothingIsWrittenToIt() {
         let r = rig()
         let c = r.server.clientByIdAll(2)!
-        c.refusedSize = CGSize(width: 3000, height: 2000)
+        r.app.minSize[2] = CGSize(width: 1200, height: 900)   // the app keeps it larger than its tile
+        r.server.clients.append(r.server.clients.removeFirst())   // a new tile: written
+        r.arrange()
+        r.settle(3)
+        XCTAssertNotNil(c.refusedSize)
         fullscreen(r, 2, true)
         XCTAssertNil(c.refusedSize)
         let frame = r.app.frames[2]

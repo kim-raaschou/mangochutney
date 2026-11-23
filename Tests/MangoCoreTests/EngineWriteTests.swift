@@ -34,11 +34,26 @@ final class EngineWriteTests: MangoTestCase {
         r.app.appliesAfter = 1.0
         _ = r.server.focusStack(Arg(i: 1))
         r.arrange()
-        r.run(0.05)
+        r.run(0.096)
         XCTAssertFalse(shown.parked, "its app has not answered: the one leaving waits")
-        r.run(0.1)
+        r.run(0.016)
         XCTAssertTrue(shown.parked, "and is parked after mango's 100 ms, though the app has not answered yet")
         XCTAssertFalse(hidden.parked)
+    }
+
+    /// A move of a window the port has just written is its app's answer, not the user's, for 400 ms.
+    func testAMoveRightAfterAWriteIsTheAppsAnswer() {
+        let r = EngineRig()
+        let a = r.window(1)
+        r.window(2)
+
+        r.arrange()
+
+        XCTAssertTrue(r.server.mac.answersPortsWrite(a))
+        r.clock.advance(by: 0.39)
+        XCTAssertTrue(r.server.mac.answersPortsWrite(a))
+        r.clock.advance(by: 0.02)
+        XCTAssertFalse(r.server.mac.answersPortsWrite(a), "after 400 ms a move is the user's")
     }
 
     /// mango skips no frame while it animates (handle_output_frame's !config.animations).
@@ -322,7 +337,7 @@ final class EngineWriteTests: MangoTestCase {
         r.settle()
         let inView = CGRect(x: 12, y: 45, width: 800, height: 600)
         r.app.frames[2] = inView
-        hidden.ignoreMovesUntil = 0
+        r.clock.advance(by: 0.5)   // the park written, its answers are past
         r.server.mac.windowGeometryChanged(id: 2, frame: inView, resized: false, isfullscreen: nil)
         r.settle()
         XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame))
@@ -383,7 +398,7 @@ final class EngineWriteTests: MangoTestCase {
         for id: CGWindowID in [2, 3, 4] { r.window(id) }
         r.arrange()
         r.settle(2)
-        XCTAssertNil(a.mac.refusedSize, "it took its tile: no minimum")
+        XCTAssertNil(a.refusedSize, "it took its tile: no minimum")
         r.server.clients.append(r.server.clients.removeFirst())
         r.arrange()
         r.settle(4)

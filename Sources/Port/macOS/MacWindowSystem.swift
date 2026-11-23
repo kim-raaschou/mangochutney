@@ -84,14 +84,10 @@ class MacWindowSystem: WindowSystem {
         clock.commit = { [weak self] in self?.commitFrame() }
         return clock
     }()
-    var parkAtCommit: Set<ClientID> = []
-    /// The windows shown again at a frame and the write that puts them in view; the windows leaving
-    /// at that frame wait for them (commitFrame).
-    var arriving: [ClientID: Int] = [:]
-    var parkWhenArrived: Set<ClientID> = []
-    /// mango's skip_frame_timeout and resizing_count_current, per monitor (its display).
-    var skipFrameTimeout: [CGDirectDisplayID: DispatchWorkItem] = [:]
-    var resizingCountCurrent: [CGDirectDisplayID: Int] = [:]
+    /// The port's time; the tests give their own.
+    var clock: any PortClock = HostClock()
+    /// What the frame writes and parks, and the windows waited for (Placement).
+    var placing = Placing()
     lazy var edgePlates: EdgePlates = {
         let plates = EdgePlates()
         plates.onClick = { [weak self] id in
@@ -121,12 +117,10 @@ class MacWindowSystem: WindowSystem {
     }
 
     func hideEdgePlate(_ id: ClientID) { edgePlates.hide(id) }
-    var writeAtCommit: Set<ClientID> = []
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
     var writerOverride: ((pid_t) -> (any WindowWriter)?)?
     var stackingOverride: (() -> [StackedWindow])?
-    var bordersFollowQueued = false
 
     func writer(for pid: pid_t) -> (any WindowWriter)? {
         if let writerOverride { return writerOverride(pid) }
@@ -298,7 +292,7 @@ class MacWindowSystem: WindowSystem {
     func drawBorders(_ specs: [BorderSpec]) {
         let specs = MacOSAppearance.borders(shownBorders(specs), server.config)
         borders.update(specs)
-        for c in server.clientsAll where c.mac.offEdge { edgePlates.setBorder(c.id, plateBorder(c)) }
+        for c in server.clientsAll where c.mac.placed.offEdge { edgePlates.setBorder(c.id, plateBorder(c)) }
     }
 
     /// The borders macOS shows now. A window coming back from parking gets its border when the app has
@@ -307,8 +301,8 @@ class MacWindowSystem: WindowSystem {
     func shownBorders(_ specs: [BorderSpec]) -> [BorderSpec] {
         specs.compactMap { s in
             guard let c = server.clientByIdAll(s.id) else { return s }
-            if c.leftToMacOS || c.mac.comingBack { return nil }
-            guard let d = lag(c) else { return c.mac.inSync ? s : nil }
+            if c.leftToMacOS || c.mac.placed.comingBack { return nil }
+            guard let d = lag(c) else { return c.mac.placed.inSync ? s : nil }
             var s = s
             s.frame = CGRect(x: s.frame.minX + d.minX, y: s.frame.minY + d.minY,
                              width: s.frame.width + d.width, height: s.frame.height + d.height)
@@ -319,7 +313,7 @@ class MacWindowSystem: WindowSystem {
     /// How far the window the app last answered for is from mango's box this frame (origin and size
     /// differences); nil in sync or out of view.
     func lag(_ c: Client) -> CGRect? {
-        guard !c.mac.inSync, let a = c.mac.applied else { return nil }
+        guard !c.mac.placed.inSync, let a = c.mac.placed.applied else { return nil }
         let ref = c.animation.running ? c.animation.current.insetBy(dx: c.bw, dy: c.bw) : c.frame
         return CGRect(x: a.minX - ref.minX, y: a.minY - ref.minY, width: a.width - ref.width, height: a.height - ref.height)
     }
@@ -762,8 +756,8 @@ class MacWindowSystem: WindowSystem {
         readBack(c, q)
     }
 
-    func grabBegan(_ c: Client) { watcher.suppressGeometry(c.id, until: CACurrentMediaTime() + 3600) }
-    func grabEnded(_ c: Client) { watcher.suppressGeometry(c.id, until: CACurrentMediaTime() + 0.4) }
+    func grabBegan(_ c: Client) { watcher.suppressGeometry(c.id, for: 3600) }
+    func grabEnded(_ c: Client) { watcher.suppressGeometry(c.id, for: 0.4) }
 }
 
 extension MangoServer {

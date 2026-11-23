@@ -50,12 +50,4 @@ extension MacWindowSystem {
         wlrLog(.info, "\(c.appName): window \(c.id) is back from \(reason)")
         if focus { windowFocused(id: id) }
     }
-
-    /// What the port knew of the window's place: the size its app kept it at and the writes it was
-    /// retrying are not the ones it comes back to.
-    func forgetPlacement(_ c: Client) {
-        c.refusedSize = nil
-        c.retryTarget = nil
-        c.retryCount = 0
-    }
 }

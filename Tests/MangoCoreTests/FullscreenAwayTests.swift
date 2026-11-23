@@ -86,16 +86,18 @@ final class FullscreenAwayTests: MangoTestCase {
     func testWhatThePortKnewOfItsPlaceIsForgotten() {
         let r = rig()
         let c = r.server.clientByIdAll(2)!
-        c.refusedSize = CGSize(width: 3000, height: 2000)
-        c.retryTarget = CGRect(x: 1, y: 1, width: 1, height: 1)
-        c.retryCount = 2
+        r.app.minSize[2] = CGSize(width: 1200, height: 900)   // the app keeps it larger than its tile
+        r.server.clients.append(r.server.clients.removeFirst())   // a new tile: written
+        r.arrange()
+        r.settle(3)
+        XCTAssertNotNil(c.refusedSize)
+        XCTAssertNotNil(c.mac.placed.retryTarget)
         geometry(r, 2, fullscreen: true)
         XCTAssertNil(c.refusedSize)
-        XCTAssertNil(c.retryTarget)
-        XCTAssertEqual(c.retryCount, 0)
-        c.refusedSize = CGSize(width: 3000, height: 2000)
+        XCTAssertNil(c.mac.placed.retryTarget)
+        XCTAssertEqual(c.mac.placed.retryCount, 0)
         geometry(r, 2, fullscreen: false)
-        XCTAssertNil(c.refusedSize, "nor what it kept while away")
+        XCTAssertNil(c.refusedSize, "nor when it comes back")
     }
 
     func testItsPlaceIsKeptHoweverLongItIsAway() {

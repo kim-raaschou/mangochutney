@@ -16,6 +16,8 @@ final class FakeApp: WindowWriter {
     var busy = false
     var movesBackTo: [CGWindowID: CGRect] = [:]
     var appliesAfter: TimeInterval = 0
+    /// The port's clock: an answer after appliesAfter comes on it.
+    weak var clock: TestClock?
     private var elements: [(AXUIElement, CGWindowID)] = []
 
     func element(for id: CGWindowID) -> AXUIElement {
@@ -44,10 +46,12 @@ final class FakeApp: WindowWriter {
             f.size.width = max(f.width, m.width)
             f.size.height = max(f.height, m.height)
         }
-        if appliesAfter > 0 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + appliesAfter) { [self] in
-                frames[id] = movesBackTo[id] ?? f
-                report(frames[id])
+        if appliesAfter > 0, let clock {
+            MainActor.assumeIsolated {
+                clock.after(appliesAfter) { [self] in
+                    frames[id] = movesBackTo[id] ?? f
+                    report(frames[id])
+                }
             }
             return
         }
@@ -209,6 +213,8 @@ final class FakeWindowSystem: MacWindowSystem {
 final class EngineRig {
     let server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/mango.conf"))
     let app = FakeApp()
+    /// The port's time: it moves as the test settles or runs.
+    let clock = TestClock()
     let screen = Screen(displayID: 1, name: "Built-in", frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
                         workArea: CGRect(x: 0, y: 37, width: 1728, height: 1080), scale: 2, isMain: true)
 
@@ -219,6 +225,8 @@ final class EngineRig {
         server.rebuildMonitors(screens: [screen])
         let app = app
         server.system = FakeWindowSystem(server)
+        server.mac.clock = clock
+        app.clock = clock
         server.mac.frameClock.manual = true
         server.mac.memory.layoutURL = nil
         server.mac.writerOverride = { _ in app }
@@ -273,29 +281,39 @@ final class EngineRig {
         frame()
     }
 
-    /// The run loop as settle, until `done` holds, at most `seconds`: as long as a slow machine needs, no longer.
+    /// Steps as settle, until `done` holds, at most `seconds` of the port's time.
     func settle(until done: () -> Bool, atMost seconds: TimeInterval = 2) {
-        let end = Date().addingTimeInterval(seconds)
-        while !done() && Date() < end {
-            RunLoop.main.run(until: min(end, Date().addingTimeInterval(0.016)))
-            server.mac.frameClock.fire()
+        var left = seconds
+        while !done() && left > 0 {
+            step()
+            left -= Self.stepTime
         }
     }
 
-    /// The run loop for `seconds`, with an output frame every 16 ms (the tests' display link); then on
-    /// while windows leaving still wait for those coming back (at most mango's 100 ms), however slow the machine.
+    /// `seconds` of the port's time in steps of 16 ms, each with the run loop and an output frame (the
+    /// tests' display link); then on while windows leaving still wait for those coming back (at most
+    /// mango's 100 ms).
     func settle(_ seconds: TimeInterval = 0.05) {
         run(seconds)
-        settle(until: { server.mac.parkWhenArrived.isEmpty })
+        settle(until: { server.mac.placing.parkWhenArrived.isEmpty })
     }
 
-    /// The run loop for exactly `seconds`, frames as settle: for a test that looks at the wait itself.
+    /// Exactly `seconds` of the port's time, in steps as settle: for a test that looks at the wait itself.
     func run(_ seconds: TimeInterval) {
-        let end = Date().addingTimeInterval(seconds)
+        var left = seconds
         repeat {
-            RunLoop.main.run(until: min(end, Date().addingTimeInterval(0.016)))
-            server.mac.frameClock.fire()
-        } while Date() < end
+            step()
+            left -= Self.stepTime
+        } while left > 1e-9
+    }
+
+    private static let stepTime: TimeInterval = 0.016
+
+    /// The run loop for a step, the port's clock on by as much, and an output frame.
+    private func step() {
+        RunLoop.main.run(until: Date().addingTimeInterval(Self.stepTime))
+        clock.advance(by: Self.stepTime)
+        server.mac.frameClock.fire()
     }
 }
 

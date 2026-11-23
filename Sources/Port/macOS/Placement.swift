@@ -1,7 +1,85 @@
 import AppKit
 import Mango
 
+/// What the port wrote to one window's app and what the app answered: the window's place as the port
+/// holds it. Written here only.
+@MainActor
+final class PlacedWindow {
+    /// The frames handed to the app and the last one it answered; while they differ the border stands
+    /// where the app last put the window (applied; nil: not in view), as wlroots shows both in one frame.
+    fileprivate(set) var writeSerial = 0
+    fileprivate(set) var confirmedSerial = 0
+    fileprivate(set) var applied: CGRect?
+    var inSync: Bool { writeSerial == confirmedSerial }
+    /// The frames written so far: a read tells whether another was written after it.
+    fileprivate(set) var writes = 0
+    /// Whether the last frame written was a step of an animation.
+    fileprivate(set) var moving = false
+    /// Parked because the part mango clips away would land on another monitor.
+    fileprivate(set) var offEdge = false
+    /// Shown again after it was parked, and the app has not yet moved it back: no border till then, as
+    /// wlroots shows the border and the window in one frame.
+    fileprivate(set) var comingBack = false
+    /// Till then the app's moves are its answers to the port's writes, not the user's.
+    fileprivate(set) var ignoreMovesUntil: TimeInterval = 0
+    /// The size the app keeps the window at, larger than its tile; nil while it takes its tile.
+    fileprivate(set) var refusedSize: CGSize?
+    fileprivate(set) var lastReassert: TimeInterval = 0
+    fileprivate(set) var retryTarget: CGRect?
+    fileprivate(set) var retryCount = 0
+    fileprivate(set) var parkRetries = 0
+    fileprivate(set) var deferredRetryPending = false
+}
+
+/// What the next frame writes and parks, and the windows leaving that wait for those coming back.
+/// Written here only.
+@MainActor
+struct Placing {
+    fileprivate(set) var writeAtCommit: Set<ClientID> = []
+    fileprivate(set) var parkAtCommit: Set<ClientID> = []
+    /// The windows shown again at a frame and the write that puts them in view; the windows leaving
+    /// at that frame wait for them (commitFrame).
+    fileprivate(set) var arriving: [ClientID: Int] = [:]
+    fileprivate(set) var parkWhenArrived: Set<ClientID> = []
+    /// mango's skip_frame_timeout and resizing_count_current, per monitor (its display).
+    fileprivate var skipFrameTimeout: [CGDirectDisplayID: PortTimer] = [:]
+    fileprivate var resizingCountCurrent: [CGDirectDisplayID: Int] = [:]
+    fileprivate var bordersFollowQueued = false
+}
+
+extension Client {
+    /// The size the app keeps the window at, larger than its tile; nil while it takes its tile.
+    var refusedSize: CGSize? { mac.placed.refusedSize }
+}
+
 extension MacWindowSystem {
+    // MARK: What the rest of the port asks and tells
+
+    /// Whether a move of the window is the app answering the port's write, not the user moving it.
+    func answersPortsWrite(_ c: Client) -> Bool { clock.now < c.mac.placed.ignoreMovesUntil }
+
+    /// macOS shows the window again (it put it back after fullscreen): it is no longer parked.
+    func shownByMacOS(_ c: Client) {
+        c.parked = false
+        c.mac.placed.parkRetries = 0
+    }
+
+    /// What the port knew of the window's place: the size its app kept it at and the writes it was
+    /// retrying are not the ones it comes back to.
+    func forgetPlacement(_ c: Client) {
+        let p = c.mac.placed
+        p.refusedSize = nil
+        p.retryTarget = nil
+        p.retryCount = 0
+    }
+
+    /// The app's moves of the window are its answers to the port's write for `seconds`; the watcher drops
+    /// them for `atSource`.
+    private func holdMoves(_ c: Client, for seconds: TimeInterval, atSource: TimeInterval) {
+        c.mac.placed.ignoreMovesUntil = clock.now + seconds
+        watcher.suppressGeometry(c.id, for: atSource)
+    }
+
     // MARK: wlroots' side of mango's resize and animation
 
     /// client_set_size. Not in mango: the size is written with the clip; macOS has no configure serial.
@@ -22,7 +100,7 @@ extension MacWindowSystem {
         let node = c.mac.nodePosition
         c.mac.box = CGRect(x: node.x + c.bw, y: node.y + c.bw,
                            width: c.animation.current.width - 2 * c.bw, height: c.animation.current.height - 2 * c.bw)
-        writeAtCommit.insert(c.id)
+        placing.writeAtCommit.insert(c.id)
         if let m = monitor(of: c) { frameClock.schedule(m) }
     }
 
@@ -41,17 +119,18 @@ extension MacWindowSystem {
     /// A disabled scene is parked out of sight when the frame is shown (wlroots' output commit), after
     /// the windows shown in the same frame are written; an enabled one is written where mango next puts it.
     func showOrPark(_ c: Client) {
-        if c.mac.offEdge { hideEdgePlate(c.id) }
+        let p = c.mac.placed
+        if p.offEdge { hideEdgePlate(c.id) }
         if !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled {
-            parkAtCommit.insert(c.id)
+            placing.parkAtCommit.insert(c.id)
             if let m = monitor(of: c) { frameClock.schedule(m) }
         } else {
-            parkAtCommit.remove(c.id)
+            placing.parkAtCommit.remove(c.id)
             if c.parked {
                 c.parked = false
-                c.parkRetries = 0
-                c.mac.offEdge = false
-                c.mac.comingBack = true
+                p.parkRetries = 0
+                p.offEdge = false
+                p.comingBack = true
             }
         }
     }
@@ -59,18 +138,18 @@ extension MacWindowSystem {
     /// wlroots' output commit: the scene as the frame left it is shown. The windows are written where
     /// mango last put them, then the ones whose scene the frame disabled are parked.
     func commitFrame() {
-        let writes = writeAtCommit
-        writeAtCommit.removeAll()
+        let writes = placing.writeAtCommit
+        placing.writeAtCommit.removeAll()
         var changed = false
         for id in writes {
             guard let c = server.clientByIdAll(id) else { continue }
             let (frame, parked) = (c.frame, c.parked)
             place(c, c.mac.box)
             changed = changed || c.frame != frame || c.parked != parked
-            if c.mac.comingBack { arriving[c.id] = c.mac.writeSerial }
+            if c.mac.placed.comingBack { placing.arriving[c.id] = c.mac.placed.writeSerial }
         }
-        let ids = parkAtCommit
-        parkAtCommit.removeAll()
+        let ids = placing.parkAtCommit
+        placing.parkAtCommit.removeAll()
         // wlroots shows the frame at once; here each app moves its own window. As mango skips a frame
         // while a client it resized has not answered (handle_output_frame, with no animations and no
         // grab), the windows leaving wait till the ones coming back on their monitor stand in view, or
@@ -78,10 +157,10 @@ extension MacWindowSystem {
         var leave = ids
         if !server.config.animations && server.grabClient == nil {
             _ = stillArriving()
-            for m in server.monitors where arriving.keys.contains(where: { server.clientByIdAll($0)?.mon === m }) {
+            for m in server.monitors where placing.arriving.keys.contains(where: { server.clientByIdAll($0)?.mon === m }) {
                 let waiting = ids.filter { server.clientByIdAll($0)?.mon === m }
                 guard !waiting.isEmpty else { continue }
-                parkWhenArrived.formUnion(waiting)
+                placing.parkWhenArrived.formUnion(waiting)
                 leave.subtract(waiting)
                 monitorCheckSkipFrameTimeout(m)
             }
@@ -90,7 +169,7 @@ extension MacWindowSystem {
         // A disabled scene the port could not park when it was disabled (macOS had the window in
         // fullscreen, or an F tag was viewed) is parked at the first frame that can.
         for c in server.clientsAll where !c.parked && (!c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled)
-            && !c.leftToMacOS && !fullscreenTagViewed(c) && !ids.contains(c.id) && !parkWhenArrived.contains(c.id) {
+            && !c.leftToMacOS && !fullscreenTagViewed(c) && !ids.contains(c.id) && !placing.parkWhenArrived.contains(c.id) {
             park(c)
             changed = changed || c.parked
         }
@@ -112,25 +191,25 @@ extension MacWindowSystem {
 
     /// Whether a window shown again is not yet where it was written: its app has not answered.
     func stillArriving() -> Bool {
-        arriving = arriving.filter { id, serial in
+        placing.arriving = placing.arriving.filter { id, serial in
             guard let c = server.clientByIdAll(id), c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled, !c.parked else { return false }
-            return c.mac.confirmedSerial < serial
+            return c.mac.placed.confirmedSerial < serial
         }
-        return !arriving.isEmpty
+        return !placing.arriving.isEmpty
     }
 
     /// The windows that waited for the ones coming back are parked once those on their monitor stand in
     /// view (mango's frame no longer skipped).
     func parkArrived() {
-        guard !parkWhenArrived.isEmpty else { return }
+        guard !placing.parkWhenArrived.isEmpty else { return }
         _ = stillArriving()
-        let held = Set(arriving.keys.compactMap { server.clientByIdAll($0)?.mon?.screen.displayID })
-        let ids = parkWhenArrived.filter { id in
+        let held = Set(placing.arriving.keys.compactMap { server.clientByIdAll($0)?.mon?.screen.displayID })
+        let ids = placing.parkWhenArrived.filter { id in
             server.clientByIdAll(id)?.mon.map { !held.contains($0.screen.displayID) } ?? true
         }
         guard !ids.isEmpty else { return }
-        parkWhenArrived.subtract(ids)
-        for d in Set(skipFrameTimeout.keys).subtracting(held) { monitorStopSkipFrameTimer(d) }
+        placing.parkWhenArrived.subtract(ids)
+        for d in Set(placing.skipFrameTimeout.keys).subtracting(held) { monitorStopSkipFrameTimer(d) }
         if parkDisabled(ids) { server.updateBorders() }
     }
 
@@ -138,30 +217,28 @@ extension MacWindowSystem {
     /// the monitor, at most 100 ms; again from the start when more are resized. A timer, as mango's.
     func monitorCheckSkipFrameTimeout(_ m: Monitor) {
         let d = m.screen.displayID
-        let pending = arriving.keys.filter { server.clientByIdAll($0)?.mon === m }.count   // resizing_count_pending
-        if skipFrameTimeout[d] != nil && resizingCountCurrent[d] == pending { return }
-        skipFrameTimeout[d]?.cancel()
-        resizingCountCurrent[d] = pending
-        let timeout = DispatchWorkItem { [weak self] in
-            MainActor.assumeIsolated { self?.monitorSkipFrameTimeoutCallback(d) }
+        let pending = placing.arriving.keys.filter { server.clientByIdAll($0)?.mon === m }.count   // resizing_count_pending
+        if placing.skipFrameTimeout[d] != nil && placing.resizingCountCurrent[d] == pending { return }
+        placing.skipFrameTimeout[d]?.cancel()
+        placing.resizingCountCurrent[d] = pending
+        placing.skipFrameTimeout[d] = clock.after(0.1) { [weak self] in   // 100ms
+            self?.monitorSkipFrameTimeoutCallback(d)
         }
-        skipFrameTimeout[d] = timeout
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(100), execute: timeout)   // 100ms
     }
 
     /// mango monitor_skip_frame_timeout_callback (monitor.c): no client is waited for any longer, and
     /// the frame is shown: the windows leaving are parked.
     func monitorSkipFrameTimeoutCallback(_ d: CGDirectDisplayID) {
-        arriving.removeAll()
+        placing.arriving.removeAll()
         monitorStopSkipFrameTimer(d)
         parkArrived()
     }
 
     /// mango monitor_stop_skip_frame_timer (monitor.c).
     func monitorStopSkipFrameTimer(_ d: CGDirectDisplayID) {
-        skipFrameTimeout[d]?.cancel()
-        skipFrameTimeout[d] = nil
-        resizingCountCurrent[d] = nil
+        placing.skipFrameTimeout[d]?.cancel()
+        placing.skipFrameTimeout[d] = nil
+        placing.resizingCountCurrent[d] = nil
     }
 
     /// Where mango clips the window at its monitor's edge (client_is_ignore_output_clip is false) and
@@ -176,56 +253,55 @@ extension MacWindowSystem {
     /// Writes the window's frame: each step of an animation, and at its end the frame it is to keep.
     func place(_ c: Client, _ box: CGRect) {
         c.mac.box = box
-        let comingBack = c.mac.comingBack
-        c.mac.comingBack = false
+        let p = c.mac.placed
+        let comingBack = p.comingBack
+        p.comingBack = false
         var held = false
         defer { if comingBack && !held { server.updateBorders() } }
         guard c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled else { return }
         guard !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
         if reachesAnotherMonitor(c, box) {
-            if !c.parked { park(c); c.mac.offEdge = true }
-            if c.mac.offEdge { showEdgePlate(c, box: box) }
+            if !c.parked { park(c); p.offEdge = true }
+            if p.offEdge { showEdgePlate(c, box: box) }
             return
         }
         if c.parked {
-            guard c.mac.offEdge else { return }
-            c.mac.offEdge = false
+            guard p.offEdge else { return }
+            p.offEdge = false
             hideEdgePlate(c.id)
             c.parked = false
-            c.parkRetries = 0
+            p.parkRetries = 0
         }
         guard let q = writer(for: c.pid) else { return }
         var target = box.rounded()
         let final = !c.animation.running
-        if final, let rs = c.refusedSize, !c.isfloating, let m = c.mon,
+        if final, let rs = p.refusedSize, !c.isfloating, let m = c.mon,
            rs.width > target.width + 0.5 || rs.height > target.height + 0.5 {
             let size = CGSize(width: max(rs.width, target.width), height: max(rs.height, target.height))
             target.origin = Self.inwardOrigin(target, size: size, in: layoutBounds(m))
         }
-        let wasMoving = c.mac.moving
-        c.mac.moving = !final
+        let wasMoving = p.moving
+        p.moving = !final
         if target == c.frame && !(final && wasMoving) {
-            if final && c.refusedSize != nil { reconcileFrame(c, c.frame) }   // its tile is where it stands: no longer over
+            if final && p.refusedSize != nil { reconcileFrame(c, c.frame) }   // its tile is where it stands: no longer over
             return
         }
-        let now = CACurrentMediaTime()
         let left = final ? 0 : max(0, Double(c.animation.duration) - Double(getNowInMs() &- c.animation.timeStarted)) / 1000
-        c.ignoreMovesUntil = now + left + 0.4
-        watcher.suppressGeometry(c.id, until: now + left + 0.05)
-        c.writes += 1
+        holdMoves(c, for: left + 0.4, atSource: left + 0.05)
+        p.writes += 1
         let resized = target.size != c.frame.size
         let was = c.frame
         c.frame = target
         if comingBack {
-            c.mac.comingBack = true
+            p.comingBack = true
             held = true
-            let sent = CACurrentMediaTime()
+            let sent = clock.now
             // Back at the size it was parked with: the position alone is written (one answer from the app,
             // not three); verifyFrame's read finds a size that is not its tile's.
-            send(c, q, target, from: nil, setSize: resized || (final && wasMoving), animating: !final && resized) { c in
-                guard c.mac.comingBack else { return }
-                c.mac.comingBack = false
-                wlrLog(.debug, "\(c.appName): window \(c.id) back in \(Int((CACurrentMediaTime() - sent) * 1000)) ms")
+            send(c, q, target, from: nil, setSize: resized || (final && wasMoving), animating: !final && resized) { [weak self] c in
+                guard let self, c.mac.placed.comingBack else { return }
+                c.mac.placed.comingBack = false
+                wlrLog(.debug, "\(c.appName): window \(c.id) back in \(Int((self.clock.now - sent) * 1000)) ms")
             }
         } else {
             send(c, q, target, from: was, setSize: resized, animating: !final && resized)
@@ -237,7 +313,7 @@ extension MacWindowSystem {
     /// app has answered, its border stays where the app last put it.
     func send(_ c: Client, _ q: WindowWriter, _ frame: CGRect, from: CGRect?, setSize: Bool, animating: Bool = false,
               then: (@MainActor (Client) -> Void)? = nil) {
-        let w = c.mac
+        let w = c.mac.placed
         if w.inSync { w.applied = from }
         w.writeSerial &+= 1
         let serial = w.writeSerial
@@ -245,8 +321,8 @@ extension MacWindowSystem {
             guard let self else { return }
             defer { self.parkArrived() }
             guard let c, self.server.clientByIdAll(c.id) === c else { return }
-            c.mac.applied = r
-            c.mac.confirmedSerial = serial
+            c.mac.placed.applied = r
+            c.mac.placed.confirmedSerial = serial
             then?(c)
             self.bordersFollow()
         }
@@ -254,12 +330,12 @@ extension MacWindowSystem {
 
     /// One updateBorders per main-queue turn for all the apps that answered in it (a flag, no timer).
     func bordersFollow() {
-        guard !bordersFollowQueued else { return }
-        bordersFollowQueued = true
+        guard !placing.bordersFollowQueued else { return }
+        placing.bordersFollowQueued = true
         DispatchQueue.main.async { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
-                self.bordersFollowQueued = false
+                self.placing.bordersFollowQueued = false
                 self.server.updateBorders()
             }
         }
@@ -268,49 +344,46 @@ extension MacWindowSystem {
     func verifyFrame(_ c: Client) {
         guard let q = writer(for: c.pid) else { return }
         readBack(c, q)
-        let late = max(0.6, c.ignoreMovesUntil - CACurrentMediaTime() + 0.15)
-        DispatchQueue.main.asyncAfter(deadline: .now() + late) { [weak self] in
-            MainActor.assumeIsolated {
-                guard let self, self.server.clientByIdAll(c.id) === c else { return }
-                self.readBack(c, q)
-            }
+        let late = max(0.6, c.mac.placed.ignoreMovesUntil - clock.now + 0.15)
+        clock.after(late) { [weak self] in
+            guard let self, self.server.clientByIdAll(c.id) === c else { return }
+            self.readBack(c, q)
         }
     }
 
     func readBack(_ c: Client, _ q: WindowWriter) {
-        let settled = CACurrentMediaTime() >= c.ignoreMovesUntil
-        let write = c.writes
+        let settled = !answersPortsWrite(c)
+        let write = c.mac.placed.writes
         q.readBack(c.element) { [weak self] actual in
-            self?.reconcileFrame(c, actual, settled: settled && c.writes == write)
+            self?.reconcileFrame(c, actual, settled: settled && c.mac.placed.writes == write)
         }
     }
 
     func keepPlaced(_ c: Client, at target: CGRect) {
-        if c.retryTarget != target { c.retryTarget = target; c.retryCount = 0 }
-        guard c.retryCount < 3 else {
-            if c.retryCount == 3 {
-                c.retryCount += 1
+        let p = c.mac.placed
+        if p.retryTarget != target { p.retryTarget = target; p.retryCount = 0 }
+        guard p.retryCount < 3 else {
+            if p.retryCount == 3 {
+                p.retryCount += 1
                 wlrLog(.debug, "\(c.appName): window \(c.id) keeps \(c.frame), not its tile \(target); left there")
             }
             return
         }
-        let now = CACurrentMediaTime()
-        let wait = c.lastReassert + 1.0 - now
+        let now = clock.now
+        let wait = p.lastReassert + 1.0 - now
         if wait <= 0 {
-            c.retryCount += 1
-            c.lastReassert = now
+            p.retryCount += 1
+            p.lastReassert = now
             place(c, target)
             return
         }
-        guard !c.deferredRetryPending else { return }
-        c.deferredRetryPending = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + wait + 0.05) { [weak self] in
-            MainActor.assumeIsolated {
-                c.deferredRetryPending = false
-                guard let self, self.server.clientByIdAll(c.id) === c, c.mac.box == target, !c.parked,
-                      !c.animation.running, let q = self.writer(for: c.pid) else { return }
-                self.readBack(c, q)
-            }
+        guard !p.deferredRetryPending else { return }
+        p.deferredRetryPending = true
+        clock.after(wait + 0.05) { [weak self] in
+            p.deferredRetryPending = false
+            guard let self, self.server.clientByIdAll(c.id) === c, c.mac.box == target, !c.parked,
+                  !c.animation.running, let q = self.writer(for: c.pid) else { return }
+            self.readBack(c, q)
         }
     }
 
@@ -329,12 +402,13 @@ extension MacWindowSystem {
     func reconcileFrame(_ c: Client, _ actual: CGRect?, settled: Bool = false) {
         guard let actual = actual ?? windowServerFrame(c.id), server.clientByIdAll(c.id) === c, !c.parked,
               !c.animation.running, server.grabClient !== c else { return }
-        let refused = c.refusedSize
-        defer { if c.refusedSize != refused { server.onStateChange?() } }
-        if MangoServer.frameDistance(actual, c.mac.box) <= 0.5 { c.retryCount = 0; c.refusedSize = nil }
-        if let rs = c.refusedSize, actual.width < rs.width - 0.5 || actual.height < rs.height - 0.5 {
+        let p = c.mac.placed
+        let refused = p.refusedSize
+        defer { if p.refusedSize != refused { server.onStateChange?() } }
+        if MangoServer.frameDistance(actual, c.mac.box) <= 0.5 { p.retryCount = 0; p.refusedSize = nil }
+        if let rs = p.refusedSize, actual.width < rs.width - 0.5 || actual.height < rs.height - 0.5 {
             let t = c.mac.box
-            c.refusedSize = actual.width > t.width + 0.5 || actual.height > t.height + 0.5 ? actual.size : nil
+            p.refusedSize = actual.width > t.width + 0.5 || actual.height > t.height + 0.5 ? actual.size : nil
         }
         // AX answers before the app has moved the window: a move not yet seen is only acted on once settled.
         if !settled && abs(actual.width - c.mac.box.width) <= 0.5 && abs(actual.height - c.mac.box.height) <= 0.5 { return }
@@ -345,7 +419,7 @@ extension MacWindowSystem {
         guard d > 0.5 || offLayout else { return }
         if c.isfloating { userMoved(c, to: actual, resized: false, dragging: false); return }
         c.frame = actual
-        let now = CACurrentMediaTime()
+        let now = clock.now
         let target = c.mac.box
         if !c.isfloating, !SCRATCHPAD_SHOWN(c), MangoServer.frameDistance(actual, target) > 0.5 {
             let larger = actual.width > target.width + 0.5 || actual.height > target.height + 0.5
@@ -353,26 +427,25 @@ extension MacWindowSystem {
             let atTile = abs(actual.minX - target.minX) <= 1 && abs(actual.minY - target.minY) <= 1
             let atInward = abs(actual.minX - inward.x) <= 1 && abs(actual.minY - inward.y) <= 1
             let refused = (atTile || atInward) && larger
-            if !larger { c.refusedSize = nil }
+            if !larger { p.refusedSize = nil }
             if refused {
-                c.refusedSize = actual.size
+                p.refusedSize = actual.size
                 if !atInward, let q = writer(for: c.pid) {
                     c.frame = CGRect(origin: inward, size: actual.size)
-                    c.ignoreMovesUntil = now + 0.5
-                    watcher.suppressGeometry(c.id, until: c.ignoreMovesUntil)
+                    holdMoves(c, for: 0.5, atSource: 0.5)
                     send(c, q, c.frame, from: actual, setSize: false)
                     server.updateBorders()
                     return
                 }
                 if settled {
-                    if c.retryCount == 0 {
+                    if p.retryCount == 0 {
                         keepPlaced(c, at: target)
-                        if now - c.lastReassert < 0.01 { return }
+                        if now - p.lastReassert < 0.01 { return }
                     }
                 }
-            } else if now - c.lastReassert > 1.0 || actual.width <= target.width + 0.5 && actual.height <= target.height + 0.5 {
+            } else if now - p.lastReassert > 1.0 || actual.width <= target.width + 0.5 && actual.height <= target.height + 0.5 {
                 keepPlaced(c, at: target)
-                if now - c.lastReassert < 0.01 { return }
+                if now - p.lastReassert < 0.01 { return }
             }
         }
         server.updateBorders()
@@ -388,12 +461,11 @@ extension MacWindowSystem {
     func park(_ c: Client) {
         // Port extension: chutney_fullscreen_tag (leftToMacOS, fullscreenTagViewed)
         guard !c.parked, !c.leftToMacOS, !fullscreenTagViewed(c), let m = monitor(of: c), let q = writer(for: c.pid) else { return }
-        c.mac.moving = false
+        c.mac.placed.moving = false
         c.parked = true
         let was = c.frame
         c.frame = CGRect(origin: parkedOrigin(c, on: m), size: c.frame.size)
-        c.ignoreMovesUntil = CACurrentMediaTime() + 0.5
-        watcher.suppressGeometry(c.id, until: c.ignoreMovesUntil)
+        holdMoves(c, for: 0.5, atSource: 0.5)
         send(c, q, c.frame, from: was, setSize: false)
         q.readBack(c.element) { [weak self] actual in self?.keepHidden(c, seenAt: actual) }
     }
@@ -415,7 +487,7 @@ extension MacWindowSystem {
         for c in server.clientsAll where c.parked {
             guard let m = monitor(of: c), c.frame.origin != parkedOrigin(c, on: m) else { continue }
             c.parked = false
-            c.parkRetries = 0
+            c.mac.placed.parkRetries = 0
             park(c)
         }
     }
@@ -424,8 +496,8 @@ extension MacWindowSystem {
         guard server.clientByIdAll(c.id) === c, c.parked, !missionControl.isActive, let m = monitor(of: c),
               let actual = actual ?? windowServerFrame(c.id) else { return }
         if Hider.isParked(actual, in: m.screen.frame) { return }
-        guard c.parkRetries < 3 else { return }
-        c.parkRetries += 1
+        guard c.mac.placed.parkRetries < 3 else { return }
+        c.mac.placed.parkRetries += 1
         wlrLog(.debug, "\(c.appName): window \(c.id) is hidden but in view at \(actual); parking it again")
         c.frame = actual
         c.parked = false

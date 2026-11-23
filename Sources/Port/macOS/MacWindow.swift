@@ -7,33 +7,14 @@ final class MacWindow: PlatformWindow {
     var element: AXUIElement
     var frame: CGRect
     var parked = false
-    var ignoreMovesUntil: TimeInterval = 0
-    var lastReassert: TimeInterval = 0
-    var writes = 0
-    var retryTarget: CGRect?
-    var retryCount = 0
-    var parkRetries = 0
-    var deferredRetryPending = false
-    var refusedSize: CGSize?
+    /// What the port wrote to the app and what it answered (Placement).
+    let placed = PlacedWindow()
     /// wlroots' c->scene->node.enabled and c->scene_surface->node.enabled.
     var sceneNodeEnabled = true
     var sceneSurfaceEnabled = true
     /// Where mango's scene node stands (the box with the border), and the window's box the port writes.
     var nodePosition: CGPoint
     var box: CGRect
-    /// Whether the last frame written was a step of an animation.
-    var moving = false
-    /// Parked because the part mango clips away would land on another monitor.
-    var offEdge = false
-    /// Shown again after it was parked, and the app has not yet moved it back: no border till then, as
-    /// wlroots shows the border and the window in one frame.
-    var comingBack = false
-    /// The frames handed to the app and the last one it answered; while they differ the border stands
-    /// where the app last put the window (applied; nil: not in view), as wlroots shows both in one frame.
-    var writeSerial = 0
-    var confirmedSerial = 0
-    var applied: CGRect?
-    var inSync: Bool { writeSerial == confirmedSerial }
     /// Port extension: chutney_fullscreen_tag. On its F tag in macOS fullscreen, in its own Space: macOS
     /// places it, the port writes nothing to it.
     var nativeFullscreen = false
@@ -68,38 +49,6 @@ extension Client {
     var element: AXUIElement {
         get { mac.element }
         set { mac.element = newValue }
-    }
-    var ignoreMovesUntil: TimeInterval {
-        get { mac.ignoreMovesUntil }
-        set { mac.ignoreMovesUntil = newValue }
-    }
-    var lastReassert: TimeInterval {
-        get { mac.lastReassert }
-        set { mac.lastReassert = newValue }
-    }
-    var writes: Int {
-        get { mac.writes }
-        set { mac.writes = newValue }
-    }
-    var retryTarget: CGRect? {
-        get { mac.retryTarget }
-        set { mac.retryTarget = newValue }
-    }
-    var retryCount: Int {
-        get { mac.retryCount }
-        set { mac.retryCount = newValue }
-    }
-    var parkRetries: Int {
-        get { mac.parkRetries }
-        set { mac.parkRetries = newValue }
-    }
-    var deferredRetryPending: Bool {
-        get { mac.deferredRetryPending }
-        set { mac.deferredRetryPending = newValue }
-    }
-    var refusedSize: CGSize? {
-        get { mac.refusedSize }
-        set { mac.refusedSize = newValue }
     }
     var nativeFullscreen: Bool {
         get { mac.nativeFullscreen }
