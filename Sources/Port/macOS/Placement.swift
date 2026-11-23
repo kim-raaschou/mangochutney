@@ -336,6 +336,8 @@ extension MacWindowSystem {
             let t = c.mac.box
             c.refusedSize = actual.width > t.width + 0.5 || actual.height > t.height + 0.5 ? actual.size : nil
         }
+        // AX answers before the app has moved the window: a move not yet seen is only acted on once settled.
+        if !settled && abs(actual.width - c.mac.box.width) <= 0.5 && abs(actual.height - c.mac.box.height) <= 0.5 { return }
         let d = abs(actual.minX - c.frame.minX) + abs(actual.minY - c.frame.minY)
             + abs(actual.width - c.frame.width) + abs(actual.height - c.frame.height)
         let offLayout = !c.isfloating && !SCRATCHPAD_SHOWN(c)
