@@ -273,6 +273,15 @@ final class EngineRig {
         frame()
     }
 
+    /// The run loop as settle, until `done` holds, at most `seconds`: as long as a slow machine needs, no longer.
+    func settle(until done: () -> Bool, atMost seconds: TimeInterval = 2) {
+        let end = Date().addingTimeInterval(seconds)
+        while !done() && Date() < end {
+            RunLoop.main.run(until: min(end, Date().addingTimeInterval(0.016)))
+            server.mac.frameClock.fire()
+        }
+    }
+
     /// The run loop for `seconds`, with an output frame every 16 ms (the tests' display link).
     func settle(_ seconds: TimeInterval = 0.05) {
         let end = Date().addingTimeInterval(seconds)

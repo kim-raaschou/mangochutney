@@ -44,7 +44,7 @@ final class BorderOnRefusedTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         r.settle()
         _ = r.server.dispatch(Dispatch(name: "view", args: ["1"]))
-        r.settle()
+        r.settle(until: { b.parked })
         XCTAssertTrue(b.parked)
         _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         r.frame()
@@ -52,7 +52,7 @@ final class BorderOnRefusedTests: MangoTestCase {
         XCTAssertTrue(b.mac.comingBack, "written, not yet moved")
         XCTAssertEqual(r.app.writes.last { $0.id == 2 }?.setSize, false, "back at its size: the position alone")
         XCTAssertFalse(r.server.mac.shownBorders(fake.borderSpecs).contains { $0.id == 2 }, "no border before the window")
-        r.settle()
+        r.settle(until: { !b.mac.comingBack })
         XCTAssertFalse(b.mac.comingBack)
         XCTAssertTrue(r.server.mac.shownBorders(fake.borderSpecs).contains { $0.id == 2 }, "the border with the window")
     }

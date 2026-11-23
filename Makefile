@@ -65,7 +65,7 @@ icon:
 	cp dist/icon/Assets.car dist/icon/AppIcon.icns Resources/
 
 test:
-	$(if $(XCODE_DEV),DEVELOPER_DIR=$(XCODE_DEV)) swift test
+	$(if $(XCODE_DEV),DEVELOPER_DIR=$(XCODE_DEV)) swift test --parallel   # most tests wait on the run loop, not the CPU
 
 # Validate the shipped default config with the freshly built parser.
 check: build
