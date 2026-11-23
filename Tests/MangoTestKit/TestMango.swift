@@ -60,7 +60,8 @@ package final class TestMango {
 
     /// A new toplevel, mapped as mango's mapnotify maps it, an app of its own. The title names it in the tests.
     @discardableResult
-    package func map(_ title: String, size: CGSize = CGSize(width: 800, height: 600), dialog: Bool = false) -> Client {
+    package func map(_ title: String, size: CGSize = CGSize(width: 800, height: 600), dialog: Bool = false,
+                     parent: String? = nil) -> Client {
         let frame = CGRect(origin: .zero, size: size)
         let surface = FakeSurface(frame: frame, isFloatType: dialog)
         if dialog {   // a dialog has a fixed size: its min and max are its size
@@ -70,6 +71,7 @@ package final class TestMango {
         let c = Client(id: nextID, pid: pid_t(nextID), platform: surface, bundleId: "",
                        appName: title, title: title, monitor: server.selectedMonitor, tags: 0, frame: frame)
         nextID += 1
+        if let parent { wlroots.parents[c.id] = client(parent).id }
         wlroots.stacking.append(c.id)
         server.handleClientMap(c)
         return c
@@ -207,8 +209,18 @@ package final class TestMango {
     /// The tags viewed on the selected monitor.
     package var viewedTags: UInt32 { monitor.tagset[monitor.seltags] }
 
+    /// Whether a monitor is in the overview.
+    package var anyOverview: Bool { server.monitors.contains { $0.isoverview } }
+
     /// A client's box, with its border (mango's geom).
     package func geom(_ title: String) -> CGRect { client(title).geom }
+
+    /// A dispatcher aimed at a client, as mmsg's `client,<id>` aims it.
+    package func run(_ name: String, _ args: [String] = [], on c: Client, file: StaticString = #filePath, line: UInt = #line) {
+        if let error = server.dispatch(Dispatch(name: name, args: args), target: c, rescan: false) {
+            XCTFail("\(name): \(error)", file: file, line: line)
+        }
+    }
 
     /// The clients' commits of the sizes mango configured, then one output frame on every monitor mango
     /// asked to draw on.

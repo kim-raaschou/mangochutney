@@ -123,9 +123,13 @@ package final class FakeWlroots: WindowSystem {
 
     package private(set) var spawned: [String] = []
     package func spawn(_ command: String) { spawned.append(command) }
-    package func spawnShell(_ command: String) { spawned.append(command) }
+    /// The commands run through the shell (spawn_shell), also in `spawned`.
+    package private(set) var shelled: [String] = []
+    package func spawnShell(_ command: String) { spawned.append(command); shelled.append(command) }
 
-    package func clientGetParent(_ c: Client) -> Client? { nil }
+    /// The xdg toplevel's parent, as the test sets it.
+    package var parents: [ClientID: ClientID] = [:]
+    package func clientGetParent(_ c: Client) -> Client? { parents[c.id].flatMap { server.clientByIdAll($0) } }
     package func toplevelFromWlrSurface(_ surface: ClientID) -> Client? { server.clientByIdAll(surface) }
     /// The size mango configures (xdg_toplevel configure); the client takes it when it commits, after
     /// mango's turn (TestMango.frame), as the facit client does.
