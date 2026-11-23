@@ -165,7 +165,9 @@ final class FakeWindowSystem: MacWindowSystem {
     override func warp(to p: CGPoint) { warps.append(p); fakePointer = p }
     /// The borders and bars as mango hands them to the port; the port then draws them as it does.
     var borderSpecs: [BorderSpec] = []
-    override func drawBorders(_ specs: [BorderSpec]) { borderSpecs = specs; super.drawBorders(specs) }
+    /// How many times mango has drawn the borders.
+    var bordersDrawn = 0
+    override func drawBorders(_ specs: [BorderSpec]) { borderSpecs = specs; bordersDrawn += 1; super.drawBorders(specs) }
     var tabStrips: [TabStrip] = [], groupStrips: [TabStrip] = []
     override func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) { tabStrips = strips; super.drawTabBars(strips, style: style) }
     override func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) { groupStrips = strips; super.drawGroupBars(strips, style: style) }

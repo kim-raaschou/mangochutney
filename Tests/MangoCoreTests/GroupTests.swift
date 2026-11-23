@@ -112,10 +112,12 @@ final class GroupTests: MangoTestCase {
         XCTAssertFalse(c(r, 900_702).groupParked)
     }
 
+    /// The group bar as the port shows it, once the apps have answered.
     func groupBar(_ r: EngineRig) -> TabStrip? {
         r.server.drawsOverlays = true
+        r.settle()
         r.server.drawBars()
-        return (r.server.system as! FakeWindowSystem).groupStrips.first
+        return (r.server.system as! FakeWindowSystem).shownGroupStrips.first
     }
 
     func testTheGroupBarNamesTheMembers() {

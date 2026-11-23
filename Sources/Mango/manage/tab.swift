@@ -275,7 +275,7 @@ package extension MangoServer {
         if count < 2 { return nil }
         guard c.tabBarEnabled else { return nil }   // not in mango: a disabled node is not drawn
 
-        var anchor = animationCurrent(c)
+        var anchor = c.animation.current
         if c.animation.running && c.animation.action == .open {
             anchor = c.geom
         }

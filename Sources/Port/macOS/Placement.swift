@@ -328,7 +328,8 @@ extension MacWindowSystem {
         }
     }
 
-    /// One updateBorders per main-queue turn for all the apps that answered in it (a flag, no timer).
+    /// The borders and bars shown again once per main-queue turn for all the apps that answered in it (a
+    /// flag, no timer); mango's are unchanged by an answer.
     func bordersFollow() {
         guard !placing.bordersFollowQueued else { return }
         placing.bordersFollowQueued = true
@@ -336,7 +337,7 @@ extension MacWindowSystem {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.placing.bordersFollowQueued = false
-                self.server.updateBorders()
+                self.showAgain()
             }
         }
     }

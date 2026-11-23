@@ -175,7 +175,7 @@ package extension MangoServer {
                     groups.append(s)
                 }
             }
-            for f in clients where f.mon === m && f.isTabFocus && tabIsMember(f) && !f.parked {   // not in mango: parked is the port's
+            for f in clients where f.mon === m && f.isTabFocus && tabIsMember(f) {
                 if let s = clientDrawTabbar(f, computeEdgeOffsets(f)) {
                     strips.append(s)
                 }
@@ -186,11 +186,6 @@ package extension MangoServer {
         system.drawTabBars(strips, style: style)
         style.decorate = mangoBarDecorationApplyConfig(config.groupbardata, mango: .mangoGroupBar)
         system.drawGroupBars(groups, style: style)
-    }
-
-    // not in mango: c->animation.current; a window standing still is drawn where it stands (an app may refuse its size)
-    func animationCurrent(_ c: Client) -> CGRect {
-        c.animation.running ? c.animation.current : c.frame.insetBy(dx: -c.bw, dy: -c.bw)
     }
 
     // not in mango: the edge clipping both bars share, as client_draw_tabbar and client_draw_group_bar write it
@@ -215,7 +210,7 @@ package extension MangoServer {
          * not children of the window) would float over the visible window. */
         if c.isTabHidden { return nil }
         let members = groupMembers(c)
-        var current = animationCurrent(c)
+        var current = c.animation.current
         // Port extension: not in mango. The bars inside the border (chutney_macos_appearance).
         let ported = barsInsideBorder
         if ported { current = current.insetBy(dx: borderWidth(c, on: m), dy: borderWidth(c, on: m)) }

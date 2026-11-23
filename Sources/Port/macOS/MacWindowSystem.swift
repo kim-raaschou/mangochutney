@@ -88,6 +88,11 @@ class MacWindowSystem: WindowSystem {
     var clock: any PortClock = HostClock()
     /// What the frame writes and parks, and the windows waited for (Placement).
     var placing = Placing()
+    /// The borders and bars mango last drew; the port shows them again where the windows stand when an
+    /// app answers (showAgain).
+    private var drawnBorders: [BorderSpec] = []
+    private var drawnTabBars: (strips: [TabStrip], style: TabStripStyle)?
+    private var drawnGroupBars: (strips: [TabStrip], style: TabStripStyle)?
     lazy var edgePlates: EdgePlates = {
         let plates = EdgePlates()
         plates.onClick = { [weak self] id in
@@ -295,19 +300,33 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawBorders(_ specs: [BorderSpec]) {
-        let specs = MacOSAppearance.borders(shownBorders(specs), server.config)
+        drawnBorders = specs
+        showBorders()
+    }
+
+    /// The borders and bars mango last drew, shown again where the windows stand now: an app answered,
+    /// and nothing of mango's changed.
+    func showAgain() {
+        showBorders()
+        if let d = drawnTabBars { showTabBars(d.strips, style: d.style) }
+        if let d = drawnGroupBars { showGroupBars(d.strips, style: d.style) }
+    }
+
+    private func showBorders() {
+        let specs = MacOSAppearance.borders(shownBorders(drawnBorders), server.config)
         borders.update(specs)
         for c in server.clientsAll where c.mac.placed.offEdge { edgePlates.setBorder(c.id, plateBorder(c)) }
     }
 
-    /// The borders macOS shows now. A window coming back from parking gets its border when the app has
-    /// moved it (comingBack). Port extension: chutney_fullscreen_tag. No border for a window in its own
+    /// The borders macOS shows now: mango's, around the window where it stands. A parked window has
+    /// none, and a window coming back from parking gets its border when the app has moved it
+    /// (comingBack). Port extension: chutney_fullscreen_tag. No border for a window in its own
     /// fullscreen Space.
     func shownBorders(_ specs: [BorderSpec]) -> [BorderSpec] {
         specs.compactMap { s in
             guard let c = server.clientByIdAll(s.id) else { return s }
-            if c.leftToMacOS || c.mac.placed.comingBack { return nil }
-            guard let d = lag(c) else { return c.mac.placed.inSync ? s : nil }
+            if c.parked || c.leftToMacOS || c.mac.placed.comingBack { return nil }
+            guard let d = lag(c) else { return nil }
             var s = s
             s.frame = CGRect(x: s.frame.minX + d.dx, y: s.frame.minY + d.dy,
                              width: s.frame.width + d.dw, height: s.frame.height + d.dh)
@@ -315,23 +334,36 @@ class MacWindowSystem: WindowSystem {
         }
     }
 
-    /// How far the window the app last answered for is from mango's box this frame: origin and size
-    /// differences, a smaller window's negative (no CGRect, which would read them as a rect of its own).
+    /// How far the window as macOS shows it is from mango's box this frame (c->animation.current without
+    /// the border): origin and size differences, a smaller window's negative (no CGRect, which would read
+    /// them as a rect of its own).
     struct Lag: Equatable {
         var dx: CGFloat, dy: CGFloat, dw: CGFloat, dh: CGFloat
     }
 
-    /// The window's lag; nil in sync or out of view.
+    /// The window's lag: till its app has answered, where the app last put it; then, standing still, where
+    /// it stands (an app may refuse its size); while it animates, none. Nil out of view.
     func lag(_ c: Client) -> Lag? {
-        guard !c.mac.placed.inSync, let a = c.mac.placed.applied else { return nil }
-        let ref = c.animation.running ? c.animation.current.insetBy(dx: c.bw, dy: c.bw) : c.frame
-        return Lag(dx: a.minX - ref.minX, dy: a.minY - ref.minY, dw: a.width - ref.width, dh: a.height - ref.height)
+        let box = c.animation.current.insetBy(dx: c.bw, dy: c.bw)
+        let shown: CGRect
+        if !c.mac.placed.inSync {
+            guard let a = c.mac.placed.applied else { return nil }
+            shown = a
+        } else if c.animation.running {
+            return Lag(dx: 0, dy: 0, dw: 0, dh: 0)
+        } else {
+            shown = c.frame
+        }
+        return Lag(dx: shown.minX - box.minX, dy: shown.minY - box.minY, dw: shown.width - box.width, dh: shown.height - box.height)
     }
 
-    /// A strip moves with its window's border (lag): bars and border lie together.
-    func followingWindows(_ strips: [TabStrip]) -> [TabStrip] {
-        strips.map { strip in
-            guard let c = server.clientByIdAll(strip.above), let d = lag(c), d.dx != 0 || d.dy != 0 else { return strip }
+    /// A strip moves with its window's border (lag): bars and border lie together. A parked window's tab
+    /// bar is not shown.
+    func followingWindows(_ strips: [TabStrip], tabs: Bool) -> [TabStrip] {
+        strips.compactMap { strip in
+            guard let c = server.clientByIdAll(strip.above) else { return strip }
+            if tabs && c.parked { return nil }
+            guard let d = lag(c), d.dx != 0 || d.dy != 0 else { return strip }
             var s = strip
             s.frame.origin.x += d.dx
             s.frame.origin.y += d.dy
@@ -344,7 +376,12 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) {
-        let strips = followingWindows(strips)
+        drawnTabBars = (strips, style)
+        showTabBars(strips, style: style)
+    }
+
+    private func showTabBars(_ strips: [TabStrip], style: TabStripStyle) {
+        let strips = followingWindows(strips, tabs: true)
         var style = withAppIcons(style, server.config.chutneyTabBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.tabbardata, server.config)
         tabBars.update(strips, style: style, keyFocus: server.focused?.id)
@@ -353,7 +390,12 @@ class MacWindowSystem: WindowSystem {
     }
 
     func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) {
-        let strips = followingWindows(strips)
+        drawnGroupBars = (strips, style)
+        showGroupBars(strips, style: style)
+    }
+
+    private func showGroupBars(_ strips: [TabStrip], style: TabStripStyle) {
+        let strips = followingWindows(strips, tabs: false)
         var style = withAppIcons(style, server.config.chutneyGroupBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.groupbardata, server.config)
         groupBars.update(strips, style: style, keyFocus: server.focused?.id)

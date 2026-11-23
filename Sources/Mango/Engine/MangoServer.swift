@@ -249,10 +249,10 @@ public final class MangoServer {
         guard renderBorder, config.borderpx > 0 else { system.drawBorders([]); return }
         var specs: [BorderSpec] = []
         for m in monitors {
-            for c in clients where c.mon === m && c.platform.sceneNodeEnabled && !c.parked {
+            for c in clients where c.mon === m && c.platform.sceneNodeEnabled {
                 let width = borderWidth(c, on: m)
                 guard width > 0 else { continue }
-                var f = animationCurrent(c).insetBy(dx: c.bw, dy: c.bw)
+                var f = c.animation.current.insetBy(dx: c.bw, dy: c.bw)
                 let top = !barsInsideBorder ? 0
                     : (c.isTabFocus && c.tabBarEnabled ? CGFloat(config.tabBarHeight) : 0) + (clientCheckTabNodeVisible(c, on: m) ? CGFloat(config.groupBarHeight) : 0)
                 f = CGRect(x: f.minX, y: f.minY - top, width: f.width, height: f.height + top)

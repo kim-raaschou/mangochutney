@@ -295,8 +295,10 @@ final class EngineWriteTests: MangoTestCase {
 
         XCTAssertFalse(c.mac.placed.inSync, "written, not yet answered")
         XCTAssertEqual(fake.shownBorderSpecs.first { $0.id == c.id }?.frame, CGRect(x: 50, y: 60, width: 300, height: 400))
+        let drawn = fake.bordersDrawn
         r.settle()
         XCTAssertEqual(fake.shownBorderSpecs.first { $0.id == c.id }?.frame, c.tile, "answered: around its tile")
+        XCTAssertEqual(fake.bordersDrawn, drawn, "shown again by the port: mango's borders are unchanged by an answer")
     }
 
     /// The border is drawn where the window is shown: after the commit has written it, not where it was.
