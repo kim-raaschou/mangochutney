@@ -41,6 +41,8 @@ final class InputRouter: @unchecked Sendable {
     var forward: (_ keyCode: UInt16, _ mods: Modifiers, _ down: Bool, _ pid: pid_t) -> Void = {
         KeyForward.post(keyCode: $0, mods: $1, down: $2, to: $3)
     }
+    /// The time a scroll event is given; the tests set their own.
+    var scrollTime: () -> UInt32 = { InputRouter.eventTime() }
     private var axisApplyTime: UInt32 = 0
     private var axisApplyDir: Int32 = 0
     private var grabbing = false
@@ -286,7 +288,7 @@ final class InputRouter: @unchecked Sendable {
         if s.wantsMouseMoved { onMain { $0.pointerCursorActivity() } }
         var ev = event
         ev.mods = KeyboardOptions.hyperMods(ev.mods, hyper: s.hyper, keyHeld: hyperHeld)
-        guard let axis = Pointer.handleCursorAxis(vertical: ev.vertical, delta: ev.delta, timeMsec: Self.eventTime(),
+        guard let axis = Pointer.handleCursorAxis(vertical: ev.vertical, delta: ev.delta, timeMsec: scrollTime(),
                                                   mods: ev.mods, axisBindings: s.axisBindings, mode: s.keymode,
                                                   axisBindApplyTimeout: s.axisBindApplyTimeout,
                                                   axisApplyTime: &axisApplyTime, axisApplyDir: &axisApplyDir)

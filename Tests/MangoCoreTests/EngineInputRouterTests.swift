@@ -169,13 +169,15 @@ final class MangoInputStateTests: MangoTestCase {
         let a = AxisBinding(mods: hyper, dir: UInt32(DOWN), dispatch: Dispatch(name: "viewtoright"))
         let r = router(axis: [a], timeout: 60)
         r.server = rig.server
+        var now: UInt32 = 1000
+        r.scrollTime = { now }
         for _ in 0..<8 {
             XCTAssertTrue(r.scroll(ScrollEvent(vertical: true, delta: 1, mods: hyper, location: .zero)))
-            Thread.sleep(forTimeInterval: 0.02)
+            now += 20
         }
         rig.settle()
         XCTAssertEqual(rig.monitor.tagset[rig.monitor.seltags], 1 << 1, "one step")
-        Thread.sleep(forTimeInterval: 0.1)
+        now += 100
         _ = r.scroll(ScrollEvent(vertical: true, delta: 1, mods: hyper, location: .zero))
         rig.settle()
         XCTAssertEqual(rig.monitor.tagset[rig.monitor.seltags], 1 << 2, "after a pause")

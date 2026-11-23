@@ -46,11 +46,13 @@ extension MangoServer {
                 mangoError(true, .info, "\(b): these keys held are HYPER (chutney_hyper_modifier), so the binding is never reached; write HYPER")
             }
         }
-        portHooks.configLoaded.append { server in
+        // The type is written out: Swift 6.3 finds the bare trailing closure ambiguous.
+        let syncTheme: @MainActor (MangoServer) -> Void = { server in
             guard ChutneyTheme.sync(configURL: server.configURL, style: server.config.chutneyMacOSAppearance) else { return }
             mangoError(true, .info, "chutney_macos_appearance: \(ChutneyTheme.fileName) written for chutney_macos_appearance=\(server.config.chutneyMacOSAppearance ? 1 : 0)")
             DispatchQueue.main.async { MainActor.assumeIsolated { server.reloadConfig(nil) } }
         }
+        portHooks.configLoaded.append(syncTheme)
         observeMacOSTheme()
     }
 }

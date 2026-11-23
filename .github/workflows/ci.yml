@@ -6,12 +6,14 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: xcode-27   # macOS 27; macos-latest is still macOS 26 with Swift 6.3
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.2.app/Contents/Developer
     steps:
       - uses: actions/checkout@v4
       - name: Toolchain
         run: swift --version
       - name: Tests
-        run: make test
+        run: make test XCODE_DEV=$DEVELOPER_DIR   # the Makefile would otherwise pick the image's default Xcode
       - name: Default config loads with the new parser
         run: make check CONFIG=debug   # reuses the test build instead of a second, release one
