@@ -1,18 +1,14 @@
 # resizewin on tiled windows in tile: the master's width, a stack window's height. One resizewin per check.
-# ours: tile gives the last window of a column the rest of it (a mango bug, docs/afvigelser.md §6).
 config new_is_master=0
 open a
 open b
 open c
 open d
 check
-ours d.height 351
 dispatch resizewin,+100,+0
 check
-ours d.height 351
 dispatch resizewin,+0,+80
 check
-ours d.height 271
 dispatch focusstack,prev
 dispatch resizewin,+0,-40
 check

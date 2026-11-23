@@ -1,11 +1,9 @@
 # resizewin on a stack window in tile changes its share of the stack; the others share the rest alike.
-# ours: tile gives the last window of a column the rest of it (a mango bug, docs/afvigelser.md §6).
 config new_is_master=0
 open a
 open b
 open c
 open d
 check
-ours d.height 351
 dispatch @b resizewin,+0,+100
 check

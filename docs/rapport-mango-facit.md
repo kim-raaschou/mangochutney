@@ -6,9 +6,9 @@ testede vores egen læsning af mangos kode, spørger vi nu mango selv og holder 
 ## Kort fortalt
 
 - **Mango svarer nu selv** på 315 scenarier og 56 config-filer. Vores kerne giver det samme svar i dem
-  alle, bortset fra 48 steder, hvor vi med vilje svarer anderledes, og hvert af dem er markeret og
+  alle, bortset fra 19 steder, hvor vi med vilje svarer anderledes, og hvert af dem er markeret og
   står i `docs/afvigelser.md`.
-- **Syv fejl i kernen er fundet og rettet**, som 854 tests ikke fandt.
+- **Otte fejl i kernen er fundet og rettet**, som 854 tests ikke fandt.
 - **203 Swift-tests er erstattet** af mangos egne svar. Mango var enig med hver eneste af dem.
 - **Dækningen af kernen steg** fra 89,0 % til 92,9 %; mangos svar alene dækker 76,5 %.
 - **Testene af mango kan læses uden Swift**: et scenarie er få linjer som `open a`, `key super+j`,
@@ -50,6 +50,7 @@ Alle er rettet til mangos opførsel og låst af det scenarie, der fandt dem.
 | et nyt vindue (map) | `resize`, ingen `arrange` | `arrange`, så et nyt vindue i overcircle stod i midten |
 | `global_key_binding` i config'en | starter | gik ned, før der var en skærm |
 | `default_master_factor=inf` | 0,9 (klemt) | 0,1 |
+| `resizewin` på en stak i tile | regner andelene i `double`, hvor C's typer siger det | regnede i `float`: én pixel forkert |
 
 Undervejs blev en afvigelse, vi troede fandtes, afkræftet: den lå i testlaget, ikke i kernen.
 
@@ -96,14 +97,19 @@ mango er for det, mangos svar ikke kan vise.
 
 ## Forskelle, vi har med vilje
 
-48 `ours`-linjer markerer, hvor vi svarer anderledes med vilje, alle med en henvisning:
+19 `ours`-linjer markerer, hvor vi svarer anderledes med vilje, alle med en henvisning:
 
-- **Mango-fejl, vi retter (§6):** tile giver det sidste vindue i en kolonne resten, CRLF-linjer,
-  `incgaps` på special-tagget, en flydende fuldskærmsregel, `vertical_grid` med et flydende vindue.
-  Mango selv bekræftede hver beskrivelse i §6.
+- **Mango-fejl, vi retter (§6):** CRLF-linjer, `incgaps` på special-tagget, en flydende
+  fuldskærmsregel, `vertical_grid` med et flydende vindue. Mango selv bekræftede hver beskrivelse i §6.
 - **Tvunget af macOS (§3):** skærmnavne med mellemrum (`get tag`), relativ `source=` læses fra
   config-mappen, bindinger på portens taster, `dim_*`-nøgler, macOS ikke kan.
 - **Swift:** `nan` læses som 0.
+
+Afrundingen i tile (det sidste vindue i en kolonne kan mangle en pixel) følger vi siden 23. november
+som mango: den var usynlig i praksis og stod for 29 af de oprindelige 48 linjer. Den står i
+`docs/afvigelser.md` §7, mango-fejl vi følger, klar til at blive meldt til mango. Da rettelsen gik ud,
+viste facit en fejl, den havde skjult: vores `resizewin` i tile regnede i `float`, hvor mango regner
+i `double`. Den er rettet.
 
 ## Testlaget blev bedre undervejs
 

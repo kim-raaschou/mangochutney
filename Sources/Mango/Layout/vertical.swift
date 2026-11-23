@@ -53,7 +53,6 @@ package extension MangoServer {
                 r = MANGO_MIN(n, Int32(m.pertag.nmasters[tag])) - i
                 if c.masterInnerPer > 0.0 {
                     wd = i32(Double(masterSurplusWidth) * Double(c.masterInnerPer) / Double(masterSurplusRatio))
-                    if r == 1 { wd = w.width - mx - curGapoh }   // not in mango: the last one takes the rest, as in mango's own center_tile (a mango bug, docs/afvigelser.md §6)
                     masterSurplusWidth = masterSurplusWidth - wd
                     masterSurplusRatio = Float(Double(masterSurplusRatio) - Double(c.masterInnerPer))
                     c.masterMfactPer = CGFloat(mfact)
@@ -68,7 +67,6 @@ package extension MangoServer {
                 r = n - i
                 if c.stackInnerPer > 0.0 {
                     wd = i32(Double(slaveSurplusWidth) * Double(c.stackInnerPer) / Double(slaveSurplusRatio))
-                    if r == 1 { wd = w.width - tx - curGapoh }   // not in mango: the last one takes the rest, as in mango's own center_tile (a mango bug, docs/afvigelser.md §6)
                     slaveSurplusWidth = slaveSurplusWidth - wd
                     slaveSurplusRatio = Float(Double(slaveSurplusRatio) - Double(c.stackInnerPer))
                     c.masterMfactPer = CGFloat(mfact)

@@ -88,7 +88,6 @@ package extension MangoServer {
                 r = MANGO_MIN(n, Int32(m.pertag.nmasters[tag])) - i
                 if c.masterInnerPer > 0.0 {
                     h = i32(Double(masterSurplusHeight) * Double(c.masterInnerPer) / Double(masterSurplusRatio))
-                    if r == 1 { h = w.height - my - curGappov }   // not in mango: the last one takes the rest, as in mango's own center_tile (a mango bug, docs/afvigelser.md §6)
                     masterSurplusHeight = masterSurplusHeight - h
                     masterSurplusRatio = Float(Double(masterSurplusRatio) - Double(c.masterInnerPer))
                     c.masterMfactPer = CGFloat(mfact)
@@ -103,7 +102,6 @@ package extension MangoServer {
                 r = n - i
                 if c.stackInnerPer > 0.0 {
                     h = i32(Double(slaveSurplusHeight) * Double(c.stackInnerPer) / Double(slaveSurplusRatio))
-                    if r == 1 { h = w.height - ty - curGappov }   // not in mango: the last one takes the rest, as in mango's own center_tile (a mango bug, docs/afvigelser.md §6)
                     slaveSurplusHeight = slaveSurplusHeight - h
                     slaveSurplusRatio = Float(Double(slaveSurplusRatio) - Double(c.stackInnerPer))
                     c.masterMfactPer = CGFloat(mfact)
@@ -172,7 +170,6 @@ package extension MangoServer {
                 r = MANGO_MIN(n, Int32(m.pertag.nmasters[tag])) - i
                 if c.masterInnerPer > 0.0 {
                     h = i32(Double(masterSurplusHeight) * Double(c.masterInnerPer) / Double(masterSurplusRatio))
-                    if r == 1 { h = w.height - my - curGappov }   // not in mango: the last one takes the rest, as in mango's own center_tile (a mango bug, docs/afvigelser.md §6)
                     masterSurplusHeight = masterSurplusHeight - h
                     masterSurplusRatio = Float(Double(masterSurplusRatio) - Double(c.masterInnerPer))
                     c.masterMfactPer = CGFloat(mfact)
@@ -188,7 +185,6 @@ package extension MangoServer {
                 r = n - i
                 if c.stackInnerPer > 0.0 {
                     h = i32(Double(slaveSurplusHeight) * Double(c.stackInnerPer) / Double(slaveSurplusRatio))
-                    if r == 1 { h = w.height - ty - curGappov }   // not in mango: the last one takes the rest, as in mango's own center_tile (a mango bug, docs/afvigelser.md §6)
                     slaveSurplusHeight = slaveSurplusHeight - h
                     slaveSurplusRatio = Float(Double(slaveSurplusRatio) - Double(c.stackInnerPer))
                     c.masterMfactPer = CGFloat(mfact)

@@ -202,7 +202,8 @@ enum FitLayout {
 
     /// resizewin until the window is back at `to` on `axis`, each offset from what the one before did:
     /// mango's resizewin works from the ratios it finds, so the same offset the other way does not land
-    /// where it began. Its own ratio is the one resizewin changed, so the others are back too.
+    /// where it began. Its own ratio is the one resizewin changed, so the others are back too, within
+    /// a pixel of mango's rounding.
     static func putBack(_ server: MangoServer, _ c: Client, _ axis: Axis, to target: CGFloat, offset: Int, grew: CGFloat) {
         var k = grew / CGFloat(offset)
         for _ in 0..<8 {

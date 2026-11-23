@@ -1,5 +1,4 @@
 # the pointer moved over the windows: sloppy focus, and onto the other monitor.
-# ours: tile gives the last window of a column the rest of it (a mango bug, docs/afvigelser.md §6).
 monitors 2
 open a
 open b
@@ -15,4 +14,3 @@ check
 open d
 pointer 300,500
 check
-ours a.height 351

@@ -1,6 +1,5 @@
 # mmsg get in the states a client and a tag can be in: a group, the scratchpad, urgent, the overview,
 # fullscreen and global.
-# ours: tile gives the last window of a column the rest of it (a mango bug, docs/afvigelser.md §6).
 config focus_on_activate=0
 open a
 open b
@@ -8,12 +7,10 @@ open c
 open d
 dispatch groupjoin,down
 get all-clients
-ours clients.3.height 351
 get focusing-client
 get client @c
 dispatch @a minimized
 get client @a
-ours height 351
 get all-tags
 dispatch @b togglefullscreen
 get client @b
@@ -28,4 +25,3 @@ dispatch setlayout,scroller
 get all-tags
 get layouts
 check
-ours a.height 351

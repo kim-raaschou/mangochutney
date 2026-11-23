@@ -178,7 +178,12 @@ final class FitLayoutTests: MangoTestCase {
         XCTAssertNotNil(FitLayout.plan(r.server, r.monitor), "the column has room for 400 + 380")
         let tiles = r.server.tiledClients(r.monitor).map(\.geom)
         FitLayout.fit(r.server)
-        XCTAssertEqual(r.server.tiledClients(r.monitor).map(\.geom), tiles, "put back")
+        let back = r.server.tiledClients(r.monitor).map(\.geom)
+        XCTAssertEqual(back.count, tiles.count)
+        for (b, t) in zip(back, tiles) {   // within a pixel: mango's tile rounds each share down
+            XCTAssertEqual(b.minX, t.minX, accuracy: 1, "put back"); XCTAssertEqual(b.minY, t.minY, accuracy: 1, "put back")
+            XCTAssertEqual(b.width, t.width, accuracy: 1, "put back"); XCTAssertEqual(b.height, t.height, accuracy: 1, "put back")
+        }
         r.settle(1.5)
         XCTAssertNil(FitLayout.plan(r.server, r.monitor), "not offered again")
         XCTAssertEqual(fake(r).fitNotification?.fit, false, "the notification says there is no room")

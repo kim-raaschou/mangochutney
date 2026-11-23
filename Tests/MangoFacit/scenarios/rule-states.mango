@@ -1,5 +1,4 @@
 # window_rule: is_global, is_overlay, is_fullscreen, is_fake_fullscreen, no_border.
-# ours: tile gives the last window of a column the rest of it (a mango bug, docs/afvigelser.md §6).
 config new_is_master=0
 config window_rule=app_id:b,is_fullscreen:1
 config window_rule=app_id:c,is_global:1
@@ -17,7 +16,5 @@ open e
 check
 open f
 check
-ours f.height 209
 dispatch view,2
 check
-ours f.height 209
