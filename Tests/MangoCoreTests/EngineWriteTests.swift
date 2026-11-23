@@ -280,6 +280,25 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertNil(specs.first { $0.id == f.id }?.clip, "a floating window is not clipped")
     }
 
+    /// Till the app has answered a write to a larger tile, the border shown stays around the window where
+    /// the app last put it: a window growing has a negative lag, read as such.
+    func testTheBorderShownStaysOnAGrowingWindowTillItsAppAnswers() {
+        let r = EngineRig()
+        r.server.renderBorder = true
+        r.server.drawsOverlays = true
+        r.server.config.borderpx = 4
+        let fake = r.server.system as! FakeWindowSystem
+        let c = r.window(1, frame: CGRect(x: 50, y: 60, width: 300, height: 400))
+
+        r.server.arrange(r.monitor, false, false)
+        r.frame()
+
+        XCTAssertFalse(c.mac.placed.inSync, "written, not yet answered")
+        XCTAssertEqual(fake.shownBorderSpecs.first { $0.id == c.id }?.frame, CGRect(x: 50, y: 60, width: 300, height: 400))
+        r.settle()
+        XCTAssertEqual(fake.shownBorderSpecs.first { $0.id == c.id }?.frame, c.tile, "answered: around its tile")
+    }
+
     /// The border is drawn where the window is shown: after the commit has written it, not where it was.
     func testTheBorderFollowsTheWindowTheCommitWrites() {
         let r = EngineRig()

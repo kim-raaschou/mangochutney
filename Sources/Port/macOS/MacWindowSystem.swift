@@ -54,7 +54,7 @@ class MacWindowSystem: WindowSystem {
     var away: [ClientID: (client: Client, reasons: Set<AwayReason>)] = [:]
     var loggedWindowCount = -1
     var restackGeneration = 0
-    let borders = BorderManager()
+    let borders: any BorderDrawing
     let memory = WindowMemory()
     var onStatusChange: (() -> Void)?
     var userDrag: UserDrag?
@@ -66,8 +66,8 @@ class MacWindowSystem: WindowSystem {
     func removeFitNotification() { FitNotification.shared.remove() }
     var dispatchersWarned = Set<String>()
     var pressed: (client: Client, frame: CGRect)?
-    let tabBars = TabBarManager()
-    let groupBars = TabBarManager()
+    let tabBars: any BarDrawing
+    let groupBars: any BarDrawing
     var overviewOverlays: [ObjectIdentifier: OverviewOverlay] = [:]
     var switcherPanel: SwitcherPanel?
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
@@ -132,14 +132,19 @@ class MacWindowSystem: WindowSystem {
     }
     var observers: [NSObjectProtocol] = []
 
-    init(_ server: MangoServer) {
+    /// The borders and bars are drawn by AppKit unless others are given (the tests').
+    init(_ server: MangoServer, borders: (any BorderDrawing)? = nil, tabBars: (any BarDrawing)? = nil,
+         groupBars: (any BarDrawing)? = nil) {
         self.server = server
+        self.borders = borders ?? BorderManager()
+        self.tabBars = tabBars ?? TabBarManager()
+        self.groupBars = groupBars ?? TabBarManager()
         server.onStateChange = { [unowned self] in statusChanged() }
-        tabBars.onSelect = { [weak self] id in self?.barPress(id, isTab: true, right: false, onClose: false) }
-        tabBars.onRightClick = { [weak self] id in self?.barPress(id, isTab: true, right: true, onClose: false) }
-        groupBars.onSelect = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: false) }
-        groupBars.onRightClick = { [weak self] id in self?.barPress(id, isTab: false, right: true, onClose: false) }
-        groupBars.onClose = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: true) }
+        self.tabBars.onSelect = { [weak self] id in self?.barPress(id, isTab: true, right: false, onClose: false) }
+        self.tabBars.onRightClick = { [weak self] id in self?.barPress(id, isTab: true, right: true, onClose: false) }
+        self.groupBars.onSelect = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: false) }
+        self.groupBars.onRightClick = { [weak self] id in self?.barPress(id, isTab: false, right: true, onClose: false) }
+        self.groupBars.onClose = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: true) }
     }
 
     var pointer: CGPoint { Screens.mouseLocation }
@@ -304,30 +309,35 @@ class MacWindowSystem: WindowSystem {
             if c.leftToMacOS || c.mac.placed.comingBack { return nil }
             guard let d = lag(c) else { return c.mac.placed.inSync ? s : nil }
             var s = s
-            s.frame = CGRect(x: s.frame.minX + d.minX, y: s.frame.minY + d.minY,
-                             width: s.frame.width + d.width, height: s.frame.height + d.height)
+            s.frame = CGRect(x: s.frame.minX + d.dx, y: s.frame.minY + d.dy,
+                             width: s.frame.width + d.dw, height: s.frame.height + d.dh)
             return s
         }
     }
 
-    /// How far the window the app last answered for is from mango's box this frame (origin and size
-    /// differences); nil in sync or out of view.
-    func lag(_ c: Client) -> CGRect? {
+    /// How far the window the app last answered for is from mango's box this frame: origin and size
+    /// differences, a smaller window's negative (no CGRect, which would read them as a rect of its own).
+    struct Lag: Equatable {
+        var dx: CGFloat, dy: CGFloat, dw: CGFloat, dh: CGFloat
+    }
+
+    /// The window's lag; nil in sync or out of view.
+    func lag(_ c: Client) -> Lag? {
         guard !c.mac.placed.inSync, let a = c.mac.placed.applied else { return nil }
         let ref = c.animation.running ? c.animation.current.insetBy(dx: c.bw, dy: c.bw) : c.frame
-        return CGRect(x: a.minX - ref.minX, y: a.minY - ref.minY, width: a.width - ref.width, height: a.height - ref.height)
+        return Lag(dx: a.minX - ref.minX, dy: a.minY - ref.minY, dw: a.width - ref.width, dh: a.height - ref.height)
     }
 
     /// A strip moves with its window's border (lag): bars and border lie together.
     func followingWindows(_ strips: [TabStrip]) -> [TabStrip] {
         strips.map { strip in
-            guard let c = server.clientByIdAll(strip.above), let d = lag(c), d.minX != 0 || d.minY != 0 else { return strip }
+            guard let c = server.clientByIdAll(strip.above), let d = lag(c), d.dx != 0 || d.dy != 0 else { return strip }
             var s = strip
-            s.frame.origin.x += d.minX
-            s.frame.origin.y += d.minY
+            s.frame.origin.x += d.dx
+            s.frame.origin.y += d.dy
             for i in s.segments.indices {
-                s.segments[i].frame.origin.x += d.minX
-                s.segments[i].frame.origin.y += d.minY
+                s.segments[i].frame.origin.x += d.dx
+                s.segments[i].frame.origin.y += d.dy
             }
             return s
         }

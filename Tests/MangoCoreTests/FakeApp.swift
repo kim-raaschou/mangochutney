@@ -109,8 +109,32 @@ final class FakeJumpLabel: MangoJumpLabel {
     func destroy() { destroyed = true }
 }
 
+/// The borders the port shows, drawn nowhere.
+@MainActor
+final class FakeBorders: BorderDrawing {
+    var shown: [BorderSpec] = []
+    func update(_ specs: [BorderSpec]) { shown = specs }
+    func forget(_ id: CGWindowID) { shown.removeAll { $0.id == id } }
+    func restack(_ ids: Set<CGWindowID>?, inPlace: (CGWindowID, CGWindowID) -> Bool) {}
+}
+
+/// The tab or group bars the port shows, drawn nowhere.
+@MainActor
+final class FakeBars: BarDrawing {
+    var onSelect: ((CGWindowID) -> Void)?
+    var onClose: ((CGWindowID) -> Void)?
+    var onRightClick: ((CGWindowID) -> Void)?
+    var shown: [TabStrip] = []
+    func update(_ strips: [TabStrip], style: TabStripStyle, keyFocus: CGWindowID?) { shown = strips }
+    func restack(_ ids: Set<CGWindowID>?, inPlace: (CGWindowID, CGWindowID) -> Bool) {}
+}
+
 @MainActor
 final class FakeWindowSystem: MacWindowSystem {
+    init(_ server: MangoServer) {
+        super.init(server, borders: FakeBorders(), tabBars: FakeBars(), groupBars: FakeBars())
+    }
+
     var fakePointer = CGPoint(x: 1, y: 1)
     var fakeModifiers: Modifiers = []
     var quits = 0
@@ -139,11 +163,16 @@ final class FakeWindowSystem: MacWindowSystem {
     var raised: [ClientID] = []
     override func sendNativeRaise(_ c: Client) { raised.append(c.id) }
     override func warp(to p: CGPoint) { warps.append(p); fakePointer = p }
+    /// The borders and bars as mango hands them to the port; the port then draws them as it does.
     var borderSpecs: [BorderSpec] = []
-    override func drawBorders(_ specs: [BorderSpec]) { borderSpecs = specs }
+    override func drawBorders(_ specs: [BorderSpec]) { borderSpecs = specs; super.drawBorders(specs) }
     var tabStrips: [TabStrip] = [], groupStrips: [TabStrip] = []
-    override func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) { tabStrips = strips }
-    override func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) { groupStrips = strips }
+    override func drawTabBars(_ strips: [TabStrip], style: TabStripStyle) { tabStrips = strips; super.drawTabBars(strips, style: style) }
+    override func drawGroupBars(_ strips: [TabStrip], style: TabStripStyle) { groupStrips = strips; super.drawGroupBars(strips, style: style) }
+    /// The borders and bars as the port shows them.
+    var shownBorderSpecs: [BorderSpec] { (borders as! FakeBorders).shown }
+    var shownTabStrips: [TabStrip] { (tabBars as! FakeBars).shown }
+    var shownGroupStrips: [TabStrip] { (groupBars as! FakeBars).shown }
     var overviewCards: [OverviewCard]?, switcherTiles: [SwitcherTilePicture]?
     var specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
     override func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }

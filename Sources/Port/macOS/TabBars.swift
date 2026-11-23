@@ -1,6 +1,18 @@
 import AppKit
 import Mango
 
+/// Where the port's tab and group bars are drawn: AppKit panels (TabBarManager), or the tests' record.
+@MainActor
+public protocol BarDrawing: AnyObject {
+    var onSelect: ((CGWindowID) -> Void)? { get set }
+    var onClose: ((CGWindowID) -> Void)? { get set }
+    var onRightClick: ((CGWindowID) -> Void)? { get set }
+    /// The bars shown now.
+    func update(_ strips: [TabStrip], style: TabStripStyle, keyFocus: CGWindowID?)
+    /// The bars put back below their windows, unless `inPlace` says one stands right already.
+    func restack(_ ids: Set<CGWindowID>?, inPlace: (CGWindowID, CGWindowID) -> Bool)
+}
+
 public enum TabStripLayout {
     public static func segmentFrames(width: CGFloat, count: Int) -> [CGRect] {
         guard count > 0 else { return [] }
@@ -17,7 +29,7 @@ public enum TabStripLayout {
 }
 
 @MainActor
-public final class TabBarManager {
+public final class TabBarManager: BarDrawing {
     public var onSelect: ((CGWindowID) -> Void)?
     public var onClose: ((CGWindowID) -> Void)?
     public var onRightClick: ((CGWindowID) -> Void)?

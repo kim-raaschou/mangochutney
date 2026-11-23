@@ -1,6 +1,17 @@
 import AppKit
 import Mango
 
+/// Where the port's borders are drawn: AppKit overlays (BorderManager), or the tests' record.
+@MainActor
+public protocol BorderDrawing: AnyObject {
+    /// The borders shown now; a window with none has its border taken away.
+    func update(_ specs: [BorderSpec])
+    /// The window is gone.
+    func forget(_ id: CGWindowID)
+    /// The borders put back above their windows, unless `inPlace` says one stands right already.
+    func restack(_ ids: Set<CGWindowID>?, inPlace: (CGWindowID, CGWindowID) -> Bool)
+}
+
 public enum BorderGeometry {
     public static var cornerRadius: CGFloat {
         ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 26 ? 16 : 10
@@ -51,7 +62,7 @@ final class BorderView: NSView {
 }
 
 @MainActor
-public final class BorderManager {
+public final class BorderManager: BorderDrawing {
     /// Each window's overlay; with no spec it is ordered out and kept for when the window is shown again
     /// (a new NSWindow costs the window server several round trips), till the window is gone (forget).
     private var windows: [CGWindowID: (NSWindow, BorderView, BorderSpec?)] = [:]
