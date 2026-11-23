@@ -282,8 +282,15 @@ final class EngineRig {
         }
     }
 
-    /// The run loop for `seconds`, with an output frame every 16 ms (the tests' display link).
+    /// The run loop for `seconds`, with an output frame every 16 ms (the tests' display link); then on
+    /// while windows leaving still wait for those coming back (at most mango's 100 ms), however slow the machine.
     func settle(_ seconds: TimeInterval = 0.05) {
+        run(seconds)
+        settle(until: { server.mac.parkWhenArrived.isEmpty })
+    }
+
+    /// The run loop for exactly `seconds`, frames as settle: for a test that looks at the wait itself.
+    func run(_ seconds: TimeInterval) {
         let end = Date().addingTimeInterval(seconds)
         repeat {
             RunLoop.main.run(until: min(end, Date().addingTimeInterval(0.016)))

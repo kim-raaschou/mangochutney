@@ -34,9 +34,9 @@ final class EngineWriteTests: MangoTestCase {
         r.app.appliesAfter = 1.0
         _ = r.server.focusStack(Arg(i: 1))
         r.arrange()
-        r.settle(0.05)
+        r.run(0.05)
         XCTAssertFalse(shown.parked, "its app has not answered: the one leaving waits")
-        r.settle(0.1)
+        r.run(0.1)
         XCTAssertTrue(shown.parked, "and is parked after mango's 100 ms, though the app has not answered yet")
         XCTAssertFalse(hidden.parked)
     }
