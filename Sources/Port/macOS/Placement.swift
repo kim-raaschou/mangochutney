@@ -228,7 +228,7 @@ extension MacWindowSystem {
                 wlrLog(.debug, "\(c.appName): window \(c.id) back in \(Int((CACurrentMediaTime() - sent) * 1000)) ms")
             }
         } else {
-            send(c, q, target, from: was, setSize: final || resized, animating: !final && resized)
+            send(c, q, target, from: was, setSize: resized, animating: !final && resized)
         }
         if final { verifyFrame(c) }
     }
