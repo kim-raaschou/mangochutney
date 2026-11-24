@@ -108,9 +108,12 @@ final class SwipeDriveTests: MangoTestCase {
         let c = r.server.clientByIdAll(2)!
         begin(r)
         slowly(r, to: 200)
-        let at = r.app.frames[2]
+        let at = r.app.frames[2]!
         end(r)
-        XCTAssertEqual(r.app.frames[2], at, "on from where the fingers left it")
+        // mango's find_animation_curve_at gives the first baked point after 0: a step of about 1 %
+        let now = r.app.frames[2]!
+        XCTAssertLessThanOrEqual(abs(now.minX - at.minX), 0.02 * abs(c.geom.minX - at.minX) + 1,
+                                 "on from where the fingers left it")
         r.settle(0.6)
         XCTAssertEqual(r.app.frames[2], c.geom)
     }

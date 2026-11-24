@@ -56,6 +56,12 @@ public final class MangoServer {
 
     var ipc: IPCServer?
 
+    var bakedPointsMove: [DVec2] = []
+    var bakedPointsOpen: [DVec2] = []
+    var bakedPointsTag: [DVec2] = []
+    var bakedPointsClose: [DVec2] = []
+    var bakedPointsFocus: [DVec2] = []
+
     var tabMemberCount: Int32 = 0   // not in mango: tab.c's static tab_member_count
     package var enableGaps = true
     package var renderBorder = true
@@ -117,6 +123,7 @@ public final class MangoServer {
 
     public init(configURL: URL? = nil) {
         self.configURL = configURL ?? ConfigParser.defaultConfigURL()
+        initBakedPoints()   // not in mango: baked for a server that is not set up too (the tests)
     }
 
     public func setup() {
@@ -126,7 +133,7 @@ public final class MangoServer {
         if cliDebugLog {
             config.logLevel = .debug
         }
-        // not in mango: no init_baked_points; find_animation_curve_at solves the curve
+        initBakedPoints()
         setEnvWithoutDisplay()
         wlrLogInit(config.logLevel)
         system.setKeyboardOptions(config.xkbRulesOptions)   // not in mango: keyboard_group_create's keymap, the port's side

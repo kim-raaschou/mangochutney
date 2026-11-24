@@ -54,7 +54,7 @@ package extension MangoServer {
     }
 
     func resetOption() {
-        // not in mango: no init_baked_points, the curves are solved where they are read (BezierCurve)
+        initBakedPoints()
         pointerCursorActivity()
         resetKeyboardLayout()
         // not in mango: no reset_blur_params, macOS has no blur (MangoCompat)

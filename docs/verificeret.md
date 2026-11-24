@@ -35,7 +35,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `mangonag/mangonag.c` | `mangonag/mangonag.swift` | ikke verificeret | | | | |
 | `mmsg/mmsg.c` | `mmsg/main.swift`, `mmsg/log.swift` | ikke verificeret | | | | portens kommandoer i `Sources/Port/mmsg` |
 | `src/animation/client.c` | `animation/animation-client.swift` | ikke verificeret | | | | |
-| `src/animation/common.c` | `animation/animation-common.swift` | ikke verificeret | | | | |
+| `src/animation/common.c` | `animation/animation-common.swift` | 1:1 | 3915a6b, 24. nov. | `fa80428b6c2d` | `handle_snapshot_meta_destroy`, `scene_node_snapshot`, `wlr_scene_tree_snapshot`, `snapshot_dest_to_source`, `scene_snapshot_enable_buffers`, `scene_snapshot_clip_buffer`, `scene_snapshot_clip_to_box` (lukke-animationens scene-snapshot, ingen macOS-del, §3) | kurverne bages som mango (rettet 24. nov.); ingen fade-kurver |
 | `src/animation/layer.c` | | ingen macOS-del | | | | layer shell |
 | `src/animation/tag.c` | `animation/animation-tag.swift` | 1:1 | ae2a891, 24. nov. | `2148fc6236c2` | | `prevtag` 0, `c->mon`-værn, `ov_card_tree`: §5 |
 | `src/common/log.c` | `common/Log.swift` | 1:1 | fff28a6, 24. nov. | `38d0f49ac028` | `mango_error_impl` (`mangoError`, makroen `mango_error` og dens impl i én) | ingen buffer på 4096 bytes |
@@ -88,4 +88,4 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/manage/tab.c` | `manage/tab.swift` | 1:1 | de70e75, 24. nov. | `7775e180ad64` | `tab_update_input_penetration`, `client_reparent_tab`, `client_add_tab_bar`, `client_remove_tab_bar`, `client_update_tab_bar_title`, `client_set_tab_bar_config`, `global_draw_tab_bar` (barens node er portens, §5 Faner) | `client_draw_tabbar` giver stripen til porten; delte `clipBar`/`barSegments` i `animation-client.swift` |
 | `src/manage/xwayland_primary.c` | | ingen macOS-del | | | | Xwayland |
 | `src/overview/overview.c` | `overview/overview.swift` | ikke verificeret | | | | |
-| `src/switcher/switcher.c` | `switcher/switcher.swift` | ikke verificeret | | | | |
+| `src/switcher/switcher.c` | `switcher/switcher.swift` | 1:1 | 3915a6b, 24. nov. | `fc057d52e523` | `switcher_tile_layout`, `switcher_surface_finish`, `switcher_surface_update_buffer`, `handle_switcher_surface_commit`, `handle_switcher_surface_destroy`, `handle_switcher_surface_output_sample`, `handle_switcher_surface_frame_done`, `switcher_tile_add_surface` (flisernes scene-overflader er portens billeder, §3) | intet `client_send_frame_done`; ingen session-lås |

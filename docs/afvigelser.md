@@ -270,8 +270,9 @@ Hvor koden står, når den ikke står som i mango.
   animationens slut, `force_render`, swallowing, størrelses-hints (`client_set_size_bound` får ingen fra
   macOS) og kortene i overviewet (`ov_card_tree`). Kanter og bjælker tegnes for alle vinduer på
   én gang efter billedet (`bordersDirty`), hvor mango tegner dem pr. vindue i `client_set_clip`.
-  `find_animation_curve_at` løser kurven i stedet for at bage den; CLOSE- og fade-kurverne har
-  ingen macOS-del, og FOCUS-kurven bruges ikke, før fokus-animationen er bygget (afsnit 4).
+  Kurverne bages som i mango (`init_baked_points`, 256 punkter) og slås op med
+  `find_animation_curve_at`; fade-kurverne (`opafadein`, `opafadeout`) har ingen macOS-del, og
+  FOCUS-kurven bruges ikke, før fokus-animationen er bygget (afsnit 4).
 - **`arrange` (`Layout/arrange.swift`):** mangos `arrange`, `pre_calculate_before_arrange`,
   `special_handle_empty_view` og tabellen `layouts[]`, der kalder mangos layouts
   (`horizontal.swift`, `vertical.swift`, `dwindle.swift`, `scroll.swift`) og i overview
@@ -328,9 +329,9 @@ Hvor koden står, når den ikke står som i mango.
   kørt, som mango. Har en gennemslupnings-binding (`bindp`) forladt overview, er tasten dog slugt, hvor
   mango sender den videre.
 - **`reset_option` og opstarten:** `reset_option` har mangos trin i mangos rækkefølge
-  (`resetOption` i `Config/reapply.swift`), og opstarten følger `setup` og `run`: `exec` og `exec_once` kører
+  (`resetOption` i `config/reapply.swift`), og opstarten følger `setup` og `run`: `exec` og `exec_once` kører
   til sidst, når skærmene er sat op, og et reload kører kun `exec`. Uden macOS-del, mærket i koden:
-  `init_baked_points` (kurven løses, ikke bages), `reset_blur_params`,
+  `reset_blur_params`,
   `reapply_rootbg` (porten læser `rootcolor`, hvor den tegner), `reapply_keyboard`,
   `reapply_monitor_rules`, xcursor-delen af `reapply_cursor_style` og `bw` og
   `client_set_tab_bar_config` i `reapply_property` (kanten og bjælken tegnes ud fra config).
