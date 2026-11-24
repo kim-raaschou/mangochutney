@@ -10,115 +10,116 @@ public protocol PlatformWindow: AnyObject {
 
 @MainActor
 public final class Client {
-    public let id: ClientID
-    public let pid: pid_t
+    // not in mango: the port's window and what mango asks wlroots and the toplevel for
     public let platform: PlatformWindow
     public let bundleId: String
     public let appName: String
     public var title: String
-    public weak var mon: Monitor?
-    public var tags: UInt32
 
+    public var geom: CGRect
+    public var pending: CGRect
+    public var floatGeom: CGRect
+    public var animainitGeom: CGRect
+    public var overviewBackupGeom: CGRect = .zero
+    public var current: CGRect
+    var dragBeginGeom: CGRect = .zero /* layout-relative, includes border */
+    public weak var mon: Monitor?
+    var dropareaEnabled = false   // not in mango: c->droparea's node.enabled (the port draws the area)
+    package var jumpLabelNode: MangoJumpLabel?
+    public var bw: CGFloat = 0
+    public var tags: UInt32
+    public var oldtags: UInt32 = 0
+    public var dirty = false
+    public var configureSerial: UInt32 = 0
     public var isfloating = false
+    public var isurgent = false
     public var isfullscreen = false
     public var isfakefullscreen = false
-    public var ismaximizescreen = false
-    public var isglobal = false
-    public var isunglobal = false
-    public var ignoreMinimize = true
-    public var isoverlay = false
-    public var isInScratchpad = false
-    public var oldtags: UInt32 = 0
     public var isminimized = false
-    public var isnamedscratchpad = false
+    public var isoverlay = false
+    public var noSizeHint = false
+    public var ignoreMinimize = true
+    public var ismaximizescreen = false
+    public var overviewBackupBw: CGFloat = 0
+    public var overviewIsfullscreenbak = false
+    public var overviewIsmaximizescreenbak = false
+    public var overviewIsfloatingbak = false
+    public var animationTypeOpen: AnimationType?
+    public var isInScratchpad = false
+    public var isfloatingBeforeScratchpad = false
     public var iscustomsize = false
     public var iscustompos = false
-    public var isopensilent = false
-    public var istagsilent = false
-    public var isurgent = false
-    public var iskilling = false
-
-    // not in mango: the display ID, not the output's name (two displays can share a name).
-    public var oldmonname: CGDirectDisplayID?
-
-    public var masterMfactPer: CGFloat = 0
-    public var gridColPer: CGFloat = 1
-    public var gridRowPer: CGFloat = 1
-    public var gridColIdx = 0
-    public var gridRowIdx = 0
-    public var isTabFocus = false
-    public var isTabHidden = false
-    public weak var tabPrev: Client?
-    public var tabNext: Client?
-    var tabBarEnabled = false   // not in mango: c->tab_bar->scene->node.enabled
-    public var groupPrev: Client?
-    public var groupNext: Client?
-    public var isGroupFocus = false
-    public var groupParked = false   // not in mango: a group member the port has parked (clientsAll)
-
-    public var noBorder = false
-    public var noAnimation = false
-    public var noSizeHint = false
-    public var noForceCenter = false
-    public var noFocus = false
-    public var confinePointer = false
-    public var animationTypeOpen: AnimationType?
-    public var scrollerProportion: Float = 0
-    public var scrollerProportionSingle: Float = 0
-    public var isfocusing = false
     public var iscustomScrollerProportion = false
     public var iscustomScrollerProportionSingle = false
-    public var masterSizeWeight: CGFloat = 0
-    public var stackSizeWeight: CGFloat = 0
-    public var masterInnerPer: CGFloat = 0
-    public var stackInnerPer: CGFloat = 0
-    public var ismaster = false
-    public var isleftstack = false
+    public var isglobal = false
+    public var noBorder = false
+    public var noAnimation = false
+    public var isopensilent = false
+    public var istagsilent = false
+    public var iskilling = false
+    public var isnamedscratchpad = false
+    public var isPendingOpenAnimation = true
+    public var isRestoringFromOv = false
+    public var scrollerProportion: Float = 0
     public var scrollerStackProportion: Float = 0
     public var scrollerOldStackProportion: Float = 0
-    package var dropDirection: Int32 = UNDIR
+    public var needOutputFlush = false
+    public var animation = MangoAnimation()
+    public let pid: pid_t
+    public var isClipToHide = false
     package var dragToTile = false
-    package var dragTileFloatBackupGeom: CGRect = .zero
-    package var enableDropAreaDraw = false
-    var dropareaEnabled = false   // not in mango: c->droparea's node.enabled (the port draws the area)
+    public var scratchpadSwitchingMon = false
+    public var scratchpadTagin = false
+    public var fakeNoBorder = false
+    public var noFocus = false
+    public var noForceCenter = false
+    public var isunglobal = false
+    // not in mango: the display ID, not the output's name (two displays can share a name).
+    public var oldmonname: CGDirectDisplayID?
+    public var masterMfactPer: CGFloat = 0
+    public var masterInnerPer: CGFloat = 0
+    public var stackInnerPer: CGFloat = 0
+    public var masterSizeWeight: CGFloat = 0
+    public var stackSizeWeight: CGFloat = 0
     var oldMasterMfactPer: CGFloat = 0
     var oldMasterInnerPer: CGFloat = 0
     var oldStackInnerPer: CGFloat = 0
     var oldScrollerPproportion: Double = 0
-    var oldGridColPer: CGFloat = 0
-    var oldGridRowPer: CGFloat = 0
+    public var ismaster = false
     var cursorInUpperHalf = false
     var cursorInLeftHalf = false
-    var dragBeginGeom: CGRect = .zero
-
-    public var floatGeom: CGRect
-    public var geom: CGRect
-    public var pending: CGRect
-    public var current: CGRect
-    public var animainitGeom: CGRect
-    public var bw: CGFloat = 0
-    public var dirty = false
-    public var configureSerial: UInt32 = 0
-    public var isPendingOpenAnimation = true
-    public var needOutputFlush = false
-    public var animation = MangoAnimation()
-    public var isfloatingBeforeScratchpad = false
-    public var isClipToHide = false
-    public var scratchpadSwitchingMon = false
-    public var scratchpadTagin = false
-    public var fakeNoBorder = false
-    public var tagVisible = false
-    public var isSurfaceHidden = false
-    public var overviewBackupGeom: CGRect = .zero
-    public var overviewBackedUp = false   // not in mango: overview_backup ran (a mango bug, docs/afvigelser.md §6)
-    public var overviewBackupBw: CGFloat = 0
-    public var overviewIsfloatingbak = false
-    public var overviewIsfullscreenbak = false
-    public var overviewIsmaximizescreenbak = false
-    public var isRestoringFromOv = false
+    public var isleftstack = false
+    public var confinePointer = false
+    public var scrollerProportionSingle: Float = 0
+    public var isfocusing = false
     public var jumpChar: Character?
     public var jumpKeycodes = MultiKeycode()
-    package var jumpLabelNode: MangoJumpLabel?
+    package var enableDropAreaDraw = false
+    package var dropDirection: Int32 = UNDIR
+    package var dragTileFloatBackupGeom: CGRect = .zero
+    public var gridColPer: Float = 0
+    public var gridRowPer: Float = 0
+    var oldGridColPer: Float = 0
+    var oldGridRowPer: Float = 0
+    public var gridColIdx: Int32 = 0
+    public var gridRowIdx: Int32 = 0
+    public let id: ClientID
+    /* manual group chain */
+    public var groupPrev: Client?
+    public var groupNext: Client?
+    public var isGroupFocus = false
+    public var groupParked = false   // not in mango: a group member the port has parked (clientsAll)
+    /* auto tab chain; state kept fully separate from group */
+    var tabBarEnabled = false   // not in mango: c->tab_bar->scene->node.enabled
+    public weak var tabPrev: Client?
+    public var tabNext: Client?
+    public var isTabFocus = false
+    public var isTabHidden = false
+    /* arrange verdict: window belongs to the current view */
+    public var tagVisible = false
+    /* per-frame: surface clipped away by the draw path */
+    public var isSurfaceHidden = false
+    public var overviewBackedUp = false   // not in mango: overview_backup ran (a mango bug, docs/afvigelser.md §6)
 
     package init(id: ClientID, pid: pid_t, platform: PlatformWindow, bundleId: String, appName: String, title: String,
          monitor: Monitor, tags: UInt32, frame: CGRect) {

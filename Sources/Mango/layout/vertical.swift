@@ -169,7 +169,7 @@ package extension MangoServer {
             for c in clients {
                 if c.mon !== m { continue }
                 if verticalGridCounts(c, m) {
-                    if i < 2 { rowPers[Int(i)] = c.gridRowPer > 0.0 ? Float(c.gridRowPer) : 1.0 }
+                    if i < 2 { rowPers[Int(i)] = c.gridRowPer > 0.0 ? c.gridRowPer : 1.0 }
                     i += 1
                 }
             }
@@ -183,9 +183,9 @@ package extension MangoServer {
                 if c.mon !== m { continue }
                 if verticalGridCounts(c, m) {
                     c.gridColIdx = 0
-                    c.gridRowIdx = Int(i)
+                    c.gridRowIdx = i
                     c.gridColPer = 1.0
-                    c.gridRowPer = CGFloat(rowPers[Int(i)])
+                    c.gridRowPer = rowPers[Int(i)]
 
                     // Computes the current window height dynamically from the
                     // assigned weight.
@@ -224,8 +224,8 @@ package extension MangoServer {
             if verticalGridCounts(c, m) {
                 let cIdx = i / rows
                 let rIdx = i % rows
-                if rIdx == 0 { colPers[Int(cIdx)] = c.gridColPer > 0.0 ? Float(c.gridColPer) : 1.0 }
-                if cIdx == 0 { rowPers[Int(rIdx)] = c.gridRowPer > 0.0 ? Float(c.gridRowPer) : 1.0 }
+                if rIdx == 0 { colPers[Int(cIdx)] = c.gridColPer > 0.0 ? c.gridColPer : 1.0 }
+                if cIdx == 0 { rowPers[Int(rIdx)] = c.gridRowPer > 0.0 ? c.gridRowPer : 1.0 }
                 i += 1
             }
         }
@@ -244,10 +244,10 @@ package extension MangoServer {
                 let cIdx = i / rows
                 let rIdx = i % rows
 
-                c.gridColPer = CGFloat(colPers[Int(cIdx)])
-                c.gridRowPer = CGFloat(rowPers[Int(rIdx)])
-                c.gridColIdx = Int(cIdx)
-                c.gridRowIdx = Int(rIdx)
+                c.gridColPer = colPers[Int(cIdx)]
+                c.gridRowPer = rowPers[Int(rIdx)]
+                c.gridColIdx = cIdx
+                c.gridRowIdx = rIdx
 
                 var flCy = Float(w.y + targetGappo)
                 var flCh: Float = 0.0
@@ -327,13 +327,13 @@ package extension MangoServer {
 
         for (k, c) in arr.enumerated() {
             let (rowIdx, colIdx) = place(Int32(k))
-            if c.gridRowIdx == Int(rowIdx) && c.gridRowPer > 0.0 { rowPers[Int(rowIdx)] = Float(c.gridRowPer) }
-            if c.gridColIdx == Int(colIdx) && c.gridColPer > 0.0 { colPers[Int(colIdx)] = Float(c.gridColPer) }
+            if c.gridRowIdx == rowIdx && c.gridRowPer > 0.0 { rowPers[Int(rowIdx)] = c.gridRowPer }
+            if c.gridColIdx == colIdx && c.gridColPer > 0.0 { colPers[Int(colIdx)] = c.gridColPer }
         }
         for (k, c) in arr.enumerated() {
             let (rowIdx, colIdx) = place(Int32(k))
-            if rowPers[Int(rowIdx)] == 0.0 && c.gridRowPer > 0.0 { rowPers[Int(rowIdx)] = Float(c.gridRowPer) }
-            if colPers[Int(colIdx)] == 0.0 && c.gridColPer > 0.0 { colPers[Int(colIdx)] = Float(c.gridColPer) }
+            if rowPers[Int(rowIdx)] == 0.0 && c.gridRowPer > 0.0 { rowPers[Int(rowIdx)] = c.gridRowPer }
+            if colPers[Int(colIdx)] == 0.0 && c.gridColPer > 0.0 { colPers[Int(colIdx)] = c.gridColPer }
         }
 
         var sumRow: Float = 0.0
@@ -393,10 +393,10 @@ package extension MangoServer {
                 flCw = colWMax[Int(colIdx)]
             }
 
-            c.gridRowPer = CGFloat(rowPers[Int(rowIdx)])
-            c.gridColPer = CGFloat(colPers[Int(colIdx)])
-            c.gridRowIdx = Int(rowIdx)
-            c.gridColIdx = Int(colIdx)
+            c.gridRowPer = rowPers[Int(rowIdx)]
+            c.gridColPer = colPers[Int(colIdx)]
+            c.gridRowIdx = rowIdx
+            c.gridColIdx = colIdx
 
             let flCy = rowY[Int(rowIdx)]
             let flCh = rowH[Int(rowIdx)]

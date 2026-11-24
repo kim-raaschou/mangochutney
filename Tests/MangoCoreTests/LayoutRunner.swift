@@ -100,8 +100,8 @@ final class LayoutRunner {
             c.stackInnerPer = lc.stackInnerPer
             c.scrollerStackProportion = Float(lc.scrollerStackWeight)
             c.masterMfactPer = lc.masterMfactPer > 0 ? lc.masterMfactPer : input.pertag.mfact
-            c.gridColPer = lc.gridColPer; c.gridRowPer = lc.gridRowPer
-            c.gridColIdx = lc.gridColIdx; c.gridRowIdx = lc.gridRowIdx
+            c.gridColPer = Float(lc.gridColPer); c.gridRowPer = Float(lc.gridRowPer)
+            c.gridColIdx = Int32(lc.gridColIdx); c.gridRowIdx = Int32(lc.gridRowIdx)
             order.append(c)
         }
         let ids = Set(input.clients.map(\.id))

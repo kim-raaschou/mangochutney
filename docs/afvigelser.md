@@ -144,8 +144,7 @@ Hvor koden står, når den ikke står som i mango.
   (`sceneSurfaceCoords`) for hvor et vindue rammes. Et skjult vindue, mango flytter til en anden
   skærm, parkerer porten selv i den nye skærms hjørne (`Placement.commitFrame`).
 - **Bevidst i kernen, mærket:** overview med
-  billeder (`Monitor.ovThumbnails`, `ovCards`), `parse_option` som en tabel,
-  og `resize_tile_master` i begge retninger i én funktion. Hvad der ellers står i kernen uden at
+  billeder (`Monitor.ovThumbnails`, `ovCards`) og `parse_option` som en tabel. Hvad der ellers står i kernen uden at
   være mangos, står i `docs/analyse-udenfor-kernen.md`.
 - **Mærket i kernen, som at skrive mangos C i Swift:** `f32` (en værdi, mango har i et
   float-felt, afrundet som C), `i32` (C's omregning af et kommatal til `int32_t`), `wl_list`-hjælperne
@@ -156,6 +155,24 @@ Hvor koden står, når den ikke står som i mango.
   skærmens display-ID, ikke navnet, for to skærme kan have samme navn.
   Hvor mango læser en pointer, der altid er sat (`c->mon` i et arrange), stopper en `guard` i
   Swift ved nil (`not in mango: c->mon is always set here`).
+- **`struct Client` (`client.h`):** felterne står i mangos rækkefølge med mangos navne. Typerne er
+  mangos, med fire faste omskrivninger: `struct wlr_box` er `CGRect` med hele tal, og `bw` er
+  `CGFloat` som dem; `int32_t`-flag (`isfloating`, `no_border`, …) er `Bool`; `animation_type_open`
+  er `AnimationType?` (nil er mangos -1); `jump_char` er `Character?`. `oldmonname` er skærmens id
+  (ovenfor), `sel`/`prevsel` og `tab_prev` er `weak`. Uden macOS-del, så felterne mangler: scenen
+  (`scene`, `border`, `droparea`, `splitindicator`, `shadow`, `shield`, `blur`, `scene_surface`,
+  `image_capture_*`, `overview_scene_surface`, `dim_node`, `ov_card_tree`, `ov_card_surfaces`;
+  porten tegner), `surface` og lytterne (wlroots), XWayland-felterne, `xdg_geo_x/y`,
+  `foreign_toplevel`, `ext_foreign_toplevel`, `decoration`, `opacity_animation`,
+  `focused_opacity`, `unfocused_opacity`, `no_blur`, `blur_opacity`, `no_shadow`, `no_radius`,
+  `shield_when_capture`, `swallowdby`/`swallowing`, `isterm`, `no_swallow`, `allow_csd`,
+  `tearing_hint`, `force_tearing`, `idleinhibit_when_focus`, `vrr_only_fullscreen`,
+  `allow_shortcuts_inhibit`, `force_render`, `group_bar` og `tab_bar` (bjælkerne tegnes af porten;
+  `tabBarEnabled`). Afgøres med `client.c`, hvor de bruges: `need_float_size_reduce`,
+  `ignore_maximize`, `activation_bypass`, `fullscreen_backup_*`, `animation_type_close`,
+  `no_fade_in`, `no_fade_out`, `force_fakemaximize`, `force_tiled_state`, `old_ismaster`,
+  `snapshot_temp_visible`. Portens egne felter står øverst og er mærket (`platform`, `bundleId`,
+  `appName`, `title`).
 - **Faner:** mangos `manage/tab.c` står i kernen (`manage/tab.swift`) med fanekæden på klienten
   (`tab_prev`, `tab_next`, `is_tab_focus`, `is_tab_hidden`) og `tab_member_count` på serveren.
   `client_chain_head` og `client_chain_unlink` tager felterne som key paths, ikke offsets. Barens

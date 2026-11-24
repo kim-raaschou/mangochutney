@@ -512,7 +512,7 @@ package extension MangoServer {
             for c in clients {
                 if c.mon !== m { continue }
                 if gridCounts(c, m) {
-                    if i < 2 { colPers[Int(i)] = c.gridColPer > 0.0 ? Float(c.gridColPer) : 1.0 }
+                    if i < 2 { colPers[Int(i)] = c.gridColPer > 0.0 ? c.gridColPer : 1.0 }
                     i += 1
                 }
             }
@@ -525,9 +525,9 @@ package extension MangoServer {
             for c in clients {
                 if c.mon !== m { continue }
                 if gridCounts(c, m) {
-                    c.gridColIdx = Int(i)
+                    c.gridColIdx = i
                     c.gridRowIdx = 0
-                    c.gridColPer = CGFloat(colPers[Int(i)])
+                    c.gridColPer = colPers[Int(i)]
                     c.gridRowPer = 1.0
 
                     // Computes the current window width dynamically from the
@@ -570,8 +570,8 @@ package extension MangoServer {
             if gridCounts(c, m) {
                 let cIdx = i % cols
                 let rIdx = i / cols
-                if rIdx == 0 { colPers[Int(cIdx)] = c.gridColPer > 0.0 ? Float(c.gridColPer) : 1.0 }
-                if cIdx == 0 { rowPers[Int(rIdx)] = c.gridRowPer > 0.0 ? Float(c.gridRowPer) : 1.0 }
+                if rIdx == 0 { colPers[Int(cIdx)] = c.gridColPer > 0.0 ? c.gridColPer : 1.0 }
+                if cIdx == 0 { rowPers[Int(rIdx)] = c.gridRowPer > 0.0 ? c.gridRowPer : 1.0 }
                 i += 1
             }
         }
@@ -592,10 +592,10 @@ package extension MangoServer {
                 let rIdx = i / cols
 
                 // Fixes properties and marks indices.
-                c.gridColPer = CGFloat(colPers[Int(cIdx)])
-                c.gridRowPer = CGFloat(rowPers[Int(rIdx)])
-                c.gridColIdx = Int(cIdx)
-                c.gridRowIdx = Int(rIdx)
+                c.gridColPer = colPers[Int(cIdx)]
+                c.gridRowPer = rowPers[Int(rIdx)]
+                c.gridColIdx = cIdx
+                c.gridRowIdx = rIdx
 
                 // X coordinate and width computation.
                 var flCx = Float(w.x + targetGappo)
@@ -681,13 +681,13 @@ package extension MangoServer {
         // Two ratio-locking passes directly over the array.
         for (k, c) in arr.enumerated() {
             let (colIdx, rowIdx) = place(Int32(k))
-            if c.gridColIdx == Int(colIdx) && c.gridColPer > 0.0 { colPers[Int(colIdx)] = Float(c.gridColPer) }
-            if c.gridRowIdx == Int(rowIdx) && c.gridRowPer > 0.0 { rowPers[Int(rowIdx)] = Float(c.gridRowPer) }
+            if c.gridColIdx == colIdx && c.gridColPer > 0.0 { colPers[Int(colIdx)] = c.gridColPer }
+            if c.gridRowIdx == rowIdx && c.gridRowPer > 0.0 { rowPers[Int(rowIdx)] = c.gridRowPer }
         }
         for (k, c) in arr.enumerated() {
             let (colIdx, rowIdx) = place(Int32(k))
-            if colPers[Int(colIdx)] == 0.0 && c.gridColPer > 0.0 { colPers[Int(colIdx)] = Float(c.gridColPer) }
-            if rowPers[Int(rowIdx)] == 0.0 && c.gridRowPer > 0.0 { rowPers[Int(rowIdx)] = Float(c.gridRowPer) }
+            if colPers[Int(colIdx)] == 0.0 && c.gridColPer > 0.0 { colPers[Int(colIdx)] = c.gridColPer }
+            if rowPers[Int(rowIdx)] == 0.0 && c.gridRowPer > 0.0 { rowPers[Int(rowIdx)] = c.gridRowPer }
         }
 
         // Fallback strategy and total weight computation.
@@ -752,10 +752,10 @@ package extension MangoServer {
                 flCh = rowHMax[Int(rowIdx)]
             }
 
-            c.gridColPer = CGFloat(colPers[Int(colIdx)])
-            c.gridRowPer = CGFloat(rowPers[Int(rowIdx)])
-            c.gridColIdx = Int(colIdx)
-            c.gridRowIdx = Int(rowIdx)
+            c.gridColPer = colPers[Int(colIdx)]
+            c.gridRowPer = rowPers[Int(rowIdx)]
+            c.gridColIdx = colIdx
+            c.gridRowIdx = rowIdx
 
             let flCx = colX[Int(colIdx)]
             let flCw = colW[Int(colIdx)]

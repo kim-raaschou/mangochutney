@@ -562,8 +562,8 @@ package extension MangoServer {
             }
 
             // Computes the ratio delta based on screen resolution.
-            let deltaX = Float(offsetx) * Float(gc.oldGridColPer) / Float(Int32(gc.dragBeginGeom.width))
-            let deltaY = Float(offsety) * Float(gc.oldGridRowPer) / Float(Int32(gc.dragBeginGeom.height))
+            let deltaX = Float(offsetx) * gc.oldGridColPer / Float(Int32(gc.dragBeginGeom.width))
+            let deltaY = Float(offsety) * gc.oldGridRowPer / Float(Int32(gc.dragBeginGeom.height))
 
             var adjCIdx = gc.gridColIdx
             var adjRIdx = gc.gridRowIdx
@@ -587,7 +587,7 @@ package extension MangoServer {
                 }
             }
             // Keyboard hotkey logic unchanged.
-            var maxCol = -1, maxRow = -1, minCol = Int(Int32.max), minRow = Int(Int32.max)
+            var maxCol: Int32 = -1, maxRow: Int32 = -1, minCol = Int32.max, minRow = Int32.max
             for tmp in clients {
                 if tmp.mon !== m || !VISIBLEON(tmp, m) || !ISTILED(tmp) {
                     continue
@@ -635,8 +635,8 @@ package extension MangoServer {
             let dx = deltaX * signX
             let dy = deltaY * signY
 
-            let myOldCol = Float(gc.oldGridColPer)
-            let myOldRow = Float(gc.oldGridRowPer)
+            let myOldCol = gc.oldGridColPer
+            let myOldRow = gc.oldGridRowPer
             var adjOldCol: Float = -1.0, adjOldRow: Float = -1.0
 
             for c in clients {
@@ -644,10 +644,10 @@ package extension MangoServer {
                     continue
                 }
                 if c.gridColIdx == adjCIdx && adjOldCol < 0 {
-                    adjOldCol = Float(c.oldGridColPer)
+                    adjOldCol = c.oldGridColPer
                 }
                 if c.gridRowIdx == adjRIdx && adjOldRow < 0 {
-                    adjOldRow = Float(c.oldGridRowPer)
+                    adjOldRow = c.oldGridRowPer
                 }
             }
 
@@ -675,7 +675,7 @@ package extension MangoServer {
                         }
                         lRows += 1
                     }
-                    let baseCols = Int(nTiling / lRows)
+                    let baseCols = nTiling / lRows
                     // When the adjusted boundary is at an asymmetric locked column
                     // (e.g. between col 0 and col 1 with 3 windows).
                     if (gc.gridColIdx == baseCols - 1 && adjCIdx == baseCols)
@@ -715,10 +715,10 @@ package extension MangoServer {
                         continue
                     }
                     if c.gridColIdx == gc.gridColIdx {
-                        c.gridColPer = CGFloat(newMyCol)
+                        c.gridColPer = newMyCol
                     }
                     if c.gridColIdx == adjCIdx {
-                        c.gridColPer = CGFloat(newAdjCol)
+                        c.gridColPer = newAdjCol
                     }
                 }
 
@@ -728,9 +728,9 @@ package extension MangoServer {
                     }
                     if c.gridRowIdx == 0 {
                         if c.gridColIdx == gc.gridColIdx {
-                            c.gridColPer = CGFloat(newMyCol)
+                            c.gridColPer = newMyCol
                         } else if c.gridColIdx == adjCIdx {
-                            c.gridColPer = CGFloat(newAdjCol)
+                            c.gridColPer = newAdjCol
                         }
                     }
                 }
@@ -760,7 +760,7 @@ package extension MangoServer {
                         }
                         lCols += 1
                     }
-                    let baseRows = Int(nTiling / lCols)
+                    let baseRows = nTiling / lCols
                     // When the adjusted boundary is at an asymmetric locked row
                     // (e.g. between row 0 and row 1 with 3 windows).
                     if (gc.gridRowIdx == baseRows - 1 && adjRIdx == baseRows)
@@ -800,10 +800,10 @@ package extension MangoServer {
                         continue
                     }
                     if c.gridRowIdx == gc.gridRowIdx {
-                        c.gridRowPer = CGFloat(newMyRow)
+                        c.gridRowPer = newMyRow
                     }
                     if c.gridRowIdx == adjRIdx {
-                        c.gridRowPer = CGFloat(newAdjRow)
+                        c.gridRowPer = newAdjRow
                     }
                 }
 
@@ -813,9 +813,9 @@ package extension MangoServer {
                     }
                     if c.gridColIdx == 0 {
                         if c.gridRowIdx == gc.gridRowIdx {
-                            c.gridRowPer = CGFloat(newMyRow)
+                            c.gridRowPer = newMyRow
                         } else if c.gridRowIdx == adjRIdx {
-                            c.gridRowPer = CGFloat(newAdjRow)
+                            c.gridRowPer = newAdjRow
                         }
                     }
                 }
