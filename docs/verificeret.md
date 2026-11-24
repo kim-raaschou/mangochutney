@@ -32,7 +32,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 
 | Mango | Vores | Status | Verificeret | Fingeraftryk | Ikke her | Note |
 |---|---|---|---|---|---|---|
-| `mangonag/mangonag.c` | `mangonag/mangonag.swift` | ikke verificeret | | | | |
+| `mangonag/mangonag.c` | `mangonag/mangonag.swift` | 1:1 | 30a9ebc, 24. nov. | `8c4d5d599976` | Wayland og tegning er portens (`NagDisplay`, `Port/macOS/Nag.swift`): `nag_output_*`, `nag_registry_*`, `nag_seat_*`, `nag_pointer_*`/`nag_keyboard_*` uden indhold, `nag_buffer_create`, `nag_create_shm_fd`, `handle_buffer_release`, `nag_setup_surface`, `nag_layer_configure`, `nag_layout`, `nag_layout_markup`, `nag_text_height`, `nag_compute_layout`, `nag_render`, `rgba_to_cairo`; `main`'s løkke og signaler | kører i mangos proces: stdin gives med (`nagStdin`), knappens fork er portens (`nagFork`), `getopt` startes forfra (`optreset`); pangos attributter samles i én `NagAttr` pr. stykke; macOS' `getopt` stopper ved første ikke-tilvalg, hvor glibc's flytter dem |
 | `mmsg/mmsg.c` | `mmsg/main.swift`, `mmsg/log.swift` | ikke verificeret | | | | portens kommandoer i `Sources/Port/mmsg` |
 | `src/animation/client.c` | `animation/animation-client.swift` | ikke verificeret | | | | |
 | `src/animation/common.c` | `animation/animation-common.swift` | 1:1 | 3915a6b, 24. nov. | `fa80428b6c2d` | `handle_snapshot_meta_destroy`, `scene_node_snapshot`, `wlr_scene_tree_snapshot`, `snapshot_dest_to_source`, `scene_snapshot_enable_buffers`, `scene_snapshot_clip_buffer`, `scene_snapshot_clip_to_box` (lukke-animationens scene-snapshot, ingen macOS-del, §3) | kurverne bages som mango (rettet 24. nov.); ingen fade-kurver |
