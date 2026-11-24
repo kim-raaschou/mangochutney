@@ -227,6 +227,10 @@ Hvor koden står, når den ikke står som i mango.
   `wayland_string_set`, `string_printf`, `join_strings`, `join_strings_with_suffix` (Swifts strenge),
   `wl_list_append` (listen er et array) og `timespec_to_ms` (`get_now_in_ms` regner selv i ms, og
   tests kan stille dens ur, `nowInMsOverride`).
+- **Faste C-buffere:** hvor mango skærer en streng af ved en buffers størrelse uden at sige det
+  (`snprintf` med `%.255s`, `fgets` på 4096 tegn, `vsnprintf` i loggen), beholder Swift den hel;
+  hvor mango melder en fejl eller stopper ved grænsen (en for lang toml-sektion, -linje eller
+  -liste), gør kernen det samme.
 - **Frigørelse:** Swift frigør selv, hvad ingen holder (ARC): `cleanup.c`, `dwindle_free_tree`,
   `cleanup_monitor_dwindle` og mangos andre rene `free`-funktioner findes ikke. Et dwindle-blad,
   hvis klient er væk (klienten holdes svagt), tages ud af træet i `dwindleCore` (`removeDeadLeaf`).

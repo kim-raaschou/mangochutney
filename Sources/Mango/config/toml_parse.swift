@@ -176,6 +176,9 @@ package extension ParserState {
             return true
         }
 
+        if joined.utf8.count + value.utf8.count + 2 >= 4096 {
+            return false
+        }
         if !joined.isEmpty {
             joined += ","
         }
@@ -188,7 +191,7 @@ package extension ParserState {
     }
 
     private mutating func tomlApplyValue(_ key: String, _ raw: String, _ lineNumber: Int) -> Bool {
-        let p = raw.drop { $0.isWhitespace }
+        let p = raw.drop { " \t\n\r\u{0B}\u{0C}".contains($0) }
 
         if p.hasPrefix("[") {
             if Self.tomlKeyJoinsArray(key) {
@@ -415,7 +418,7 @@ package extension ParserState {
                 return false
             }
 
-            let p = rawValue.drop { $0.isWhitespace }
+            let p = rawValue.drop { " \t\n\r\u{0B}\u{0C}".contains($0) }
             if p.hasPrefix("[") {
                 return Self.tomlForeachArrayElement(String(p)) { tomlBindElement(keyword, prefix, lineNumber, $0) }
             }
@@ -530,7 +533,7 @@ package extension ParserState {
             key = String(key.dropFirst().dropLast())
         }
 
-        let value = String(stmt[stmt.index(after: eq)...].drop { $0.isWhitespace })
+        let value = String(stmt[stmt.index(after: eq)...].drop { " \t\n\r\u{0B}\u{0C}".contains($0) })
 
         if section.active {
             let ok = tomlSectionLeaf(&section, key, value, lineNumber)

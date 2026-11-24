@@ -44,14 +44,14 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/common/util.c` | `common/util.swift` | 1:1 | de70e75, 24. nov. | `c73e42e65294` | `die`, `ecalloc`, `utf8_strlcpy`, `wayland_string_set`, `wl_list_append`, `timespec_to_ms`, `join_strings`, `join_strings_with_suffix`, `string_printf` (Swift har dem, §5), `fd_set_nonblock` (med `-s`, §4) | `wl_list`-hjælperne på klientlistens array; `regex_match` med ICU for PCRE2 |
 | `src/config/binding_parse.c` | `config/binding_parse.swift` | ikke verificeret | | | | |
 | `src/config/cleanup.c` | | ingen macOS-del | | | | frigørelse: Swift's ARC |
-| `src/config/conflict_check.c` | `config/conflict_check.swift` | ikke verificeret | | | | |
+| `src/config/conflict_check.c` | `config/conflict_check.swift` | 1:1 | e8e3384, 24. nov. | `4de6c89f3d2f` | `get_mousebind_meta`, `get_axisbind_meta`, `get_switchbind_meta`, `get_gesturebind_meta` (bindingens `mode` og dens sted i `*Locs`), `mod_to_string` (død i mango, §4) | tasten er den første macOS-tastekode (§3) |
 | `src/config/error_nag.c` | `config/error_nag.swift` | ikke verificeret | | | | |
 | `src/config/error_store.c` | `config/error_store.swift` | 1:1 | ae2a891, 24. nov. | `e04f0ed36e35` | | |
 | `src/config/load.c` | `config/load.swift` | ikke verificeret | | | | |
 | `src/config/option_defs.c` | `config/option_defs.swift`, `config/parse.swift` | ikke verificeret | | | | `parse.h`'s typer i `parse.swift` |
 | `src/config/preset.c` | | ingen macOS-del | | | | kun data: `tags` til `ext-workspace.c`, `xkb_fallback_rules` til xkb's keymap |
 | `src/config/reapply.c` | `config/reapply.swift` | ikke verificeret | | | | |
-| `src/config/toml_parse.c` | `config/toml_parse.swift` | ikke verificeret | | | | |
+| `src/config/toml_parse.c` | `config/toml_parse.swift` | 1:1 | e8e3384, 24. nov. | `8bd2aaabb67e` | | to mango-fejl rettet (§6: escaped citationstegn i en liste, keymode efter en sprunget sektion); C's `isspace` og listens grænse på 4096 (rettet 24. nov.); C-buffere §5 |
 | `src/config/value_parse.c` | `config/value_parse.swift` | 1:1 | fff28a6, 24. nov. | `9f43771bf126` | `starts_with_ignore_case` (død i mango, §4) | libc's `atoi`/`strtol`/`strtod` står her som `ValueParse`; `remove_comment` med C's `isspace` (rettet 24. nov.) |
 | `src/config/variable_expand.c` | `config/variable_expand.swift` | 1:1 | fff28a6, 24. nov. | `6416bc924a82` | `var_buf_append` (Swifts strenge, §5) | `config.vars` er en tabel efter navn |
 | `src/config/watcher.c` | `config/watcher.swift` | ikke verificeret | | | | |
@@ -77,7 +77,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/layout/arrange.c` | `layout/arrange.swift`, `layout/Layout.swift` | ikke verificeret | | | | |
 | `src/layout/dwindle.c` | `layout/dwindle.swift` | 1:1 | de70e75, 24. nov. | `7c1bf821750a` | `dwindle_free_tree`, `cleanup_monitor_dwindle` (ARC, §5), `dwindle_predict` (§3) | markøren er portens (`system.pointer`) |
 | `src/layout/horizontal.c` | `layout/horizontal.swift` | 1:1 | 1cceefb, 24. nov. | `08b9f6dfd68b` | `tile_predict`, `right_tile_predict`, `center_tile_predict`, `deck_predict`, `monocle_predict`, `grid_predict`, `fair_predict` (§3) | `layout.h`'s `LayoutContext` og `util.h`'s `MANGO_MIN`/`MANGO_MAX` står her; `m->w` som `int32_t` (`WBox`); ingen X11-popups |
-| `src/layout/overview.c` | `layout/layout-overview.swift` | ikke verificeret | | | | |
+| `src/layout/overview.c` | `layout/layout-overview.swift` | 1:1 | e8e3384, 24. nov. | `4782e020d705` | | kortene er portens (`ovCards`, `overviewLayoutCards`); klienterne tælles her, hvor mango læser `visible_clients`; ingen X11-popups |
 | `src/layout/scroll.c` | `layout/scroll.swift` | ikke verificeret | | | | |
 | `src/layout/vertical.c` | `layout/vertical.swift` | 1:1 | 1cceefb, 24. nov. | `87f2c8d9708c` | `vertical_tile_predict`, `vertical_deck_predict`, `vertical_grid_predict`, `vertical_fair_predict` (§3) | `vertical_grid_core` tæller som `grid_core` (§6); ingen X11-popups |
 | `src/main.c` | `common/server.swift` | ikke verificeret | | | | `main` og `run` er appens (`Sources/MangoApp/main.swift`) |
