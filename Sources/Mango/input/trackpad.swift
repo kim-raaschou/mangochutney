@@ -664,8 +664,7 @@ package extension MangoServer {
         swipeDriveUpdate(UInt32(event.fingers), time)
     }
 
-    // not in mango: no event; a swipe is never cancelled (macOS's multitouch frames, docs/afvigelser.md §3)
-    // not in mango: the event's cancelled flag alone
+    // not in mango: the event's cancelled flag alone, never set by macOS's multitouch frames (docs/afvigelser.md §3)
     package func handleCursorSwipeEnd(cancelled: Bool = false) {
         let consumed = swipeDrive.consumed
         swipeDriveEnd()

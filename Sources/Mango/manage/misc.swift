@@ -1,8 +1,8 @@
 import CoreGraphics
 
 // not in mango: get_parent_process, is_descendant_process (swallowing), get_layout_abbr, client_at_point
-// (the overview's cards are the port's), and the protocols (decoration, idle inhibit, session lock,
-// capture, selection, drm lease)
+// (the overview's cards are the port's), layer_ignores_focus (no layer shell), and the protocols
+// (decoration, idle inhibit, session lock, capture, selection, drm lease, mango_global_filter)
 
 package extension MangoServer {
     /// mango node_at_point (misc.c)

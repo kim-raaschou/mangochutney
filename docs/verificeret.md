@@ -72,7 +72,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/input/switch.c` | | ingen macOS-del | | | | låg- og tablet-kontakter |
 | `src/input/tablet.c` | | ingen macOS-del | | | | tablet |
 | `src/input/touch.c` | | ingen macOS-del | | | | touch |
-| `src/input/trackpad.c` | `input/trackpad.swift` | ikke verificeret | | | | |
+| `src/input/trackpad.c` | `input/trackpad.swift` | 1:1 | 3c5950b, 24. nov. | `412a7c843f4a` | `pointer_is_trackpad`, `check_trackpad_disabled`, `trackpad_enabled` (`disable_trackpad` kan macOS ikke), `handle_cursor_pinch_*`, `handle_cursor_hold_*` (ingen pinch eller hold fra macOS) | dispatcheren findes efter navn (Swift sammenligner ikke funktioner); intet sendt videre til klienten (`wlr_pointer_gestures_v1`) |
 | `src/ipc/ipc.c` | `ipc/ipc.swift` | ikke verificeret | | | | |
 | `src/layout/arrange.c` | `layout/arrange.swift`, `layout/Layout.swift` | ikke verificeret | | | | |
 | `src/layout/dwindle.c` | `layout/dwindle.swift` | 1:1 | de70e75, 24. nov. | `7c1bf821750a` | `dwindle_free_tree`, `cleanup_monitor_dwindle` (ARC, §5), `dwindle_predict` (§3) | markøren er portens (`system.pointer`) |
@@ -83,7 +83,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/main.c` | `common/server.swift` | ikke verificeret | | | | `main` og `run` er appens (`Sources/MangoApp/main.swift`) |
 | `src/manage/client.c` | `manage/client.swift` | ikke verificeret | | | | |
 | `src/manage/layer.c` | | ingen macOS-del | | | | layer shell |
-| `src/manage/misc.c` | `manage/misc.swift` | ikke verificeret | | | | |
+| `src/manage/misc.c` | `manage/misc.swift` | 1:1 | 3c5950b, 24. nov. | `742f049b9f3c` | alt undtagen `node_at_point`: Wayland-protokollerne (decoration, idle inhibit, session-lås, capture, selection, drm lease, `mango_global_filter`), `layer_ignores_focus` (ingen layer shell), `get_parent_process` og `is_descendant_process` (swallowing), `get_layout_abbr` (død i mango, §4) | `node_at_point` skrevet ud uden scene (§5 Hvad der er under markøren) |
 | `src/manage/monitor.c` | `manage/monitor.swift` | ikke verificeret | | | | |
 | `src/manage/tab.c` | `manage/tab.swift` | 1:1 | de70e75, 24. nov. | `7775e180ad64` | `tab_update_input_penetration`, `client_reparent_tab`, `client_add_tab_bar`, `client_remove_tab_bar`, `client_update_tab_bar_title`, `client_set_tab_bar_config`, `global_draw_tab_bar` (barens node er portens, §5 Faner) | `client_draw_tabbar` giver stripen til porten; delte `clipBar`/`barSegments` i `animation-client.swift` |
 | `src/manage/xwayland_primary.c` | | ingen macOS-del | | | | Xwayland |
