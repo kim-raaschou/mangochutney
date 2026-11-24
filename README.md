@@ -8,6 +8,8 @@
 <img src="https://img.shields.io/badge/mango-0.18.5-orange?style=flat" alt="mango 0.18.5"/>
 <img src="https://img.shields.io/badge/macOS-14%2B-blue?style=flat" alt="macOS 14+"/>
 <img src="https://img.shields.io/badge/status-beta-yellow?style=flat" alt="Beta"/>
+<a href="https://github.com/kim-raaschou/mangochutney/actions/workflows/ci.yml"><img src="https://github.com/kim-raaschou/mangochutney/actions/workflows/ci.yml/badge.svg?branch=main" alt="Tests"/></a>
+<a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/built%20with-Claude%20Code-D97757?style=flat&logo=claude&logoColor=white" alt="Built with Claude Code"/></a>
 
 </div>
 
