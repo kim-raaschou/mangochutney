@@ -325,7 +325,7 @@ class MacWindowSystem: WindowSystem {
     func shownBorders(_ specs: [BorderSpec]) -> [BorderSpec] {
         specs.compactMap { s in
             guard let c = server.clientByIdAll(s.id) else { return s }
-            if c.parked || c.leftToMacOS || c.mac.placed.comingBack { return nil }
+            if c.parked || leftToMacOS(c) || c.mac.placed.comingBack { return nil }
             guard let d = lag(c) else { return nil }
             var s = s
             s.frame = CGRect(x: s.frame.minX + d.dx, y: s.frame.minY + d.dy,

@@ -27,6 +27,23 @@ enum FullscreenTag {
         var anchors: [CGDirectDisplayID: SpaceAnchorWindow] = [:]
         /// The F tag chutney_toggle_fullscreen asked for, while macOS takes the window into fullscreen.
         var wanted: [ClientID: UInt32] = [:]
+        /// Each window's macOS fullscreen as the extension knows it.
+        var windows: [ClientID: Window] = [:]
+
+        @MainActor subscript(c: Client) -> Window {
+            get { windows[c.id] ?? Window() }
+            set { windows[c.id] = newValue == Window() ? nil : newValue }
+        }
+    }
+
+    /// A window's macOS fullscreen. `native`: on its F tag in macOS fullscreen, in its own Space: macOS
+    /// places it, the port writes nothing to it. `scheduled`: the fullscreen the port last told the app
+    /// (wlroots' scheduled.fullscreen); `pending`: macOS has yet to answer it, and till then moves the
+    /// window, and the port writes nothing to it.
+    struct Window: Equatable {
+        var native = false
+        var scheduled = false
+        var pending = false
     }
 
     static let count = 12
@@ -72,10 +89,10 @@ enum FullscreenTag {
     /// A window mapped (`map`) while macOS has it in fullscreen (`onFTag`): nothing is written to it, and
     /// once mapped it is on its F tag, or out of the layout without a free one.
     static func mapInFullscreen(_ server: MangoServer, _ c: Client, _ onFTag: Bool, map: () -> Void) {
-        if onFTag { c.nativeFullscreen = true }
+        if onFTag { server.mac.fullscreenTag[c].native = true }
         map()
         guard onFTag, server.clientByIdAll(c.id) === c else { return }
-        c.nativeFullscreen = false
+        server.mac.fullscreenTag[c].native = false
         if !enter(server, c, discovered: true) { server.mac.goAway(c, .fullscreen) }
     }
 
@@ -93,11 +110,11 @@ enum FullscreenTag {
         let mac = server.mac
         let own = c.tags & ~mask(server.config)
         mac.fullscreenTag.homes[c.id] = Home(tags: own != 0 ? own : desktopView(m, server.config), bit: bit)
-        c.nativeFullscreen = true
+        server.mac.fullscreenTag[c].native = true
         mac.forgetPlacement(c)
         c.tags = bit
-        c.scheduledFullscreen = true
-        c.fullscreenPending = false
+        server.mac.fullscreenTag[c].scheduled = true
+        server.mac.fullscreenTag[c].pending = false
         wlrLog(.info, "chutney_fullscreen_tag: \(c.appName) window \(c.id) is in macOS fullscreen, on \(name(bit, server.config))")
         if discovered && !mac.windowOnScreen(c.id) {
             server.arrange(m, false, false)
@@ -113,11 +130,11 @@ enum FullscreenTag {
 
     static func leave(_ server: MangoServer, _ c: Client) {
         if server.selectedMonitor?.isoverview == true { _ = server.dispatch(Dispatch(name: "toggleoverview")) }
-        c.scheduledFullscreen = false
-        c.fullscreenPending = false
+        server.mac.fullscreenTag[c].scheduled = false
+        server.mac.fullscreenTag[c].pending = false
         // Out of mango's fullscreen too, while macOS still places it (as in enter).
         if c.isfullscreen { _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false) }
-        c.nativeFullscreen = false
+        server.mac.fullscreenTag[c].native = false
         server.mac.forgetPlacement(c)
         guard let home = server.mac.fullscreenTag.homes.removeValue(forKey: c.id) else { return }
         c.tags = home.tags
@@ -137,11 +154,11 @@ enum FullscreenTag {
     /// The window leaves mango while in fullscreen (closed, hidden, its app quit): it is remembered on its
     /// own tags; its F tag goes when mango next says what it shows.
     static func unmapped(_ server: MangoServer, _ c: Client) {
-        if c.nativeFullscreen || c.scheduledFullscreen { c.isfullscreen = false }
-        c.scheduledFullscreen = false
-        c.fullscreenPending = false
-        guard c.nativeFullscreen else { return }
-        c.nativeFullscreen = false
+        if server.mac.fullscreenTag[c].native || server.mac.fullscreenTag[c].scheduled { c.isfullscreen = false }
+        server.mac.fullscreenTag[c].scheduled = false
+        server.mac.fullscreenTag[c].pending = false
+        guard server.mac.fullscreenTag[c].native else { return }
+        server.mac.fullscreenTag[c].native = false
         guard let home = server.mac.fullscreenTag.homes.removeValue(forKey: c.id) else { return }
         c.tags = home.tags
     }
@@ -150,17 +167,17 @@ enum FullscreenTag {
     /// takes it to its F tag. Not what the app was last told, nor a window with no F tag to go to or out of
     /// view; where the app cannot, it stays in mango's fullscreen.
     static func notify(_ server: MangoServer, _ c: Client, _ fullscreen: Bool) {
-        guard isOn(server), c.scheduledFullscreen != fullscreen, let m = c.mon else { return }
+        guard isOn(server), server.mac.fullscreenTag[c].scheduled != fullscreen, let m = c.mon else { return }
         if fullscreen, c.parked || freeBit(server, c, m) == nil { return }
-        c.scheduledFullscreen = fullscreen
-        c.fullscreenPending = true
+        server.mac.fullscreenTag[c].scheduled = fullscreen
+        server.mac.fullscreenTag[c].pending = true
         server.mac.forgetPlacement(c)
         wlrLog(.debug, "chutney_fullscreen_tag: \(c.appName) window \(c.id) is told to go \(fullscreen ? "into" : "out of") macOS fullscreen")
         server.mac.setNativeFullscreen(c, fullscreen) { took in
-            guard !took, c.scheduledFullscreen == fullscreen, server.clientByIdAll(c.id) === c else { return }
+            guard !took, server.mac.fullscreenTag[c].scheduled == fullscreen, server.clientByIdAll(c.id) === c else { return }
             wlrLog(.info, "chutney_fullscreen_tag: \(c.appName) window \(c.id) cannot go \(fullscreen ? "into" : "out of") macOS fullscreen")
-            c.scheduledFullscreen = c.nativeFullscreen
-            c.fullscreenPending = false
+            server.mac.fullscreenTag[c].scheduled = server.mac.fullscreenTag[c].native
+            server.mac.fullscreenTag[c].pending = false
             if let m = c.mon { server.arrange(m, false, false) }
         }
     }
@@ -172,8 +189,8 @@ enum FullscreenTag {
     static func notTaken(_ server: MangoServer, _ c: Client) {
         wlrLog(.info, "chutney_fullscreen_tag: \(c.appName) window \(c.id) was not taken into macOS fullscreen")
         server.mac.fullscreenTag.wanted[c.id] = nil
-        c.scheduledFullscreen = false
-        c.fullscreenPending = false
+        server.mac.fullscreenTag[c].scheduled = false
+        server.mac.fullscreenTag[c].pending = false
         if c.isfullscreen {
             _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false)
         } else if let m = c.mon {
@@ -254,7 +271,7 @@ enum FullscreenTag {
             // mango's tag follows the window to its tags: it is on its F tag still.
             if server.focused === c, m.tagset[m.seltags] & home.bit == 0 { follow.append((m, home.bit)) }
         }
-        for c in server.clientsAll where !c.nativeFullscreen && !isglobal(c) && c.tags & f != 0 {
+        for c in server.clientsAll where !server.mac.fullscreenTag[c].native && !isglobal(c) && c.tags & f != 0 {
             let own = c.tags & ~f
             c.tags = own != 0 ? own : (c.mon.map { desktopView($0, server.config) } ?? 1)
             if let m = c.mon { changed.append(m) }
@@ -357,10 +374,10 @@ enum FullscreenTag {
             if w === c {
                 if c.isfullscreen {
                     _ = server.dispatch(Dispatch(name: "togglefullscreen"), target: c, rescan: false)
-                } else if c.nativeFullscreen {
+                } else if server.mac.fullscreenTag[c].native {
                     // Told to go out before, and macOS still has it in fullscreen (it drops what it is told
                     // while it moves a window between Spaces): it is told again.
-                    c.scheduledFullscreen = true
+                    server.mac.fullscreenTag[c].scheduled = true
                     notify(server, c, false)
                 }
             } else {
@@ -397,6 +414,21 @@ enum FullscreenTag {
         w.setFrameOrigin(SpaceAnchorWindow.origin(m.screen.frame))
         wlrLog(.debug, "chutney_fullscreen_tag: no window to focus on \(m.screen.name): mango's own, for the desktop")
         NativeFocus.focusOwn(windowID: CGWindowID(w.windowNumber))
+    }
+}
+
+/// Port extension: chutney_fullscreen_tag. What the macOS layer asks of a window's macOS fullscreen.
+extension MacWindowSystem {
+    /// On its F tag in macOS fullscreen.
+    func nativeFullscreen(_ c: Client) -> Bool { fullscreenTag[c].native }
+    /// Told to go into or out of macOS fullscreen, and macOS has yet to answer.
+    func fullscreenPending(_ c: Client) -> Bool { fullscreenTag[c].pending }
+    /// In macOS fullscreen, or told to go in or out: macOS places it.
+    func leftToMacOS(_ c: Client) -> Bool { fullscreenTag[c].native || fullscreenTag[c].pending }
+    /// While an F tag is viewed the desktop's windows are in another Space: they stay where they are.
+    func fullscreenTagViewed(_ c: Client) -> Bool {
+        guard let m = monitor(of: c) else { return false }
+        return FullscreenTag.isFullscreenView(m, server.config)
     }
 }
 

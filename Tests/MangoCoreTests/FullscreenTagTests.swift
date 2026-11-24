@@ -48,7 +48,7 @@ final class FullscreenTagTests: MangoTestCase {
         r.settle()
         let c = r.server.clientByIdAll(4)
         XCTAssertEqual(c?.tags, f1, "on F1")
-        XCTAssertEqual(c?.nativeFullscreen, true)
+        XCTAssertEqual(c.map { r.server.mac.nativeFullscreen($0) }, true)
     }
 
     // MARK: in and out
@@ -177,7 +177,7 @@ final class FullscreenTagTests: MangoTestCase {
         macOSFullscreen(r, 2, false)
         XCTAssertEqual(c.tags, 1)
         XCTAssertFalse(c.isfullscreen)
-        XCTAssertFalse(c.fullscreenPending)
+        XCTAssertFalse(r.server.mac.fullscreenPending(c))
     }
 
     /// Told to go out, and macOS takes it out after its Space change: out, as macOS has it.
@@ -197,7 +197,7 @@ final class FullscreenTagTests: MangoTestCase {
         r.settle(1)
         XCTAssertEqual(c.tags, 1)
         XCTAssertFalse(c.isfullscreen)
-        XCTAssertFalse(c.scheduledFullscreen)
+        XCTAssertFalse(r.server.mac.fullscreenTag[c].scheduled)
         XCTAssertNil(home(r, 2))
         XCTAssertEqual(fake(r).fullscreenWrites.map(\.1), [true, false], "macOS is not told again")
     }
@@ -410,7 +410,7 @@ final class FullscreenTagTests: MangoTestCase {
         fake(r).axFullscreen = { $0 == 2 }
         r.server.mac.appHidden(pid: c.pid, hidden: false)
         r.settle(1)
-        XCTAssertTrue(r.server.clientByIdAll(2)?.nativeFullscreen == true)
+        XCTAssertTrue(r.server.mac.nativeFullscreen(r.server.clientByIdAll(2)!))
         XCTAssertEqual(r.server.clientByIdAll(2)?.tags, f1)
         XCTAssertEqual(r.app.frames[2], written, "nothing written to it")
     }
@@ -421,7 +421,7 @@ final class FullscreenTagTests: MangoTestCase {
         r.server.mac.windowReacquired(id: 2, element: r.app.element(for: 2),
                                       state: ReacquiredState(frame: nil, minimized: false, fullscreen: false, appHidden: false))
         XCTAssertEqual(r.server.clientByIdAll(2)?.tags, 1)
-        XCTAssertFalse(r.server.clientByIdAll(2)!.nativeFullscreen)
+        XCTAssertFalse(r.server.mac.nativeFullscreen(r.server.clientByIdAll(2)!))
     }
 
     // MARK: saved and found

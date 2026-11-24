@@ -174,7 +174,7 @@ extension MacWindowSystem {
         // A disabled scene the port could not park when it was disabled (macOS had the window in
         // fullscreen, or an F tag was viewed) is parked at the first frame that can.
         for c in server.clientsAll where !c.parked && (!c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled)
-            && !c.leftToMacOS && !fullscreenTagViewed(c) && !ids.contains(c.id) && !placing.parkWhenArrived.contains(c.id) {
+            && !leftToMacOS(c) && !fullscreenTagViewed(c) && !ids.contains(c.id) && !placing.parkWhenArrived.contains(c.id) {
             park(c)
             changed = changed || c.parked
         }
@@ -273,7 +273,7 @@ extension MacWindowSystem {
         var held = false
         defer { if comingBack && !held { server.updateBorders() } }
         guard c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled else { return }
-        guard !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
+        guard !leftToMacOS(c) else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
         if reachesAnotherMonitor(c, box) {
             if !c.parked { park(c); p.offEdge = true }
             if p.offEdge { showEdgePlate(c, box: box) }
@@ -475,7 +475,7 @@ extension MacWindowSystem {
     /// The port's disabled scene node: the window out of sight in a corner of its monitor.
     func park(_ c: Client) {
         // Port extension: chutney_fullscreen_tag (leftToMacOS, fullscreenTagViewed)
-        guard !c.parked, !c.leftToMacOS, !fullscreenTagViewed(c), let m = monitor(of: c), let q = writer(for: c.pid) else { return }
+        guard !c.parked, !leftToMacOS(c), !fullscreenTagViewed(c), let m = monitor(of: c), let q = writer(for: c.pid) else { return }
         c.mac.placed.moving = false
         c.mac.placed.parkedOn = m.screen.displayID
         c.parked = true
@@ -484,13 +484,6 @@ extension MacWindowSystem {
         holdMoves(c, for: 0.5, atSource: 0.5)
         send(c, q, c.frame, from: was, setSize: false)
         q.readBack(c.element) { [weak self] actual in self?.keepHidden(c, seenAt: actual) }
-    }
-
-    /// Port extension: chutney_fullscreen_tag. While an F tag is viewed the desktop's windows are in
-    /// another Space: they stay where they are.
-    func fullscreenTagViewed(_ c: Client) -> Bool {
-        guard let m = monitor(of: c) else { return false }
-        return FullscreenTag.isFullscreenView(m, server.config)
     }
 
     func parkedOrigin(_ c: Client, on m: Monitor) -> CGPoint {

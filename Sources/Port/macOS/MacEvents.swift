@@ -144,7 +144,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             return
         }
         if c.groupParked { server.clientFocusGroupMember(c); return }
-        if c.nativeFullscreen, !VISIBLEON(c, m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
+        if nativeFullscreen(c), !VISIBLEON(c, m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
         if VISIBLEON(c, m) {
             if m.sel == id && server.selectedMonitor === m { seatFocus = c; restack(); return }
             macOSFocused = c.id
@@ -217,11 +217,11 @@ extension MacWindowSystem: AppWatcherDelegate {
         guard let c = server.clientByIdAll(id) else { return }
         c.element = element
         guard let m = c.mon else { return }
-        if s.fullscreen == false, c.nativeFullscreen { fullscreenChanged(c, false) }   // Port extension: chutney_fullscreen_tag
+        if s.fullscreen == false, nativeFullscreen(c) { fullscreenChanged(c, false) }   // Port extension: chutney_fullscreen_tag
         if s.minimized == true || s.fullscreen == true || s.appHidden {
             wlrLog(.info, "\(c.appName): window \(c.id) went away while its element was dead (minimized \(s.minimized ?? false), fullscreen \(s.fullscreen ?? false), hidden \(s.appHidden))")
             if s.minimized == true { minimizedByMacOS(c, true) }
-            if s.fullscreen == true, !c.nativeFullscreen { fullscreenChanged(c, true) }   // Port extension: chutney_fullscreen_tag (else away)
+            if s.fullscreen == true, !nativeFullscreen(c) { fullscreenChanged(c, true) }   // Port extension: chutney_fullscreen_tag (else away)
             if s.appHidden { goAway(c, .hidden) }
             return
         }
@@ -253,11 +253,11 @@ extension MacWindowSystem: AppWatcherDelegate {
             return true
         }
         guard let c = server.clientByIdAll(id) else { return false }
-        if late, !fullscreen, c.fullscreenPending, !c.nativeFullscreen {   // Port extension: chutney_fullscreen_tag
+        if late, !fullscreen, fullscreenPending(c), !nativeFullscreen(c) {   // Port extension: chutney_fullscreen_tag
             FullscreenTag.notTaken(server, c)
             return true
         }
-        guard fullscreen != c.nativeFullscreen else { return false }
+        guard fullscreen != nativeFullscreen(c) else { return false }
         fullscreenChanged(c, fullscreen, late: late)
         return true
     }
@@ -313,7 +313,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     func moved(_ c: Client, to actual: CGRect, resized: Bool) {
-        guard !missionControl.isActive, !c.leftToMacOS else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
+        guard !missionControl.isActive, !leftToMacOS(c) else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
         if c.animation.running { return }
         if server.grabClient === c && (server.cursorMode == CurMove || server.cursorMode == CurResize) { return }
         if c.parked { keepHidden(c, seenAt: actual); return }

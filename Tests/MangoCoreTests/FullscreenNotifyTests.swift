@@ -126,7 +126,7 @@ final class FullscreenNotifyTests: MangoTestCase {
         run(r, "togglefullscreen", 2)
         let c = r.server.clientByIdAll(2)!
         XCTAssertTrue(c.isfullscreen)
-        XCTAssertFalse(c.scheduledFullscreen)
+        XCTAssertFalse(r.server.mac.fullscreenTag[c].scheduled)
         XCTAssertEqual(r.app.frames[2], r.monitor.screen.frame, "it fills the monitor in mango")
     }
 
@@ -178,7 +178,7 @@ final class FullscreenNotifyTests: MangoTestCase {
         r.server.mac.windowDestroyed(id: 2)
         r.settle(0.5)
         XCTAssertFalse(c.isfullscreen)
-        XCTAssertFalse(c.scheduledFullscreen)
+        XCTAssertFalse(r.server.mac.fullscreenTag[c].scheduled)
     }
 
     // MARK: macOS's answer
@@ -191,7 +191,7 @@ final class FullscreenNotifyTests: MangoTestCase {
         r.settle(1)
         let c = r.server.clientByIdAll(2)!
         XCTAssertFalse(c.isfullscreen, "out of mango's fullscreen as macOS has it")
-        XCTAssertFalse(c.leftToMacOS)
+        XCTAssertFalse(r.server.mac.leftToMacOS(c))
         XCTAssertEqual(tiled(r), [1, 2, 3])
         XCTAssertEqual(r.app.frames[2], tile, "placed again")
     }
@@ -201,7 +201,7 @@ final class FullscreenNotifyTests: MangoTestCase {
         let frame = r.app.frames[2]
         run(r, "togglefullscreen", 2)
         macOS(r, 2, false)   // a resize during macOS's animation, before it reads fullscreen
-        XCTAssertTrue(r.server.clientByIdAll(2)!.leftToMacOS)
+        XCTAssertTrue(r.server.mac.leftToMacOS(r.server.clientByIdAll(2)!))
         XCTAssertEqual(r.app.frames[2], frame)
     }
 
