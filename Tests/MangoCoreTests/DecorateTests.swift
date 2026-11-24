@@ -22,7 +22,7 @@ final class DecorateTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.chutneyMacOSAppearance = true
         r.server.config.tabbardata.bgColor = parseColor("0x112233ff")
-        let mango = r.server.mangoBarDecorationApplyConfig(r.server.config.tabbardata, mango: .mangoTabBar)
+        let mango = r.server.decorateDrawData(r.server.config.tabbardata, mango: .mangoTabBar)
         XCTAssertEqual(mango.fontDesc, "monospace Bold 13", "the core is mango's, whatever the port draws")
         XCTAssertEqual(mango.focusFgColor, parseColor("0x7aa2f7ff"))
         XCTAssertEqual(mango.bgColor, parseColor("0x112233ff"))

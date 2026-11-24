@@ -8,7 +8,7 @@ package extension MangoServer {
 
     // not in mango: the config's fields over mango's defaults (set_value_default), the data that
     // mango_bar_decoration_apply_config and mango_jump_label_node_apply_config copy into the node
-    func mangoBarDecorationApplyConfig(_ set: DecorateStyle, mango: DecorateStyle) -> DecorateStyle {
+    func decorateDrawData(_ set: DecorateStyle, mango: DecorateStyle) -> DecorateStyle {
         set.filled(from: mango)
     }
 }

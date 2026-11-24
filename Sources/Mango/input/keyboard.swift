@@ -93,6 +93,7 @@ package struct KeyboardState {
     package init() {}
 }
 
+// not in mango: what the event tap does with a key
 package enum KeyAction: Equatable {
     case leaveOvercircle
     case switcherCommit
@@ -103,6 +104,7 @@ package enum KeyAction: Equatable {
     case forward(pid_t, down: Bool)
 }
 
+// not in mango: a key as the event tap sees it
 package struct KeyInput {
     package var keyCode: UInt16
     package var mods: Modifiers

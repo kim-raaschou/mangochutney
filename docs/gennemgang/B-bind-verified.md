@@ -63,5 +63,5 @@ Every `differs`/`missing` row of B-bind.md re-read on both sides (callers, calle
 | ✓ listet: afvigelser.md §5 (Porten: udvidelserne gennem `PortHooks`); mærket Engine/Dispatch.swift:19; Dispatch.swift:465 default -> extraDispatchers | marked | CONFIRMED | |
 | ✓ rettet i trin 6: IPC giver "" (notGiven); `Dispatch.arg` står mærket i Config/parse.swift:353 og bruges kun af Port/Extensions/Shortcuts.swift:49; Bindings.swift:63 Dispatch.arg "0" | marked, also used for IPC | CONFIRMED | see IPC row |
 | ✓ listet: afvigelser.md §5 (Dispatchere); Config/parse.swift:356, :380; Bindings.swift:66 knownNames / :91 isKnown | marked | CONFIRMED | |
-| åben: stadig umærket accessor for selmon->sel (Engine/MangoServer.swift:199), brugt for `server.selected_monitor->sel` i hele dispatch/bind.swift; MangoServer.swift:380 `focused` | trivial accessor | CONFIRMED | selmon->sel |
+| ✓ mærket: `focused` (common/server.swift, `not in mango: selected_monitor->sel as a client`); åben: stadig umærket accessor for selmon->sel (Engine/MangoServer.swift:199), brugt for `server.selected_monitor->sel` i hele dispatch/bind.swift; MangoServer.swift:380 `focused` | trivial accessor | CONFIRMED | selmon->sel |
 | ✓ rettet i trin 6: `arg.tc ?? focused` (dispatch/bind.swift:451); Groups.swift:48 groupFocus | drops arg->tc | CONFIRMED | |

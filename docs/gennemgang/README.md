@@ -14,6 +14,14 @@ verification (`<area>-verified.md`), with mango and our file:line for each findi
 scenario. Where the two disagree, the verified file wins. Once a deviation is fixed, its
 row is struck here. One that is kept is moved to `docs/afvigelser.md`.
 
+## Status 24. november
+
+Ingen fund er åbne. De 33, der stod som `åben`, er mærket med deres status i dag: lukket af
+ombygningen (`Engine/` og `Model/` tømt, `xkbOptions` til porten, `isGroupMember` som mangos
+`clientIsGroupMember`), mærket i koden, omdøbt (`decorateDrawData`) eller listet i
+`docs/afvigelser.md` (§4 mangler, §5 struktur). Hvilke af mangos filer der er verificeret 1:1 siden,
+står i `docs/verificeret.md`.
+
 ## Status 20. november (trin 10)
 
 Hvert fund nedenfor og i områdefilerne er mærket mod koden efter trin 9: `✓ rettet i trin N`,

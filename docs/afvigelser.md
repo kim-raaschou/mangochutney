@@ -114,7 +114,8 @@ fravalgt, afsnit 2):
 - Runde hjørner ved skærmkanten (`set_client_corner_location`): porten har én radius for hele
   rammen, så et vindue, der står mindre end `border_radius` ud over kanten, får et skåret hjørne.
 - `check_size_per_valid` (kun en kontrol, ingen opførsel).
-- Kommandolinjens `-s <cmd>` og `-r <fd>`, `XDG_CURRENT_DESKTOP=mango` og `increase_nofile_limit`.
+- Kommandolinjens `-s <cmd>` og `-r <fd>` (med `fd_set_nonblock` og `child_pid`), `XDG_CURRENT_DESKTOP=mango`
+  og `increase_nofile_limit`/`restore_nofile_limit`.
 - Man-siderne `mmsg.1` og `mangonag.1`.
 - Funktioner, mango selv ikke kalder: `unminimize`, `get_layout_abbr`, `starts_with_ignore_case`
   og `mod_to_string`.
@@ -152,6 +153,8 @@ Hvor koden står, når den ikke står som i mango.
   programmet). En klippeboks' bredde læses som `size.width`, for `CGRect.width` er aldrig
   negativ, og `wlr_box`'s kan være det (`clip_to_hide`). `oldmonname` holder
   skærmens display-ID, ikke navnet, for to skærme kan have samme navn.
+  Hvor mango læser en pointer, der altid er sat (`c->mon` i et arrange), stopper en `guard` i
+  Swift ved nil (`not in mango: c->mon is always set here`).
 - **Faner:** mangos `manage/tab.c` står i kernen (`manage/tab.swift`) med fanekæden på klienten
   (`tab_prev`, `tab_next`, `is_tab_focus`, `is_tab_hidden`) og `tab_member_count` på serveren.
   `client_chain_head` og `client_chain_unlink` tager felterne som key paths, ikke offsets. Barens
@@ -219,6 +222,9 @@ Hvor koden står, når den ikke står som i mango.
   væk (macOS-fuldskærm, minimeret, skjult), genbruges af porten, så af `init_client_properties` i
   unmap nulstilles kun `iskilling` og `drag_to_tile`. Ingen macOS-del: swallowing, foreign toplevel,
   scene-noderne ved map, `client_reparent_group`, regel-felterne MangoCompat lister.
+- **Mangos filtre som lister:** hvor mango går `server.clients` igennem med `VISIBLEON`,
+  `ISTILED` eller special-tagget, har kernen `visibleClients`, `tiledClients` og `specialClients`
+  (`common/server.swift`), og `arrangeAll` for mangos løkke over skærmene; alle mærket.
 - **Layer shell (`layer.c`):** macOS har ingen layer shell; filen har ingen macOS-del.
 - **Hvad der er under markøren:** mangos `node_at_point` går scenen igennem fra øverste lag; porten
   har ingen scene, så `nodeAtPoint` (`manage/misc.swift`) skriver rækkefølgen ud: overview-kortene

@@ -182,9 +182,9 @@ package extension MangoServer {
             }
         }
         var style = TabStripStyle(accent: config.focuscolor, accentWidth: CGFloat(min(3, max(1, config.borderpx))))
-        style.decorate = mangoBarDecorationApplyConfig(config.tabbardata, mango: .mangoTabBar)
+        style.decorate = decorateDrawData(config.tabbardata, mango: .mangoTabBar)
         system.drawTabBars(strips, style: style)
-        style.decorate = mangoBarDecorationApplyConfig(config.groupbardata, mango: .mangoGroupBar)
+        style.decorate = decorateDrawData(config.groupbardata, mango: .mangoGroupBar)
         system.drawGroupBars(groups, style: style)
     }
 
