@@ -97,7 +97,7 @@ final class ConfigParseFidelityTests: MangoTestCase {
         setoption("tag_rule", "id:2", "layout_name:scroller", "foo:1")
         XCTAssertEqual(r.server.config.tagRules.last?.layoutName, "scroller", "mango keeps a rule with an unknown field")
         setoption("window_rule", "app_id:x", "bogus:1")
-        XCTAssertEqual(r.server.config.windowRules.last?.appId, "x")
+        XCTAssertEqual(r.server.config.windowRules.last?.id, "x")
     }
 
     func testABadPresetOrCircleLayoutEmptiesTheList() {

@@ -492,7 +492,7 @@ final class LayoutGoldenTests: MangoTestCase {
                 cfg.dwindleSmartSplit = Int(f[3].dropFirst())! == 1
                 cfg.dwindleManualSplit = Int(f[4].dropFirst(3))! == 1
                 cfg.dwindlePreserveSplit = Int(f[5].dropFirst(3))! == 1
-                cfg.dwindleSplitRatio = ratios[Int(f[6].dropFirst())!]
+                cfg.dwindleSplitRatio = Float(ratios[Int(f[6].dropFirst())!])
                 let m = mons[Int(f[1].dropFirst())!]
                 let area = CGRect(x: m.x, y: m.y, width: m.w, height: m.h)
                 let r = EngineRig()

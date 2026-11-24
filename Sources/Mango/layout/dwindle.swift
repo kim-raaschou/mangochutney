@@ -555,7 +555,7 @@ package extension MangoServer {
         if n == 0 { return }
 
         let tag = getMonCurtag(m)
-        let ratio = Float(config.dwindleSplitRatio)
+        let ratio = config.dwindleSplitRatio
 
         var vis: [Client] = []
         for c in clients where VISIBLEON(c, m) && ISTILED(c) { vis.append(c) }

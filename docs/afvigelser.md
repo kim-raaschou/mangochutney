@@ -186,6 +186,22 @@ Hvor koden står, når den ikke står som i mango.
   deres fil: `axis_apply_time`/`axis_apply_dir` (i porten, `pointer.c`), `last_hold_keycode`
   (`keyboard.c`), `group_bar_hover` (`pointer.c`), `allow_frame_scheduling`, `next_client_id`,
   `cli_config_path` og `child_pid` (`main.c`).
+- **Config-structs (`config/parse.h`):** `ConfigWinRule` og `ConfigTagRule` har mangos navne og
+  rækkefølge (`id`, `is_once`, `isunglobal`, `offsetx`, `mfact`, `nmaster`, …); et felt, reglen
+  ikke sætter, er `nil` (mangos -1 eller NULL), og tag-reglens `id` er `nil` for `id_wildcard`.
+  `Config`'s `float`-felter er `Float`. Heltallene er `Int`, hvor mango har `int32_t` og
+  `uint32_t`: hvert klemmes ved parsning til sit område (`option_defs.swift`), og Swift stopper
+  programmet ved et `UInt32` under 0, hvor C løber rundt. Flag er `Bool`, farver `RGBA`, lister er
+  arrays uden `_count`. Uden macOS-del, så felterne mangler (nøglerne læses og meldes, `MangoCompat`):
+  libinput (`mouse_*`, `trackpad_*`, `tap_*`, `button_map`, `send_events_mode`, `touch_*`,
+  `disable_trackpad`, `axis_scroll_factor`), `repeat_rate`/`repeat_delay`, `numlockon`, `capslock`,
+  blur, skygger og dim (`blur*`, `shadow*`, `dim_*`), layer-animationer, opacity-kurverne,
+  `idleinhibit_*`, `cursor_theme`/`cursor_size`, XWayland, `syncobj_enable`, `allow_tearing`,
+  `allow_shortcuts_inhibit`, `disable_middle_paste`, `allow_lock_transparent`, `hdr_depth`,
+  xkb's `ctx`/`keymap`, og `layer_rules`, `monitor_rules`, `device_rules` (tjekkes, gemmes ikke).
+  Bindingerne er ikke mangos struct: `func`+`arg` er `dispatch` (navn og felter, tolket når den
+  kører), tasterne er macOS' koder (`KeySymCode` venter på keysym-modellen), bogstaverne er
+  `KeyBindingFlags`, og `line_number`/`file_index` mangler.
 - **Faner:** mangos `manage/tab.c` står i kernen (`manage/tab.swift`) med fanekæden på klienten
   (`tab_prev`, `tab_next`, `is_tab_focus`, `is_tab_hidden`) og `tab_member_count` på serveren.
   `client_chain_head` og `client_chain_unlink` tager felterne som key paths, ikke offsets. Barens

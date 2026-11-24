@@ -99,7 +99,7 @@ public final class Monitor {
         pertag.prevtag = 1
         for i in 0...config.tagNum {
             pertag.nmasters[i] = Int32(config.defaultNmaster)
-            pertag.mfacts[i] = Float(config.defaultMfact)
+            pertag.mfacts[i] = config.defaultMfact
             pertag.ltidxs[i] = .tile
         }
     }

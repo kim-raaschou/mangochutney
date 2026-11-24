@@ -174,7 +174,7 @@ package final class FakeWlroots: WindowSystem {
     package func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel? { nil }
     /// xkb's keymap (us): the key that gives the character.
     package func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode { MultiKeycode(keycode1: FakeKeymap.code(String(keysym))) }
-    package func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) {}
+    package func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>) {}
     package func showDropArea(_ area: CGRect?, color: RGBA) {}
     package func nagSpawn(_ argv: [String], input: String) {}
     package func nagKill() {}

@@ -773,7 +773,7 @@ package extension MangoServer {
                 let tag = getClientTagIdx(c)
                 let insertBefore = closest.dropDirection == LEFT || closest.dropDirection == UP
                 let splitH = closest.dropDirection == LEFT || closest.dropDirection == RIGHT
-                dwindleInsert(&m.pertag.dwindleRoot[tag], c, closest, Float(config.dwindleSplitRatio), insertBefore,
+                dwindleInsert(&m.pertag.dwindleRoot[tag], c, closest, config.dwindleSplitRatio, insertBefore,
                               splitH, !config.dwindleDropSimpleSplit)
                 clientSetFloating(c, false, false)
                 return

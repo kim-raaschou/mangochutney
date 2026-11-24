@@ -10,10 +10,10 @@ public struct Config: Sendable {
     public var animationFadeIn = true
     public var animationFadeOut = true
     public var tagAnimationDirection = 1
-    public var zoomInitialRatio = 0.4
-    public var zoomEndRatio = 0.8
-    public var fadeinBeginOpacity = 0.5
-    public var fadeoutBeginOpacity = 0.5
+    public var zoomInitialRatio: Float = 0.4
+    public var zoomEndRatio: Float = 0.8
+    public var fadeinBeginOpacity: Float = 0.5
+    public var fadeoutBeginOpacity: Float = 0.5
     public var animationDurationMove = 500
     public var animationDurationOpen = 400
     public var animationDurationTag = 300
@@ -26,8 +26,8 @@ public struct Config: Sendable {
     public var animationCurveFocus = BezierCurve.mangoDefault
 
     public var scrollerStructs = 20
-    public var scrollerDefaultProportion = 0.9
-    public var scrollerDefaultProportionSingle = 1.0
+    public var scrollerDefaultProportion: Float = 0.9
+    public var scrollerDefaultProportionSingle: Float = 1.0
     public var scrollerIgnoreProportionSingle = true
     public var scrollerFocusCenter = false
     public var scrollerPreferCenter = false
@@ -37,7 +37,7 @@ public struct Config: Sendable {
     public var scrollerProportionPreset: [Double] = []
 
     public var newIsMaster = true
-    public var defaultMfact = 0.55
+    public var defaultMfact: Float = 0.55
     public var defaultNmaster = 1
     public var centerMasterOverspread = false
     public var centerWhenSingleStack = true
@@ -53,7 +53,7 @@ public struct Config: Sendable {
     public var dwindleSmartResize = false
     public var dwindleManualSplit = false
     public var dwindleDropSimpleSplit = true
-    public var dwindleSplitRatio = 0.5
+    public var dwindleSplitRatio: Float = 0.5
     public var monocleTabMode = true
     public var monocleNoBorder = false
     public var monocleNoGap = false
@@ -84,8 +84,8 @@ public struct Config: Sendable {
     public var borderRadius = 0
     public var noBorderWhenSingle = false
     public var noRadiusWhenSingle = false
-    public var focusedOpacity = 1.0
-    public var unfocusedOpacity = 1.0
+    public var focusedOpacity: Float = 1.0
+    public var unfocusedOpacity: Float = 1.0
     public var rootcolor = parseColor("0x323232ff")!
     public var bordercolor = parseColor("0x444444ff")!
     public var focuscolor = parseColor("0xc66b25ff")!
@@ -96,9 +96,9 @@ public struct Config: Sendable {
     public var overlaycolor = parseColor("0x14a57cff")!
     public var dropcolor = RGBA(r: 0xd5 / 255.0, g: 0x89 / 255.0, b: 0x9d / 255.0, a: 0.5)
     public var splitcolor = parseColor("0xeb441eff")!
-    public var scratchpadWidthRatio = 0.8
-    public var scratchpadHeightRatio = 0.9
-    public var specialDim = 0.5
+    public var scratchpadWidthRatio: Float = 0.8
+    public var scratchpadHeightRatio: Float = 0.9
+    public var specialDim: Float = 0.5
     public var specialGappih = 10
     public var specialGappiv = 10
     public var specialGappoh = 20
@@ -110,7 +110,7 @@ public struct Config: Sendable {
     public var hotareaDisableOnFullscreen = true
     public var overviewgappi = 5
     public var overviewgappo = 30
-    public var overcircleCenterRatio = 0.5
+    public var overcircleCenterRatio: Float = 0.5
     public var jumpLabels = "HJKLASDFGQWERTYUIOPZXCVBNM"
 
     public var focusOnActivate = true
@@ -182,62 +182,57 @@ let KEY_TYPE_CODE = 0, KEY_TYPE_SYM = 1
 /// Not in mango: `app_id` is matched against the bundle id and the app's name; a nil field is
 /// mango's -1 (unset).
 public struct ConfigWinRule: Equatable, Sendable {
-    public var appId: String?
+    public var id: String?
     public var title: String?
-    public var once = false
+    public var isOnce = false
     public var isOnceApplied = false
-
+    public var tags: UInt32?
     public var isfloating: Bool?
     public var isfullscreen: Bool?
     public var isfakefullscreen: Bool?
-    public var isglobal: Bool?
-    public var isoverlay: Bool?
-    public var isopensilent: Bool?
-    public var istagsilent: Bool?
-    public var isnamedscratchpad: Bool?
-    public var isUnmanagedGlobal: Bool?
-    public var isTerm: Bool?
-    public var noSwallow: Bool?
-
-    public var tags: UInt32?
-    public var monitor: String?
-    public var width: Double?
-    public var height: Double?
-    public var offsetX: Int?
-    public var offsetY: Int?
-    public var noForceCenter: Bool?
-    public var noSizeHint: Bool?
-
+    public var scrollerProportion: Double?
+    public var animationTypeOpen: AnimationType?
+    public var animationTypeClose: AnimationType?
     public var noBorder: Bool?
     public var noShadow: Bool?
     public var noRadius: Bool?
-    public var noBlur: Bool?
     public var noAnimation: Bool?
-    public var noFadeIn: Bool?
-    public var noFadeOut: Bool?
-    public var focusedOpacity: Double?
-    public var unfocusedOpacity: Double?
-    public var allowCsd: Bool?
-    public var animationTypeOpen: AnimationType?
-    public var animationTypeClose: AnimationType?
-
-    public var scrollerProportion: Double?
-    public var scrollerProportionSingle: Double?
-
-    public var noFocus: Bool?
-    public var confinePointer: Bool?
+    public var isopensilent: Bool?
+    public var istagsilent: Bool?
+    public var isnamedscratchpad: Bool?
+    public var isunglobal: Bool?
+    public var isglobal: Bool?
+    public var isoverlay: Bool?
     public var ignoreMaximize: Bool?
     public var ignoreMinimize: Bool?
+    public var noSizeHint: Bool?
+    public var monitor: String?
+    public var offsetx: Int?
+    public var offsety: Int?
+    public var width: Double?
+    public var height: Double?
+    public var noFocus: Bool?
+    public var noFadeIn: Bool?
+    public var noFadeOut: Bool?
+    public var noForceCenter: Bool?
+    public var isterm: Bool?
+    public var allowCsd: Bool?
     public var forceTiledState: Bool?
-    public var globalKeyBinding: String?
+    public var noSwallow: Bool?
+    public var confinePointer: Bool?
+    public var noBlur: Bool?
+    public var focusedOpacity: Double?
+    public var unfocusedOpacity: Double?
+    public var scrollerProportionSingle: Double?
+    public var globalkeybinding: String?   // not in mango: the bind's text; passmod, keysym and the binding are read from it
 
     public init() {}
 
-    public func isWindowRuleMatches(appId id: String, appName: String, title t: String) -> Bool {
+    public func isWindowRuleMatches(appId appid: String, appName: String, title t: String) -> Bool {
         var matched = false
-        if let appId {
-            let hit = regexMatch(appId, id)
-                || regexMatch(appId, appName)   // not in mango: the app's name too (macOS app ids are bundle ids)
+        if let id {
+            let hit = regexMatch(id, appid)
+                || regexMatch(id, appName)   // not in mango: the app's name too (macOS app ids are bundle ids)
             if !hit { return false }
             matched = true
         }
@@ -251,20 +246,20 @@ public struct ConfigWinRule: Equatable, Sendable {
 }
 
 public struct ConfigTagRule: Equatable, Sendable {
-    public var id: Int?
+    public var id: Int?   // not in mango: nil is id_wildcard
     public var layoutName: String?
     public var monitorName: String?
     public var monitorMake: String?
     public var monitorModel: String?
     public var monitorSerial: String?
-    public var noRenderBorder = false
-    public var openAsFloating = false
-    public var noHide = false
-    public var masterCount: Int?
-    public var masterFactor: Double?
+    public var mfact: Double?
+    public var nmaster: Int?
     public var scrollerDefaultProportion = 0.0
     public var scrollerDefaultProportionSingle = 0.0
     public var scrollerIgnoreProportionSingle: Bool?
+    public var noRenderBorder = false
+    public var openAsFloating = false
+    public var noHide = false
 
     public init() {}
 }

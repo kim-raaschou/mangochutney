@@ -13,13 +13,13 @@ package extension MangoServer {
     // not in mango: keyboard_process_global_keypress's rules, given ahead to the event tap, which sends
     // a press to the window's app
     func publishGlobalKeys() {
-        let rules = config.windowRules.filter { $0.globalKeyBinding != nil && ($0.appId != nil || $0.title != nil) }
+        let rules = config.windowRules.filter { $0.globalkeybinding != nil && ($0.id != nil || $0.title != nil) }
         guard !rules.isEmpty || publishedGlobalKeys else { return }
         let focusedNow = focused
         let windows = clients
         var keys: [GlobalKey] = []
         for r in rules {
-            guard let spec = r.globalKeyBinding, let dash = spec.firstIndex(of: "-"),
+            guard let spec = r.globalkeybinding, let dash = spec.firstIndex(of: "-"),
                   let mods = BindingParser.parseMod(String(spec[..<dash])), !mods.isEmpty else { continue }
             let name = String(spec[spec.index(after: dash)...]).trimmingCharacters(in: .whitespaces)
             guard let target = windows.first(where: {

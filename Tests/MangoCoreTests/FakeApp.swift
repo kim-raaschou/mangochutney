@@ -201,7 +201,7 @@ final class FakeWindowSystem: MacWindowSystem {
         guard let a = keysym.lowercased().first?.asciiValue, a >= 97, a <= 122 else { return MultiKeycode() }
         return MultiKeycode(keycode1: UInt16(a - 97))
     }
-    override func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) { specialDimAlpha = alpha }
+    override func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>) { specialDimAlpha = alpha.map(Double.init) }
     override func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }
     override func nagSpawn(_ argv: [String], input: String) { nagArgv = argv; nagInput = input }
     override func nagKill() { nagArgv = nil }

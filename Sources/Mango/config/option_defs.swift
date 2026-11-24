@@ -204,9 +204,9 @@ extension ParserState {
             } else if key == "no_hide" {
                 rule.noHide = ValueParse.atoi(val) > 0
             } else if key == "master_count" {
-                rule.masterCount = min(max(ValueParse.atoi(val), 1), 99)
+                rule.nmaster = min(max(ValueParse.atoi(val), 1), 99)
             } else if key == "master_factor" {
-                rule.masterFactor = min(max(ValueParse.atof(val, keepingInf: true), 0.1), 0.9)
+                rule.mfact = min(max(ValueParse.atof(val, keepingInf: true), 0.1), 0.9)
             } else if key == "scroller_default_proportion" {
                 rule.scrollerDefaultProportion = min(max(ValueParse.atof(val, keepingInf: true), 0.0), 1.0)
             } else if key == "scroller_default_proportion_single" {
@@ -248,10 +248,10 @@ extension ParserState {
         var rule = ConfigWinRule()
 
         if key == "window_rule_once" {
-            rule.once = true
+            rule.isOnce = true
             rule.isOnceApplied = false
         } else {
-            rule.once = false
+            rule.isOnce = false
             rule.isOnceApplied = false
         }
 
@@ -270,7 +270,7 @@ extension ParserState {
             } else if key == "title" {
                 rule.title = val
             } else if key == "app_id" {
-                rule.appId = val
+                rule.id = val
             } else if key == "animation_type_open" {
                 rule.animationTypeOpen = ValueParse.animationTypeFromString(val)
             } else if key == "animation_type_close" {
@@ -281,9 +281,9 @@ extension ParserState {
             } else if key == "monitor" {
                 rule.monitor = val
             } else if key == "offset_x" {
-                rule.offsetX = ValueParse.atoi(val)
+                rule.offsetx = ValueParse.atoi(val)
             } else if key == "offset_y" {
-                rule.offsetY = ValueParse.atoi(val)
+                rule.offsety = ValueParse.atoi(val)
             } else if key == "no_focus" {
                 rule.noFocus = flag(val)
             } else if key == "no_fade_in" {
@@ -311,7 +311,7 @@ extension ParserState {
             } else if key == "is_named_scratchpad" {
                 rule.isnamedscratchpad = flag(val)
             } else if key == "is_unmanaged_global" {
-                rule.isUnmanagedGlobal = flag(val)
+                rule.isunglobal = flag(val)
             } else if key == "is_global" {
                 rule.isglobal = flag(val)
             } else if key == "scroller_proportion_single" {
@@ -329,7 +329,7 @@ extension ParserState {
             } else if key == "no_size_hint" {
                 rule.noSizeHint = flag(val)
             } else if key == "is_term" {
-                rule.isTerm = flag(val)
+                rule.isterm = flag(val)
             } else if key == "allow_csd" {
                 rule.allowCsd = flag(val)
             } else if key == "force_tiled_state" {
@@ -363,7 +363,7 @@ extension ParserState {
                 if keysymcode == nil {
                     return false
                 }
-                rule.globalKeyBinding = val
+                rule.globalkeybinding = val
             } else if ConfigParser.port?.knowsWindowRuleField(key) ?? false {
                 // not in mango: the fields that do nothing on macOS, the port's list
             } else {
@@ -684,10 +684,10 @@ public enum ConfigOptions {
         t["animation_fade_in"] = bool(\.animationFadeIn)
         t["animation_fade_out"] = bool(\.animationFadeOut)
         t["tag_animation_direction"] = int(\.tagAnimationDirection, 0...1)
-        t["zoom_initial_ratio"] = double(\.zoomInitialRatio)
-        t["zoom_end_ratio"] = double(\.zoomEndRatio)
-        t["fade_in_begin_opacity"] = double(\.fadeinBeginOpacity)
-        t["fade_out_begin_opacity"] = double(\.fadeoutBeginOpacity)
+        t["zoom_initial_ratio"] = float(\.zoomInitialRatio)
+        t["zoom_end_ratio"] = float(\.zoomEndRatio)
+        t["fade_in_begin_opacity"] = float(\.fadeinBeginOpacity)
+        t["fade_out_begin_opacity"] = float(\.fadeoutBeginOpacity)
         t["animation_duration_move"] = int(\.animationDurationMove)
         t["animation_duration_open"] = int(\.animationDurationOpen)
         t["animation_duration_tag"] = int(\.animationDurationTag)
@@ -700,8 +700,8 @@ public enum ConfigOptions {
         t["animation_curve_focus"] = curve(\.animationCurveFocus, "animation_curve_focus")
 
         t["scroller_structs"] = int(\.scrollerStructs)
-        t["scroller_default_proportion"] = double(\.scrollerDefaultProportion)
-        t["scroller_default_proportion_single"] = double(\.scrollerDefaultProportionSingle)
+        t["scroller_default_proportion"] = float(\.scrollerDefaultProportion)
+        t["scroller_default_proportion_single"] = float(\.scrollerDefaultProportionSingle)
         t["scroller_ignore_proportion_single"] = bool(\.scrollerIgnoreProportionSingle)
         t["scroller_focus_center"] = bool(\.scrollerFocusCenter)
         t["scroller_prefer_center"] = bool(\.scrollerPreferCenter)
@@ -726,7 +726,7 @@ public enum ConfigOptions {
         }
 
         t["new_is_master"] = bool(\.newIsMaster)
-        t["default_master_factor"] = double(\.defaultMfact)
+        t["default_master_factor"] = float(\.defaultMfact)
         t["default_master_count"] = int(\.defaultNmaster)
         t["center_master_overspread"] = bool(\.centerMasterOverspread)
         t["center_when_single_stack"] = bool(\.centerWhenSingleStack)
@@ -753,7 +753,7 @@ public enum ConfigOptions {
         t["dwindle_smart_resize"] = bool(\.dwindleSmartResize)
         t["dwindle_manual_split"] = bool(\.dwindleManualSplit)
         t["dwindle_drop_simple_split"] = bool(\.dwindleDropSimpleSplit)
-        t["dwindle_split_ratio"] = double(\.dwindleSplitRatio)
+        t["dwindle_split_ratio"] = float(\.dwindleSplitRatio)
         t["monocle_tab_mode"] = unclampedBool(\.monocleTabMode)
         t["monocle_no_border"] = bool(\.monocleNoBorder)
         t["monocle_no_gap"] = bool(\.monocleNoGap)
@@ -784,8 +784,8 @@ public enum ConfigOptions {
         t["border_radius"] = int(\.borderRadius)
         t["no_border_when_single"] = bool(\.noBorderWhenSingle)
         t["no_radius_when_single"] = bool(\.noRadiusWhenSingle)
-        t["focused_opacity"] = double(\.focusedOpacity)
-        t["unfocused_opacity"] = double(\.unfocusedOpacity)
+        t["focused_opacity"] = float(\.focusedOpacity)
+        t["unfocused_opacity"] = float(\.unfocusedOpacity)
         t["root_color"] = color(\.rootcolor, "rootcolor")
         t["border_color"] = color(\.bordercolor, "bordercolor")
         t["focus_color"] = color(\.focuscolor, "focuscolor")
@@ -796,9 +796,9 @@ public enum ConfigOptions {
         t["overlay_color"] = color(\.overlaycolor, "overlaycolor")
         t["drop_color"] = color(\.dropcolor, "dropcolor")
         t["split_color"] = color(\.splitcolor, "splitcolor")
-        t["scratchpad_width_ratio"] = double(\.scratchpadWidthRatio, 0.1...1)
-        t["scratchpad_height_ratio"] = double(\.scratchpadHeightRatio, 0.1...1)
-        t["special_dim"] = double(\.specialDim, 0...1)
+        t["scratchpad_width_ratio"] = float(\.scratchpadWidthRatio, 0.1...1)
+        t["scratchpad_height_ratio"] = float(\.scratchpadHeightRatio, 0.1...1)
+        t["special_dim"] = float(\.specialDim, 0...1)
         t["special_gap_inner_horizontal"] = int(\.specialGappih, 0...1000)
         t["special_gap_inner_vertical"] = int(\.specialGappiv, 0...1000)
         t["special_gap_outer_horizontal"] = int(\.specialGappoh, 0...1000)
@@ -810,7 +810,7 @@ public enum ConfigOptions {
         t["hotarea_disable_on_fullscreen"] = bool(\.hotareaDisableOnFullscreen)
         t["overview_gap_inner"] = int(\.overviewgappi, 0...1000)
         t["overview_gap_outer"] = int(\.overviewgappo, 0...1000)
-        t["overcircle_center_ratio"] = double(\.overcircleCenterRatio, 0.1...0.9)
+        t["overcircle_center_ratio"] = float(\.overcircleCenterRatio, 0.1...0.9)
         t["jump_labels"] = { config, value in
             config.jumpLabels = value
             return .applied
@@ -876,6 +876,14 @@ public enum ConfigOptions {
         { config, value in
             let d = ValueParse.atof(value, keepingInf: true)   // not in mango: inf kept, each one is clamped
             config[keyPath: kp] = range.map { min(max(d, $0.lowerBound), $0.upperBound) } ?? d
+            return .applied
+        }
+    }
+
+    package static func float(_ kp: WritableKeyPath<Config, Float>, _ range: ClosedRange<Double>? = nil) -> Setter {
+        { config, value in
+            let d = ValueParse.atof(value, keepingInf: true)   // not in mango: inf kept, each one is clamped
+            config[keyPath: kp] = Float(range.map { min(max(d, $0.lowerBound), $0.upperBound) } ?? d)
             return .applied
         }
     }

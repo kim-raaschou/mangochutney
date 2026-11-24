@@ -465,13 +465,13 @@ class MacWindowSystem: WindowSystem {
         return MultiKeycode(keycode1: codes.first, keycode2: codes.dropFirst().first, keycode3: codes.dropFirst(2).first)
     }
 
-    func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>) {
+    func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>) {
         let id = m.screen.displayID
         guard let alpha else { specialDims[id]?.hide(); return }
         let backmost = stackingOrder().last { over.contains($0.id) }?.id
         let view = specialDims[id] ?? SpecialDimView()
         specialDims[id] = view
-        view.show(frame: m.screen.frame, alpha: alpha, below: backmost)
+        view.show(frame: m.screen.frame, alpha: Double(alpha), below: backmost)
     }
 
     func showDropArea(_ area: CGRect?, color: RGBA) {

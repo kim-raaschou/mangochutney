@@ -144,7 +144,7 @@ final class OverviewRunner {
         }
         server.config.overviewgappi = Int(gapInner)
         server.config.overviewgappo = Int(gapOuter)
-        server.config.overcircleCenterRatio = Double(centerRatio)
+        server.config.overcircleCenterRatio = Float(centerRatio)
         server.config.titleMessageBarHeight = 0
         let m = rig.monitor
         var order: [Client] = []

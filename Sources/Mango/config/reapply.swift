@@ -97,7 +97,7 @@ package extension MangoServer {
         for i in 0..<PERTAG_SLOTS {
             for m in monitors {
                 m.pertag.nmasters[i] = Int32(config.defaultNmaster)
-                m.pertag.mfacts[i] = Float(config.defaultMfact)
+                m.pertag.mfacts[i] = config.defaultMfact
                 m.gappih = Int32(config.gappih)
                 m.gappiv = Int32(config.gappiv)
                 m.gappoh = Int32(config.gappoh)
@@ -113,10 +113,10 @@ package extension MangoServer {
     // Reset a pertag slot to defaults.
     func tagSlotSetDefaults(_ m: Monitor, _ tag: UInt32) {
         m.pertag.nmasters[tag] = Int32(config.defaultNmaster)
-        m.pertag.mfacts[tag] = Float(config.defaultMfact)
+        m.pertag.mfacts[tag] = config.defaultMfact
         m.pertag.configLtidxs[tag] = .tile
-        m.pertag.scrollerDefaultProportion[tag] = Float(config.scrollerDefaultProportion)
-        m.pertag.scrollerDefaultProportionSingle[tag] = Float(config.scrollerDefaultProportionSingle)
+        m.pertag.scrollerDefaultProportion[tag] = config.scrollerDefaultProportion
+        m.pertag.scrollerDefaultProportionSingle[tag] = config.scrollerDefaultProportionSingle
         m.pertag.scrollerIgnoreProportionSingle[tag] = config.scrollerIgnoreProportionSingle
     }
 
@@ -146,10 +146,10 @@ package extension MangoServer {
         }
 
         m.pertag.noHide[tag] = tr.noHide
-        if let nmaster = tr.masterCount, nmaster >= 1 {
+        if let nmaster = tr.nmaster, nmaster >= 1 {
             m.pertag.nmasters[tag] = Int32(nmaster)
         }
-        if let mfact = tr.masterFactor, mfact > 0.0 {
+        if let mfact = tr.mfact, mfact > 0.0 {
             m.pertag.mfacts[tag] = Float(mfact)
         }
         m.pertag.noRenderBorder[tag] = tr.noRenderBorder

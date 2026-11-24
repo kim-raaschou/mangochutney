@@ -116,8 +116,8 @@ package extension MangoServer {
             c.animainitGeom = geo
             return
         } else if type == .zoom {
-            let w = (geo.width * CGFloat(config.zoomInitialRatio)).rounded(.towardZero)
-            let h = (geo.height * CGFloat(config.zoomInitialRatio)).rounded(.towardZero)
+            let w = CGFloat((Float(geo.width) * config.zoomInitialRatio).rounded(.towardZero))
+            let h = CGFloat((Float(geo.height) * config.zoomInitialRatio).rounded(.towardZero))
             c.animainitGeom = CGRect(x: geo.minX + ((geo.width - w) / 2).rounded(.towardZero),
                                      y: geo.minY + ((geo.height - h) / 2).rounded(.towardZero), width: w, height: h)
             return
@@ -339,7 +339,7 @@ package extension MangoServer {
 
         if dwindleFamiliar {
             let splitH = c.geom.width >= c.geom.height
-            let ratio = Float(config.dwindleSplitRatio)
+            let ratio = config.dwindleSplitRatio
             if splitH {
                 if relX < Double(clientWidth) * 0.5 {
                     dropDirection = LEFT

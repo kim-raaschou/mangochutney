@@ -19,8 +19,8 @@ final class RuleFieldTests: MangoTestCase {
     func testAGlobalKeyGoesToItsWindowsAppNotTheFocusedOne() {
         let r = EngineRig()
         var rule = ConfigWinRule()
-        rule.appId = "com.obsproject.Studio"
-        rule.globalKeyBinding = "ctrl+alt-o"
+        rule.id = "com.obsproject.Studio"
+        rule.globalkeybinding = "ctrl+alt-o"
         r.server.config.windowRules = [rule]
         let obs = otherApp(r, 900_310, pid: 4242, bundleId: "com.obsproject.Studio")
         let editor = r.window(900_311)
@@ -50,8 +50,8 @@ final class RuleFieldTests: MangoTestCase {
     func testABindingWinsOverAGlobalKey() {
         let r = EngineRig()
         var rule = ConfigWinRule()
-        rule.appId = "com.obsproject.Studio"
-        rule.globalKeyBinding = "ctrl+alt-o"
+        rule.id = "com.obsproject.Studio"
+        rule.globalkeybinding = "ctrl+alt-o"
         r.server.config.windowRules = [rule]
         let o = KeyNames.keyCodes(forName: "o").first!
         r.server.config.keyBindings = [KeyBinding(mods: [.ctrl, .alt], keyName: "o", keyCodes: [o],

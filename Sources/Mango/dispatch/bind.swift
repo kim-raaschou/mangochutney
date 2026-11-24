@@ -125,7 +125,7 @@ package extension MangoServer {
             if tc.mon !== c.mon {
                 clientMoveToMonitor(c, tc, arg.i)
             } else if let tm = tc.mon, tm.pertag.ltidxs[getMonCurtag(tm)] == .dwindle {
-                dwindleMoveNextTo(c, tc, Float(config.dwindleSplitRatio), arg.i)
+                dwindleMoveNextTo(c, tc, config.dwindleSplitRatio, arg.i)
             } else if let t2 = getFocusedStackClient(tc, c) {
                 clientExchange(c, t2)
             }

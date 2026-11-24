@@ -43,7 +43,7 @@ package protocol WindowSystem: AnyObject {
     func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel?
     /// find_keycodes_for_keysym on xkb's keymap: the keys that type this character.
     func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode
-    func showSpecialDim(on m: Monitor, alpha: Double?, over: Set<ClientID>)
+    func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>)
     func showDropArea(_ area: CGRect?, color: RGBA)
     func nagSpawn(_ argv: [String], input: String)
     func nagKill()

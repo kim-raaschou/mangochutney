@@ -163,8 +163,8 @@ struct LayoutPanelView: View {
                 .disabled(o.disabled(model.config))
                 .help(o.title)
         case .slider(let kp, let range, let step):
-            slider(o.key, value: Binding(get: { model.config[keyPath: kp] }, set: { model.config[keyPath: kp] = $0 }),
-                   in: range, step: step, label: String(format: step < 1 ? "%.2f" : "%.0f", model.config[keyPath: kp]),
+            slider(o.key, value: Binding(get: { Double(model.config[keyPath: kp]) }, set: { model.config[keyPath: kp] = Float($0) }),
+                   in: range, step: step, label: String(format: step < 1 ? "%.2f" : "%.0f", Double(model.config[keyPath: kp])),
                    commit: { model.setOption(o.key, String(format: "%.2f", $0)) })
                 .help(o.title)
         case .intSlider(let kp, let range, let step):
@@ -383,7 +383,7 @@ extension LayoutKind {
 struct LayoutOption: Identifiable {
     enum Kind {
         case toggle(WritableKeyPath<Config, Bool>)
-        case slider(WritableKeyPath<Config, Double>, ClosedRange<Double>, Double)
+        case slider(WritableKeyPath<Config, Float>, ClosedRange<Double>, Double)
         case intSlider(WritableKeyPath<Config, Int>, ClosedRange<Double>, Double)
         case choice(WritableKeyPath<Config, Int>, [String])
     }

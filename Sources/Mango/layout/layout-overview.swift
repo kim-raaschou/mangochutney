@@ -458,7 +458,7 @@ package extension MangoServer {
 
         // Center column ratio is configurable; both sides split the remaining space
         // evenly.
-        let centerW = availW * Float(config.overcircleCenterRatio)
+        let centerW = availW * config.overcircleCenterRatio
         var sideW = (availW - centerW - 2.0 * gapMid) * 0.5
         if sideW < 1.0 {
             sideW = 1.0

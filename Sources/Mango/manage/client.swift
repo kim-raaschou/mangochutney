@@ -578,7 +578,7 @@ package extension MangoServer {
         if let v = r.isglobal { c.isglobal = v }
         if let v = r.isoverlay { c.isoverlay = v }
         if let v = r.ignoreMinimize { c.ignoreMinimize = v }
-        if let v = r.isUnmanagedGlobal { c.isunglobal = v }
+        if let v = r.isunglobal { c.isunglobal = v }
         if let v = r.scrollerProportion, v > 0 { c.scrollerProportion = Float(v); c.iscustomScrollerProportion = true }
         if let v = r.scrollerProportionSingle, v > 0 { c.scrollerProportionSingle = Float(v); c.iscustomScrollerProportionSingle = true }
         if let v = r.animationTypeOpen { c.animationTypeOpen = v }
@@ -640,8 +640,8 @@ package extension MangoServer {
         for i in config.windowRules.indices {
             let r = config.windowRules[i]
             guard r.isWindowRuleMatches(appId: c.bundleId, appName: c.appName, title: c.title) else { continue }
-            if r.once && r.isOnceApplied { continue }
-            if r.once { config.windowRules[i].isOnceApplied = true }
+            if r.isOnce && r.isOnceApplied { continue }
+            if r.isOnce { config.windowRules[i].isOnceApplied = true }
 
             applyRuleProperties(c, r)
 
@@ -663,7 +663,7 @@ package extension MangoServer {
             if let h = r.height, h > 1 { c.floatGeom.size.height = CGFloat(h) } else if let h = r.height, h > 0 { c.floatGeom.size.height = (full.height * CGFloat(h)).rounded() }
             if (r.width ?? 0) > 0 || (r.height ?? 0) > 0 { c.iscustomsize = true }
 
-            let ox = r.offsetX ?? 0, oy = r.offsetY ?? 0
+            let ox = r.offsetx ?? 0, oy = r.offsety ?? 0
             if ox != 0 || oy != 0 {
                 c.iscustompos = true
                 c.floatGeom = clientCenterGeometry(c, mon, c.floatGeom, ox, oy)
@@ -1568,8 +1568,8 @@ package extension MangoServer {
 
         if !c.iscustomsize {
             let w = m.w
-            c.geom.size = CGSize(width: (w.width * CGFloat(config.scratchpadWidthRatio)).rounded(.towardZero),
-                                 height: (w.height * CGFloat(config.scratchpadHeightRatio)).rounded(.towardZero))
+            c.geom.size = CGSize(width: CGFloat((Float(w.width) * config.scratchpadWidthRatio).rounded(.towardZero)),
+                                 height: CGFloat((Float(w.height) * config.scratchpadHeightRatio).rounded(.towardZero)))
             // Recomputes the centered coordinates.
             let g = clientCenterGeometry(c, m, c.geom)
             c.floatGeom = g; c.geom = g; c.animainitGeom = g; c.animation.current = g
@@ -1810,7 +1810,7 @@ package extension MangoServer {
               monitorMoveDirection(src, dst) == dir else { return }
         let layout = dst.layout
         if layout == .dwindle {
-            dwindleMoveNextTo(c, target, Float(config.dwindleSplitRatio), dir)
+            dwindleMoveNextTo(c, target, config.dwindleSplitRatio, dir)
             return
         }
         let insertBefore = dir == RIGHT || dir == UP
