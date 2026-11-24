@@ -44,19 +44,18 @@ final class InputDecisionTests: MangoTestCase {
     func testHandleKeyboardKey() {
         var st = KeyboardState()
         let b = bind(.superKey, 38, "focusstack")
-        func run(_ k: KeyInput, switcher: Bool = false, combo: Bool = false) -> ([KeyAction], Bool, Bool) {
-            let d = Keyboard.handleKeyboardKey(k, state: &st, bindings: [b], mode: "default", overcircleActive: false,
-                                               switcherActive: switcher, tagCombo: combo, cursorHideOnKeypress: false)
+        func run(_ k: KeyInput) -> ([KeyAction], Bool, Bool) {
+            let d = Keyboard.handleKeyboardKey(k, state: &st, bindings: [b], mode: "default", virtualKeyboard: false)
             return (d.actions, d.handled, d.swallow)
         }
         let press = run(key(38))
-        XCTAssertEqual(press.0, [.binding(b, held: false)])
+        XCTAssertEqual(press.0, [.hideCursor, .binding(b, held: false)])
         XCTAssertTrue(press.1 && press.2)
         let release = run(key(38, down: false))
-        XCTAssertEqual(release.0, [], "no binding on the release")
+        XCTAssertEqual(release.0, [.endTagCombo], "no binding on the release")
         XCTAssertTrue(release.1 && release.2, "but handled and swallowed: its press was (mango handled = 1)")
-        XCTAssertEqual(run(key(55, [], down: false, modifier: .superKey), switcher: true, combo: true).0,
-                       [.switcherCommit, .endTagCombo], "mango's order: the switcher, then tag_combo")
+        XCTAssertEqual(run(key(55, [], down: false, modifier: .superKey)).0,
+                       [.leaveOvercircle, .switcherCommit, .endTagCombo], "mango's order: overcircle, the switcher, then tag_combo")
     }
 
     func testHandleUnboundKey() {

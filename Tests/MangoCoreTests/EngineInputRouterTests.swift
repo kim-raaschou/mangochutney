@@ -61,7 +61,7 @@ final class EngineInputRouterTests: MangoTestCase {
         let r = router(overview: screen, jump: true, jumpKeys: [0])
         XCTAssertTrue(r.key(key(53, [], down: true), modifierOnlySinceDown: false))
         XCTAssertTrue(r.key(key(0, [], down: true), modifierOnlySinceDown: false))
-        XCTAssertTrue(r.key(key(0, [], down: false), modifierOnlySinceDown: false))
+        XCTAssertFalse(r.key(key(0, [], down: false), modifierOnlySinceDown: false), "mango only takes the press")
         XCTAssertFalse(r.key(key(11, [], down: true), modifierOnlySinceDown: false))
         let noJump = router(overview: screen, jump: false)
         XCTAssertFalse(noJump.key(key(0, [], down: true), modifierOnlySinceDown: false))

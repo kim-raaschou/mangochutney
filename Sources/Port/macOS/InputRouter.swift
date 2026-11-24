@@ -17,16 +17,13 @@ final class InputRouter: @unchecked Sendable {
         var overviewFrame: CGRect?
         var jumpMode = false
         var jumpKeys: Set<UInt16> = []
-        var overcircleActive = false
         var switcherActive = false
-        var tagCombo = false
         var hyper: Modifiers = []
         var hyperKey = false
         var wantsMouseMoved = false
         var menuBarTags: [MenuBarTagHit] = []
         var tabBarFrames: [CGRect] = []
         var groupBarFrames: [CGRect] = []
-        var cursorHideOnKeypress = false
         var hoverResizeCursor: String?
         var globalKeys: [RoutedGlobalKey] = []
         var launchOrFocusPicker: UInt16??   // Port extension: chutney_launch_or_focus's picture is up (its opening key)
@@ -85,7 +82,15 @@ final class InputRouter: @unchecked Sendable {
         if snapshot.hyperKey {
             if ev.keyCode == KeyboardOptions.hyperKeyCode && !ev.isModifierKey {
                 hyperHeld = ev.isDown
-                if ev.isDown && !ev.isRepeat { lock.lock(); keyboard.lastHoldKeycode = ev.keyCode; lock.unlock() }
+                // Hyper is a mode key: its press and release take handle_keyboard_key's steps, without bindings
+                let hs = snapshot
+                let k = KeyInput(keyCode: ev.keyCode, mods: ev.mods, isDown: ev.isDown, isRepeat: ev.isRepeat,
+                                 keyModifier: hs.hyper)
+                lock.lock()
+                let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: [], mode: hs.keymode,
+                                                   virtualKeyboard: false)
+                lock.unlock()
+                run(d.actions, ev, age: "")
                 return true
             }
         } else {
@@ -99,8 +104,7 @@ final class InputRouter: @unchecked Sendable {
                          keyModifier: ev.isModifierKey ? HotkeyMatcher.modifier(forKeyCode: ev.keyCode) : nil)
         lock.lock()
         let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: s.bindings, mode: s.keymode,
-                                           overcircleActive: s.overcircleActive, switcherActive: s.switcherActive,
-                                           tagCombo: s.tagCombo, cursorHideOnKeypress: s.cursorHideOnKeypress)
+                                           virtualKeyboard: false)
         lock.unlock()
         let age = ev.ageMs.map { String(format: "%.0f ms", $0) } ?? "?"
         if let a = ev.ageMs, a > 250, ev.isDown {

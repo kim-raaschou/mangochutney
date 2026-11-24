@@ -15,7 +15,7 @@ package extension MangoServer {
     func publishGlobalKeys() {
         let rules = config.windowRules.filter { $0.globalkeybinding != nil && ($0.id != nil || $0.title != nil) }
         guard !rules.isEmpty || publishedGlobalKeys else { return }
-        let focusedNow = focused
+        let focusedNow = clientFocusTop(selectedMonitor)
         let windows = clients
         var keys: [GlobalKey] = []
         for r in rules {
@@ -32,14 +32,21 @@ package extension MangoServer {
     }
 }
 
+/* Keycodes swallowed by a keybinding while pressed. */
+let KEYBOARD_MAX_BOUND_KEYS = 32
+
 /// Not in mango: mango's keyboard decisions, taken on the port's event-tap thread (macOS wants the answer at once).
 package enum Keyboard {
+    // not in mango: no keyboard_bound_key_index; bound_keycodes is a set
     static func keyboardIsBoundKey(_ state: KeyboardState, _ keycode: UInt16) -> Bool {
         state.boundKeys.contains(keycode)
     }
 
     /* Record a key the compositor consumed, so clients never see it as held. */
     static func keyboardMarkBoundKey(_ state: inout KeyboardState, _ keycode: UInt16) {
+        if state.boundKeys.count >= KEYBOARD_MAX_BOUND_KEYS || keyboardIsBoundKey(state, keycode) {
+            return
+        }
         state.boundKeys.insert(keycode)
     }
 
@@ -59,7 +66,7 @@ package enum Keyboard {
             guard b.mode == "common" || b.mode == mode else { continue }
             guard b.keyCodes.contains(keyCode) else { continue }
             let wantsRelease = b.flags.contains(.release)
-            let evMods = b.mods.contains(.fn) ? mods : mods.subtracting(.fn)
+            let evMods = b.mods.contains(.fn) ? mods : mods.subtracting(.fn)   // not in mango: Fn counts only for a binding with it
             if let keyModifier {
                 if wantsRelease {
                     guard !isDown, lastHoldKeycodeIsThisKey else { continue }
@@ -139,26 +146,26 @@ extension Keyboard {
     /// mango handle_keyboard_key (keyboard.c), up to the bindings
     // not in mango: what the event tap decides; the actions run on the main thread (MangoServer.handleKeyboardKey)
     package static func handleKeyboardKey(_ k: KeyInput, state: inout KeyboardState, bindings: [KeyBinding], mode: String,
-                                          overcircleActive: Bool, switcherActive: Bool, tagCombo: Bool,
-                                          cursorHideOnKeypress: Bool) -> (actions: [KeyAction], handled: Bool, swallow: Bool) {
+                                          virtualKeyboard: Bool) -> (actions: [KeyAction], handled: Bool, swallow: Bool) {
         var actions: [KeyAction] = []
         let isModeKeycode = !(k.keyModifier ?? []).subtracting(.fn).isEmpty   // not in mango: Caps Lock and Fn are no mode keys, as in xkb
 
+        // not in mango: the main thread asks overcircle, the switcher and the cursor (they may change before it runs)
         // In overcircle mode, releasing the mode key exits overview.
-        if overcircleActive && !k.isDown && isModeKeycode {
+        if !virtualKeyboard && !k.isDown && isModeKeycode {
             actions.append(.leaveOvercircle)
         }
 
-        if switcherActive && !k.isDown && isModeKeycode {
+        if !virtualKeyboard && !k.isDown && isModeKeycode {
             actions.append(.switcherCommit)
         }
 
-        if cursorHideOnKeypress && k.isDown {
+        if k.isDown {
             actions.append(.hideCursor)
         }
 
         if !k.isDown {
-            if tagCombo { actions.append(.endTagCombo) }
+            actions.append(.endTagCombo)
         } else if !k.isRepeat {
             // Avoids normal bindings affecting a bare mode-key binding.
             state.lastHoldKeycode = k.keyCode
@@ -198,12 +205,15 @@ extension Keyboard {
                                          isJumpKey: Bool, globalKeys: [(mods: Modifiers, keyCodes: Set<UInt16>, pid: pid_t)])
         -> (action: KeyAction?, swallow: Bool) {
         if jumpMode, k.isDown {
-            if isEscape { state.boundKeys.insert(k.keyCode); return (.overviewKey(.escape), true) }
-            if isJumpKey { state.boundKeys.insert(k.keyCode); return (.overviewKey(.jump(k.keyCode)), true) }
+            if isEscape { return (.overviewKey(.escape), true) }
+            if isJumpKey { return (.overviewKey(.jump(k.keyCode)), true) }
         }
+        // not in mango: no popup test (pass); the release goes to the app that had the press, and the
+        // press is not repeated (mango enters the target for one key and goes back)
         if !k.isDown, let pid = state.forwardedKeys.removeValue(forKey: k.keyCode) {
             return (.forward(pid, down: false), true)
         }
+        if k.isDown && k.isRepeat && state.forwardedKeys[k.keyCode] != nil { return (nil, true) }
         if k.isDown, let g = globalKeys.first(where: { $0.mods == k.mods.subtracting(.fn) && $0.keyCodes.contains(k.keyCode) }) {
             state.forwardedKeys[k.keyCode] = g.pid
             return (.forward(g.pid, down: true), true)
@@ -223,7 +233,8 @@ package extension MangoServer {
                     toggleOverview(Arg())
                 }
             case .switcherCommit:
-                switcherCommit()
+                // not in mango: no session lock (switcher_close); the port closes the switcher when macOS locks
+                if switcherIsActive() { switcherCommit() }
             case .hideCursor:
                 if config.cursorHideOnKeypress && !cursorHidden { pointerHideCursor() }
             case .endTagCombo:
@@ -258,7 +269,6 @@ package extension MangoServer {
         let mode = keyMode
         let sw = switcherIsActive()
         let hidden = cursorHidden
-        let combo = tagCombo
         system.publishInput(InputState(
             keymode: mode, bindings: c.keyBindings, mouseBindings: c.mouseBindings, axisBindings: c.axisBindings,
             axisBindApplyTimeout: UInt32(truncatingIfNeeded: c.axisBindApplyTimeout),
@@ -267,12 +277,9 @@ package extension MangoServer {
             jumpKeycodes: Set(clients.filter { $0.mon === selectedMonitor }.flatMap {
                 [$0.jumpKeycodes.keycode1, $0.jumpKeycodes.keycode2, $0.jumpKeycodes.keycode3].compactMap { $0 }
             }),
-            // not in mango: keyboard.c's overcircle test, for the event tap
-            overcircleActive: selectedMonitor.map { $0.ovTabLayout && !$0.isJumpMode && $0.isoverview && $0.sel != nil } ?? false,
-            switcherActive: sw, tagCombo: combo,
+            switcherActive: sw,
             wantsMouseMoved: c.sloppyfocus || c.enableHotarea || c.cursorHideTimeout > 0 || hidden
                 || c.windowRules.contains { $0.confinePointer == true } || c.enableBorderResize,
-            cursorHideOnKeypress: c.cursorHideOnKeypress && !hidden,
             hoverResizeCursor: hoverResizeEdge.isEmpty || grabClient != nil ? nil : resizeCursorName(hoverResizeEdge, hoverResizeFloating)))
         publishGlobalKeys()
     }

@@ -701,13 +701,10 @@ class MacWindowSystem: WindowSystem {
             s.overviewFrame = state.overviewFrame
             s.jumpMode = state.jumpMode
             s.jumpKeys = state.jumpKeycodes
-            s.overcircleActive = state.overcircleActive
             s.switcherActive = state.switcherActive
-            s.tagCombo = state.tagCombo
             s.hyper = hyper
             s.hyperKey = hyperKey
             s.wantsMouseMoved = state.wantsMouseMoved
-            s.cursorHideOnKeypress = state.cursorHideOnKeypress
             s.hoverResizeCursor = state.hoverResizeCursor
         }
     }
@@ -781,8 +778,10 @@ class MacWindowSystem: WindowSystem {
 
     func askToCapture() { Permissions.shared.askForCapture() }
 
+    /// keyboard_hard_modifiers: the keyboards' own modifiers, without posted events (mango leaves out
+    /// virtual keyboards).
     func keyboardHardModifiers() -> Modifiers {
-        KeyboardOptions.hyperMods(Modifiers(cgFlags: CGEventSource.flagsState(.combinedSessionState)),
+        KeyboardOptions.hyperMods(Modifiers(cgFlags: CGEventSource.flagsState(.hidSystemState)),
                                   hyper: KeyboardOptions.hyperSet(server.config), keyHeld: router.hyperKeyHeld)
     }
 

@@ -112,8 +112,7 @@ package final class TestMango {
         // keyboard (!group->virtual_keyboard)
         let k = KeyInput(keyCode: code, mods: mods, isDown: down, isRepeat: false, keyModifier: own)
         let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: s.bindings, mode: s.keymode,
-                                           overcircleActive: false, switcherActive: false, tagCombo: s.tagCombo,
-                                           cursorHideOnKeypress: s.cursorHideOnKeypress)
+                                           virtualKeyboard: true)
         server.handleKeyboardKey(d.actions)
         if !d.handled {
             let u = Keyboard.handleUnboundKey(k, state: &keyboard, jumpMode: s.jumpMode, isEscape: code == FakeKeymap.code("escape"),

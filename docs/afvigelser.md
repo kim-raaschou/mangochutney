@@ -77,7 +77,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Mangos `client_notify_fullscreen` siger kun appen besked med `chutney_fullscreen_tag`; uden nøglen fylder mangos fullscreen skærmen, uden at appen ved det. `togglefakefullscreen` siger aldrig appen besked. En app, der ikke kan gå i macOS-fullscreen, bliver i mangos. macOS-fullscreen fra appen går gennem mangos `togglefullscreen`, som også tager vinduet ud af en scratchpad; mangos `handle_client_request_fullscreen` gør ikke | macOS kan kun sige en app, at den er i fullscreen, med sin egen fullscreen, som giver vinduet sit eget Space; fake fullscreen findes ikke på macOS |
 | Et parkeret vindue i en app, der ikke svarer, bliver mappet, som i mango, men kan ikke flyttes frem: dets flise står tom, til appen svarer | Et vindue flyttes gennem appen (Accessibility); en Wayland-klient, der hænger, vises med sit sidste billede |
 | Rammen (og fane- og gruppebjælken) står, hvor appen sidst har sat vinduet, så længe en skrivning til det ikke er udført; et vindue, der hentes fra parkering, får først sin ramme, når appen har flyttet det | Et vindue flyttes gennem appen (Accessibility), som svarer efter 5–400 ms; wlroots viser rammen og vinduet i samme billede |
-| En holdt tasts gentagelser: højst én venter på hovedtråden ad gangen | macOS sender gentagelserne selv; mangos egen gentagelsestimer stabler dem aldrig |
+| En holdt binding gentages af macOS i stedet for mangos `keyboard_repeat`: med macOS' tempo og forsinkelse (ikke `repeat_rate`/`repeat_delay`), og hver gentagelse matches med de modifiers, der holdes nu, ikke dem ved tryk; højst én gentagelse venter på hovedtråden ad gangen | macOS sender gentagelserne selv; mangos egen gentagelsestimer stabler dem aldrig |
 | Fokus sendes til macOS én gang pr. tur, for det sidst fokuserede vindue, og mangos løft (`client_raise_group`, `client_raise_tab`) af det vindue går med i samme kald; et parkeret gruppemedlem løftes ikke. Mens portens panel eller overviewets billeder er fremme, holdes fokus tilbage og gives, når de lukker | Fokus på macOS er en synkron forespørgsel til WindowServer og appen; et løft og et fokus hver for sig går i to køer og flimrer |
 | Seatet (`keyboardFocusedSurface`, mangos `client_focus` vender tidligt om på det) er det vindue, mango sidst gav tasterne; det ryddes, når macOS giver tasterne til en anden app eller et vindue, mango ikke styrer. Har macOS selv givet et vindue tasterne (et klik, ⌘Tab), sender `client_notify_enter` intet | macOS flytter tasterne uden mango; wlroots' seat ved altid, hvor de er |
 | Kant-, fane- og gruppevinduer lægges kun om, når de ligger forkert | Hver omlægning venter på WindowServer; én forespørgsel på rækkefølgen er billigere |
@@ -183,9 +183,10 @@ Hvor koden står, når den ikke står som i mango.
   managere, lyttere og scenen, sessionslåsen (`session_locked`, `locked_modifiers`, `locked_bg`),
   touch og tablet, `chvt_backup_*`, `exclusive_focus`, `active_capture_count`,
   `keep_idle_inhibit_source` og kurverne til opacity (`baked_points_opafadein/out`). Afgøres med
-  deres fil: `axis_apply_time`/`axis_apply_dir` (i porten, `pointer.c`), `last_hold_keycode`
-  (`keyboard.c`), `group_bar_hover` (`pointer.c`), `allow_frame_scheduling`, `next_client_id`,
-  `cli_config_path` og `child_pid` (`main.c`).
+  deres fil: `axis_apply_time`/`axis_apply_dir` (i porten, `pointer.c`), `group_bar_hover`
+  (`pointer.c`), `allow_frame_scheduling`, `cli_config_path` og `child_pid` (`main.c`).
+  `last_hold_keycode` står i event tappets `KeyboardState`, sammen med `bound_keycodes`
+  (`keyboard.c` besluttes på tappets tråd, §3). `next_client_id` er mangos.
 - **Config-structs (`config/parse.h`):** `ConfigWinRule` og `ConfigTagRule` har mangos navne og
   rækkefølge (`id`, `is_once`, `isunglobal`, `offsetx`, `mfact`, `nmaster`, …); et felt, reglen
   ikke sætter, er `nil` (mangos -1 eller NULL), og tag-reglens `id` er `nil` for `id_wildcard`.

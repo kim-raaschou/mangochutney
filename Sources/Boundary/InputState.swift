@@ -10,11 +10,8 @@ package struct InputState {
     /// mango's is_jump_mode on the selected monitor, and the jump_keycodes of its clients.
     package var jumpMode = false
     package var jumpKeycodes: Set<UInt16> = []
-    package var overcircleActive = false
     package var switcherActive = false
-    package var tagCombo = false
     package var wantsMouseMoved = false
-    package var cursorHideOnKeypress = false
     package var hoverResizeCursor: String?
 }
 
