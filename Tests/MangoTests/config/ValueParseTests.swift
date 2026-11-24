@@ -23,4 +23,12 @@ final class ValueParseTests: XCTestCase {
         XCTAssertEqual(ValueParse.parseTagMask("00"), 0)
         XCTAssertEqual(ValueParse.parseTagMask("-1"), 0xFFFF_FFFF)
     }
+
+    /// remove_comment: a `#` after C's isspace starts a comment; after other white space it does not.
+    func testACommentFollowsCsWhiteSpace() {
+        XCTAssertEqual(ValueParse.removeComment("a # b"), "a ")
+        XCTAssertEqual(ValueParse.removeComment("a\t# b"), "a\t")
+        XCTAssertEqual(ValueParse.removeComment("a\u{00A0}# b"), "a\u{00A0}# b", "a no-break space is not isspace")
+        XCTAssertEqual(ValueParse.removeComment("\"a # b\" # c"), "\"a # b\" ")
+    }
 }

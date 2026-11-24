@@ -39,6 +39,7 @@ private func mangoEmit(_ log: Bool, _ tagged: Bool, _ verbosity: WlrLogImportanc
         }
 
         if capture {
+            // not in mango: no 4096-byte buffer; a longer message is stored whole
             let plainTag = tagged ? mangoTagPlain(verbosity) : ""
             configErrorStoreRecord(plainTag + text)
         }

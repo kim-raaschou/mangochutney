@@ -38,9 +38,9 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/animation/common.c` | `animation/animation-common.swift` | ikke verificeret | | | | |
 | `src/animation/layer.c` | | ingen macOS-del | | | | layer shell |
 | `src/animation/tag.c` | `animation/animation-tag.swift` | 1:1 | ae2a891, 24. nov. | `2148fc6236c2` | | `prevtag` 0, `c->mon`-værn, `ov_card_tree`: §5 |
-| `src/common/log.c` | `common/Log.swift` | ikke verificeret | | | | |
+| `src/common/log.c` | `common/Log.swift` | 1:1 | fff28a6, 24. nov. | `38d0f49ac028` | `mango_error_impl` (`mangoError`, makroen `mango_error` og dens impl i én) | ingen buffer på 4096 bytes |
 | `src/common/scene_node.c` | | porten | | | | scenen; `surfaceAt`, `sceneNodeSetEnabled` |
-| `src/common/server.c` | `common/server.swift` | ikke verificeret | | | | |
+| `src/common/server.c` | `common/server.swift` | 1:1 | fff28a6, 24. nov. | `68e4580f4d32` | | kun startværdier; lytterne er portens, `child_pid` hører til `-s` (§4), `allow_frame_scheduling` til `main.c`; `server.h`'s struct står her |
 | `src/common/util.c` | `common/util.swift` | 1:1 | de70e75, 24. nov. | `c73e42e65294` | `die`, `ecalloc`, `utf8_strlcpy`, `wayland_string_set`, `wl_list_append`, `timespec_to_ms`, `join_strings`, `join_strings_with_suffix`, `string_printf` (Swift har dem, §5), `fd_set_nonblock` (med `-s`, §4) | `wl_list`-hjælperne på klientlistens array; `regex_match` med ICU for PCRE2 |
 | `src/config/binding_parse.c` | `config/binding_parse.swift` | ikke verificeret | | | | |
 | `src/config/cleanup.c` | | ingen macOS-del | | | | frigørelse: Swift's ARC |
@@ -49,16 +49,16 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/config/error_store.c` | `config/error_store.swift` | 1:1 | ae2a891, 24. nov. | `e04f0ed36e35` | | |
 | `src/config/load.c` | `config/load.swift` | ikke verificeret | | | | |
 | `src/config/option_defs.c` | `config/option_defs.swift`, `config/parse.swift` | ikke verificeret | | | | `parse.h`'s typer i `parse.swift` |
-| `src/config/preset.c` | `config/parse.swift` | ikke verificeret | | | | kun data |
+| `src/config/preset.c` | | ingen macOS-del | | | | kun data: `tags` til `ext-workspace.c`, `xkb_fallback_rules` til xkb's keymap |
 | `src/config/reapply.c` | `config/reapply.swift` | ikke verificeret | | | | |
 | `src/config/toml_parse.c` | `config/toml_parse.swift` | ikke verificeret | | | | |
-| `src/config/value_parse.c` | `config/value_parse.swift` | ikke verificeret | | | | |
-| `src/config/variable_expand.c` | `config/variable_expand.swift` | ikke verificeret | | | | |
+| `src/config/value_parse.c` | `config/value_parse.swift` | 1:1 | fff28a6, 24. nov. | `9f43771bf126` | `starts_with_ignore_case` (død i mango, §4) | libc's `atoi`/`strtol`/`strtod` står her som `ValueParse`; `remove_comment` med C's `isspace` (rettet 24. nov.) |
+| `src/config/variable_expand.c` | `config/variable_expand.swift` | 1:1 | fff28a6, 24. nov. | `6416bc924a82` | `var_buf_append` (Swifts strenge, §5) | `config.vars` er en tabel efter navn |
 | `src/config/watcher.c` | `config/watcher.swift` | ikke verificeret | | | | |
 | `src/dispatch/bind.c` | `dispatch/bind.swift` | ikke verificeret | | | | |
 | `src/draw/dim-node.c` | | porten | | | | `showSpecialDim` |
 | `src/draw/text-node.c` | `draw/text-node.swift` | ikke verificeret | | | | noderne er portens (`MangoBarDecoration`, `MangoJumpLabel`) |
-| `src/draw/title_message_bar.c` | `draw/title_message_bar.swift` | ikke verificeret | | | | |
+| `src/draw/title_message_bar.c` | `draw/title_message_bar.swift` | 1:1 | fff28a6, 24. nov. | `3cd2bedc6f08` | | baren tegner porten; i overcircle under kortet (§5 Title message bar); `chutney_launch_or_focus` gennem `PortHooks` |
 | `src/ext-protocol/ext-workspace.c` | | ingen macOS-del | | | | Wayland-protokol |
 | `src/ext-protocol/foreign-toplevel.c` | | ingen macOS-del | | | | Wayland-protokol |
 | `src/ext-protocol/hdr.c` | `ext-protocol/hdr.swift` | ikke verificeret | | | | |

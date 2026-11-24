@@ -23,7 +23,7 @@ extension ValueParse {
             if quoteChar == nil {
                 if c == "'" || c == "\"" {
                     quoteChar = c
-                } else if c == "#", let prev, prev.isWhitespace {
+                } else if c == "#", let prev, " \t\n\r\u{0B}\u{0C}".contains(prev) {
                     return String(str[..<p])
                 }
             } else {

@@ -148,7 +148,7 @@ public struct Config: Sendable {
     /// them (ConfigPort); the port reads them as fields of its own (Port/Extensions/PortConfig.swift).
     package var port: [String: String] = [:]
 
-    public var vars: [String: String] = [:]
+    public var vars: [String: String] = [:]   // not in mango: the ConfigVar list as a table by name
     public var envVars: [(String, String)] = []
     public var exec: [String] = []
     public var execOnce: [String] = []

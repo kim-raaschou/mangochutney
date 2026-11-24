@@ -15,6 +15,7 @@ package extension MangoServer {
             m, decorateDrawData(config.titleMessageBardata, mango: .mangoTitleMessageBar), 0, 0)
         guard let bar = m.titleMessageBar else { return }
 
+        // not in mango: no mango_scene_node_set_ignore_hit; the port's bar takes no input
         bar.setFocus(true)
         bar.setCenterSecondaryLine(true)
         bar.setEnabled(false)
