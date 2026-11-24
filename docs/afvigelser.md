@@ -267,10 +267,13 @@ Hvor koden står, når den ikke står som i mango.
 - **Klienter:** mangos `manage/client.c` står i kernen (`manage/client.swift`) i mangos
   rækkefølge. `client_park` giver medlemmet `mon` nil, som mango, og `client_is_parked` er
   listemedlemskab; `groupParked` er portens mærke (`clientsAll`), og porten parkerer et parkeret
-  medlems vindue på gruppens skærm (`client_group_active`). En klient, der har været
-  væk (macOS-fuldskærm, minimeret, skjult), genbruges af porten, så af `init_client_properties` i
-  unmap nulstilles kun `iskilling` og `drag_to_tile`. Ingen macOS-del: swallowing, foreign toplevel,
-  scene-noderne ved map, `client_reparent_group`, regel-felterne MangoCompat lister.
+  medlems vindue på gruppens skærm (`client_group_active`). Unmap nulstiller klienten med
+  `init_client_properties` som mango; et vindue, der kommer tilbage (macOS-fuldskærm, minimeret,
+  skjult), får sin tilstand fra portens hukommelse (`DepartedWindow`: tags, skærm, flydende,
+  global, overlay, scratchpad, ramme, proportion, fullscreen og maksimeret). Porten kalder
+  `init_client_properties`, når den finder et vindue, som mangos første commit. Ingen macOS-del:
+  swallowing, foreign toplevel, scene-noderne ved map, `client_reparent_group`, regel-felterne uden
+  et Client-felt.
 - **C's egne hjælpere:** hvad Swift selv har, findes ikke: `die`, `ecalloc`, `utf8_strlcpy`,
   `wayland_string_set`, `string_printf`, `join_strings`, `join_strings_with_suffix` (Swifts strenge),
   `wl_list_append` (listen er et array) og `timespec_to_ms` (`get_now_in_ms` regner selv i ms, og

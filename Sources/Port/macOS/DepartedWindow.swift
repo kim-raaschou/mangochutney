@@ -18,6 +18,8 @@ package struct DepartedWindow: Equatable {
     package var homeDisplayID: CGDirectDisplayID? = nil
     package var fromSavedLayout = false
     package var iscustomsize = false
+    package var isfullscreen = false
+    package var ismaximizescreen = false
 
     package init(tags: UInt32, displayID: CGDirectDisplayID?, isfloating: Bool, isglobal: Bool, isoverlay: Bool,
                  isminimized: Bool, isScratchpad: Bool, isnamedscratchpad: Bool, floatFrame: CGRect,

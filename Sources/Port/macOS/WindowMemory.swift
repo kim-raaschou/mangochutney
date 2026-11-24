@@ -20,13 +20,16 @@ final class WindowMemory {
 
     func leaving(_ server: MangoServer, _ c: Client, group: [ClientID], groupFocus: ClientID?, order: [ClientID]) {
         let snapshot = departed.orderSnapshot(leaving: c.id, order: order)
-        departed.remember(c.id, DepartedWindow(
+        var d = DepartedWindow(
             tags: c.tags, displayID: c.mon?.screen.displayID, isfloating: Self.isfloating(c), isglobal: c.isglobal,
             isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: SCRATCHPAD_SHOWN(c),
             isnamedscratchpad: c.isnamedscratchpad, floatFrame: c.floatGeom.insetBy(dx: c.bw, dy: c.bw),
             scrollerProportion: CGFloat(c.scrollerProportion), orderSnapshot: snapshot, at: CACurrentMediaTime(),
             bundleId: c.bundleId, homeDisplayID: c.oldmonname,
-            iscustomsize: c.iscustomsize))
+            iscustomsize: c.iscustomsize)
+        d.isfullscreen = c.overviewBackedUp ? c.overviewIsfullscreenbak : c.isfullscreen
+        d.ismaximizescreen = c.overviewBackedUp ? c.overviewIsmaximizescreenbak : c.ismaximizescreen
+        departed.remember(c.id, d)
         departed.rememberGroup(DepartedGroup(members: group, focus: groupFocus))
     }
 

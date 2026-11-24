@@ -5,6 +5,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     func windowDiscovered(_ w: DiscoveredWindow) {
         guard server.clientByIdAll(w.id) == nil else { return }
         let c = Client(window: w, monitor: server.selectedMonitor, tags: 0)
+        server.initClientProperties(c)   // handle_client_commit's initial commit
         var reasons: Set<AwayReason> = []
         if w.isminimized { reasons.insert(.minimized) }
         if w.isfullscreen { reasons.insert(.fullscreen) }
@@ -92,6 +93,9 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.isPendingOpenAnimation = false
         c.mon = mon
         c.tags = d.tags
+        // handle_client_unmap's init_client_properties cleared them; the window is back as it left
+        if d.isfullscreen { server.clientSetFullscreen(c, true, rearrange: false) }
+        if d.ismaximizescreen { server.clientSetMaximizeScreen(c, true, rearrange: false) }
         wlrLog(.info, "\(c.appName): window \(c.id) is back; restored its tag and place")
         memory.returned(server, c)
         wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isfloating) dialog=\(c.mac.isFloatType) (returned)")

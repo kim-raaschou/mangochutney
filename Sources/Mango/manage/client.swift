@@ -853,6 +853,87 @@ package extension MangoServer {
         resize(c, c.geom, ResizeOpts(interact: false))
     }
 
+    package func initClientProperties(_ c: Client) {
+        // not in mango: no XWayland request, blur, bar, dim or capture nodes, swallowing, tearing,
+        // csd, shortcuts inhibit, vrr or opacity (the rule fields without a Client field, docs/afvigelser.md §5)
+        c.isGroupFocus = false
+        c.groupPrev = nil
+        c.groupNext = nil
+        c.isTabFocus = false
+        c.isTabHidden = false
+        c.tabPrev = nil
+        c.tabNext = nil
+        c.tagVisible = false
+        c.isSurfaceHidden = false
+        c.gridColPer = 1.0
+        c.gridRowPer = 1.0
+        c.jumpLabelNode = nil
+        c.dropDirection = UNDIR
+        c.enableDropAreaDraw = false
+        c.isfocusing = false
+        c.isfloating = false
+        c.isfakefullscreen = false
+        c.noAnimation = false
+        c.isopensilent = false
+        c.istagsilent = false
+        c.overviewIsfullscreenbak = false
+        c.overviewIsmaximizescreenbak = false
+        c.overviewIsfloatingbak = false
+        c.ismaster = false
+        c.isleftstack = false
+        c.ismaximizescreen = false
+        c.isfullscreen = false
+        c.iskilling = false
+        c.isglobal = false
+        c.isminimized = false
+        c.isoverlay = false
+        c.isunglobal = false
+        c.isInScratchpad = false
+        c.isfloatingBeforeScratchpad = false
+        c.isnamedscratchpad = false
+        c.isClipToHide = false
+        c.isRestoringFromOv = false
+        c.isurgent = false
+        c.needOutputFlush = false
+        c.scrollerProportion = config.scrollerDefaultProportion
+        c.isPendingOpenAnimation = true
+        c.dragToTile = false
+        c.scratchpadSwitchingMon = false
+        c.scratchpadTagin = false
+        c.fakeNoBorder = false
+        c.noFocus = false
+        c.noForceCenter = false
+        c.noBorder = false
+        c.noSizeHint = false
+        c.ignoreMinimize = true
+        c.iscustomsize = false
+        c.iscustompos = false
+        c.iscustomScrollerProportion = false
+        c.iscustomScrollerProportionSingle = false
+        c.masterMfactPer = 0.0
+        c.masterInnerPer = 0.0
+        c.stackInnerPer = 0.0
+        c.masterSizeWeight = 0.0
+        c.stackSizeWeight = 0.0
+        c.oldStackInnerPer = 0.0
+        c.oldMasterInnerPer = 0.0
+        c.oldMasterMfactPer = 0.0
+        /* On unmap while in overview, destroy the card tree first to avoid a leak.
+         */
+        for m in monitors { m.ovCards[c.id] = nil }   // not in mango: overview_destroy_card's card; the picture is the port's
+        c.scrollerProportionSingle = 0.0
+        c.floatGeom = .zero
+        c.scrollerStackProportion = 0.0
+        c.oldmonname = nil
+        c.animation.tagining = false
+        c.animation.running = false
+        c.animation.overining = false
+        c.animation.overviewEnterAnimSet = false
+        c.animation.tagouting = false
+        c.animation.tagouted = false
+        c.overviewBackedUp = false   // not in mango: a mango bug, docs/afvigelser.md §6
+    }
+
     package func clientInsertTilingOrder(_ c: Client) {
         var atClient: Client?
 
@@ -909,39 +990,30 @@ package extension MangoServer {
     }
 
     package func handleClientUnmap(_ c: Client) {
-        let id = c.id
-        guard clientByIdAll(id) === c else { return }   // not in mango: the port may report a window gone twice
+        guard clientByIdAll(c.id) === c else { return }   // not in mango: the port may report a window gone twice
         c.iskilling = true
         if c.tabPrev != nil || c.tabNext != nil { tabDetachClient(c) }
         switcherRemoveClient(c)
         let targetNode = c.mon.flatMap { findScrollerNode($0.pertag.scrollerState[getClientTagIdx(c)], c) }
-        let stackPrev = targetNode?.prevInStack?.client
-        let stackNext = targetNode?.nextInStack?.client
-        // Port extension: not in mango. Its group and its place in the order, for when the
-        // window comes back (macOS reports windows gone and back around sleep).
+        let prevNode = targetNode?.prevInStack
+        let nextNode = targetNode?.nextInStack
+        // Port extension: not in mango. Its group, for when the window comes back (macOS reports
+        // windows gone and back around sleep).
         let group = clientIsGroupMember(c) ? groupMembers(c) : []
 
-        if let label = c.jumpLabelNode {
-            label.destroy()
-            c.jumpLabelNode = nil
-        }
+        // not in mango: no fade-out (init_fadeout_client; the port cannot fade another app's window)
 
-        let replaced = clientIsGroupMember(c) && c.isGroupFocus && (c.groupNext ?? c.groupPrev) != nil
-        if clientIsGroupMember(c) {
-            if c.isGroupFocus, let r = c.groupNext ?? c.groupPrev {
-                r.mon = c.mon
-                clientReplace(r, c, isGroupChangeMember: false)
-            }
-            clientGroupDetach(c)
-        }
-        if !replaced {
+        // If the client is in a stack, remove it from the stack
+
+        // not in mango: no swallowing (c->swallowing)
+        if clientIsGroupMember(c) && c.isGroupFocus, let groupReplacement = c.groupNext ?? c.groupPrev {
+            groupReplacement.mon = c.mon
+            clientReplace(groupReplacement, c, isGroupChangeMember: false)
+        } else {
             scrollerRemoveClient(c)
             dwindleRemoveClient(c)
         }
-        let order = clients.map(\.id)
-        clients.removeAll { $0 === c }
-        portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
-        focusStack.removeAll { $0 === c }
+
         if c === grabClient {
             cursorMode = CurNormal
             grabClient = nil
@@ -957,14 +1029,20 @@ package extension MangoServer {
             system.showDropArea(nil, color: config.dropcolor)   // not in mango: the port's one drop area, mango's goes with the client's scene
         }
 
-        clientRemoveGroupBar(c)   // not in mango: here, not after the jump label, as the port's unmap is ordered
-
         for m in monitors {
             if m.sel === c { m.sel = nil }
             if m.prevsel === c { m.prevsel = nil }
         }
+
         if let m = c.mon, m === selectedMonitor {
-            var nextfocus = stackNext ?? stackPrev ?? clientFocusTop(selectedMonitor)
+            var nextfocus: Client?
+            if let nextNode {
+                nextfocus = nextNode.client
+            } else if let prevNode {
+                nextfocus = prevNode.client
+            } else {
+                nextfocus = clientFocusTop(selectedMonitor)
+            }
 
             if let n = nextfocus, !VISIBLEON(n, selectedMonitor) { nextfocus = clientFocusTop(selectedMonitor) }
 
@@ -973,16 +1051,32 @@ package extension MangoServer {
             if nextfocus == nil && selectedMonitor.isoverview { toggleOverview(Arg()) }
         }
 
-        // not in mango: c left clients and focus_stack above; no fade-out, swallowing or scene nodes
-        let unmappedFrom = c.mon
+        // not in mango: no unmanaged clients (client_is_unmanaged)
+        clientGroupDetach(c)
+
+        let wasParked = clientIsParked(c)   // not in mango: wl_list_remove leaves mango's link non-empty
+        let order = clients.map(\.id)   // Port extension
+        if !wasParked { clients.removeAll { $0 === c } }
+        portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
+        let oldmon = c.mon
         clientSetMonitor(c, nil, 0, focus: true)
         // not in mango: client_set_monitor's focus step, which clientIsParked skips for a client off the list
-        if unmappedFrom != nil && !replaced { clientFocus(clientFocusTop(selectedMonitor), true) }
+        if oldmon != nil && !wasParked { clientFocus(clientFocusTop(selectedMonitor), true) }
+        focusStack.removeAll { $0 === c }
 
-        // not in mango: of init_client_properties only iskilling and drag_to_tile; the port keeps an away window's state
-        c.iskilling = false
-        c.dragToTile = false
+        // not in mango: no foreign toplevel or swallowing
 
+        if let label = c.jumpLabelNode {
+            label.destroy()
+            c.jumpLabelNode = nil
+        }
+
+        clientRemoveGroupBar(c)
+        // not in mango: no client_remove_tab_bar, dim node or image capture scene (the port draws bars)
+
+        initClientProperties(c)
+
+        // not in mango: no scene node to destroy
         printstatus(.arrangge)
         pointerProcessMotion(0, 0, 0)
     }
