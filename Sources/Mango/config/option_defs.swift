@@ -431,7 +431,7 @@ extension BindingParser {
     }
 
     // not in mango: sscanf's fields for "%255[^,],…,%255[^,],%255[^\n]" with `count` conversions: the
-    // fields before the first empty one, the last the rest of the line
+    // fields before the first empty one, the last the rest of the line; no 255-byte width (C's fixed buffers)
     static func sscanfFields(_ value: String, _ count: Int) -> [String] {
         var fields: [String] = []
         var rest = Substring(value)
@@ -471,7 +471,8 @@ extension ParserState {
             }
             return false
         }
-        // not in mango: a key with no macOS key code is matched by keysym in mango, dropped here (docs/afvigelser.md §3)
+        // not in mango: an XF86 name with no macOS key code is dropped, and other names with none are an error;
+        // mango keeps both by keysym (docs/afvigelser.md §3)
         if keysymcode.isEmpty {
             return true
         }
@@ -711,12 +712,12 @@ public enum ConfigOptions {
         t["scroller_proportion_preset"] = { config, value in
             let floatCount = value.filter { $0 == "," }.count + 1
             config.scrollerProportionPreset = []
-            var out: [Double] = []
+            var out: [Float] = []
             for token in value.split(separator: ",").map(String.init) where out.count < floatCount {
                 guard let d = ValueParse.scanDouble(token, keepingInf: true) else {
                     return .invalid("Invalid float value in scroller_proportion_preset: \(mangoHighlight(token))")
                 }
-                out.append(min(max(d, 0.1), 1.0))
+                out.append(min(max(Float(d), 0.1), 1.0))
             }
             if out.count != floatCount {
                 return .invalid("Invalid scroller_proportion_preset format: \(mangoHighlight(value))")
@@ -842,7 +843,7 @@ public enum ConfigOptions {
         t["gesture_live"] = bool(\.gestureLive)
         t["gesture_swipe_distance"] = int(\.gestureSwipeDistance, 32...4096)
         t["gesture_swipe_cancel_ratio"] = double(\.gestureSwipeCancelRatio, 0.05...0.95)
-        t["gesture_swipe_min_speed_to_force"] = double(\.gestureSwipeMinSpeedToForce, 0...Double.greatestFiniteMagnitude)
+        t["gesture_swipe_min_speed_to_force"] = double(\.gestureSwipeMinSpeedToForce)
 
         return t
     }()

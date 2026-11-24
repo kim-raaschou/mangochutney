@@ -5,6 +5,8 @@ public struct Config: Sendable {
     public init() {}
 
     public var animations = true
+    // not in mango: ANIM_TYPE_UNSET and an unknown name are slide, as set_client_open_animation takes them (the close
+    // animation is the port's)
     public var animationTypeOpen: AnimationType = .slide
     public var animationTypeClose: AnimationType = .slide
     public var animationFadeIn = true
@@ -34,7 +36,7 @@ public struct Config: Sendable {
     public var scrollerPreferOverspread = true
     public var edgeScrollerPointerFocus = true
     public var edgeScrollerFocusAllowSpeed = 0.0
-    public var scrollerProportionPreset: [Double] = []
+    public var scrollerProportionPreset: [Float] = []
 
     public var newIsMaster = true
     public var defaultMfact: Float = 0.55

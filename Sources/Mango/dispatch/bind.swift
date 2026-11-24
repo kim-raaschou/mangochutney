@@ -808,7 +808,7 @@ package extension MangoServer {
 
         let currentProportion = node?.scrollerProportion ?? tc.scrollerProportion
 
-        let preset = config.scrollerProportionPreset.map { Float($0) }
+        let preset = config.scrollerProportionPreset
         for i in preset.indices where preset[i] == currentProportion {
             if i == preset.count - 1 {
                 targetProportion = preset[0]

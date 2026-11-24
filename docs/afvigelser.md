@@ -261,7 +261,9 @@ Hvor koden står, når den ikke står som i mango.
   tjekkes som i mango, men gemmes ikke (macOS har ingen del); `parse_tag_mask`'s `TAGMASK` er alle tags
   undtagen tag0 (ingen server ved parsning). Uden macOS-del: xkb/keymap, `cleanup.c`, `preset.c`,
   inotify. Uden `HOME` læser mango ingen config; porten vælger `/.config/mango/config.conf`.
-  `nan` bliver også 0 i kommatal-nøgler, hvor mango klemmer værdien (`CLAMP_FLOAT`).
+  `nan` bliver også 0 i kommatal-nøgler og regelfelter, hvor mango klemmer værdien (`CLAMP_FLOAT`):
+  mango beholder nan (begge sammenligninger er falske), vi klemmer 0 til den nederste grænse, så
+  `tag_rule`'s `master_factor:nan` giver 0,1, og `monitor_rule`'s `refresh:nan` tæller som sat.
 - **Klienter:** mangos `manage/client.c` står i kernen (`manage/client.swift`) i mangos
   rækkefølge. `client_park` giver medlemmet `mon` nil, som mango, og `client_is_parked` er
   listemedlemskab; `groupParked` er portens mærke (`clientsAll`), og porten parkerer et parkeret
