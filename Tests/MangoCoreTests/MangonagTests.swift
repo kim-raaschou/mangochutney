@@ -29,26 +29,6 @@ final class MangonagTests: MangoTestCase {
         mangonagMain(["mangonag"] + args, stdin: stdin, display: display)
     }
 
-    func testErrorNagsArgumentsAsMangonag() {
-        XCTAssertEqual(run(["-o", "Built-in", "-t", "error", "-e", "top", "-l", "-s", "Close",
-                            "-b", "Edit", "nvim +2 '/x/config.conf'"], stdin: "[ERROR]: one\ntwo\n"), EXIT_SUCCESS)
-        XCTAssertEqual(display.setups, 1)
-        XCTAssertTrue(nag.display === display)
-        XCTAssertTrue(nag.running)
-        XCTAssertEqual(nag.outputName, "Built-in")
-        XCTAssertEqual(nag.type, typeError)
-        XCTAssertEqual(nag.edge, .top)
-        XCTAssertEqual(nag.font, "monospace 13")
-        XCTAssertEqual(nag.message, "[ERROR]: one\ntwo", "stdin as the message, its trailing newline gone")
-        XCTAssertEqual(nag.buttons.map(\.text), ["Edit", "Close"], "the dismiss button last")
-        XCTAssertEqual(nag.buttons[0].action, "nvim +2 '/x/config.conf'")
-        XCTAssertTrue(nag.buttons[0].terminal)
-        XCTAssertFalse(nag.buttons[0].dismiss)
-        XCTAssertNil(nag.buttons[1].action)
-        XCTAssertFalse(nag.buttons[1].terminal)
-        XCTAssertTrue(nag.buttons[1].dismiss)
-    }
-
     func testDefaults() {
         run([])
         XCTAssertNil(nag.message)

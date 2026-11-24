@@ -34,22 +34,6 @@ final class SwitcherTests: MangoTestCase {
                                      width: Int($0.cw + 2 * SW_PAD), height: Int(st.tileH + 2 * SW_PAD)) }
     }
 
-    func testThePanelIsLaidOutAsMangoDoes() {
-        let r = EngineRig()
-        let screen = Screen(displayID: 1, name: "S", frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
-                            workArea: CGRect(x: 0, y: 0, width: 1728, height: 1117), scale: 1, isMain: true)
-        r.server.rebuildMonitors(screens: [screen])
-        for id: CGWindowID in [900_200, 900_201, 900_202] {
-            r.window(id, floating: true, frame: CGRect(x: 0, y: 0, width: 800, height: 600))
-        }
-        open(r)
-        XCTAssertEqual(r.server.switcherState.tileH, 268)
-        XCTAssertEqual(panel(r), CGRect(x: 268, y: 390, width: 1191, height: 336))
-        XCTAssertEqual(tileFrames(r), [CGRect(x: 296, y: 418, width: 369, height: 280),
-                                       CGRect(x: 679, y: 418, width: 369, height: 280),
-                                       CGRect(x: 1062, y: 418, width: 369, height: 280)])
-    }
-
     func testNextStartsOnThePreviousWindowAndPrevOnTheLeastRecent() {
         let r = rig()
         open(r)

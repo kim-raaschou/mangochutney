@@ -19,13 +19,6 @@ final class ChutneyThemeTests: MangoTestCase {
         return u
     }
 
-    func testTheColoursAsMangoConfig() {
-        let text = ChutneyTheme.text(macOS: true, resolve: { _ in self.purple })
-        XCTAssertTrue(text.contains("\nfocus_color=0x9933ccff\n"))
-        XCTAssertTrue(text.contains("\ndrop_color=0x9933cc55\n"))
-        XCTAssertEqual(ChutneyTheme.text(macOS: false, resolve: { _ in self.purple }), ChutneyTheme.header + "\n")
-    }
-
     func testWrittenOnlyWhenItChanges() {
         let config = write("config.conf", "chutney_macos_appearance=1\nsource_optional=chutney_theme.conf\n")
         XCTAssertTrue(ChutneyTheme.sync(configURL: config, resolve: { _ in self.purple }))

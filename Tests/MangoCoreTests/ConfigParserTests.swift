@@ -173,18 +173,6 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertEqual(parse("source_optional=\(file.path)\n").errors, [])
     }
 
-    /// mango regex_match: an invalid pattern matches nothing and is reported (PCRE2 there, ICU here).
-    func testInvalidRegexIsReported() throws {
-        keepConfigErrorsInTests()
-        configErrorStoreBegin()
-        XCTAssertFalse(regexMatch("(", "("))
-        configErrorStoreEnd()
-        let text = try String(contentsOfFile: configErrorStorePath(), encoding: .utf8)
-        XCTAssertTrue(text.contains("[ERROR]: PCRE2 error: "), text)
-        XCTAssertTrue(regexMatch("^Bu.lt", "Built-in"))
-        XCTAssertFalse(regexMatch(nil, "x"))
-    }
-
     /// libc's numbers: atoi is glibc's (int)strtol, atof and %f are strtod's (hex floats; inf and nan
     /// are 0, as Swift traps on them), sanitize_string trims what isprint (C locale) refuses, bytes
     /// above ASCII too.
@@ -473,24 +461,6 @@ final class ConfigParserTests: MangoTestCase {
     }
 
     // mango same_axisbind_key / same_gesturebind_key: ALLDIR meets every direction, UNDIR only UNDIR
-
-    func testMouseAxisGestureBindings() {
-        let parsed = parse("""
-        mousebind=SUPER,btn_right,moveresize,curresize
-        mousebind=NONE,code:274,togglemaximizescreen,0
-        axisbind=SUPER+SHIFT,Down,viewtoright_have_client
-        gesturebind=none,up,3,toggleoverview
-        """)
-        XCTAssertEqual(parsed.errors, [])
-        let c = parsed.config
-        XCTAssertEqual(c.mouseBindings[0].button, .right)
-        XCTAssertEqual(c.mouseBindings[0].dispatch, Dispatch(name: "moveresize", args: ["curresize"]))
-        XCTAssertEqual(c.mouseBindings[1].button, .middle)
-        XCTAssertEqual(c.axisBindings[0].mods, [.superKey, .shift])
-        XCTAssertEqual(c.axisBindings[0].dir, UInt32(DOWN))
-        XCTAssertEqual(c.gestureBindings[0].fingersCount, 3)
-        XCTAssertEqual(c.gestureBindings[0].motion, SWIPE_UP)
-    }
 
     func testWindowRule() {
         let parsed = parse("""

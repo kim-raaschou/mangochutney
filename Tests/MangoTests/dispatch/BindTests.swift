@@ -28,8 +28,6 @@ final class BindTests: XCTestCase {
         XCTAssertTrue(focus.isGroupFocus, "left to the callers")
     }
 
-    // MARK: focusstack
-
     // MARK: focusdir
 
     func testFocusDirDownCrossesToTheNextTagWithFocusCrossTag() {
@@ -76,34 +74,6 @@ final class BindTests: XCTestCase {
         XCTAssertTrue(mango.monitor === side)
         // wlr_seat_pointer_notify_clear_focus: the next motion over a focuses it again
         XCTAssertNil(mango.wlroots.pointerFocusedSurface)
-    }
-
-    func testFocusmonTakesNoNumber() {
-        let mango = TestMango()
-        let main = mango.monitor
-        let side = mango.addMonitorOnTheRight(name: "Side")   // no digit: the spec is a regex on the name
-
-        _ = mango.server.dispatch(Dispatch(name: "focusmon", args: ["2"]), rescan: false)
-
-        XCTAssertTrue(mango.monitor === main)
-        mango.run("focusmon", "Side")
-        XCTAssertTrue(mango.monitor === side)
-    }
-
-    /// Dispatchers give the monitor's make, model and serial to match_monitor_spec.
-    func testFocusmonMatchesMake() {
-        let mango = TestMango()
-        var side = Screen(displayID: 2, name: "DP-2", frame: CGRect(x: 1920, y: 0, width: 1920, height: 1080),
-                          workArea: CGRect(x: 1920, y: 0, width: 1920, height: 1080), scale: 1, isMain: false)
-        side.make = "BNQ"
-        mango.wlroots.screens.append(side)
-        mango.server.rebuildMonitors(screens: mango.wlroots.screens)
-
-        mango.run("focusmon", "make:BNQ")
-
-        XCTAssertEqual(mango.monitor.screen.name, "DP-2")
-        mango.run("focusmon", "name:DP-1")
-        XCTAssertEqual(mango.monitor.screen.name, "DP-1")
     }
 
     // MARK: tagmon

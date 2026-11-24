@@ -38,6 +38,8 @@ func testANewClientIsFocused() {
 - The expected value is mango's, read in mango's source. A comment quotes mango where the reason is
   not plain.
 - A mango bug we fix (`docs/afvigelser.md` §6) is named so in the test's comment.
+- No test of a single detail of mango's code (an order, a limit, a parse rule): that we are 1:1 is
+  checked against mango's source, file by file (`docs/verificeret.md`). A §6 fix is the exception.
 
 ## mango's own answers (facit)
 

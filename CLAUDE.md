@@ -42,7 +42,8 @@ recognise must be marked as port or extension.
 otherwise), we may differ. Each one is agreed with the user. The fix is the smallest that
 will do, preferably mango's own answer from elsewhere in its code. It is marked where it is
 made (`not in mango: … (a mango bug, docs/afvigelser.md §6)`), listed in `docs/afvigelser.md`
-§6 with mango's result and ours, and locked with a test.
+§6 with mango's result and ours, and locked with a test (a Swift test, or a facit scenario's
+`ours` line). §6 is the one place a single detail of mango's code gets a test of its own.
 
 **Within reason.** Faithful as long as it does not get too complex. Something simple in mango
 is not to be forced onto macOS at any cost when it gets too complex or awkward there. That is
@@ -64,7 +65,9 @@ tables (`MangoCompat`, `PortOptions`) are in the port, as wlroots is outside man
 (`docs/analyse-udenfor-kernen.md`) and moved out.
 
 **Checking.** Read mango's version before changing a mango function. A known deviation stays
-in `docs/afvigelser.md` until fixed. Lock mango's behaviour with a test where possible.
+in `docs/afvigelser.md` until fixed. That we are 1:1 is checked file by file against mango's
+source (`docs/verificeret.md`), not by tests: no test locks a single detail of mango (an order,
+a limit, a parse rule) unless it is a §6 fix.
 
 **The core is changed last.** `Sources/Mango` is to stay 1:1 with mango and hold nothing else,
 so every change there is weighed carefully before it is made. Port work goes in the port

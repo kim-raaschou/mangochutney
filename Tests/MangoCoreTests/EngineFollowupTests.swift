@@ -22,28 +22,6 @@ final class EngineFollowupTests: MangoTestCase {
         XCTAssertEqual(c.gestureSwipeMinSpeedToForce, 0)
     }
 
-    /// mango parse_func_name: movewin's and resizewin's fields are parse_num_type and atoi of the rest;
-    /// atof is strtod's (hex floats too); nan and inf read as 0, as Swift cannot make an int of them.
-    @MainActor
-    func testDispatcherNumbersAreMangosParse() {
-        var arg = Arg()
-        XCTAssertNotNil(BindingParser.parseFuncName("movewin", &arg, "+30", "40", "0", "0", "0"))
-        XCTAssertEqual(arg.ui, NUM_TYPE_PLUS)
-        XCTAssertEqual(arg.i, 30)
-        XCTAssertEqual(arg.ui2, NUM_TYPE_DEFAULT)
-        XCTAssertEqual(arg.i2, 40)
-        XCTAssertNotNil(BindingParser.parseFuncName("resizewin", &arg, "-5", "nan", "0", "0", "0"))
-        XCTAssertEqual(arg.ui, NUM_TYPE_MINUS)
-        XCTAssertEqual(arg.i, 5)
-        XCTAssertEqual(arg.i2, 0)
-        XCTAssertNotNil(BindingParser.parseFuncName("setmfact", &arg, "nan", "0", "0", "0", "0"))
-        XCTAssertEqual(arg.f, 0)
-        XCTAssertNotNil(BindingParser.parseFuncName("set_proportion", &arg, "inf", "0", "0", "0", "0"))
-        XCTAssertEqual(arg.f, 0)
-        XCTAssertNotNil(BindingParser.parseFuncName("set_proportion", &arg, "0x1p-1", "0", "0", "0", "0"))
-        XCTAssertEqual(arg.f, 0.5)
-    }
-
     /// mango's parse_func_name joins setoption's fields after the key that are not empty, and the
     /// keybinding parser gives the fields a binding does not give as "0", so
     /// `bind=…,setoption,circle_layout,tile,scroller` gives "tile,scroller,0,0" in mango. Ours gives

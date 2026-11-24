@@ -548,7 +548,7 @@ extension IPCServer {
             }
         }
 
-        for m in server.monitors {
+        for m in server.monitors {   // not in mango: no wlr_output->enabled; the port's monitors are enabled
             if type.contains(.monitor) {
                 ipcNotifyMonitor(m, server)
             }
@@ -945,7 +945,7 @@ extension IPCServer {
         client.source?.remove()
         client.source = nil
         wc.source = loop.addFd(fd) { [weak self, wc] in self?.ipcWatchDataHandler(wc) }
-        ipcWatchClients.append(wc)
+        ipcWatchClients.insert(wc, at: 0)
 
         guard let server else { return true }   // not in mango: the weak server gone
 
@@ -1070,7 +1070,8 @@ extension IPCServer {
 
     /* ---------- Init & cleanup ---------- */
 
-    // not in mango: the socket's failures thrown, and the socket the user's at /tmp/mango-<user>.sock
+    // not in mango: the socket's failures thrown, a second call does nothing, and the socket the user's at
+    // /tmp/mango-<user>.sock
     public func ipcInit() throws {
         if ipcSocketFd >= 0 { return }
 

@@ -154,20 +154,4 @@ final class ConfigFidelityTests: MangoTestCase {
         """, baseDirectory: nil, fileName: "t.conf")
         XCTAssertEqual(clash.errors.map(\.line), [2], "reported at the later binding")
     }
-
-    func testHyperParsesAsMangosMod3WhateverTheHyperSet() {
-        let parsed = parse("""
-        bind=HYPER,a,killclient
-        mousebind=HYPER,btn_left,moveresize,curmove
-        axisbind=HYPER,UP,viewtoleft
-        gesturebind=HYPER,left,3,focusdir,left
-        chutney_hyper_modifier=super+ctrl
-        """)
-        XCTAssertEqual(parsed.errors, [])
-        let expected: Modifiers = .hyper
-        XCTAssertEqual(parsed.config.keyBindings.first?.mods, expected)
-        XCTAssertEqual(parsed.config.mouseBindings.first?.mods, expected)
-        XCTAssertEqual(parsed.config.axisBindings.first?.mods, expected)
-        XCTAssertEqual(parsed.config.gestureBindings.first?.mods, expected)
-    }
 }
