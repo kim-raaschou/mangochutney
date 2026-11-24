@@ -67,7 +67,7 @@ final class TabStripTests: MangoTestCase {
     func testTheSelectedMemberIsFocusedElseTheOneShownLast() {
         let r = rig(.monocle, windows: 3)
         r.arrange()
-        r.monitor.sel = 900_102
+        r.monitor.sel = r.server.clientByIdAll(900_102)
         r.server.tabSyncMonitor(r.monitor)
         XCTAssertEqual(r.server.tabFocus(r.monitor)?.id, 900_102)
         r.monitor.sel = nil
@@ -83,7 +83,7 @@ final class TabStripTests: MangoTestCase {
         let fake = r.server.system as! FakeWindowSystem
         r.server.drawsOverlays = true
         r.arrange()
-        r.monitor.sel = 900_101
+        r.monitor.sel = r.server.clientByIdAll(900_101)
         r.server.tabSyncMonitor(r.monitor)
         r.server.drawBars()
         XCTAssertEqual(fake.tabStrips.first?.segments.first(where: \.focused)?.id, 900_101)

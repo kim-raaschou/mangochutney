@@ -86,7 +86,7 @@ final class BorderInsideTheTileTests: MangoTestCase {
         r.server.renderBorder = true
         r.server.drawsOverlays = true
         let f = r.window(900_520, floating: true)
-        r.monitor.sel = f.id
+        r.monitor.sel = f
         r.arrange()
         r.server.updateBorders()
         let ids = Set((r.server.system as! FakeWindowSystem).borderSpecs.map(\.id))
@@ -112,7 +112,7 @@ final class BorderInsideTheTileTests: MangoTestCase {
     func testArrangingAgainMovesNothing() {
         for layout in [LayoutKind.scroller, .tile, .dwindle, .deck] {
             let r = rig(3, layout: layout)
-            r.monitor.sel = 900_501
+            r.monitor.sel = r.server.clientByIdAll(900_501)
             let first = frames(r, borders: true)
             r.arrange()
             r.arrange()

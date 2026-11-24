@@ -361,8 +361,8 @@ package extension MangoServer {
             return
         }
 
-        let sel = m.sel.flatMap { clientByIdAll($0) }
-        let prevsel = m.prevsel.flatMap { clientByIdAll($0) }
+        let sel = m.sel
+        let prevsel = m.prevsel
         var rootNode: ScrollerStackNode?
         if let sel, ISSCROLLTILED(sel) {
             rootNode = findScrollerNode(st, sel)
@@ -544,8 +544,8 @@ package extension MangoServer {
             return
         }
 
-        let sel = m.sel.flatMap { clientByIdAll($0) }
-        let prevsel = m.prevsel.flatMap { clientByIdAll($0) }
+        let sel = m.sel
+        let prevsel = m.prevsel
         var rootNode: ScrollerStackNode?
         if let sel, ISSCROLLTILED(sel) {
             rootNode = findScrollerNode(st, sel)

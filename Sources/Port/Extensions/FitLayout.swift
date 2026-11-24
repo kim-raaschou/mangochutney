@@ -46,7 +46,7 @@ enum FitLayout {
         let tiled = server.tiledClients(m).filter { !$0.parked }
         return tiled.filter { c in
             let tile = tiled.filter { $0.tile == c.tile }
-            return tile.count == 1 || c === (tile.first { $0.id == m.sel } ?? tile[0])
+            return tile.count == 1 || c === (tile.first { $0 === m.sel } ?? tile[0])
         }
     }
 
@@ -252,7 +252,7 @@ enum FitLayout {
             "\(c.id):\(c.tile):\(c.refusedSize.map { "\($0)" } ?? "")"
         }
         // the sides no fit can grow are part of what is seen: the plan changes with them
-        let seen = "\(level)|\(!m.isoverview)|\(server.grabClient == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel ?? 0)|\(windows.joined(separator: ","))|\(mac.fitState.stuck.sorted().joined(separator: ","))"
+        let seen = "\(level)|\(!m.isoverview)|\(server.grabClient == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel?.id ?? 0)|\(windows.joined(separator: ","))|\(mac.fitState.stuck.sorted().joined(separator: ","))"
         guard mac.fitState.seen != seen else { return }
         mac.fitState.seen = seen
         let plan = plan(server, m)

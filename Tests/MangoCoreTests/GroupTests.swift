@@ -21,7 +21,7 @@ final class GroupTests: MangoTestCase {
         let r = rig()
         run(r, "groupjoin", "down")
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_702, isTab: false, onClose: false))
-        XCTAssertEqual(r.monitor.sel, 900_702)
+        XCTAssertEqual(r.monitor.sel?.id, 900_702)
         XCTAssertTrue(c(r, 900_701).groupParked, "the group's focus swapped")
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_702, isTab: false, onClose: true))
         XCTAssertEqual((r.server.system as! FakeWindowSystem).closed, [900_702])
@@ -62,7 +62,7 @@ final class GroupTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         r.arrange()
         r.server.pointerProcessButtonPress(button: 1, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_700, isTab: true, onClose: false))
-        XCTAssertEqual(r.monitor.sel, 900_700)
+        XCTAssertEqual(r.monitor.sel?.id, 900_700)
         XCTAssertEqual((r.server.system as! FakeWindowSystem).closed, [])
         r.server.config.monocleRightButtonClose = true
         r.server.pointerProcessButtonPress(button: 1, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_701, isTab: true, onClose: false))
@@ -108,7 +108,7 @@ final class GroupTests: MangoTestCase {
         let r = rig()
         run(r, "groupjoin", "down")
         r.server.mac.windowFocused(id: 900_702)
-        XCTAssertEqual(r.monitor.sel, 900_702)
+        XCTAssertEqual(r.monitor.sel?.id, 900_702)
         XCTAssertFalse(c(r, 900_702).groupParked)
     }
 

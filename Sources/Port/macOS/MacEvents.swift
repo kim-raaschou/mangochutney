@@ -138,7 +138,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             return
         }
         guard let m = monitor(of: c) else { return }
-        wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map(String.init) ?? "none"))")
+        wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map { String($0.id) } ?? "none"))")
         if m.isoverview {
             if !m.isJumpMode, server.focused !== c, m === server.selectedMonitor { server.toggleOverview(Arg(tc: c)) }
             return
@@ -146,7 +146,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         if c.groupParked { server.clientFocusGroupMember(c); return }
         if nativeFullscreen(c), !VISIBLEON(c, m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
         if VISIBLEON(c, m) {
-            if m.sel == id && server.selectedMonitor === m { seatFocus = c; restack(); return }
+            if m.sel?.id == id && server.selectedMonitor === m { seatFocus = c; restack(); return }
             macOSFocused = c.id
             server.clientFocus(c, false)
             macOSFocused = nil

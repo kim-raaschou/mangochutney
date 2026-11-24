@@ -140,7 +140,7 @@ final class FitLayoutTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
-        r.monitor.sel = 3
+        r.monitor.sel = r.server.clientByIdAll(3)
         r.arrange()
         r.settle(1.5)
         XCTAssertEqual(over(r), [3])
@@ -289,12 +289,12 @@ final class FitLayoutTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
-        r.monitor.sel = 1
+        r.monitor.sel = r.server.clientByIdAll(1)
         r.arrange()
         r.settle(1.5)
         XCTAssertNotNil(r.server.clientByIdAll(3)!.refusedSize, "larger than the screen")
         XCTAssertEqual(FitLayout.shown(r.server, r.monitor).map(\.id), [1], "under the one shown")
-        r.monitor.sel = 3
+        r.monitor.sel = r.server.clientByIdAll(3)
         XCTAssertEqual(FitLayout.shown(r.server, r.monitor).map(\.id), [3], "shown now")
     }
 

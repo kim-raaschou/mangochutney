@@ -348,7 +348,7 @@ package extension MangoServer {
     }
 
     func monitorActiveClient(_ m: Monitor) -> JSONValue {
-        guard let c = m.sel.flatMap({ clientByIdAll($0) }) else {
+        guard let c = m.sel else {
             return .object([("id", .null), ("title", .null), ("appid", .null)])
         }
         return .object([("id", .int(Int(c.id))), ("title", .string(c.title)), ("appid", .string(c.appid))])
@@ -772,7 +772,7 @@ extension IPCServer {
                 }
                 resp = server.buildMonitorJson(m)
             } else if cmd == "get focusing-client" {
-                if let sel = server.selectedMonitor?.sel.flatMap({ server.clientByIdAll($0) }) {
+                if let sel = server.selectedMonitor?.sel {
                     resp = server.buildClientJson(sel)
                 } else {
                     sendStaticJson(clientFd, "{\"error\":\"no focused client\"}\n")
@@ -963,7 +963,7 @@ extension IPCServer {
                                 ("last_open_surface", .string(""))])   // not in mango: no layer shell on macOS
             }
         case .focusingClient:
-            if let sel = server.selectedMonitor?.sel.flatMap({ server.clientByIdAll($0) }) {
+            if let sel = server.selectedMonitor?.sel {
                 json = server.buildClientJson(sel)
             } else {
                 json = .object([("id", .null), ("title", .null), ("appid", .null)])
@@ -1035,7 +1035,7 @@ extension IPCServer {
     func ipcNotifyFocusingClient(_ server: MangoServer) {
         for wc in ipcWatchClients where wc.watch.type == .focusingClient {
             let json: JSONValue
-            if let sel = server.selectedMonitor?.sel.flatMap({ server.clientByIdAll($0) }) {
+            if let sel = server.selectedMonitor?.sel {
                 json = server.buildClientJson(sel)
             } else {
                 json = .object([("id", .null), ("title", .null), ("appid", .null)])

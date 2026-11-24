@@ -407,7 +407,7 @@ package extension MangoServer {
     }
 
     func directionSelect(_ arg: Arg) -> Client? {
-        guard let tc = arg.tc ?? selectedMonitor.sel.flatMap({ clientByIdAll($0) }) else { return nil }
+        guard let tc = arg.tc ?? selectedMonitor.sel else { return nil }
 
         if (tc.isfullscreen || tc.ismaximizescreen) && (!isScrollerLayout(selectedMonitor) || tc.isfloating) {
             return nil
@@ -436,7 +436,7 @@ package extension MangoServer {
     }
 
     package func getBorderColor(_ c: Client) -> RGBA {
-        let isFocused = c.mon === selectedMonitor && selectedMonitor.sel == c.id
+        let isFocused = c.mon === selectedMonitor && selectedMonitor.sel === c
         if c.mon !== selectedMonitor { return config.bordercolor }
         if c.isurgent { return config.urgentcolor }
         guard isFocused else { return config.bordercolor }
@@ -652,7 +652,7 @@ package extension MangoServer {
             }
 
             if let spec = r.monitor {
-                for m in monitors where spec.matchMonitorSpec(m.screen) { mon = m }
+                for m in monitors where matchMonitorSpec(spec, m) { mon = m }
             }
 
             if c.isnamedscratchpad { c.isfloating = true }
@@ -838,7 +838,7 @@ package extension MangoServer {
             clients.insert(c, at: 0)
         } else if selectedMonitor != nil && isScrollerLayout(selectedMonitor)
                     && selectedMonitor.visibleScrollTilingClients > 0 {
-            if let sel = selectedMonitor.sel.flatMap({ clientByIdAll($0) }), ISSCROLLTILED(sel),
+            if let sel = selectedMonitor.sel, ISSCROLLTILED(sel),
                VISIBLEON(sel, selectedMonitor) {
                 atClient = scrollGetStackTailClient(sel)
             } else {
@@ -938,8 +938,8 @@ package extension MangoServer {
         }
 
         for m in monitors {
-            if m.sel == id { m.sel = nil }
-            if m.prevsel == id { m.prevsel = nil }
+            if m.sel === c { m.sel = nil }
+            if m.prevsel === c { m.prevsel = nil }
         }
         if let m = c.mon, m === selectedMonitor {
             var nextfocus = stackNext ?? stackPrev ?? clientFocusTop(selectedMonitor)
@@ -987,7 +987,7 @@ package extension MangoServer {
 
     package func handleClientActivationRequest(_ c: Client) {
         guard clientByIdAll(c.id) === c else { return }
-        if config.focusOnActivate && !c.istagsilent && c.id != selectedMonitor.sel {
+        if config.focusOnActivate && !c.istagsilent && c !== selectedMonitor.sel {
             if c.tags & TAG0_MASK != 0, let m = c.mon {
                 if isSpecialActive(m) {
                     clientFocus(c, true)
@@ -1025,10 +1025,10 @@ package extension MangoServer {
         }
 
         if let c, let m = c.mon {
-            let lastFocusClient = selectedMonitor?.sel.flatMap { clientByIdAll($0) }
+            let lastFocusClient = selectedMonitor?.sel
             selectedMonitor = m
             m.prevsel = m.sel
-            m.sel = c.id
+            m.sel = c
             c.isfocusing = true
 
             tabSyncFocus(c)
@@ -1046,7 +1046,7 @@ package extension MangoServer {
             focusStack.removeAll { $0 == c.id }
             focusStack.insert(c.id, at: 0)
 
-            if let p = m.prevsel.flatMap({ clientByIdAll($0) }), TAGMATCH(p, m), TAGMATCH(c, m), !c.isfloating,
+            if let p = m.prevsel, TAGMATCH(p, m), TAGMATCH(c, m), !c.isfloating,
                isScrollerLayout(m) || isMonocleLayout(m) || c.tabPrev != nil || c.tabNext != nil {
                 arrange(m, false, false)
             } else {
@@ -1059,7 +1059,7 @@ package extension MangoServer {
 
         // update other monitor focus disappear
         for um in monitors where um !== selectedMonitor {   // not in mango: wlr_output->enabled; the port's monitors are enabled
-            if let sel = um.sel.flatMap({ clientByIdAll($0) }), !sel.iskilling, sel.isfocusing {
+            if let sel = um.sel, !sel.iskilling, sel.isfocusing {
                 sel.isfocusing = false   // not in mango: no opacity or foreign toplevel
             }
         }
@@ -1077,8 +1077,8 @@ package extension MangoServer {
 
         guard let c else {
             let sm: Monitor = selectedMonitor
-            if let id = sm.sel, !(clientByIdAll(id).map { $0.isVisible(on: sm) && !$0.iskilling } ?? false) {
-                clientByIdAll(id)?.isfocusing = false
+            if let s = sm.sel, !(s.isVisible(on: sm) && !s.iskilling) {
+                s.isfocusing = false
                 sm.sel = nil
             }
             printstatus(.arrangge)
@@ -1231,8 +1231,8 @@ package extension MangoServer {
     package func clientSetMonitor(_ c: Client, _ m: Monitor?, _ newtags: UInt32, focus: Bool) {
         let oldmon = c.mon
         if oldmon === m { return }
-        if let oldmon, oldmon.sel == c.id { oldmon.sel = nil }
-        if let oldmon, oldmon.prevsel == c.id { oldmon.prevsel = nil }
+        if let oldmon, oldmon.sel === c { oldmon.sel = nil }
+        if let oldmon, oldmon.prevsel === c { oldmon.prevsel = nil }
         c.mon = m
         if let oldmon { arrange(oldmon, false, false) }
         if clientIsParked(c) { return }
@@ -1786,11 +1786,11 @@ package extension MangoServer {
 
     func clientReassignMonitor(_ c: Client, _ m: Monitor) {
         guard let old = c.mon, old !== m else { return }
-        if old.sel == c.id { old.sel = nil }
-        if old.prevsel == c.id { old.prevsel = nil }
+        if old.sel === c { old.sel = nil }
+        if old.prevsel === c { old.prevsel = nil }
         c.mon = m
         if !VISIBLEON(c, m) { clientResetMonTags(c, m, 0) }
-        m.sel = c.id
+        m.sel = c
         setSelectedMonitor(m)
     }
 

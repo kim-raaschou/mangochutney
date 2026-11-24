@@ -45,7 +45,7 @@ final class LayoutTests: MangoTestCase {
             r.server.focusStack.removeAll { $0 == focus }
             r.server.focusStack.insert(focus, at: 0)
         }
-        r.monitor.sel = focus
+        r.monitor.sel = focus.flatMap { r.server.clientByIdAll($0) }
         r.arrange()
         return Dictionary(uniqueKeysWithValues: visible.map { ($0, r.server.clientByIdAll($0)!.geom) })
     }

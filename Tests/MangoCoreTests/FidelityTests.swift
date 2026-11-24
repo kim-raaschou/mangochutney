@@ -46,6 +46,6 @@ final class FidelityTests: MangoTestCase {
         r.server.mac.windowReacquired(id: a.id, element: r.app.element(for: a.id),
                                       state: ReacquiredState(frame: nil, minimized: true, fullscreen: false, appHidden: false))
         XCTAssertNil(r.server.clientByIdAll(a.id), "away in the Dock: unmapped")
-        XCTAssertEqual(r.monitor.sel, b.id, "the next window is focused")
+        XCTAssertEqual(r.monitor.sel?.id, b.id, "the next window is focused")
     }
 }

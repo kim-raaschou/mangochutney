@@ -62,7 +62,7 @@ final class ClientTests: XCTestCase {
 
         mango.server.clientFocus(nil, false)
 
-        XCTAssertEqual(mango.monitor.sel, a.id)
+        XCTAssertEqual(mango.monitor.sel?.id, a.id)
     }
 
     // MARK: client_exchange

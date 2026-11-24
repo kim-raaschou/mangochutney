@@ -84,10 +84,10 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let r = scroller()
         move(r, to: 900_411, speed: 0)
         move(r, to: 900_412, speed: 0)
-        XCTAssertEqual(r.monitor.sel, 900_411, "locked")
+        XCTAssertEqual(r.monitor.sel?.id, 900_411, "locked")
         move(r, to: 900_410, speed: 0)
         move(r, to: 900_412, speed: 0)
-        XCTAssertEqual(r.monitor.sel, 900_412, "the lock went with the window inside")
+        XCTAssertEqual(r.monitor.sel?.id, 900_412, "the lock went with the window inside")
     }
 }
 

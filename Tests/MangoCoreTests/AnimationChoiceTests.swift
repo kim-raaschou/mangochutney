@@ -135,7 +135,7 @@ final class AnimationChoiceTests: MangoTestCase {
         c.animation.current = now
         c.current = now
         c.pending = now
-        r.monitor.sel = c.id
+        r.monitor.sel = c
         r.server.resize(c, card, ResizeOpts())
         XCTAssertEqual(c.animation.initial, now, "the selected window moves from where it is")
     }

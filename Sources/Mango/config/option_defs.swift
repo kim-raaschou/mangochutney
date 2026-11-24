@@ -279,7 +279,7 @@ extension ParserState {
                 let m = ValueParse.parseTagMask(val)
                 rule.tags = m == 0 ? nil : m
             } else if key == "monitor" {
-                rule.monitor = MonitorSpec(mango: val)
+                rule.monitor = val
             } else if key == "offset_x" {
                 rule.offsetX = ValueParse.atoi(val)
             } else if key == "offset_y" {

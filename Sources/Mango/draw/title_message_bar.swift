@@ -29,11 +29,11 @@ package extension MangoServer {
     }
 
     private func overcircleTitleBarGeometry(_ m: Monitor, _ useAnimation: Bool) -> (client: Client, box: CGRect)? {
-        guard isOvercircleMode(m), let id = m.sel, let c = clientByIdAll(id),
+        guard isOvercircleMode(m), let c = m.sel,
               config.titleMessageBarHeight != 0 else { return nil }
 
         // not in mango: the client's card, not c->geom or c->animation.current
-        guard let geo = m.ovCards[id], geo.width > 0 else { return nil }
+        guard let geo = m.ovCards[c.id], geo.width > 0 else { return nil }
 
         return (c, CGRect(x: geo.minX, y: geo.maxY + CGFloat(config.titleMessageBarGap),
                           width: geo.width, height: CGFloat(config.titleMessageBarHeight)))
@@ -71,7 +71,7 @@ package extension MangoServer {
         if let target = portHooks.titleMessageBarGeometry?(self, m)?.client ?? switcherTitleMessageBarGeometry(m)?.client {   // Port extension: chutney_launch_or_focus
             if target !== c { return }
         } else if isOvercircleMode(m) {
-            if m.sel != c.id { return }
+            if m.sel !== c { return }
         } else {
             return
         }

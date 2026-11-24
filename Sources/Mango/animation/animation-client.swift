@@ -224,7 +224,7 @@ package extension MangoServer {
             frame: CGRect(x: bar.minX, y: bar.minY, width: bar.width, height: bar.height + under),
             barHeight: bar.height, cornerRadius: radius,
             segments: zip(members, barSegments(bar, members)).map { cur, box in
-                .init(id: cur.id, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur.id == sel,
+                .init(id: cur.id, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur === sel,
                       pid: cur.pid, frame: box)
             },
             above: c.id,
@@ -766,7 +766,7 @@ package extension MangoServer {
                 c.animation.overviewEnterAnimSet = true
             } else {
                 c.animation.overining = false
-                if c.id != mon.sel && c.animation.action == .overview {
+                if c !== mon.sel && c.animation.action == .overview {
                     c.animation.overviewEnterAnimSet = true
                     setOverviewEnterAnimation(c)
                 }

@@ -66,7 +66,7 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertEqual(highlighted(r), 900_202)
         r.server.switcherCommit()
         XCTAssertFalse(r.server.switcherIsActive())
-        XCTAssertEqual(r.monitor.sel, 900_202)
+        XCTAssertEqual(r.monitor.sel?.id, 900_202)
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 2)
     }
 
@@ -78,7 +78,7 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertFalse(r.server.mac.router.key(release, modifierOnlySinceDown: false))
         r.settle()
         XCTAssertFalse(r.server.switcherIsActive())
-        XCTAssertEqual(r.monitor.sel, 900_200)
+        XCTAssertEqual(r.monitor.sel?.id, 900_200)
     }
 
     func testClicks() {
@@ -89,7 +89,7 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertTrue(r.server.mac.router.mouseButton(outside), "the switcher's own")
         r.settle()
         XCTAssertFalse(r.server.switcherIsActive(), "a click elsewhere closes it")
-        XCTAssertEqual(r.monitor.sel, 900_201, "and changes nothing")
+        XCTAssertEqual(r.monitor.sel?.id, 900_201, "and changes nothing")
 
         open(r)
         let first = tileFrames(r)[0]
@@ -97,7 +97,7 @@ final class SwitcherTests: MangoTestCase {
                                                                location: CGPoint(x: first.midX, y: first.midY))))
         r.settle()
         XCTAssertFalse(r.server.switcherIsActive())
-        XCTAssertEqual(r.monitor.sel, 900_201, "the clicked tile, not the highlighted one")
+        XCTAssertEqual(r.monitor.sel?.id, 900_201, "the clicked tile, not the highlighted one")
     }
 
     func testAWindowThatGoesLeavesTheSwitcher() {

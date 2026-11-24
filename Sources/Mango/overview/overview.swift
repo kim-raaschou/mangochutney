@@ -9,7 +9,7 @@ package extension MangoServer {
     func wantRestoreFullscreen(_ targetClient: Client) -> Bool {
         for c in clients {
             if c !== targetClient && c.tags == targetClient.tags &&
-                c.id == selectedMonitor.sel && c.mon != nil &&
+                c === selectedMonitor.sel && c.mon != nil &&
                 c.mon!.pertag.ltidxs[Int(getTagsFirstTagNum(c.tags))] != .scroller &&
                 c.mon!.pertag.ltidxs[Int(getTagsFirstTagNum(c.tags))] != .verticalScroller {
                 return false
@@ -28,7 +28,7 @@ package extension MangoServer {
         m.ovCards.compactMap { id, frame in
             guard let c = clientByIdAll(id) else { return nil }
             return OverviewCard(id: id, frame: frame, title: c.title.isEmpty ? c.appName : c.title,
-                                pid: c.pid, focused: id == m.sel)
+                                pid: c.pid, focused: id == m.sel?.id)
         }
     }
 
@@ -57,7 +57,7 @@ package extension MangoServer {
             }
             updateBorders()
         }
-        if config.titleMessageBarHeight > 0 && isOvercircleMode(m) && m.sel.map({ m.ovCards[$0] != nil }) == true {
+        if config.titleMessageBarHeight > 0 && isOvercircleMode(m) && m.sel.map({ m.ovCards[$0.id] != nil }) == true {
             titleMessageBarUpdateGeometry(m)
         }
     }

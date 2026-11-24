@@ -58,8 +58,8 @@ public final class Monitor {
     public let pertag = Pertag()
     public var ovbkCurrentTagset: UInt32 = 0
     public var ovbkPrevTagset: UInt32 = 0
-    public var sel: ClientID?
-    public var prevsel: ClientID?
+    public weak var sel: Client?   // not in mango: weak, a closed client's pointer is not kept
+    public weak var prevsel: Client?
     public var isoverview = false
     public var isJumpMode = false
     public var isInHotarea = false
@@ -327,10 +327,78 @@ package extension MangoServer {
         monitors.first { $0.m.contains(p) }
     }
 
-    // not in mango: wlr_output_layout_closest_point over the monitors' boxes
-    func getMonitorNearestTo(_ p: CGPoint) -> Monitor? {
-        if let m = monitorAtPoint(p) { return m }
-        return monitors.min { a, b in a.m.center.distance(to: p) < b.m.center.distance(to: p) }
+    func getMonitorNearestTo(_ lx: Int32, _ ly: Int32) -> Monitor? {
+        // not in mango: wlr_output_layout_closest_point and _output_at over the monitors' boxes
+        var closestX = Double(lx), closestY = Double(ly), minDistance = Double.greatestFiniteMagnitude
+        for m in monitors where !m.m.isEmpty {
+            let box = m.m
+            let x = Double(lx) < box.minX ? box.minX : (Double(lx) > box.maxX - 1 / 65536.0 ? box.maxX - 1 / 65536.0 : Double(lx))
+            let y = Double(ly) < box.minY ? box.minY : (Double(ly) > box.maxY - 1 / 65536.0 ? box.maxY - 1 / 65536.0 : Double(ly))
+            let distance = (x - Double(lx)) * (x - Double(lx)) + (y - Double(ly)) * (y - Double(ly))
+            if distance < minDistance {
+                minDistance = distance
+                closestX = x
+                closestY = y
+            }
+        }
+        return monitorAtPoint(CGPoint(x: closestX, y: closestY))
+    }
+
+    func matchMonitorSpec(_ spec: String?, _ m: Monitor?) -> Bool {
+        guard let spec, let m else { return false }
+
+        // if the spec does not contain a colon, treat it as a match on the monitor
+        // name
+        if !spec.contains(":") {
+            return regexMatch(spec, m.screen.name)
+        }
+
+        var nameRule: String?
+        var makeRule: String?
+        var modelRule: String?
+        var serialRule: String?
+
+        for token in spec.split(separator: "&") {
+            if let colon = token.firstIndex(of: ":") {
+                let key = token[..<colon]
+                let value = String(token[token.index(after: colon)...])
+
+                if key == "name" {
+                    nameRule = value
+                } else if key == "make" {
+                    makeRule = value
+                } else if key == "model" {
+                    modelRule = value
+                } else if key == "serial" {
+                    serialRule = value
+                }
+            }
+        }
+
+        var match = true
+
+        if let nameRule {
+            if !regexMatch(nameRule, m.screen.name) {
+                match = false
+            }
+        }
+        if let makeRule {
+            if m.screen.make == nil || makeRule != m.screen.make {
+                match = false
+            }
+        }
+        if let modelRule {
+            if m.screen.model == nil || modelRule != m.screen.model {
+                match = false
+            }
+        }
+        if let serialRule {
+            if m.screen.serial == nil || serialRule != m.screen.serial {
+                match = false
+            }
+        }
+
+        return match
     }
 
     // not in mango: the port reports a screen where wlroots reports a wlr_output; no modes, rules or scene to set up
@@ -350,7 +418,7 @@ package extension MangoServer {
         printstatus(.arrangge)
     }
 
-    // not in mango: no fade-out clients, layers, workspaces or scene to tear down
+    // not in mango: no iscleanuping, and no fade-out clients, layers, workspaces or scene to tear down
     func handleOutputDestroy(_ m: Monitor) {
         monitors.removeAll { $0 === m }
 
@@ -436,6 +504,7 @@ package extension MangoServer {
                 }
 
                 // restore window to old monitor
+                // not in mango: oldmonname is the display's id, and every Client is mapped
                 if let cm = c.mon, cm !== m, c.oldmonname == m.screen.displayID {
                     clientChangeMon(c, m)
                 }
@@ -472,11 +541,14 @@ package extension MangoServer {
     func handleOutputFrame(_ m: Monitor) {
         var needMoreFrames = false
 
+        // not in mango: no session, wlr_output->enabled or allow_frame_scheduling; the port's monitors are
+        // enabled and its frames scheduled
+
         m.frameSerial &+= 1
 
         // not in mango: no layers and no fade-out clients to draw (macOS draws them)
 
-        for c in clientsAll {
+        for c in clients {
             needMoreFrames = clientDrawFrame(c) || needMoreFrames
         }
 

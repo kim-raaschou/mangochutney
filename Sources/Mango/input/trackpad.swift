@@ -16,7 +16,7 @@ package struct SwipeDrive {
     var drag = false
     var mon: Monitor?
     var fingers: UInt32 = 0
-    var startSel: ClientID?
+    weak var startSel: Client?
     var horizontal = false
     var base = 0.0
     var dir = 0.0
@@ -169,7 +169,7 @@ package extension MangoServer {
         return false
     }
 
-    func swipeDriveLogState(_ m: Monitor?, _ why: String, _ selChanged: Bool, _ selBefore: ClientID?) {
+    func swipeDriveLogState(_ m: Monitor?, _ why: String, _ selChanged: Bool, _ selBefore: Client?) {
         guard let m else { return }
 
         var visible = 0
@@ -190,7 +190,7 @@ package extension MangoServer {
         }
 
         mangoError(true, .debug, "swipe drive: \(why) (vis=\(visible) tiled=\(tiled) run=\(running) geom=\(geometry) "
-                   + "sel_changed=\(selChanged ? 1 : 0) sel_before=\(selBefore.map(String.init) ?? "nil") sel_now=\(m.sel.map(String.init) ?? "nil"))\n")
+                   + "sel_changed=\(selChanged ? 1 : 0) sel_before=\(selBefore.map { String($0.id) } ?? "nil") sel_now=\(m.sel.map { String($0.id) } ?? "nil"))\n")
     }
 
     func swipeDriveFreeze(_ m: Monitor) {
@@ -303,7 +303,7 @@ package extension MangoServer {
     }
 
     func swipeDrivePanFlickTarget(_ m: Monitor, _ dir: Double) -> (offset: Double, client: Client)? {
-        guard let sel = m.sel.flatMap({ clientByIdAll($0) }) else { return nil }
+        guard let sel = m.sel else { return nil }
 
         let horizontal = swipeHorizontal
         let monOrigin = Double(horizontal ? m.w.minX : m.w.minY)
@@ -364,7 +364,7 @@ package extension MangoServer {
         swipeDrive.startSel = selBefore
 
         if drag {
-            let target = m.sel.flatMap { clientByIdAll($0) }
+            let target = m.sel
 
             let cursor = system.pointer
             if !pointerBeginMoveResize(target, execArg.ui, cursor.x, cursor.y, []) {
@@ -396,7 +396,7 @@ package extension MangoServer {
 
         if !swipeHasRunningTransition(m) {
             swipeDriveUnfreeze()
-            swipeDriveLogState(m, "fired but no transition", m.sel != selBefore, selBefore)
+            swipeDriveLogState(m, "fired but no transition", m.sel !== selBefore, selBefore)
             let name = execFunc == "toggleoverview" ? "toggle_overview"
                 : execFunc == "enteroverview" ? "enter_overview"
                 : execFunc == "leaveoverview" ? "leave_overview"
@@ -408,7 +408,7 @@ package extension MangoServer {
 
         swipeDrive.active = true
         swipeDriveApply(m, 0.0)
-        swipeDriveLogState(m, "driving transition", m.sel != selBefore, selBefore)
+        swipeDriveLogState(m, "driving transition", m.sel !== selBefore, selBefore)
         mangoError(true, .debug, "swipe drive: driving transition, motion=\(swipeDrive.motion) fingers=\(swipeDrive.fingers)\n")
         return true
     }
@@ -564,7 +564,7 @@ package extension MangoServer {
                 let speedHit = swipeDrive.speedPoints > 0 && swipeDrive.avgSpeed >= config.gestureSwipeMinSpeedToForce
                 let quickHit = swipeDrive.speedPoints > 0 && dur <= SWIPE_FLICK_MAX_MS
 
-                if target?.id == swipeDrive.startSel && (speedHit || quickHit) {
+                if target === swipeDrive.startSel && (speedHit || quickHit) {
                     let dir = raw < 0 ? -1.0 : 1.0
 
                     if let flick = swipeDrivePanFlickTarget(m, dir) {
@@ -573,7 +573,7 @@ package extension MangoServer {
                     }
                 }
 
-                if let target, target.id != swipeDrive.startSel {
+                if let target, target !== swipeDrive.startSel {
                     mangoError(true, .debug, "swipe drive: pan commit, offset=\(Int(offset.rounded())) target=\(target.id)\n")
 
                     let shift = CGFloat(offset.rounded())

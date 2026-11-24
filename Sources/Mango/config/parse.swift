@@ -179,68 +179,6 @@ let NUM_TYPE_MINUS: UInt32 = 0, NUM_TYPE_PLUS: UInt32 = 1, NUM_TYPE_DEFAULT: UIn
 
 let KEY_TYPE_CODE = 0, KEY_TYPE_SYM = 1
 
-/// Not in mango: `name` is matched against the display's localized name.
-public struct MonitorSpec: Equatable, Hashable, Sendable {
-    public var name: String?
-    public var make: String?
-    public var model: String?
-    public var serial: String?
-
-    public init(name: String? = nil, make: String? = nil, model: String? = nil, serial: String? = nil) {
-        self.name = name; self.make = make; self.model = model; self.serial = serial
-    }
-
-    // not in mango: match_monitor_spec's parse of the spec (manage/monitor.c), apart
-    public init(mango spec: String) {
-        // if the spec does not contain a colon, treat it as a match on the monitor
-        // name
-        if !spec.contains(":") { name = spec; return }
-        for token in spec.split(separator: "&") {
-            guard let colon = token.firstIndex(of: ":") else { continue }
-            let key = token[..<colon]
-            let value = String(token[token.index(after: colon)...])
-
-            if key == "name" {
-                name = value
-            } else if key == "make" {
-                make = value
-            } else if key == "model" {
-                model = value
-            } else if key == "serial" {
-                serial = value
-            }
-        }
-    }
-
-    /// mango match_monitor_spec (manage/monitor.c)
-    public func matchMonitorSpec(_ screen: Screen) -> Bool {
-        var match = true
-
-        if let name {
-            if !regexMatch(name, screen.name) {
-                match = false
-            }
-        }
-        if let make {
-            if screen.make == nil || make != screen.make {
-                match = false
-            }
-        }
-        if let model {
-            if screen.model == nil || model != screen.model {
-                match = false
-            }
-        }
-        if let serial {
-            if screen.serial == nil || serial != screen.serial {
-                match = false
-            }
-        }
-
-        return match
-    }
-}
-
 /// Not in mango: `app_id` is matched against the bundle id and the app's name; a nil field is
 /// mango's -1 (unset).
 public struct ConfigWinRule: Equatable, Sendable {
@@ -262,7 +200,7 @@ public struct ConfigWinRule: Equatable, Sendable {
     public var noSwallow: Bool?
 
     public var tags: UInt32?
-    public var monitor: MonitorSpec?
+    public var monitor: String?
     public var width: Double?
     public var height: Double?
     public var offsetX: Int?

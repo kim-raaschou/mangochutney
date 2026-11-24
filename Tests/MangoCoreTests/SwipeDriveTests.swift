@@ -189,14 +189,14 @@ final class SwipeDriveTests: MangoTestCase {
         r.settle(0.2)
         r.server.config.gestureBindings = [GestureBinding(mods: [], motion: UInt32(ALLDIR), fingersCount: 4,
                                                           dispatch: Dispatch(name: "focusdir", args: ["right"]))]
-        let sel = r.monitor.sel
+        let sel = r.monitor.sel?.id
         begin(r)
         move(r, -20, 0, 0)
         XCTAssertTrue(r.server.swipeDrive.pan)
         XCTAssertTrue(r.server.gestureDriveActive, "mango freezes for a pan too")
         move(r, -150, 0, 1000)
         end(r)
-        XCTAssertNotEqual(r.monitor.sel, sel, "the window panned to the middle")
+        XCTAssertNotEqual(r.monitor.sel?.id, sel, "the window panned to the middle")
         XCTAssertFalse(r.server.gestureDriveActive)
     }
 }

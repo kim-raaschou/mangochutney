@@ -21,7 +21,7 @@ package extension MangoServer {
 
         var it: Client? = head
         while let x = it {
-            if let m = x.mon, x.id == m.sel { sel = x }
+            if let m = x.mon, x === m.sel { sel = x }
             if focus == nil && x.isTabFocus { focus = x }
             it = x.tabNext
         }

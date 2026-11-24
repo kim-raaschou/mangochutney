@@ -1406,7 +1406,7 @@ package extension MangoServer {
         // not in mango: no iscleanuping or wlr_output->enabled; the port's monitors are enabled
 
         if m.sel == nil {
-            m.sel = clientFocusTop(m)?.id
+            m.sel = clientFocusTop(m)
         }
 
         if specialHandleEmptyView(m, fromView) {
@@ -1468,9 +1468,9 @@ package extension MangoServer {
         for c in visibleClients(m) where !c.isunglobal && !c.dragToTile {
             if SCRATCHPAD_SHOWN(c) || c.isfullscreen || c.ismaximizescreen || c.isoverlay { raise.append(c) }
         }
-        if m.layout.isMonocleLike, let s = m.sel.flatMap({ clientByIdAll($0) }), !s.isfloating { raise.insert(s, at: 0) }
+        if m.layout.isMonocleLike, let s = m.sel, !s.isfloating { raise.insert(s, at: 0) }
 
-        let sel = m.sel.flatMap { clientByIdAll($0) }
+        let sel = m.sel
         for c in raise where c !== sel {
             if let sel, sel.pid == c.pid { continue }
             system.raise(c)

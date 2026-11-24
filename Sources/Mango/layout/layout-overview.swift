@@ -437,7 +437,7 @@ package extension MangoServer {
         let sel = m.sel
         var focusIdx = 0
         for i in 0..<n {
-            if items[i].id == sel {
+            if items[i].id == sel?.id {
                 focusIdx = i
                 break
             }

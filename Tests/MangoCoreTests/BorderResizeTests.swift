@@ -90,7 +90,7 @@ final class BorderResizeTests: MangoTestCase {
         r.server.config.sloppyfocus = true
         r.server.clientFocus(b, true)
         motion(r, CGPoint(x: 496, y: 400), time: 1)
-        XCTAssertEqual(r.monitor.sel, a.id)
+        XCTAssertEqual(r.monitor.sel?.id, a.id)
         XCTAssertEqual(r.server.hoverResizeEdge, .right)
         XCTAssertNil(r.server.nodeAtPoint(CGPoint(x: 505, y: 400)), "the gap is no window's")
     }

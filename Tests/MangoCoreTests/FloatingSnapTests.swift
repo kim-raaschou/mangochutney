@@ -50,7 +50,7 @@ final class EngineSnapAndSmallDragTests: MangoTestCase {
         r.arrange()
         r.settle()
         let tile = a.geom
-        r.monitor.sel = a.id
+        r.monitor.sel = a
         let p = CGPoint(x: tile.midX, y: tile.midY)
         let move = MouseBinding(mods: .superKey, button: .left, dispatch: Dispatch(name: "moveresize", args: ["curmove"]))
         r.server.mousebind(move, at: p)

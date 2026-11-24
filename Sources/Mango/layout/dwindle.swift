@@ -589,7 +589,7 @@ package extension MangoServer {
         // if none.
         var focused = clientFocusTop(m)
         if let f = focused, dwindleFindLeaf(m.pertag.dwindleRoot[tag], f) == nil {
-            focused = m.sel.flatMap { clientByIdAll($0) }
+            focused = m.sel
         }
 
         if focused == nil && !vis.isEmpty { focused = vis[0] }

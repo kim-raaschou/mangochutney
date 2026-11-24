@@ -29,9 +29,9 @@ final class ClientFocusTests: MangoTestCase {
 
     func testAlreadyFocusedItReturnsEarly() {
         let (r, a, b) = rig()
-        r.monitor.prevsel = b.id
+        r.monitor.prevsel = b
         r.server.clientFocus(a, true)
-        XCTAssertEqual(r.monitor.prevsel, b.id, "the state is left as it is")
+        XCTAssertEqual(r.monitor.prevsel?.id, b.id, "the state is left as it is")
         r.settle()
         XCTAssertTrue(fake(r).focused.isEmpty, "no notify")
         XCTAssertEqual(fake(r).raised, [a.id], "lift comes before the early return")
@@ -41,8 +41,8 @@ final class ClientFocusTests: MangoTestCase {
         let (r, a, _) = rig()
         r.server.system.keyboardNotifyClearFocus()
         r.server.clientFocus(a, true)
-        XCTAssertEqual(r.monitor.prevsel, a.id)
-        XCTAssertEqual(r.monitor.sel, a.id)
+        XCTAssertEqual(r.monitor.prevsel?.id, a.id)
+        XCTAssertEqual(r.monitor.sel?.id, a.id)
     }
 
     func testLiftAndFocusAreOneNativeCall() {
@@ -65,7 +65,7 @@ final class ClientFocusTests: MangoTestCase {
     func testAClickInMacOSUpdatesSelAndSendsNoFocusBack() {
         let (r, _, b) = rig()
         r.server.mac.windowFocused(id: b.id)
-        XCTAssertEqual(r.monitor.sel, b.id)
+        XCTAssertEqual(r.monitor.sel?.id, b.id)
         XCTAssertTrue(r.server.system.keyboardFocusedSurface === b)
         r.settle()
         XCTAssertTrue(fake(r).focused.isEmpty, "macOS has it already")

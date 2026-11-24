@@ -54,7 +54,7 @@ package extension MangoServer {
             c = focused
         }
         if c == nil, let sm = selectedMonitor {
-            c = sm.sel.flatMap { clientByIdAll($0) }
+            c = sm.sel
         }
 
         // not in mango: mapped is being in the client list
@@ -94,7 +94,7 @@ package extension MangoServer {
         if grabClient != nil { return }
 
         if config.hotareaDisableOnFullscreen {
-            if let focused = sm.sel.flatMap({ clientByIdAll($0) }), focused.isfullscreen,
+            if let focused = sm.sel, focused.isfullscreen,
                VISIBLEON(focused, sm) {
                 sm.isInHotarea = false
                 return
@@ -414,7 +414,7 @@ package extension MangoServer {
         system.setCursor(nil)   // not in mango: the arrow until the app sets its own (docs/afvigelser.md §3)
         pointerProcessMotion(0, 0, 0)
         /* Drop the window off on its new monitor */
-        if selectedMonitor.sel == gc.id {
+        if selectedMonitor.sel === gc {
             selectedMonitor.sel = nil
         }
         var targetMon = followPointer
@@ -431,8 +431,8 @@ package extension MangoServer {
         if !VISIBLEON(gc, sm) {
             gc.tags = sm.tagset[sm.seltags]
         }
-        sm.prevsel = ISTILED(sm.sel.flatMap { clientByIdAll($0) }) ? sm.sel : nil
-        sm.sel = gc.id
+        sm.prevsel = ISTILED(sm.sel) ? sm.sel : nil
+        sm.sel = gc
         grabClient = nil
         startDragWindow = false
         if gc.dragToTile && config.dragTileToTile {
@@ -631,7 +631,7 @@ package extension MangoServer {
                 pointerFocus(c, surface, time)
             }
 
-            if shouldLock, let c, let cm = c.mon, ISTILED(c), cm.sel == c.id {
+            if shouldLock, let c, let cm = c.mon, ISTILED(c), cm.sel === c {
                 scrollerFocusLock = true
             }
         }
@@ -661,7 +661,7 @@ package extension MangoServer {
            let c, time != 0, c.platform.sceneNodeEnabled,
            c.mon == nil || !isOvercircleMode(c.mon), !c.animation.tagining,
            surface != system.pointerFocusedSurface ||
-            (selectedMonitor != nil && selectedMonitor.isoverview && selectedMonitor.sel != c.id),
+            (selectedMonitor != nil && selectedMonitor.isoverview && selectedMonitor.sel !== c),
            VISIBLEON(c, c.mon) {
             clientFocus(c, false)
         }

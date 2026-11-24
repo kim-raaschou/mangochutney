@@ -481,7 +481,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(r[1].once)
         XCTAssertEqual(r[1].title, "^Picture.in.Picture$")
         XCTAssertEqual(r[1].tags, 0b110)
-        XCTAssertEqual(r[1].monitor, MonitorSpec(name: "Built-in.*"))
+        XCTAssertEqual(r[1].monitor, "name:Built-in.*")
         XCTAssertEqual(r[1].noBorder, true)
         XCTAssertEqual(r[1].animationTypeOpen, .zoom)
         XCTAssertEqual(r[2].globalKeyBinding, "alt-a")

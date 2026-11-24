@@ -354,8 +354,8 @@ final class LayoutGoldenTests: MangoTestCase {
             for step in 0..<6 {
                 let expected = Self.rects(parts[1 + step].split(separator: " "))
                 let focus = ids[seq[step]]
-                mon.sel = focus
-                mon.prevsel = prev
+                mon.sel = r.server.clientByIdAll(focus)
+                mon.prevsel = prev.flatMap { r.server.clientByIdAll($0) }
                 r.arrange()
                 for (i, cl) in cs.enumerated() {
                     XCTAssertEqual(cl.geom, expected[i], "\(parts[0]) step \(step) client \(cl.id)")
@@ -528,7 +528,7 @@ final class LayoutGoldenTests: MangoTestCase {
                 r.server.focusStack.removeAll { $0 == focus }
                 r.server.focusStack.insert(focus, at: 0)
             }
-            r.monitor.sel = focus == 0 ? nil : focus
+            r.monitor.sel = focus == 0 ? nil : r.server.clientByIdAll(focus)
             (r.server.system as! FakeWindowSystem).fakePointer = CGPoint(x: cur[0], y: cur[1])
             r.arrange()
             for id in vis {
