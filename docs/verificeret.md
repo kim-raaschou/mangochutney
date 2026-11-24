@@ -76,10 +76,10 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/ipc/ipc.c` | `ipc/ipc.swift` | ikke verificeret | | | | |
 | `src/layout/arrange.c` | `layout/arrange.swift`, `layout/Layout.swift` | ikke verificeret | | | | |
 | `src/layout/dwindle.c` | `layout/dwindle.swift` | 1:1 | de70e75, 24. nov. | `7c1bf821750a` | `dwindle_free_tree`, `cleanup_monitor_dwindle` (ARC, §5), `dwindle_predict` (§3) | markøren er portens (`system.pointer`) |
-| `src/layout/horizontal.c` | `layout/horizontal.swift` | ikke verificeret | | | | |
+| `src/layout/horizontal.c` | `layout/horizontal.swift` | 1:1 | 1cceefb, 24. nov. | `08b9f6dfd68b` | `tile_predict`, `right_tile_predict`, `center_tile_predict`, `deck_predict`, `monocle_predict`, `grid_predict`, `fair_predict` (§3) | `layout.h`'s `LayoutContext` og `util.h`'s `MANGO_MIN`/`MANGO_MAX` står her; `m->w` som `int32_t` (`WBox`); ingen X11-popups |
 | `src/layout/overview.c` | `layout/layout-overview.swift` | ikke verificeret | | | | |
 | `src/layout/scroll.c` | `layout/scroll.swift` | ikke verificeret | | | | |
-| `src/layout/vertical.c` | `layout/vertical.swift` | ikke verificeret | | | | |
+| `src/layout/vertical.c` | `layout/vertical.swift` | 1:1 | 1cceefb, 24. nov. | `87f2c8d9708c` | `vertical_tile_predict`, `vertical_deck_predict`, `vertical_grid_predict`, `vertical_fair_predict` (§3) | `vertical_grid_core` tæller som `grid_core` (§6); ingen X11-popups |
 | `src/main.c` | `common/server.swift` | ikke verificeret | | | | `main` og `run` er appens (`Sources/MangoApp/main.swift`) |
 | `src/manage/client.c` | `manage/client.swift` | ikke verificeret | | | | |
 | `src/manage/layer.c` | | ingen macOS-del | | | | layer shell |
