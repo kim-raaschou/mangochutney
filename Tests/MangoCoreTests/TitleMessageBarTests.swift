@@ -9,8 +9,8 @@ final class TitleMessageBarTests: MangoTestCase {
         let r = EngineRig()
         r.window(900_200)
         r.window(900_201)
-        r.server.clientFocus(r.server.clientByIdAll(900_200)!, false)
-        r.server.clientFocus(r.server.clientByIdAll(900_201)!, false)
+        r.server.clientFocus(r.server.clientByWindowID(900_200)!, false)
+        r.server.clientFocus(r.server.clientByWindowID(900_201)!, false)
         return r
     }
 
@@ -60,11 +60,11 @@ final class TitleMessageBarTests: MangoTestCase {
         let r = rig()
         run(r, "switcher", "next")
         let bar = try XCTUnwrap(bar(r))
-        let other = r.server.clientByIdAll(900_201)!
+        let other = r.server.clientByWindowID(900_201)!
         other.title = "elsewhere"
         r.server.handleClientSetTitle(other)
         XCTAssertEqual(bar.lastText, "t900200\ntest")
-        let c = r.server.clientByIdAll(900_200)!
+        let c = r.server.clientByWindowID(900_200)!
         c.title = "renamed"
         r.server.handleClientSetTitle(c)
         XCTAssertEqual(bar.lastText, "renamed\ntest")
@@ -78,13 +78,13 @@ final class TitleMessageBarTests: MangoTestCase {
         let r = rig()
         run(r, "overcircle", "next")
         let bar = try XCTUnwrap(bar(r))
-        let sel = try XCTUnwrap(r.monitor.sel?.id)
-        let card = try XCTUnwrap(r.server.selectedMonitor.ovCards[sel])
+        let sel = try XCTUnwrap(r.monitor.sel?.windowID)
+        let card = try XCTUnwrap(r.server.selectedMonitor.ovCards[r.monitor.sel!.id])
         XCTAssertTrue(bar.enabled)
         XCTAssertEqual(bar.frame, CGRect(x: card.minX, y: card.maxY + 20, width: card.width, height: 52))
         XCTAssertEqual(bar.lastText, "t\(sel)\ntest")
         run(r, "overcircle", "next")
-        let next = try XCTUnwrap(r.monitor.sel?.id)
+        let next = try XCTUnwrap(r.monitor.sel?.windowID)
         XCTAssertNotEqual(next, sel)
         XCTAssertEqual(bar.lastText, "t\(next)\ntest", "it follows the focused client")
         r.server.leaveOverview(Arg())

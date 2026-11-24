@@ -204,7 +204,7 @@ package extension MangoServer {
         if ISFULLSCREEN(c) { return [] }
         /* A popup or any other child surface sitting on the border grab strip
          * must keep receiving its own input instead of resizing the parent. */
-        if let surface, surface != c.id { return [] }
+        if let surface, surface != c.windowID { return [] }
         guard let m = c.mon, !m.isoverview, VISIBLEON(c, m) else { return [] }
 
         var t = clientResizeGrab(c)
@@ -528,7 +528,7 @@ package extension MangoServer {
 
         if cursorMode == CurPressed,
            surface != system.pointerFocusedSurface,
-           let focused = system.pointerFocusedSurface, let w = clientByIdAll(focused) {
+           let focused = system.pointerFocusedSurface, let w = system.toplevelFromWlrSurface(focused) {
             c = w
             surface = focused
         }
@@ -864,7 +864,8 @@ package extension MangoServer {
                 return true
             }
 
-            if let bar, !bar.isTab, button == 0, let tc = clientByIdAll(bar.client) {
+            // not in mango: the port's bar gives its client's surface; toplevel_from_wlr_surface stands for bar->node_data
+            if let bar, !bar.isTab, button == 0, let tc = system.toplevelFromWlrSurface(bar.client) {
                 if bar.onClose {
                     pendingKillClient(tc)
                     return true
@@ -882,13 +883,13 @@ package extension MangoServer {
             }
 
             /* Optionally close the clicked tab with a right click. */
-            if let bar, bar.isTab, button == 1, config.monocleRightButtonClose, let tc = clientByIdAll(bar.client) {
+            if let bar, bar.isTab, button == 1, config.monocleRightButtonClose, let tc = system.toplevelFromWlrSurface(bar.client) {
                 pendingKillClient(tc)
                 return true
             }
 
             // handle click on tile node
-            if let bar, let tc = clientByIdAll(bar.client) { clientHandleDecorateClick(tc, isTab: bar.isTab) }
+            if let bar, let tc = system.toplevelFromWlrSurface(bar.client) { clientHandleDecorateClick(tc, isTab: bar.isTab) }
 
             let clean = mods.subtracting(.fn)
 

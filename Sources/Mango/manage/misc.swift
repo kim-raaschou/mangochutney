@@ -22,7 +22,7 @@ package extension MangoServer {
         guard let layer = hits.map({ clientTargetLayer($0) }).max() else { return nil }
         let top = hits.filter { clientTargetLayer($0) == layer }
         // not in mango: within the layer the window server's stacking, else the focus stack
-        if let s = system.surfaceAt(p), let c = top.first(where: { $0.id == s }) { return c }
+        if let s = system.surfaceAt(p), let c = top.first(where: { $0.windowID == s }) { return c }
         for c in focusStack where top.contains(where: { $0 === c }) { return c }
         return top.first
     }
@@ -31,7 +31,7 @@ package extension MangoServer {
     /// on its border (a rect node); the port's own windows (bars, overview) are none.
     func surfaceAt(_ c: Client?, _ p: CGPoint) -> ClientID? {
         if let s = system.surfaceAt(p) { return s }
-        if let c, c.geom.contains(p) { return c.id }
+        if let c, c.geom.contains(p) { return c.windowID }
         return nil
     }
 

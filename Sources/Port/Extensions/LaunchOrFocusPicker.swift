@@ -46,7 +46,7 @@ final class LaunchOrFocusPicker {
     func commit(_ server: MangoServer) {
         let id = highlighted
         close(server)
-        if let c = id.flatMap({ server.clientByIdAll($0) }) { server.clientActive(c) }
+        if let c = id.flatMap({ server.clientByWindowID($0) }) { server.clientActive(c) }
     }
 
     func close(_ server: MangoServer) {
@@ -66,7 +66,7 @@ final class LaunchOrFocusPicker {
     func click(_ server: MangoServer, at p: CGPoint, button: Int) {
         guard isOpen else { return }
         guard let id = tileFrames.first(where: { $0.value.contains(p) })?.key,
-              let c = server.clientByIdAll(id) else { return close(server) }
+              let c = server.clientByWindowID(id) else { return close(server) }
         close(server)
         if button == 0 { server.clientActive(c) } else { server.system.clientSendClose(c) }
     }
@@ -89,11 +89,11 @@ final class LaunchOrFocusPicker {
     }
 
     private func tiles(_ server: MangoServer) -> (layout: SwitcherPanelLayout.Result, tiles: [SwitcherPanel.Tile]) {
-        let clients = windows.compactMap { server.clientByIdAll($0) }
+        let clients = windows.compactMap { server.clientByWindowID($0) }
         let monitor = server.selectedMonitor.screen.frame
         let layout = SwitcherPanelLayout.switcherLayout(sizes: clients.map(\.frame.size), monitor: monitor)
         let tiles = clients.enumerated().map { i, c in
-            SwitcherPanel.Tile(id: c.id, frame: layout.tiles[i], size: c.frame.size, pid: c.pid, highlighted: c.id == highlighted)
+            SwitcherPanel.Tile(id: c.windowID, frame: layout.tiles[i], size: c.frame.size, pid: c.pid, highlighted: c.windowID == highlighted)
         }
         return (layout, tiles)
     }
@@ -112,7 +112,7 @@ final class LaunchOrFocusPicker {
 
     /// As mango's switcher_title_message_bar_geometry: the bar under the panel, for the highlighted window.
     func titleMessageBarGeometry(_ server: MangoServer, _ m: Monitor) -> (client: Client, box: CGRect)? {
-        guard panel != nil, monitor === m, let c = highlighted.flatMap({ server.clientByIdAll($0) }) else { return nil }
+        guard panel != nil, monitor === m, let c = highlighted.flatMap({ server.clientByWindowID($0) }) else { return nil }
         return (c, CGRect(x: panelFrame.minX, y: panelFrame.maxY + CGFloat(server.config.titleMessageBarGap),
                           width: panelFrame.width, height: CGFloat(server.config.titleMessageBarHeight)))
     }

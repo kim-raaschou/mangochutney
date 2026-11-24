@@ -79,7 +79,7 @@ extension MacWindowSystem {
     /// them for `atSource`.
     private func holdMoves(_ c: Client, for seconds: TimeInterval, atSource: TimeInterval) {
         c.mac.placed.ignoreMovesUntil = clock.now + seconds
-        watcher.suppressGeometry(c.id, for: atSource)
+        watcher.suppressGeometry(c.windowID, for: atSource)
     }
 
     // MARK: wlroots' side of mango's resize and animation
@@ -105,7 +105,7 @@ extension MacWindowSystem {
         let node = c.mac.nodePosition
         c.mac.box = CGRect(x: node.x + c.bw, y: node.y + c.bw,
                            width: c.animation.current.width - 2 * c.bw, height: c.animation.current.height - 2 * c.bw)
-        placing.writeAtCommit.insert(c.id)
+        placing.writeAtCommit.insert(c.windowID)
         if let m = monitor(of: c) { frameClock.schedule(m) }
     }
 
@@ -125,12 +125,12 @@ extension MacWindowSystem {
     /// the windows shown in the same frame are written; an enabled one is written where mango next puts it.
     func showOrPark(_ c: Client) {
         let p = c.mac.placed
-        if p.offEdge { hideEdgePlate(c.id) }
+        if p.offEdge { hideEdgePlate(c.windowID) }
         if !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled {
-            placing.parkAtCommit.insert(c.id)
+            placing.parkAtCommit.insert(c.windowID)
             if let m = monitor(of: c) { frameClock.schedule(m) }
         } else {
-            placing.parkAtCommit.remove(c.id)
+            placing.parkAtCommit.remove(c.windowID)
             if c.parked {
                 c.parked = false
                 p.parkRetries = 0
@@ -147,11 +147,11 @@ extension MacWindowSystem {
         placing.writeAtCommit.removeAll()
         var changed = false
         for id in writes {
-            guard let c = server.clientByIdAll(id) else { continue }
+            guard let c = server.clientByWindowID(id) else { continue }
             let (frame, parked) = (c.frame, c.parked)
             place(c, c.mac.box)
             changed = changed || c.frame != frame || c.parked != parked
-            if c.mac.placed.comingBack { placing.arriving[c.id] = c.mac.placed.writeSerial }
+            if c.mac.placed.comingBack { placing.arriving[c.windowID] = c.mac.placed.writeSerial }
         }
         let ids = placing.parkAtCommit
         placing.parkAtCommit.removeAll()
@@ -162,8 +162,8 @@ extension MacWindowSystem {
         var leave = ids
         if !server.config.animations && server.grabClient == nil {
             _ = stillArriving()
-            for m in server.monitors where placing.arriving.keys.contains(where: { server.clientByIdAll($0)?.mon === m }) {
-                let waiting = ids.filter { server.clientByIdAll($0)?.mon === m }
+            for m in server.monitors where placing.arriving.keys.contains(where: { server.clientByWindowID($0)?.mon === m }) {
+                let waiting = ids.filter { server.clientByWindowID($0)?.mon === m }
                 guard !waiting.isEmpty else { continue }
                 placing.parkWhenArrived.formUnion(waiting)
                 leave.subtract(waiting)
@@ -174,7 +174,7 @@ extension MacWindowSystem {
         // A disabled scene the port could not park when it was disabled (macOS had the window in
         // fullscreen, or an F tag was viewed) is parked at the first frame that can.
         for c in server.clientsAll where !c.parked && (!c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled)
-            && !leftToMacOS(c) && !fullscreenTagViewed(c) && !ids.contains(c.id) && !placing.parkWhenArrived.contains(c.id) {
+            && !leftToMacOS(c) && !fullscreenTagViewed(c) && !ids.contains(c.windowID) && !placing.parkWhenArrived.contains(c.windowID) {
             park(c)
             changed = changed || c.parked
         }
@@ -195,7 +195,7 @@ extension MacWindowSystem {
     func parkDisabled(_ ids: Set<ClientID>) -> Bool {
         var changed = false
         for id in ids {
-            guard let c = server.clientByIdAll(id), !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled else { continue }
+            guard let c = server.clientByWindowID(id), !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled else { continue }
             let parked = c.parked
             park(c)
             changed = changed || c.parked != parked
@@ -206,7 +206,7 @@ extension MacWindowSystem {
     /// Whether a window shown again is not yet where it was written: its app has not answered.
     func stillArriving() -> Bool {
         placing.arriving = placing.arriving.filter { id, serial in
-            guard let c = server.clientByIdAll(id), c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled, !c.parked else { return false }
+            guard let c = server.clientByWindowID(id), c.mac.sceneNodeEnabled, c.mac.sceneSurfaceEnabled, !c.parked else { return false }
             return c.mac.placed.confirmedSerial < serial
         }
         return !placing.arriving.isEmpty
@@ -217,9 +217,9 @@ extension MacWindowSystem {
     func parkArrived() {
         guard !placing.parkWhenArrived.isEmpty else { return }
         _ = stillArriving()
-        let held = Set(placing.arriving.keys.compactMap { server.clientByIdAll($0)?.mon?.screen.displayID })
+        let held = Set(placing.arriving.keys.compactMap { server.clientByWindowID($0)?.mon?.screen.displayID })
         let ids = placing.parkWhenArrived.filter { id in
-            server.clientByIdAll(id)?.mon.map { !held.contains($0.screen.displayID) } ?? true
+            server.clientByWindowID(id)?.mon.map { !held.contains($0.screen.displayID) } ?? true
         }
         guard !ids.isEmpty else { return }
         placing.parkWhenArrived.subtract(ids)
@@ -231,7 +231,7 @@ extension MacWindowSystem {
     /// the monitor, at most 100 ms; again from the start when more are resized. A timer, as mango's.
     func monitorCheckSkipFrameTimeout(_ m: Monitor) {
         let d = m.screen.displayID
-        let pending = placing.arriving.keys.filter { server.clientByIdAll($0)?.mon === m }.count   // resizing_count_pending
+        let pending = placing.arriving.keys.filter { server.clientByWindowID($0)?.mon === m }.count   // resizing_count_pending
         if placing.skipFrameTimeout[d] != nil && placing.resizingCountCurrent[d] == pending { return }
         placing.skipFrameTimeout[d]?.cancel()
         placing.resizingCountCurrent[d] = pending
@@ -282,7 +282,7 @@ extension MacWindowSystem {
         if c.parked {
             guard p.offEdge else { return }
             p.offEdge = false
-            hideEdgePlate(c.id)
+            hideEdgePlate(c.windowID)
             c.parked = false
             p.parkRetries = 0
         }
@@ -315,7 +315,7 @@ extension MacWindowSystem {
             send(c, q, target, from: nil, setSize: resized || (final && wasMoving), animating: !final && resized) { [weak self] c in
                 guard let self, c.mac.placed.comingBack else { return }
                 c.mac.placed.comingBack = false
-                wlrLog(.debug, "\(c.appName): window \(c.id) back in \(Int((self.clock.now - sent) * 1000)) ms")
+                wlrLog(.debug, "\(c.appName): window \(c.windowID) back in \(Int((self.clock.now - sent) * 1000)) ms")
             }
         } else {
             send(c, q, target, from: was, setSize: resized, animating: !final && resized)
@@ -331,10 +331,10 @@ extension MacWindowSystem {
         if w.inSync { w.applied = from }
         w.writeSerial &+= 1
         let serial = w.writeSerial
-        q.setFrame(c.element, id: c.id, frame: frame, setSize: setSize, animating: animating) { [weak self, weak c] r in
+        q.setFrame(c.element, id: c.windowID, frame: frame, setSize: setSize, animating: animating) { [weak self, weak c] r in
             guard let self else { return }
             defer { self.parkArrived() }
-            guard let c, self.server.clientByIdAll(c.id) === c else { return }
+            guard let c, self.server.clientByWindowID(c.windowID) === c else { return }
             c.mac.placed.applied = r
             c.mac.placed.confirmedSerial = serial
             then?(c)
@@ -361,7 +361,7 @@ extension MacWindowSystem {
         readBack(c, q)
         let late = max(0.6, c.mac.placed.ignoreMovesUntil - clock.now + 0.15)
         clock.after(late) { [weak self] in
-            guard let self, self.server.clientByIdAll(c.id) === c else { return }
+            guard let self, self.server.clientByWindowID(c.windowID) === c else { return }
             self.readBack(c, q)
         }
     }
@@ -380,7 +380,7 @@ extension MacWindowSystem {
         guard p.retryCount < 3 else {
             if p.retryCount == 3 {
                 p.retryCount += 1
-                wlrLog(.debug, "\(c.appName): window \(c.id) keeps \(c.frame), not its tile \(target); left there")
+                wlrLog(.debug, "\(c.appName): window \(c.windowID) keeps \(c.frame), not its tile \(target); left there")
             }
             return
         }
@@ -396,7 +396,7 @@ extension MacWindowSystem {
         p.deferredRetryPending = true
         clock.after(wait + 0.05) { [weak self] in
             p.deferredRetryPending = false
-            guard let self, self.server.clientByIdAll(c.id) === c, c.mac.box == target, !c.parked,
+            guard let self, self.server.clientByWindowID(c.windowID) === c, c.mac.box == target, !c.parked,
                   !c.animation.running, let q = self.writer(for: c.pid) else { return }
             self.readBack(c, q)
         }
@@ -415,7 +415,7 @@ extension MacWindowSystem {
     }
 
     func reconcileFrame(_ c: Client, _ actual: CGRect?, settled: Bool = false) {
-        guard let actual = actual ?? windowServerFrame(c.id), server.clientByIdAll(c.id) === c, !c.parked,
+        guard let actual = actual ?? windowServerFrame(c.windowID), server.clientByWindowID(c.windowID) === c, !c.parked,
               !c.animation.running, server.grabClient !== c else { return }
         let p = c.mac.placed
         let refused = p.refusedSize
@@ -502,12 +502,12 @@ extension MacWindowSystem {
     }
 
     func keepHidden(_ c: Client, seenAt actual: CGRect?) {
-        guard server.clientByIdAll(c.id) === c, c.parked, !missionControl.isActive, let m = monitor(of: c),
-              let actual = actual ?? windowServerFrame(c.id) else { return }
+        guard server.clientByWindowID(c.windowID) === c, c.parked, !missionControl.isActive, let m = monitor(of: c),
+              let actual = actual ?? windowServerFrame(c.windowID) else { return }
         if Hider.isParked(actual, in: m.screen.frame) { return }
         guard c.mac.placed.parkRetries < 3 else { return }
         c.mac.placed.parkRetries += 1
-        wlrLog(.debug, "\(c.appName): window \(c.id) is hidden but in view at \(actual); parking it again")
+        wlrLog(.debug, "\(c.appName): window \(c.windowID) is hidden but in view at \(actual); parking it again")
         c.frame = actual
         c.parked = false
         park(c)

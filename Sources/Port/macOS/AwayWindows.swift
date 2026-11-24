@@ -7,23 +7,23 @@ enum AwayReason: Hashable {
 
 extension MacWindowSystem {
     func goAway(_ c: Client, _ reason: AwayReason) {
-        if var entry = away[c.id] {
+        if var entry = away[c.windowID] {
             entry.reasons.insert(reason)
-            away[c.id] = entry
+            away[c.windowID] = entry
             return
         }
-        guard server.clientByIdAll(c.id) === c else { return }
-        away[c.id] = (c, [reason])
-        hideEdgePlate(c.id)
-        memory.departed.away.insert(c.id)
+        guard server.clientByWindowID(c.windowID) === c else { return }
+        away[c.windowID] = (c, [reason])
+        hideEdgePlate(c.windowID)
+        memory.departed.away.insert(c.windowID)
         c.parked = false
         forgetPlacement(c)
         server.handleClientUnmap(c)
-        wlrLog(.info, "\(c.appName): window \(c.id) is away (\(reason)); out of the layout until it is back")
+        wlrLog(.info, "\(c.appName): window \(c.windowID) is away (\(reason)); out of the layout until it is back")
     }
 
     func foundAway(_ c: Client, _ reasons: Set<AwayReason>) {
-        away[c.id] = (c, reasons)
+        away[c.windowID] = (c, reasons)
     }
 
     func comeBack(_ id: ClientID, _ reason: AwayReason, focus: Bool = false) {
@@ -34,7 +34,7 @@ extension MacWindowSystem {
         let c = entry.client
         c.parked = false
         forgetPlacement(c)
-        if let real = windowServerFrame(c.id) { c.frame = real }
+        if let real = windowServerFrame(c.windowID) { c.frame = real }
         let d = memory.back(c)
         memory.departed.away.remove(id)
         // Port extension: chutney_fullscreen_tag. Back from another reason still in fullscreen: onto its F tag.
@@ -47,7 +47,7 @@ extension MacWindowSystem {
             }
         }
         if onFTag { return }
-        wlrLog(.info, "\(c.appName): window \(c.id) is back from \(reason)")
+        wlrLog(.info, "\(c.appName): window \(c.windowID) is back from \(reason)")
         if focus { windowFocused(id: id) }
     }
 }

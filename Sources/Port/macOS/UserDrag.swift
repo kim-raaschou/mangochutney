@@ -13,13 +13,13 @@ struct UserDrag {
 extension MacWindowSystem {
     func plainMouseDown(at p: CGPoint) {
         pressed = nil
-        guard let c = server.nodeAtPoint(p), !c.parked, let f = windowServerFrame(c.id) else { return }
+        guard let c = server.nodeAtPoint(p), !c.parked, let f = windowServerFrame(c.windowID) else { return }
         pressed = (c, f)
     }
 
     func followUserDrag() {
-        guard let (c, start) = pressed, server.clientByIdAll(c.id) === c, !c.parked,
-              let now = windowServerFrame(c.id), now != start, now != c.frame else { return }
+        guard let (c, start) = pressed, server.clientByWindowID(c.windowID) === c, !c.parked,
+              let now = windowServerFrame(c.windowID), now != start, now != c.frame else { return }
         moved(c, to: now, resized: now.size != start.size)
     }
 
@@ -57,7 +57,7 @@ extension MacWindowSystem {
         c.frame = actual
         let target = c.mac.box
         if MangoServer.frameDistance(actual, target) > 0.5 {
-            wlrLog(.debug, "\(c.appName): window \(c.id) moved to \(actual) by the app; its tile is \(target)")
+            wlrLog(.debug, "\(c.appName): window \(c.windowID) moved to \(actual) by the app; its tile is \(target)")
             keepPlaced(c, at: target)
         }
         server.updateBorders()
@@ -133,7 +133,7 @@ extension MacWindowSystem {
 
     func finishUserDrag(_ d: UserDrag, at p: CGPoint) {
         let c = d.client
-        guard server.clientByIdAll(c.id) === c else { return }
+        guard server.clientByWindowID(c.windowID) === c else { return }
         readFrame(c) { [weak self] actual in
             self?.completeUserDrag(d, actual: actual ?? c.frame, at: p)
         }
@@ -141,7 +141,7 @@ extension MacWindowSystem {
 
     func completeUserDrag(_ d: UserDrag, actual: CGRect, at p: CGPoint) {
         let c = d.client
-        guard server.clientByIdAll(c.id) === c, let m = c.mon else { return }
+        guard server.clientByWindowID(c.windowID) === c, let m = c.mon else { return }
         if c.dragToTile {
             c.frame = actual
             finishAppDrag(c)

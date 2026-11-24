@@ -86,10 +86,10 @@ struct MangoState: Equatable {
     init(_ server: MangoServer) {
         let m = server.selectedMonitor!
         clients = server.clients.map {
-            ClientState(id: $0.id, tags: $0.tags, geom: $0.geom, isfloating: $0.isfloating, isfullscreen: $0.isfullscreen)
+            ClientState(id: $0.windowID, tags: $0.tags, geom: $0.geom, isfloating: $0.isfloating, isfullscreen: $0.isfullscreen)
         }
-        focusStack = server.focusStack.map(\.id)
-        focused = server.focused?.id
+        focusStack = server.focusStack.map(\.windowID)
+        focused = server.focused?.windowID
         viewedTags = m.tagset[m.seltags]
         layout = m.pertag.ltidxs[getMonCurtag(m)].name
     }

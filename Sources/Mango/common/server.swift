@@ -72,6 +72,7 @@ public final class MangoServer {
     package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
     public var cliDebugLog = false
     var tagmask: UInt32 = (1 << 9) - 1 /* default 9 tags; updated with config.tag_num */
+    var nextClientId: UInt32 = 0
     /* Pre-baked animation curves */
     var bakedPointsMove: [DVec2] = []
     var bakedPointsOpen: [DVec2] = []
@@ -242,7 +243,7 @@ public final class MangoServer {
                 f = CGRect(x: f.minX, y: f.minY - top, width: f.width, height: f.height + top)
                 let radius = clientNoRadiusActive(c) ? 0 : CGFloat(config.borderRadius)
                 // not in mango: compute_edge_offsets as a clip to the monitor, which the port applies
-                specs.append(BorderSpec(id: c.id, frame: f, color: getBorderColor(c), width: width, radius: radius,
+                specs.append(BorderSpec(id: c.windowID, frame: f, color: getBorderColor(c), width: width, radius: radius,
                                         split: clientDrawSplitBorder(c, on: m),
                                         clip: clientIsIgnoreOutputClip(c) ? nil : m.m))
             }

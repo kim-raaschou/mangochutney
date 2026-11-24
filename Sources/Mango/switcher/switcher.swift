@@ -112,7 +112,7 @@ package extension MangoServer {
     func switcherPictures() -> [SwitcherTilePicture] {
         let frameH = switcherState.tileH + 2 * SW_PAD
         return switcherState.tiles.enumerated().map { i, tile in
-            SwitcherTilePicture(id: tile.c.id,
+            SwitcherTilePicture(id: tile.c.windowID,
                                 frame: CGRect(x: Int(switcherState.panelX + tile.x), y: Int(switcherState.panelY + tile.y),
                                               width: Int(tile.cw + 2 * SW_PAD), height: Int(frameH)),
                                 size: system.clientGetGeometry(tile.c).size, pid: tile.c.pid, highlighted: Int32(i) == switcherState.index)

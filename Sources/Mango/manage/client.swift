@@ -103,7 +103,8 @@ public final class Client {
     var oldGridRowPer: Float = 0
     public var gridColIdx: Int32 = 0
     public var gridRowIdx: Int32 = 0
-    public let id: ClientID
+    public var id: ClientID = 0
+    public let windowID: ClientID   // not in mango: the port's window (wlroots' surface)
     /* manual group chain */
     public var groupPrev: Client?
     public var groupNext: Client?
@@ -122,7 +123,7 @@ public final class Client {
 
     package init(id: ClientID, pid: pid_t, platform: PlatformWindow, bundleId: String, appName: String, title: String,
          monitor: Monitor, tags: UInt32, frame: CGRect) {
-        self.id = id
+        self.windowID = id
         self.pid = pid
         self.platform = platform
         self.bundleId = bundleId
@@ -953,8 +954,10 @@ package extension MangoServer {
 
     package func handleClientMap(_ c: Client) {
         guard clientByIdAll(c.id) == nil else { return }   // not in mango: the port may report a window twice
-        // not in mango: no generate_client_id (the id is the port's window id); no unmanaged clients, X11
-        // popups or client_should_global (X11)
+
+        c.id = generateClientId()
+
+        // not in mango: no unmanaged clients, X11 popups or client_should_global (X11)
         c.bw = CGFloat(config.borderpx)
 
         // init client geom
@@ -1048,9 +1051,9 @@ package extension MangoServer {
         clientGroupDetach(c)
 
         let wasParked = clientIsParked(c)   // not in mango: wl_list_remove leaves mango's link non-empty
-        let order = clients.map(\.id)   // Port extension
+        let order = clients.map(\.windowID)   // Port extension
         if !wasParked { clients.removeAll { $0 === c } }
-        portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
+        portHooks.windowLeaving?(self, c, group.map(\.windowID), group.first { $0.isGroupFocus }?.windowID, order)   // Port extension
         let oldmon = c.mon
         clientSetMonitor(c, nil, 0, focus: true)
         // not in mango: client_set_monitor's focus step, which clientIsParked skips for a client off the list
@@ -2041,6 +2044,11 @@ package extension MangoServer {
 
     /* Single place judging whether a window's nodes should be enabled.
      * Each flag below is owned by the mechanism that sets it; this only reads. */
+    func generateClientId() -> UInt32 {
+        nextClientId += 1
+        return nextClientId
+    }
+
     func clientGestureDriven(_ c: Client?) -> Bool {
         gestureDriveActive && c != nil && c?.mon === gestureDriveMon
     }

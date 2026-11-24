@@ -9,8 +9,8 @@ final class SwitcherTests: MangoTestCase {
         r.window(900_200)
         r.window(900_201)
         r.window(900_202, tags: 2)
-        r.server.clientFocus(r.server.clientByIdAll(900_200)!, false)
-        r.server.clientFocus(r.server.clientByIdAll(900_201)!, false)
+        r.server.clientFocus(r.server.clientByWindowID(900_200)!, false)
+        r.server.clientFocus(r.server.clientByWindowID(900_201)!, false)
         return r
     }
 
@@ -19,10 +19,10 @@ final class SwitcherTests: MangoTestCase {
     }
 
     var highlighted: (EngineRig) -> ClientID? {
-        { r in r.server.switcherIsActive() ? r.server.switcherState.tiles[Int(r.server.switcherState.index)].c.id : nil }
+        { r in r.server.switcherIsActive() ? r.server.switcherState.tiles[Int(r.server.switcherState.index)].c.windowID : nil }
     }
     func tiles(_ r: EngineRig) -> [ClientID]? {
-        r.server.switcherIsActive() ? r.server.switcherState.tiles.map { $0.c.id } : nil
+        r.server.switcherIsActive() ? r.server.switcherState.tiles.map { $0.c.windowID } : nil
     }
     func panel(_ r: EngineRig) -> CGRect {
         let st = r.server.switcherState
@@ -53,8 +53,8 @@ final class SwitcherTests: MangoTestCase {
         open(r, "next")
         XCTAssertEqual(r.server.switcherState.scope, SW_CURRENT_TAG, "another scope opens it again")
         XCTAssertEqual(tiles(r)?.count, 2)
-        r.server.clientByIdAll(900_200)!.isInScratchpad = true
-        r.server.clientByIdAll(900_200)!.isminimized = true
+        r.server.clientByWindowID(900_200)!.isInScratchpad = true
+        r.server.clientByWindowID(900_200)!.isminimized = true
         r.server.switcherClose()
         open(r, "all_next")
         XCTAssertEqual(tiles(r), [900_201, 900_202], "minimized windows are left out")
@@ -66,7 +66,7 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertEqual(highlighted(r), 900_202)
         r.server.switcherCommit()
         XCTAssertFalse(r.server.switcherIsActive())
-        XCTAssertEqual(r.monitor.sel?.id, 900_202)
+        XCTAssertEqual(r.monitor.sel?.windowID, 900_202)
         XCTAssertEqual(r.monitor.tagset[r.monitor.seltags], 2)
     }
 
@@ -78,7 +78,7 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertFalse(r.server.mac.router.key(release, modifierOnlySinceDown: false))
         r.settle()
         XCTAssertFalse(r.server.switcherIsActive())
-        XCTAssertEqual(r.monitor.sel?.id, 900_200)
+        XCTAssertEqual(r.monitor.sel?.windowID, 900_200)
     }
 
     func testClicks() {
@@ -89,7 +89,7 @@ final class SwitcherTests: MangoTestCase {
         XCTAssertTrue(r.server.mac.router.mouseButton(outside), "the switcher's own")
         r.settle()
         XCTAssertFalse(r.server.switcherIsActive(), "a click elsewhere closes it")
-        XCTAssertEqual(r.monitor.sel?.id, 900_201, "and changes nothing")
+        XCTAssertEqual(r.monitor.sel?.windowID, 900_201, "and changes nothing")
 
         open(r)
         let first = tileFrames(r)[0]
@@ -97,7 +97,7 @@ final class SwitcherTests: MangoTestCase {
                                                                location: CGPoint(x: first.midX, y: first.midY))))
         r.settle()
         XCTAssertFalse(r.server.switcherIsActive())
-        XCTAssertEqual(r.monitor.sel?.id, 900_201, "the clicked tile, not the highlighted one")
+        XCTAssertEqual(r.monitor.sel?.windowID, 900_201, "the clicked tile, not the highlighted one")
     }
 
     func testAWindowThatGoesLeavesTheSwitcher() {

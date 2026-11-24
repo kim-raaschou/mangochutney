@@ -108,10 +108,10 @@ final class OverviewTests: MangoTestCase {
         let before = a.frame
         d(r, "toggleoverview")
         XCTAssertTrue(r.monitor.ovThumbnails)
-        XCTAssertEqual(Set(fake.overviewCards?.map(\.id) ?? []), [a.id, b.id])
+        XCTAssertEqual(Set(fake.overviewCards?.map(\.id) ?? []), [a.windowID, b.windowID])
         XCTAssertEqual(a.frame, before, "the window stays under its picture")
         r.server.clientFocus(b, true)
-        XCTAssertEqual(fake.overviewCards?.first { $0.focused }?.id, b.id)
+        XCTAssertEqual(fake.overviewCards?.first { $0.focused }?.id, b.windowID)
         d(r, "toggleoverview")
         XCTAssertNil(fake.overviewCards)
         XCTAssertFalse(r.monitor.ovThumbnails)

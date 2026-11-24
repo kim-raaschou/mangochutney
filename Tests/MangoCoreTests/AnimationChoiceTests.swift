@@ -205,7 +205,7 @@ final class AnimationChoiceTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         XCTAssertTrue(c.animation.tagouting, "sliding out")
         r.server.updateBorders()
-        XCTAssertNotNil(fake.borderSpecs.first { $0.id == c.id }, "client_set_clip draws the border while the scene is enabled")
+        XCTAssertNotNil(fake.borderSpecs.first { $0.id == c.windowID }, "client_set_clip draws the border while the scene is enabled")
     }
 
     func testSpecialAndScratchpadSlideInFromAbove() {

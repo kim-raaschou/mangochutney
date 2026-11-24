@@ -24,32 +24,32 @@ final class ClientFocusTests: MangoTestCase {
         r.server.clientFocus(b, true)
         XCTAssertTrue(r.server.system.keyboardFocusedSurface === b)
         r.settle()
-        XCTAssertEqual(fake(r).focused.map(\.id), [b.id])
+        XCTAssertEqual(fake(r).focused.map(\.id), [b.windowID])
     }
 
     func testAlreadyFocusedItReturnsEarly() {
         let (r, a, b) = rig()
         r.monitor.prevsel = b
         r.server.clientFocus(a, true)
-        XCTAssertEqual(r.monitor.prevsel?.id, b.id, "the state is left as it is")
+        XCTAssertEqual(r.monitor.prevsel?.windowID, b.windowID, "the state is left as it is")
         r.settle()
         XCTAssertTrue(fake(r).focused.isEmpty, "no notify")
-        XCTAssertEqual(fake(r).raised, [a.id], "lift comes before the early return")
+        XCTAssertEqual(fake(r).raised, [a.windowID], "lift comes before the early return")
     }
 
     func testFocusedAgainPrevselIsSel() {
         let (r, a, _) = rig()
         r.server.system.keyboardNotifyClearFocus()
         r.server.clientFocus(a, true)
-        XCTAssertEqual(r.monitor.prevsel?.id, a.id)
-        XCTAssertEqual(r.monitor.sel?.id, a.id)
+        XCTAssertEqual(r.monitor.prevsel?.windowID, a.windowID)
+        XCTAssertEqual(r.monitor.sel?.windowID, a.windowID)
     }
 
     func testLiftAndFocusAreOneNativeCall() {
         let (r, _, b) = rig()
         r.server.clientFocus(b, true)
         r.settle()
-        XCTAssertEqual(fake(r).focused.first?.id, b.id)
+        XCTAssertEqual(fake(r).focused.first?.id, b.windowID)
         XCTAssertEqual(fake(r).focused.first?.raise, true)
         XCTAssertTrue(fake(r).raised.isEmpty, "the raise goes with the focus")
     }
@@ -58,14 +58,14 @@ final class ClientFocusTests: MangoTestCase {
         let (r, _, b) = rig()
         r.server.clientFocus(b, false)
         r.settle()
-        XCTAssertEqual(fake(r).focused.first?.id, b.id, "client_notify_enter, as sloppy focus gives it")
+        XCTAssertEqual(fake(r).focused.first?.id, b.windowID, "client_notify_enter, as sloppy focus gives it")
         XCTAssertEqual(fake(r).focused.first?.raise, false)
     }
 
     func testAClickInMacOSUpdatesSelAndSendsNoFocusBack() {
         let (r, _, b) = rig()
-        r.server.mac.windowFocused(id: b.id)
-        XCTAssertEqual(r.monitor.sel?.id, b.id)
+        r.server.mac.windowFocused(id: b.windowID)
+        XCTAssertEqual(r.monitor.sel?.windowID, b.windowID)
         XCTAssertTrue(r.server.system.keyboardFocusedSurface === b)
         r.settle()
         XCTAssertTrue(fake(r).focused.isEmpty, "macOS has it already")
@@ -77,7 +77,7 @@ final class ClientFocusTests: MangoTestCase {
         XCTAssertNil(r.server.system.keyboardFocusedSurface)
         r.server.clientFocus(a, true)
         r.settle()
-        XCTAssertEqual(fake(r).focused.map(\.id), [a.id], "given back")
+        XCTAssertEqual(fake(r).focused.map(\.id), [a.windowID], "given back")
     }
 
     func testAGoneClientIsNotTheSeat() {
@@ -95,7 +95,7 @@ final class ClientFocusTests: MangoTestCase {
         XCTAssertTrue(fake(r).focused.isEmpty)
         r.server.holdNativeFocus = false
         r.settle()
-        XCTAssertEqual(fake(r).focused.map(\.id), [b.id])
+        XCTAssertEqual(fake(r).focused.map(\.id), [b.windowID])
     }
 
     func testFocusingNothingClearsTheSeat() {
@@ -114,7 +114,7 @@ final class ClientFocusTests: MangoTestCase {
         r.server.system.keyboardNotifyClearFocus()
         r.server.clientFocus(b, true)
         r.settle()
-        XCTAssertFalse(fake(r).raised.contains(where: { id in r.server.clientByIdAll(id).map { r.server.clientIsParked($0) } == true }),
+        XCTAssertFalse(fake(r).raised.contains(where: { id in r.server.clientByWindowID(id).map { r.server.clientIsParked($0) } == true }),
                        "a parked group member is not raised")
     }
 
@@ -128,8 +128,8 @@ final class ClientFocusTests: MangoTestCase {
         fake(r).focused = []
         r.server.groupFocus(Arg(i: shown.groupNext === other ? NEXT : PREV))
         r.settle()
-        XCTAssertEqual(r.server.focused?.id, other.id)
-        XCTAssertEqual(fake(r).focused.last?.id, other.id)
+        XCTAssertEqual(r.server.focused?.windowID, other.windowID)
+        XCTAssertEqual(fake(r).focused.last?.id, other.windowID)
         XCTAssertEqual(fake(r).focused.last?.raise, true,
                        "parked when it is focused, placed by the arrange after: macOS gets it lifted")
     }

@@ -131,7 +131,7 @@ public final class HotkeysPalette {
             HotkeysUsage.record(row.id)
             server.dispatch(Dispatch(name: d, args: model.typedArguments(row) ?? args))
         case .window(let id):
-            if let c = server.clientByIdAll(id) { server.dispatch(Dispatch(name: "focusid"), target: c) }
+            if let c = server.clientByWindowID(id) { server.dispatch(Dispatch(name: "focusid"), target: c) }
         case .app(let path):
             HotkeysUsage.record(row.id)
             let id = row.appID ?? ""
@@ -170,9 +170,9 @@ public final class HotkeysPalette {
         c.gaps = server.enableGaps
         for r in server.shortcutRows where r.dispatch == "chutney_launch_or_focus" {
             guard let app = r.args.first?.lowercased(), c.appSteps[app] == nil else { continue }
-            let windows = server.appWindowsInGridOrder(app).map(\.id)
-            let current = server.focused?.id
-            let rule = LaunchOrFocusRule.decide(windows: windows, current: current, recent: server.focusStack.map(\.id))
+            let windows = server.appWindowsInGridOrder(app).map(\.windowID)
+            let current = server.focused?.windowID
+            let rule = LaunchOrFocusRule.decide(windows: windows, current: current, recent: server.focusStack.map(\.windowID))
             c.appSteps[app] = HotkeysAppStep(rule: rule, windows: windows.count,
                                              inApp: current.map(windows.contains) ?? false)
         }
@@ -180,12 +180,12 @@ public final class HotkeysPalette {
     }
 
     static func windows(_ server: MangoServer) -> [HotkeysWindow] {
-        let focused = server.focused?.id
+        let focused = server.focused?.windowID
         let all = server.clients.map { c -> HotkeysWindow in
             let tags = c.tags & 0x7FFF_FFFF
             let tag: Int? = c.isminimized ? nil : (tags == 0 ? 0 : tags.trailingZeroBitCount + 1)
-            return HotkeysWindow(id: c.id, app: c.appName, bundleID: c.bundleId, title: c.title, tag: tag,
-                                 focused: c.id == focused,
+            return HotkeysWindow(id: c.windowID, app: c.appName, bundleID: c.bundleId, title: c.title, tag: tag,
+                                 focused: c.windowID == focused,
                                  appPath: NSRunningApplication(processIdentifier: c.pid)?.bundleURL?.path)
         }
         return all.filter(\.focused) + all.filter { !$0.focused }

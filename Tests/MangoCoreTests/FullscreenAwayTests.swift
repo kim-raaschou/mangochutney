@@ -14,16 +14,16 @@ final class FullscreenAwayTests: MangoTestCase {
     }
 
     func fake(_ r: EngineRig) -> FakeWindowSystem { r.server.system as! FakeWindowSystem }
-    func ids(_ r: EngineRig) -> [ClientID] { r.server.tiledClients(r.monitor).map(\.id) }
+    func ids(_ r: EngineRig) -> [ClientID] { r.server.tiledClients(r.monitor).map(\.windowID) }
 
     func geometry(_ r: EngineRig, _ id: ClientID, fullscreen: Bool?, frame: CGRect? = nil) {
-        let f = frame ?? r.server.clientByIdAll(id)?.frame ?? r.server.mac.away[id]?.client.frame ?? .zero
+        let f = frame ?? r.server.clientByWindowID(id)?.frame ?? r.server.mac.away[id]?.client.frame ?? .zero
         r.server.mac.windowGeometryChanged(id: id, frame: f, resized: true, isfullscreen: fullscreen)
     }
 
     func testComingBackFromFullscreenTakesItsPlaceAndTheAppsFocus() {
         let r = rig()
-        let c = r.server.clientByIdAll(2)!
+        let c = r.server.clientByWindowID(2)!
         let tile = c.geom
         geometry(r, 2, fullscreen: true)
         XCTAssertEqual(ids(r), [1, 3])
@@ -61,7 +61,7 @@ final class FullscreenAwayTests: MangoTestCase {
 
     func testPlacedAgainWhenMacOSHasFinishedMovingIt() {
         let r = rig()
-        let tile = r.server.clientByIdAll(2)!.geom
+        let tile = r.server.clientByWindowID(2)!.geom
         geometry(r, 2, fullscreen: true)
         geometry(r, 2, fullscreen: false, frame: r.monitor.screen.frame)
         r.app.frames[2] = r.monitor.screen.frame   // macOS still moving it out
@@ -74,7 +74,7 @@ final class FullscreenAwayTests: MangoTestCase {
 
     func testPlacedAtOnceWhenTheSpaceChangeCameFirst() {
         let r = rig()
-        let tile = r.server.clientByIdAll(2)!.geom
+        let tile = r.server.clientByWindowID(2)!.geom
         geometry(r, 2, fullscreen: true)
         r.server.mac.spaceChanged()
         r.app.frames[2] = r.monitor.screen.frame
@@ -85,7 +85,7 @@ final class FullscreenAwayTests: MangoTestCase {
 
     func testWhatThePortKnewOfItsPlaceIsForgotten() {
         let r = rig()
-        let c = r.server.clientByIdAll(2)!
+        let c = r.server.clientByWindowID(2)!
         r.app.minSize[2] = CGSize(width: 1200, height: 900)   // the app keeps it larger than its tile
         r.server.clients.append(r.server.clients.removeFirst())   // a new tile: written
         r.arrange()
@@ -113,7 +113,7 @@ final class FullscreenAwayTests: MangoTestCase {
 
     func testAnAppQuitWhileAwayIsForgotten() {
         let r = rig()
-        let c = r.server.clientByIdAll(2)!
+        let c = r.server.clientByWindowID(2)!
         geometry(r, 2, fullscreen: true)
         r.server.mac.appTerminated(pid: c.pid)
         XCTAssertNil(r.server.mac.away[2])

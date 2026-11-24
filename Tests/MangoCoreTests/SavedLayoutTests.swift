@@ -123,7 +123,7 @@ final class SavedLayoutTests: MangoTestCase {
                                              bundleId: bundle, appName: "Test", title: "t", subrole: "AXStandardWindow",
                                              isDialog: false, frame: CGRect(x: 0, y: 0, width: 400, height: 300),
                                              isminimized: false, isfullscreen: false, isAppHidden: false))
-        return server.clientByIdAll(77)
+        return server.clientByWindowID(77)
     }
 
     @MainActor

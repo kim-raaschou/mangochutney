@@ -7,7 +7,7 @@ class MacWindowSystem: WindowSystem {
     var holdFocus = false {
         didSet {
             guard !holdFocus, oldValue, let c = heldFocus else { return }
-            if server.clientByIdAll(c.id) === c { raise(c) }
+            if server.clientByWindowID(c.windowID) === c { raise(c) }
             releaseHeldFocus()
         }
     }
@@ -96,7 +96,7 @@ class MacWindowSystem: WindowSystem {
     lazy var edgePlates: EdgePlates = {
         let plates = EdgePlates()
         plates.onClick = { [weak self] id in
-            guard let self, let c = self.server.clientByIdAll(id) else { return }
+            guard let self, let c = self.server.clientByWindowID(id) else { return }
             self.server.clientFocus(c, true)
         }
         return plates
@@ -105,7 +105,7 @@ class MacWindowSystem: WindowSystem {
     /// The plate for a window parked at its monitor's edge (EdgePlates).
     func showEdgePlate(_ c: Client, box: CGRect) {
         guard let m = monitor(of: c) else { return }
-        edgePlates.show(c.id, pid: c.pid, box: box, monitor: m.screen.frame, border: plateBorder(c))
+        edgePlates.show(c.windowID, pid: c.pid, box: box, monitor: m.screen.frame, border: plateBorder(c))
     }
 
     /// The window's border as updateBorders draws it: mango's color, width and radius, and the port's
@@ -114,7 +114,7 @@ class MacWindowSystem: WindowSystem {
         let draws = server.renderBorder && server.config.borderpx > 0
         let width = draws ? c.bw : 0
         let mango = server.clientNoRadiusActive(c) ? 0 : CGFloat(server.config.borderRadius)
-        let spec = BorderSpec(id: c.id, frame: c.mac.box, color: server.getBorderColor(c), width: width, radius: mango)
+        let spec = BorderSpec(id: c.windowID, frame: c.mac.box, color: server.getBorderColor(c), width: width, radius: mango)
         let corner = MacOSAppearance.borders([spec], server.config).first?.radius ?? mango   // Port extension
         let col = spec.color
         return EdgePlates.Border(color: NSColor(red: col.r, green: col.g, blue: col.b, alpha: col.a).cgColor, width: width,
@@ -166,12 +166,12 @@ class MacWindowSystem: WindowSystem {
     }
 
     var keyboardFocusedSurface: Client? {
-        seatFocus.flatMap { server.clientByIdAll($0.id) === $0 ? $0 : nil }
+        seatFocus.flatMap { server.clientByWindowID($0.windowID) === $0 ? $0 : nil }
     }
 
     func clientNotifyEnter(_ c: Client) {
         seatFocus = c
-        if macOSFocused == c.id { return }
+        if macOSFocused == c.windowID { return }
         focusLater(c)
     }
 
@@ -198,7 +198,7 @@ class MacWindowSystem: WindowSystem {
     func releaseHeldFocus() {
         guard !holdFocus, overviewOverlays.isEmpty, let c = heldFocus else { return }
         heldFocus = nil
-        if server.clientByIdAll(c.id) === c { focusLater(c) }
+        if server.clientByWindowID(c.windowID) === c { focusLater(c) }
     }
 
     private func scheduleFlush() {
@@ -212,22 +212,22 @@ class MacWindowSystem: WindowSystem {
         let raises = pendingRaises, f = pendingFocus
         pendingRaises = []
         pendingFocus = nil
-        let shown = raises.filter { server.clientByIdAll($0.id) === $0 && !$0.parked && !server.clientIsParked($0) }
+        let shown = raises.filter { server.clientByWindowID($0.windowID) === $0 && !$0.parked && !server.clientIsParked($0) }
         for r in shown where r !== f { sendNativeRaise(r) }
         guard let c = f, Self.stillFocused(c, in: server) else { return }
         let lift = Self.lifts(c, raise: shown.contains { $0 === c }, in: server)
-        wlrLog(.debug, "\(c.appName): mango focuses window \(c.id)\(lift ? "" : " without lifting it")")
+        wlrLog(.debug, "\(c.appName): mango focuses window \(c.windowID)\(lift ? "" : " without lifting it")")
         sendNativeFocus(c, raise: lift)
     }
 
     func sendNativeFocus(_ c: Client, raise: Bool) {
-        NativeFocus.focus(windowID: c.id, pid: c.pid, element: c.element, raise: raise) { [weak self] in self?.restack() }
+        NativeFocus.focus(windowID: c.windowID, pid: c.pid, element: c.element, raise: raise) { [weak self] in self?.restack() }
     }
 
     func sendNativeRaise(_ c: Client) { writer(for: c.pid)?.raise(c.element) }
 
     static func stillFocused(_ c: Client, in server: MangoServer) -> Bool {
-        server.clientByIdAll(c.id) === c && server.focused === c
+        server.clientByWindowID(c.windowID) === c && server.focused === c
     }
 
     static func lifts(_ c: Client, raise: Bool, in server: MangoServer) -> Bool {
@@ -277,7 +277,7 @@ class MacWindowSystem: WindowSystem {
     private static let stackingQueue = DispatchQueue(label: "mango.stacking", qos: .userInteractive)
 
     private func restackApply(_ pid: pid_t, _ order: [CGWindowID], reserve: Bool) {
-        let ids = Set(server.clientsAll.filter { $0.pid == pid }.map(\.id))
+        let ids = Set(server.clientsAll.filter { $0.pid == pid }.map(\.windowID))
         let at = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: min)
         let ours = Set(((NSApp as NSApplication?)?.windows ?? []).map { CGWindowID(truncatingIfNeeded: $0.windowNumber) })
         func inPlace(_ overlay: CGWindowID, _ target: CGWindowID, above: Bool) -> Bool {
@@ -315,7 +315,7 @@ class MacWindowSystem: WindowSystem {
     private func showBorders() {
         let specs = MacOSAppearance.borders(shownBorders(drawnBorders), server.config)
         borders.update(specs)
-        for c in server.clientsAll where c.mac.placed.offEdge { edgePlates.setBorder(c.id, plateBorder(c)) }
+        for c in server.clientsAll where c.mac.placed.offEdge { edgePlates.setBorder(c.windowID, plateBorder(c)) }
     }
 
     /// The borders macOS shows now: mango's, around the window where it stands. A parked window has
@@ -324,7 +324,7 @@ class MacWindowSystem: WindowSystem {
     /// fullscreen Space.
     func shownBorders(_ specs: [BorderSpec]) -> [BorderSpec] {
         specs.compactMap { s in
-            guard let c = server.clientByIdAll(s.id) else { return s }
+            guard let c = server.clientByWindowID(s.id) else { return s }
             if c.parked || leftToMacOS(c) || c.mac.placed.comingBack { return nil }
             guard let d = lag(c) else { return nil }
             var s = s
@@ -361,7 +361,7 @@ class MacWindowSystem: WindowSystem {
     /// bar is not shown.
     func followingWindows(_ strips: [TabStrip], tabs: Bool) -> [TabStrip] {
         strips.compactMap { strip in
-            guard let c = server.clientByIdAll(strip.above) else { return strip }
+            guard let c = server.clientByWindowID(strip.above) else { return strip }
             if tabs && c.parked { return nil }
             guard let d = lag(c), d.dx != 0 || d.dy != 0 else { return strip }
             var s = strip
@@ -384,7 +384,7 @@ class MacWindowSystem: WindowSystem {
         let strips = followingWindows(strips, tabs: true)
         var style = withAppIcons(style, server.config.chutneyTabBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.tabbardata, server.config)
-        tabBars.update(strips, style: style, keyFocus: server.focused?.id)
+        tabBars.update(strips, style: style, keyFocus: server.focused?.windowID)
         let frames = strips.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: $0.frame.width, height: $0.barHeight) }
         router.publish { $0.tabBarFrames = frames }
     }
@@ -398,7 +398,7 @@ class MacWindowSystem: WindowSystem {
         let strips = followingWindows(strips, tabs: false)
         var style = withAppIcons(style, server.config.chutneyGroupBarDecorateIcon)
         style.decorate = MacOSAppearance.bar(style.decorate, set: server.config.groupbardata, server.config)
-        groupBars.update(strips, style: style, keyFocus: server.focused?.id)
+        groupBars.update(strips, style: style, keyFocus: server.focused?.windowID)
         let frames = strips.map { CGRect(x: $0.frame.minX, y: $0.frame.minY, width: $0.frame.width, height: $0.barHeight) }
         router.publish { $0.groupBarFrames = frames }
     }
@@ -599,14 +599,14 @@ class MacWindowSystem: WindowSystem {
         for c in server.clientsAll {
             guard let m = monitor(of: c), c.parked || Hider.isParked(c.frame, in: m.screen.frame) else { continue }
             let f = c.isfloating ? c.floatGeom.insetBy(dx: c.bw, dy: c.bw) : c.tile
-            writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
+            writer(for: c.pid)?.setFrame(c.element, id: c.windowID, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         for (c, _) in away.values {
             guard let m = c.mon ?? server.monitors.first else { continue }
-            let real = windowServerFrame(c.id) ?? c.frame
+            let real = windowServerFrame(c.windowID) ?? c.frame
             guard c.parked || Hider.isParked(real, in: m.screen.frame) else { continue }
             let f = c.isfloating ? c.floatGeom.insetBy(dx: c.bw, dy: c.bw) : c.tile
-            writer(for: c.pid)?.setFrame(c.element, id: c.id, frame: Self.clampToScreen(f, m.screen.workArea))
+            writer(for: c.pid)?.setFrame(c.element, id: c.windowID, frame: Self.clampToScreen(f, m.screen.workArea))
         }
         restoreAppSettings(restore)
         _ = restore.wait(timeout: .now() + 2)
@@ -747,7 +747,7 @@ class MacWindowSystem: WindowSystem {
     /// A managed window is its own client; another window of an app (a menu, a popup) belongs to the
     /// app's window that had the focus last, as a popup belongs to its toplevel.
     func toplevelFromWlrSurface(_ surface: ClientID) -> Client? {
-        if let c = server.clientByIdAll(surface) { return c }
+        if let c = server.clientByWindowID(surface) { return c }
         let pid: pid_t
         if let known = surfaceOwners[surface] {
             pid = known
@@ -793,7 +793,7 @@ class MacWindowSystem: WindowSystem {
     }
 
     func clientSendClose(_ c: Client) {
-        let el = c.element, name = c.appName, id = c.id
+        let el = c.element, name = c.appName, id = c.windowID
         writer(for: c.pid)?.async {
             if el.closeButton == nil { wlrLog(.debug, "\(name): window \(id) has no close button to press (element invalid?)") }
             el.close()
@@ -808,8 +808,8 @@ class MacWindowSystem: WindowSystem {
         readBack(c, q)
     }
 
-    func grabBegan(_ c: Client) { watcher.suppressGeometry(c.id, for: 3600) }
-    func grabEnded(_ c: Client) { watcher.suppressGeometry(c.id, for: 0.4) }
+    func grabBegan(_ c: Client) { watcher.suppressGeometry(c.windowID, for: 3600) }
+    func grabEnded(_ c: Client) { watcher.suppressGeometry(c.windowID, for: 0.4) }
 }
 
 extension MangoServer {

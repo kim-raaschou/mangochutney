@@ -39,17 +39,17 @@ final class LayoutTests: MangoTestCase {
     @MainActor
     @discardableResult
     func dwindleStep(_ r: EngineRig, _ visible: [ClientID], focus: ClientID?) -> [ClientID: CGRect] {
-        for id in visible where r.server.clientByIdAll(id) == nil { r.window(id) }
-        for c in r.server.clientsAll { c.tags = visible.contains(c.id) ? 1 : 2 }
+        for id in visible where r.server.clientByWindowID(id) == nil { r.window(id) }
+        for c in r.server.clientsAll { c.tags = visible.contains(c.windowID) ? 1 : 2 }
         if let focus {
-            if let c = r.server.clientByIdAll(focus) {
+            if let c = r.server.clientByWindowID(focus) {
                 r.server.focusStack.removeAll { $0 === c }
                 r.server.focusStack.insert(c, at: 0)
             }
         }
-        r.monitor.sel = focus.flatMap { r.server.clientByIdAll($0) }
+        r.monitor.sel = focus.flatMap { r.server.clientByWindowID($0) }
         r.arrange()
-        return Dictionary(uniqueKeysWithValues: visible.map { ($0, r.server.clientByIdAll($0)!.geom) })
+        return Dictionary(uniqueKeysWithValues: visible.map { ($0, r.server.clientByWindowID($0)!.geom) })
     }
 
     @MainActor
@@ -90,7 +90,7 @@ final class LayoutTests: MangoTestCase {
         dwindleStep(t, [1], focus: 1)
         dwindleStep(t, [1, 2], focus: 1)
         dwindleStep(t, [1, 2, 3], focus: 2)
-        let c1 = t.server.clientByIdAll(1)!, c2 = t.server.clientByIdAll(2)!, c3 = t.server.clientByIdAll(3)!
+        let c1 = t.server.clientByWindowID(1)!, c2 = t.server.clientByWindowID(2)!, c3 = t.server.clientByWindowID(3)!
         t.server.dwindleMoveNextTo(c1, c3, 0.5, RIGHT)
         let r = dwindleStep(t, [1, 2, 3], focus: 1)
         checkInvariants("dwindle after move", makeInput([1, 2, 3]), LayoutResult(frames: r))

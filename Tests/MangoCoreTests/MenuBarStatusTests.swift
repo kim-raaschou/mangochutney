@@ -37,7 +37,7 @@ final class MenuBarStatusTests: MangoTestCase {
         MenuBarStatus.viewTag(rig.server, monitor: "BenQ", tag: 5)
         XCTAssertTrue(rig.server.selectedMonitor === ext)
         XCTAssertEqual(ext.tagset[ext.seltags], 1 << 4)
-        XCTAssertEqual(ext.sel?.id, 2, "the tag's window has the focus")
+        XCTAssertEqual(ext.sel?.windowID, 2, "the tag's window has the focus")
         MenuBarStatus.viewTag(rig.server, monitor: "BenQ", tag: 0)
         XCTAssertEqual(ext.tagset[ext.seltags], 1 << 4, "the special tag: nothing")
     }
@@ -64,7 +64,7 @@ final class MenuBarStatusTests: MangoTestCase {
         XCTAssertTrue(router.mouseButton(MouseButtonEvent(button: 0, mods: [], isDown: false, location: on)), "its release too")
         rig.settle()
         XCTAssertEqual(rig.monitor.tagset[rig.monitor.seltags], 1 << 4)
-        XCTAssertEqual(rig.monitor.sel?.id, 2)
+        XCTAssertEqual(rig.monitor.sel?.windowID, 2)
         XCTAssertFalse(router.mouseButton(MouseButtonEvent(button: 0, mods: [], isDown: true, location: CGPoint(x: 900, y: 500))))
         _ = router.mouseButton(MouseButtonEvent(button: 0, mods: [], isDown: false, location: CGPoint(x: 900, y: 500)))
     }

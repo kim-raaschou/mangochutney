@@ -17,6 +17,7 @@ final class EngineMonitorChangeTests: MangoTestCase {
                                  isAppHidden: false)
         let c = Client(window: w, monitor: m, tags: tags)
         c.isfloating = floating
+        c.id = server.generateClientId()
         server.clients.append(c)
         return c
     }

@@ -71,8 +71,8 @@ package final class TestMango {
         let c = Client(id: nextID, pid: pid_t(nextID), platform: surface, bundleId: "",
                        appName: title, title: title, monitor: server.selectedMonitor, tags: 0, frame: frame)
         nextID += 1
-        if let parent { wlroots.parents[c.id] = client(parent).id }
-        wlroots.stacking.append(c.id)
+        if let parent { wlroots.parents[c.windowID] = client(parent).windowID }
+        wlroots.stacking.append(c.windowID)
         server.handleClientMap(c)
         return c
     }

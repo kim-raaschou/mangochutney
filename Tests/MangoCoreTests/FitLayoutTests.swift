@@ -20,14 +20,14 @@ final class FitLayoutTests: MangoTestCase {
     func fake(_ r: EngineRig) -> FakeWindowSystem { r.server.system as! FakeWindowSystem }
 
     func over(_ r: EngineRig) -> [ClientID] {
-        r.server.tiledClients(r.monitor).filter { $0.refusedSize != nil }.map(\.id)
+        r.server.tiledClients(r.monitor).filter { $0.refusedSize != nil }.map(\.windowID)
     }
 
     func fitted(_ r: EngineRig, file: StaticString = #filePath, line: UInt = #line) {
         MenuBarStatus.fit(r.server)
         r.settle(1.5)
         XCTAssertEqual(over(r), [], "fits", file: file, line: line)
-        let frames = r.server.tiledClients(r.monitor).compactMap { r.app.frames[$0.id] }
+        let frames = r.server.tiledClients(r.monitor).compactMap { r.app.frames[$0.windowID] }
         for (i, a) in frames.enumerated() {
             for b in frames[(i + 1)...] { XCTAssertFalse(a.intersects(b), "\(a) \(b)", file: file, line: line) }
         }
@@ -42,11 +42,11 @@ final class FitLayoutTests: MangoTestCase {
 
     func testTheMenuOffersWhatTheWindowLacks() {
         let r = rig(level: 1, min: [1: CGSize(width: 1100, height: 0)])
-        let lack = Int((1100 - r.server.clientByIdAll(1)!.geom.width).rounded(.up))
+        let lack = Int((1100 - r.server.clientByWindowID(1)!.geom.width).rounded(.up))
         XCTAssertEqual(MenuBarStatus.fitTitle(r.server), "Fit layout: Test \(lack) pt wider")
         fitted(r)
-        XCTAssertGreaterThanOrEqual(r.server.clientByIdAll(1)!.geom.width, 1100 - 0.5)
-        XCTAssertLessThan(r.server.clientByIdAll(1)!.geom.width, 1100 + 12, "no more than it needs")
+        XCTAssertGreaterThanOrEqual(r.server.clientByWindowID(1)!.geom.width, 1100 - 0.5)
+        XCTAssertLessThan(r.server.clientByWindowID(1)!.geom.width, 1100 + 12, "no more than it needs")
     }
 
     func testAStackWindowGrowsToTheLeft() {
@@ -55,7 +55,7 @@ final class FitLayoutTests: MangoTestCase {
         XCTAssertNil(r.server.dispatch(Dispatch(name: "chutney_fit_layout")))
         r.settle(1.5)
         XCTAssertEqual(over(r), [])
-        XCTAssertLessThan(r.server.clientByIdAll(1)!.geom.width, 948, "the master gives the room")
+        XCTAssertLessThan(r.server.clientByWindowID(1)!.geom.width, 948, "the master gives the room")
     }
 
     func testAHeightInTheStack() {
@@ -107,13 +107,13 @@ final class FitLayoutTests: MangoTestCase {
     /// moves that split, so its far border out shrinks it; the near one grows it.
     func testDwindleTheWindowInTheMiddle() {
         let r = rig(level: 1, min: [4: CGSize(width: 573, height: 0)], layout: .dwindle, windows: 4)
-        let g = { (id: ClientID) in r.server.clientByIdAll(id)!.geom }
+        let g = { (id: ClientID) in r.server.clientByWindowID(id)!.geom }
         XCTAssertTrue(g(1).maxX < g(4).minX && g(4).maxX < g(2).minX, "4 between 1 and 2")
         XCTAssertEqual(over(r), [4])
         XCTAssertNotNil(FitLayout.plan(r.server, r.monitor))
         fitted(r)
         XCTAssertGreaterThanOrEqual(g(4).width, 573 - 0.5)
-        XCTAssertNil(r.server.clientByIdAll(4)!.refusedSize)
+        XCTAssertNil(r.server.clientByWindowID(4)!.refusedSize)
     }
 
     func testTheScroller() {
@@ -123,7 +123,7 @@ final class FitLayoutTests: MangoTestCase {
         for id: CGWindowID in 1...3 { r.window(id) }
         for c in r.server.tiledClients(r.monitor) { r.server.setSizePer(r.monitor, c) }
         r.app.minSize[2] = CGSize(width: 1600, height: 0)
-        r.server.clientFocus(r.server.clientByIdAll(2)!, true)
+        r.server.clientFocus(r.server.clientByWindowID(2)!, true)
         r.arrange()
         r.settle(1.5)
         XCTAssertEqual(over(r), [2])
@@ -140,7 +140,7 @@ final class FitLayoutTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
-        r.monitor.sel = r.server.clientByIdAll(3)
+        r.monitor.sel = r.server.clientByWindowID(3)
         r.arrange()
         r.settle(1.5)
         XCTAssertEqual(over(r), [3])
@@ -165,7 +165,7 @@ final class FitLayoutTests: MangoTestCase {
         XCTAssertEqual(note.title, "Test larger than its tile")
         XCTAssertTrue(note.body.hasPrefix("No room in this layout: Test needs 1000 pt width, Test needs 1000 pt width."), note.body)
         XCTAssertFalse(note.fit, "no Fit button")
-        _ = r.server.dispatch(Dispatch(name: "tagsilent", args: ["2"]), target: r.server.clientByIdAll(2)!)
+        _ = r.server.dispatch(Dispatch(name: "tagsilent", args: ["2"]), target: r.server.clientByWindowID(2)!)
         r.settle(1.5)
         XCTAssertEqual(fake(r).fitNotification?.fit, true, "with one of them gone there is room: the fit is offered")
     }
@@ -289,13 +289,13 @@ final class FitLayoutTests: MangoTestCase {
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         for id: CGWindowID in 1...3 { r.window(id) }
         r.app.minSize[3] = CGSize(width: 2000, height: 0)
-        r.monitor.sel = r.server.clientByIdAll(1)
+        r.monitor.sel = r.server.clientByWindowID(1)
         r.arrange()
         r.settle(1.5)
-        XCTAssertNotNil(r.server.clientByIdAll(3)!.refusedSize, "larger than the screen")
-        XCTAssertEqual(FitLayout.shown(r.server, r.monitor).map(\.id), [1], "under the one shown")
-        r.monitor.sel = r.server.clientByIdAll(3)
-        XCTAssertEqual(FitLayout.shown(r.server, r.monitor).map(\.id), [3], "shown now")
+        XCTAssertNotNil(r.server.clientByWindowID(3)!.refusedSize, "larger than the screen")
+        XCTAssertEqual(FitLayout.shown(r.server, r.monitor).map(\.windowID), [1], "under the one shown")
+        r.monitor.sel = r.server.clientByWindowID(3)
+        XCTAssertEqual(FitLayout.shown(r.server, r.monitor).map(\.windowID), [3], "shown now")
     }
 
     func testAWindowOverItsNeighbourMarksItsTagOrange() {
@@ -307,7 +307,7 @@ final class FitLayoutTests: MangoTestCase {
 
     func testAWindowMovedAwayNoLongerMarksTheTag() {
         let r = rig(level: 0, min: [1: CGSize(width: 1100, height: 0)])
-        _ = r.server.dispatch(Dispatch(name: "tagsilent", args: ["2"]), target: r.server.clientByIdAll(1)!)
+        _ = r.server.dispatch(Dispatch(name: "tagsilent", args: ["2"]), target: r.server.clientByWindowID(1)!)
         XCTAssertEqual(MenuBarStatus.monitors(r.server)[0].tags.map(\.overlap), [false, false])
     }
 }

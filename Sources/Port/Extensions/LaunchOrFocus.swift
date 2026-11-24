@@ -28,20 +28,20 @@ extension MangoServer {
         let picker = LaunchOrFocusPicker.shared
         if picker.app == key { return picker.move(self, by: 1) }
         let windows = appWindowsInGridOrder(key)
-        let rule = LaunchOrFocusRule.decide(windows: windows.map(\.id), current: focused?.id, recent: focusStack.map(\.id))
-        if case .focus(let id) = rule, LaunchOrFocusPicker.shows(windows: windows.map(\.id), current: focused?.id) {
-            return picker.open(self, app: key, windows: windows.map(\.id), start: id)
+        let rule = LaunchOrFocusRule.decide(windows: windows.map(\.windowID), current: focused?.windowID, recent: focusStack.map(\.windowID))
+        if case .focus(let id) = rule, LaunchOrFocusPicker.shows(windows: windows.map(\.windowID), current: focused?.windowID) {
+            return picker.open(self, app: key, windows: windows.map(\.windowID), start: id)
         }
         switch rule {
         case .launch:
             Spawn.run(command.isEmpty ? "open -b '\(app.replacingOccurrences(of: "'", with: ""))'" : command)
         case .focus(let id):
-            if let c = clientByIdAll(id) { clientActive(c) }
+            if let c = clientByWindowID(id) { clientActive(c) }
         }
     }
 
     func appWindowsInGridOrder(_ key: String) -> [Client] {
-        let position = Dictionary(clients.enumerated().map { ($1.id, $0) }, uniquingKeysWith: min)
+        let position = Dictionary(clients.enumerated().map { ($1.windowID, $0) }, uniquingKeysWith: min)
         let monitorIndex = { (c: Client) in self.monitors.firstIndex { $0 === c.mon } ?? Int.max }
         // The app's minimized windows come last: client_active brings one back when it is the one focused.
         return clientsAll
@@ -49,8 +49,8 @@ extension MangoServer {
                 c.tags & TAG0_MASK == 0 && (c.appid.lowercased() == key || c.appName.lowercased() == key)
             }
             .sorted { a, b in
-                let ka = (a.isminimized, a.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(a.tags)), monitorIndex(a), position[a.id] ?? Int.max)
-                let kb = (b.isminimized, b.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(b.tags)), monitorIndex(b), position[b.id] ?? Int.max)
+                let ka = (a.isminimized, a.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(a.tags)), monitorIndex(a), position[a.windowID] ?? Int.max)
+                let kb = (b.isminimized, b.tags == 0 ? Int.max : Int(self.getTagsFirstTagNum(b.tags)), monitorIndex(b), position[b.windowID] ?? Int.max)
                 return (ka.0 ? 1 : 0, ka.1, ka.2, ka.3) < (kb.0 ? 1 : 0, kb.1, kb.2, kb.3)
             }
     }

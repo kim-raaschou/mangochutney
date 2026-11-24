@@ -44,7 +44,7 @@ package final class FakeWlroots: WindowSystem {
     private var keyboardFocus: Client?
     /// A surface that is gone has no focus, as wlroots clears it when the surface is destroyed.
     package var keyboardFocusedSurface: Client? {
-        keyboardFocus.flatMap { server.clientByIdAll($0.id) === $0 ? $0 : nil }
+        keyboardFocus.flatMap { server.clientByWindowID($0.windowID) === $0 ? $0 : nil }
     }
     package func clientNotifyEnter(_ c: Client) { keyboardFocus = c }
     package func keyboardNotifyClearFocus() { keyboardFocus = nil }
@@ -62,7 +62,7 @@ package final class FakeWlroots: WindowSystem {
     package func surfaceAt(_ p: CGPoint) -> ClientID? {
         if let surfaceUnderPointer { return surfaceUnderPointer }
         let hits = stacking.enumerated().compactMap { i, id -> (layer: Int, i: Int, id: ClientID)? in
-            guard let c = server.clientByIdAll(id), c.platform.sceneNodeEnabled,
+            guard let c = server.clientByWindowID(id), c.platform.sceneNodeEnabled,
                   surface(c).frame.insetBy(dx: -c.bw, dy: -c.bw).contains(p) else { return nil }
             return (server.clientTargetLayer(c).rawValue, i, id)
         }
@@ -83,7 +83,7 @@ package final class FakeWlroots: WindowSystem {
 
     package private(set) var activated: Set<ClientID> = []
     package func clientActivateSurface(_ c: Client, _ activated: Bool) {
-        if activated { self.activated.insert(c.id) } else { self.activated.remove(c.id) }
+        if activated { self.activated.insert(c.windowID) } else { self.activated.remove(c.windowID) }
     }
 
     package var modifiers: Modifiers = []
@@ -118,7 +118,7 @@ package final class FakeWlroots: WindowSystem {
     // MARK: Clients
 
     package var closed: [ClientID] = []
-    package func clientSendClose(_ c: Client) { closed.append(c.id) }
+    package func clientSendClose(_ c: Client) { closed.append(c.windowID) }
 
     package private(set) var spawned: [String] = []
     package func spawn(_ command: String) { spawned.append(command) }
@@ -128,8 +128,8 @@ package final class FakeWlroots: WindowSystem {
 
     /// The xdg toplevel's parent, as the test sets it.
     package var parents: [ClientID: ClientID] = [:]
-    package func clientGetParent(_ c: Client) -> Client? { parents[c.id].flatMap { server.clientByIdAll($0) } }
-    package func toplevelFromWlrSurface(_ surface: ClientID) -> Client? { server.clientByIdAll(surface) }
+    package func clientGetParent(_ c: Client) -> Client? { parents[c.windowID].flatMap { server.clientByWindowID($0) } }
+    package func toplevelFromWlrSurface(_ surface: ClientID) -> Client? { server.clientByWindowID(surface) }
     /// The size mango configures (xdg_toplevel configure); the client takes it when it commits, after
     /// mango's turn (TestMango.frame), as the facit client does.
     package func clientSetSize(_ c: Client, _ width: CGFloat, _ height: CGFloat, _ forceConfigure: Bool) -> UInt32 {
@@ -152,8 +152,8 @@ package final class FakeWlroots: WindowSystem {
     package func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) {}
     package func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void) { done(c.geom) }
     package func raise(_ c: Client) {
-        stacking.removeAll { $0 == c.id }
-        stacking.append(c.id)
+        stacking.removeAll { $0 == c.windowID }
+        stacking.append(c.windowID)
     }
     package func restack() {}
     package func settle(_ c: Client) {}

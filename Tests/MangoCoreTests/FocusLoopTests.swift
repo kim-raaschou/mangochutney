@@ -10,7 +10,7 @@ final class StaleFocusTests: MangoTestCase {
         r.arrange()
         r.server.clientFocus(b, true)
         XCTAssertTrue(MacWindowSystem.stillFocused(b, in: r.server))
-        r.server.mac.windowFocused(id: a.id)
+        r.server.mac.windowFocused(id: a.windowID)
         XCTAssertTrue(r.server.focused === a, "mango follows macOS")
         XCTAssertFalse(MacWindowSystem.stillFocused(b, in: r.server), "the request for b is stale")
     }

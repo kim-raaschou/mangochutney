@@ -237,7 +237,7 @@ package extension MangoServer {
         guard let m, drawsOverlays else { return }   // not in mango: drawsOverlays is the port's
         // not in mango: the port's dim rect, over the special windows
         system.showSpecialDim(on: m, alpha: isSpecialActive(m) ? config.specialDim : nil,
-                              over: Set(clients.filter { $0.mon === m && $0.tags & TAG0_MASK != 0 && !$0.isminimized }.map(\.id)))
+                              over: Set(clients.filter { $0.mon === m && $0.tags & TAG0_MASK != 0 && !$0.isminimized }.map(\.windowID)))
     }
 
     func getTagStatus(_ tag: UInt32, _ m: Monitor) -> UInt32 {

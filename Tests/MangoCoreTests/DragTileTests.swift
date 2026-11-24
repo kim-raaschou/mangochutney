@@ -58,7 +58,7 @@ final class DragTileTests: MangoTestCase {
     func testAPickedUpTileShrinksAroundThePointer() {
         let r = rig()
         r.app.writes.removeAll()
-        let c = r.server.clientByIdAll(900_501)!
+        let c = r.server.clientByWindowID(900_501)!
         r.server.fake.fakePointer = CGPoint(x: 500, y: 400)
         r.server.pointerBeginMoveResize(c, CurMove, 500, 400, [])
         r.frame()

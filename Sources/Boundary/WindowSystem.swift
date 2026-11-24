@@ -104,3 +104,10 @@ public struct ClientSizeHints {
     public var minWidth: CGFloat = 0, minHeight: CGFloat = 0, maxWidth: CGFloat = 0, maxHeight: CGFloat = 0
     public init() {}
 }
+
+extension MangoServer {
+    /// The client of the port's window, mapped or a parked group member (wlroots' surface->data).
+    package func clientByWindowID(_ id: ClientID) -> Client? {
+        clientsAll.first { $0.windowID == id }
+    }
+}

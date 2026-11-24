@@ -59,12 +59,12 @@ final class BorderRadiusTests: MangoTestCase {
         func radius() -> CGFloat {
             r.arrange()
             r.server.updateBorders()
-            return fake.borderSpecs.first { $0.id == c.id }?.radius ?? 0
+            return fake.borderSpecs.first { $0.id == c.windowID }?.radius ?? 0
         }
         XCTAssertEqual(radius(), 6)
         r.server.config.chutneyMacOSAppearance = true
         XCTAssertEqual(radius(), 6, "the core draws mango's radius")
-        XCTAssertEqual(MacOSAppearance.borders(fake.borderSpecs, r.server.config).first { $0.id == c.id }?.radius,
+        XCTAssertEqual(MacOSAppearance.borders(fake.borderSpecs, r.server.config).first { $0.id == c.windowID }?.radius,
                        BorderGeometry.cornerRadius, "the port the window's own corners")
         r.server.config.chutneyMacOSAppearance = false
         c.isfullscreen = true
@@ -72,7 +72,7 @@ final class BorderRadiusTests: MangoTestCase {
         c.isfullscreen = false
         r.server.config.noRadiusWhenSingle = true
         XCTAssertEqual(radius(), 6, "two tiled windows")
-        r.server.clientByIdAll(900_901)!.isfloating = true
+        r.server.clientByWindowID(900_901)!.isfloating = true
         XCTAssertEqual(radius(), 0, "no_radius_when_single")
     }
 }

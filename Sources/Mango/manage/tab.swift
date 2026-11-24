@@ -296,9 +296,9 @@ package extension MangoServer {
             frame: CGRect(x: bar.minX, y: bar.minY, width: bar.width, height: bar.height + under),
             barHeight: bar.height, cornerRadius: radius,
             segments: zip(members, barSegments(bar, members)).map { cur, box in
-                .init(id: cur.id, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur.isTabFocus,
+                .init(id: cur.windowID, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur.isTabFocus,
                       pid: cur.pid, frame: box)
             },
-            above: c.id, plain: !ported)
+            above: c.windowID, plain: !ported)
     }
 }

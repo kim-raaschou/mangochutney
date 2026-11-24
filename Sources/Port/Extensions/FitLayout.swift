@@ -51,7 +51,7 @@ enum FitLayout {
     }
 
     static func view(_ server: MangoServer, _ m: Monitor) -> String {
-        let ids = server.tiledClients(m).map { String($0.id) }.joined(separator: ",")
+        let ids = server.tiledClients(m).map { String($0.windowID) }.joined(separator: ",")
         return "\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(ids)"
     }
 
@@ -72,14 +72,14 @@ enum FitLayout {
     static func learn(_ server: MangoServer, _ m: Monitor) {
         let mac = server.mac
         guard server.grabClient == nil, !mac.animationsRunning else { return }
-        let open = Set(server.clientsAll.map(\.id))
+        let open = Set(server.clientsAll.map(\.windowID))
         mac.fitState.minimum = mac.fitState.minimum.filter { open.contains($0.key) }
         for c in shown(server, m) {
             guard let rs = c.refusedSize else { continue }
-            var least = mac.fitState.minimum[c.id] ?? .zero
+            var least = mac.fitState.minimum[c.windowID] ?? .zero
             if lacks(c, .width) > 0.5 { least.width = max(least.width, rs.width) }
             if lacks(c, .height) > 0.5 { least.height = max(least.height, rs.height) }
-            if least != .zero { mac.fitState.minimum[c.id] = least }
+            if least != .zero { mac.fitState.minimum[c.windowID] = least }
         }
     }
 
@@ -101,7 +101,7 @@ enum FitLayout {
             let s = span(o.tile, axis)
             let keeps = o === c ? size(rs, axis)
                 : lacks(o, axis) > 0.5 ? size(o.refusedSize!, axis)
-                : minimum[o.id].map { size($0, axis) } ?? 0
+                : minimum[o.windowID].map { size($0, axis) } ?? 0
             if let i = lanes.firstIndex(where: { min($0.hi, s.hi) - max($0.lo, s.lo) > 0.5 }) {
                 lanes[i] = (min(lanes[i].lo, s.lo), max(lanes[i].hi, s.hi), max(lanes[i].keeps, keeps))
             } else {
@@ -126,16 +126,16 @@ enum FitLayout {
             let g = c.tile
             for axis in [Axis.width, .height] {
                 let lack = size(rs, axis) - size(g.size, axis)
-                guard lack > 0.5, !server.mac.fitState.stuck.contains("\(key)|\(c.id)|\(axis)"),
+                guard lack > 0.5, !server.mac.fitState.stuck.contains("\(key)|\(c.windowID)|\(axis)"),
                       room(c, axis, windows, minimum: minimum) else { continue }
                 let by = Int(lack.rounded(.up))
-                steps.append(Step(id: c.id, axis: axis, by: by))
+                steps.append(Step(id: c.windowID, axis: axis, by: by))
                 names.append("\(c.appName) \(by) pt \(axis == .width ? "wider" : "taller")")
             }
         }
         guard !steps.isEmpty else { return nil }
         var apps: [String] = []
-        for c in over where steps.contains(where: { $0.id == c.id }) && !apps.contains(c.appName) { apps.append(c.appName) }
+        for c in over where steps.contains(where: { $0.id == c.windowID }) && !apps.contains(c.appName) { apps.append(c.appName) }
         return Plan(title: "Fit layout: " + names.joined(separator: ", "), steps: steps, over: apps)
     }
 
@@ -151,13 +151,13 @@ enum FitLayout {
         guard let m = server.selectedMonitor else { return }
         let key = view(server, m)
         var kept: [ClientID: CGSize] = [:]
-        for c in shown(server, m) { kept[c.id] = c.refusedSize }
+        for c in shown(server, m) { kept[c.windowID] = c.refusedSize }
         func lack(_ c: Client, _ axis: Axis) -> CGFloat {
-            guard let k = kept[c.id] else { return 0 }
+            guard let k = kept[c.windowID] else { return 0 }
             return size(k, axis) - size(c.tile.size, axis)
         }
         for s in plan.steps {
-            guard let c = server.clientByIdAll(s.id) else { continue }
+            guard let c = server.clientByWindowID(s.id) else { continue }
             let g0 = c.tile
             let tiles = shown(server, m).map(\.tile).reduce(CGRect.null) { $0.union($1) }
             let atFar = span(tiles, s.axis).hi - span(g0, s.axis).hi <= 1
@@ -182,7 +182,7 @@ enum FitLayout {
                         sign = -sign
                         continue
                     }
-                    server.mac.fitState.stuck.insert("\(key)|\(c.id)|\(s.axis)")
+                    server.mac.fitState.stuck.insert("\(key)|\(c.windowID)|\(s.axis)")
                     break
                 }
                 grown = true
@@ -249,10 +249,10 @@ enum FitLayout {
             return
         }
         let windows = shown(server, m).map { c in
-            "\(c.id):\(c.tile):\(c.refusedSize.map { "\($0)" } ?? "")"
+            "\(c.windowID):\(c.tile):\(c.refusedSize.map { "\($0)" } ?? "")"
         }
         // the sides no fit can grow are part of what is seen: the plan changes with them
-        let seen = "\(level)|\(!m.isoverview)|\(server.grabClient == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel?.id ?? 0)|\(windows.joined(separator: ","))|\(mac.fitState.stuck.sorted().joined(separator: ","))"
+        let seen = "\(level)|\(!m.isoverview)|\(server.grabClient == nil)|\(m.screen.name)|\(m.tagset[m.seltags])|\(m.layout)|\(m.sel?.windowID ?? 0)|\(windows.joined(separator: ","))|\(mac.fitState.stuck.sorted().joined(separator: ","))"
         guard mac.fitState.seen != seen else { return }
         mac.fitState.seen = seen
         let plan = plan(server, m)
@@ -262,7 +262,7 @@ enum FitLayout {
                 "\(c.appName) tile \(Int(c.tile.width))x\(Int(c.tile.height)) keeps \(c.refusedSize.map { "\(Int($0.width))x\(Int($0.height))" } ?? "-")"
             }
             let least = shown(server, m).filter { $0.refusedSize == nil }.compactMap { c in
-                mac.fitState.minimum[c.id].map { "\(c.appName) at least \(Int($0.width))x\(Int($0.height))" }
+                mac.fitState.minimum[c.windowID].map { "\(c.appName) at least \(Int($0.width))x\(Int($0.height))" }
             }
             wlrLog(.debug, "chutney_fit_layout: \(m.layout): \(plan?.title ?? "no room") (\((sizes + least).joined(separator: "; ")))")
         }

@@ -140,10 +140,10 @@ final class FakeWindowSystem: MacWindowSystem {
     var quits = 0
     var asked = 0
     var closed: [ClientID] = []
-    override func clientSendClose(_ c: Client) { closed.append(c.id) }
+    override func clientSendClose(_ c: Client) { closed.append(c.windowID) }
     var plates: [ClientID: CGRect] = [:]
     /// The tests draw nothing: the plate's box is kept.
-    override func showEdgePlate(_ c: Client, box: CGRect) { plates[c.id] = box.intersection(c.mon!.screen.frame) }
+    override func showEdgePlate(_ c: Client, box: CGRect) { plates[c.windowID] = box.intersection(c.mon!.screen.frame) }
     override func hideEdgePlate(_ id: ClientID) { plates[id] = nil }
     var rescans = 0
     /// The tests reach no real app: the watcher does not scan them.
@@ -159,9 +159,9 @@ final class FakeWindowSystem: MacWindowSystem {
     override func askToCapture() { asked += 1 }
     var focused: [(id: ClientID, raise: Bool)] = []
     var warps: [CGPoint] = []
-    override func sendNativeFocus(_ c: Client, raise: Bool) { focused.append((c.id, raise)) }
+    override func sendNativeFocus(_ c: Client, raise: Bool) { focused.append((c.windowID, raise)) }
     var raised: [ClientID] = []
-    override func sendNativeRaise(_ c: Client) { raised.append(c.id) }
+    override func sendNativeRaise(_ c: Client) { raised.append(c.windowID) }
     override func warp(to p: CGPoint) { warps.append(p); fakePointer = p }
     /// The borders and bars as mango hands them to the port; the port then draws them as it does.
     var borderSpecs: [BorderSpec] = []
@@ -193,7 +193,7 @@ final class FakeWindowSystem: MacWindowSystem {
     var jumpLabels: [ClientID: FakeJumpLabel] = [:]
     override func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel? {
         let label = FakeJumpLabel(data)
-        jumpLabels[c.id] = label
+        jumpLabels[c.windowID] = label
         return label
     }
     /// A fixed keymap: a letter's key code is its place in the alphabet.
@@ -209,7 +209,7 @@ final class FakeWindowSystem: MacWindowSystem {
     override func postFitNotification(title: String, body: String, fit: Bool) { fitNotification = (title, body, fit) }
     override func removeFitNotification() { fitNotification = nil }
     var axFullscreen: (ClientID) -> Bool? = { _ in false }
-    override func fullscreenNow(_ c: Client) -> Bool? { axFullscreen(c.id) }
+    override func fullscreenNow(_ c: Client) -> Bool? { axFullscreen(c.windowID) }
     var onScreen: (CGWindowID) -> Bool = { _ in true }
     override func windowOnScreen(_ id: CGWindowID) -> Bool { onScreen(id) }
     var anchored = 0
@@ -218,18 +218,18 @@ final class FakeWindowSystem: MacWindowSystem {
     var fullscreenWrites: [(ClientID, Bool)] = []
     var takesFullscreen: (ClientID) -> Bool = { _ in true }
     override func setNativeFullscreen(_ c: Client, _ fullscreen: Bool, _ done: @escaping @MainActor (Bool) -> Void) {
-        fullscreenWrites.append((c.id, fullscreen))
-        done(takesFullscreen(c.id))
+        fullscreenWrites.append((c.windowID, fullscreen))
+        done(takesFullscreen(c.windowID))
     }
     var focusAsked: [ClientID] = []
     /// The app answers which window has the keys: this one.
-    override func askFocus(_ c: Client) { focusAsked.append(c.id); windowFocused(id: c.id) }
+    override func askFocus(_ c: Client) { focusAsked.append(c.windowID); windowFocused(id: c.windowID) }
     override func setCursorHidden(_ hidden: Bool) { cursorHidden = hidden }
     var cursorName: String??
     override func setCursor(_ name: String?) { cursorName = .some(name) }
     var surfaceOverride: ClientID?
     override func surfaceAt(_ p: CGPoint) -> ClientID? {
-        surfaceOverride ?? server.clientsAll.first { !$0.parked && $0.frame.contains(p) }?.id
+        surfaceOverride ?? server.clientsAll.first { !$0.parked && $0.frame.contains(p) }?.windowID
     }
     var keyboardOptions: String?
     override func setKeyboardOptions(_ options: String) { keyboardOptions = options }
@@ -281,6 +281,7 @@ final class EngineRig {
         c.scrollerProportion = monitor.pertag.scrollerDefaultProportion[getMonCurtag(monitor)]
         c.scrollerProportionSingle = monitor.pertag.scrollerDefaultProportionSingle[getMonCurtag(monitor)]
         app.frames[id] = frame
+        c.id = server.generateClientId()
         server.clients.append(c)
         server.focusStack.insert(c, at: 0)
         return c
@@ -294,7 +295,7 @@ final class EngineRig {
             id: id, pid: getpid(), element: app.element(for: id), bundleId: "test", appName: "Test", title: "t\(id)",
             subrole: dialog ? "AXDialog" : "AXStandardWindow", isDialog: dialog, frame: frame, isminimized: false,
             isfullscreen: false, isAppHidden: false))
-        return server.clientByIdAll(id)!
+        return server.clientByWindowID(id)!
     }
 
     /// One output frame: what mango changed in the scene is shown (the tests' display link).

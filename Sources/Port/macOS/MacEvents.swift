@@ -3,7 +3,7 @@ import Mango
 
 extension MacWindowSystem: AppWatcherDelegate {
     func windowDiscovered(_ w: DiscoveredWindow) {
-        guard server.clientByIdAll(w.id) == nil else { return }
+        guard server.clientByWindowID(w.id) == nil else { return }
         let c = Client(window: w, monitor: server.selectedMonitor, tags: 0)
         c.bw = CGFloat(server.config.borderpx)   // handle_new_xdg_toplevel
         server.initClientProperties(c)   // handle_client_commit's initial commit
@@ -26,7 +26,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             } else if initial {
                 mapInitial(c)
             } else {
-                wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)'")
+                wlrLog(.debug, "new window \(c.windowID) \(c.appid) '\(c.title)'")
                 server.handleClientMap(c)
             }
         }
@@ -41,6 +41,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     }
 
     private func mapInitial(_ c: Client) {
+        c.id = server.generateClientId()   // handle_client_map
         initClientGeom(c)
         c.isPendingOpenAnimation = false
         server.clientAddJumpLabelNode(c)
@@ -63,16 +64,17 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.mon = mon
         server.clientResetMonTags(c, mon, tags)
         server.checkMatchTagFloatingRule(c, mon)
-        wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isfloating) dialog=\(c.mac.isFloatType)")
+        wlrLog(.debug, "new window \(c.windowID) \(c.appid) '\(c.title)' floating=\(c.isfloating) dialog=\(c.mac.isFloatType)")
         scheduleInitialSettle()
     }
 
     func mapBack(_ c: Client, _ d: DepartedWindow, initial: Bool) {
+        c.id = server.generateClientId()   // handle_client_map
         initClientGeom(c)
         server.clientAddJumpLabelNode(c)
         c.mon = nil
-        server.clients.insert(c, at: DepartedWindow.insertionIndex(of: c.id, snapshot: d.orderSnapshot,
-                                                                   into: server.clients.map(\.id)))
+        server.clients.insert(c, at: DepartedWindow.insertionIndex(of: c.windowID, snapshot: d.orderSnapshot,
+                                                                   into: server.clients.map(\.windowID)))
         server.focusStack.append(c)
         var (mon, _) = server.clientSetRules(c, mapped: false)
         c.oldmonname = d.homeDisplayID
@@ -97,9 +99,9 @@ extension MacWindowSystem: AppWatcherDelegate {
         // handle_client_unmap's init_client_properties cleared them; the window is back as it left
         if d.isfullscreen { server.clientSetFullscreen(c, true, rearrange: false) }
         if d.ismaximizescreen { server.clientSetMaximizeScreen(c, true, rearrange: false) }
-        wlrLog(.info, "\(c.appName): window \(c.id) is back; restored its tag and place")
+        wlrLog(.info, "\(c.appName): window \(c.windowID) is back; restored its tag and place")
         memory.returned(server, c)
-        wlrLog(.debug, "new window \(c.id) \(c.appid) '\(c.title)' floating=\(c.isfloating) dialog=\(c.mac.isFloatType) (returned)")
+        wlrLog(.debug, "new window \(c.windowID) \(c.appid) '\(c.title)' floating=\(c.isfloating) dialog=\(c.mac.isFloatType) (returned)")
         if initial { scheduleInitialSettle(); return }
         if let cm = c.mon { server.arrange(cm, false, false) }
         server.printstatus(.arrangge)
@@ -132,18 +134,18 @@ extension MacWindowSystem: AppWatcherDelegate {
             memory.departed.away.remove(id)
             return
         }
-        guard let c = server.clientByIdAll(id) else { return }
+        guard let c = server.clientByWindowID(id) else { return }
         server.handleClientUnmap(c)
         server.handleClientDestroy(c)
     }
 
     func windowFocused(id: CGWindowID) {
-        guard let c = server.clientByIdAll(id) else {
+        guard let c = server.clientByWindowID(id) else {
             seatFocus = nil   // the keyboard is on a window mango does not manage
             return
         }
         guard let m = monitor(of: c) else { return }
-        wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map { String($0.id) } ?? "none"))")
+        wlrLog(.debug, "\(c.appName): macOS focused window \(id) (mango's \(m.sel.map { String($0.windowID) } ?? "none"))")
         if m.isoverview {
             if !m.isJumpMode, server.focused !== c, m === server.selectedMonitor { server.toggleOverview(Arg(tc: c)) }
             return
@@ -151,8 +153,8 @@ extension MacWindowSystem: AppWatcherDelegate {
         if server.clientIsParked(c) { server.clientFocusGroupMember(c); return }
         if nativeFullscreen(c), !VISIBLEON(c, m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
         if VISIBLEON(c, m) {
-            if m.sel?.id == id && server.selectedMonitor === m { seatFocus = c; restack(); return }
-            macOSFocused = c.id
+            if m.sel?.windowID == id && server.selectedMonitor === m { seatFocus = c; restack(); return }
+            macOSFocused = c.windowID
             server.clientFocus(c, false)
             macOSFocused = nil
             return
@@ -163,7 +165,7 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     func windowMinimized(id: CGWindowID, minimized: Bool) {
         if !minimized, away[id] != nil { comeBack(id, .minimized, focus: true); return }
-        guard let c = server.clientByIdAll(id) else { return }
+        guard let c = server.clientByWindowID(id) else { return }
         minimizedByMacOS(c, minimized)
     }
 
@@ -175,7 +177,7 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     func windowTitleChanged(id: CGWindowID, title: String) {
         if let c = away[id]?.client { c.title = title; return }
-        guard let c = server.clientByIdAll(id) else { return }
+        guard let c = server.clientByWindowID(id) else { return }
         c.title = title
         server.handleClientSetTitle(c)
     }
@@ -186,7 +188,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             away.removeValue(forKey: id)
             memory.departed.away.remove(id)
         }
-        for c in server.clientsAll where c.pid == pid { windowDestroyed(id: c.id) }
+        for c in server.clientsAll where c.pid == pid { windowDestroyed(id: c.windowID) }
     }
 
     func screensChanged() {
@@ -219,12 +221,12 @@ extension MacWindowSystem: AppWatcherDelegate {
             if !s.appHidden { comeBack(id, .hidden) }
             return
         }
-        guard let c = server.clientByIdAll(id) else { return }
+        guard let c = server.clientByWindowID(id) else { return }
         c.element = element
         guard let m = c.mon else { return }
         if s.fullscreen == false, nativeFullscreen(c) { fullscreenChanged(c, false) }   // Port extension: chutney_fullscreen_tag
         if s.minimized == true || s.fullscreen == true || s.appHidden {
-            wlrLog(.info, "\(c.appName): window \(c.id) went away while its element was dead (minimized \(s.minimized ?? false), fullscreen \(s.fullscreen ?? false), hidden \(s.appHidden))")
+            wlrLog(.info, "\(c.appName): window \(c.windowID) went away while its element was dead (minimized \(s.minimized ?? false), fullscreen \(s.fullscreen ?? false), hidden \(s.appHidden))")
             if s.minimized == true { minimizedByMacOS(c, true) }
             if s.fullscreen == true, !nativeFullscreen(c) { fullscreenChanged(c, true) }   // Port extension: chutney_fullscreen_tag (else away)
             if s.appHidden { goAway(c, .hidden) }
@@ -239,7 +241,7 @@ extension MacWindowSystem: AppWatcherDelegate {
 
     func windowGeometryChanged(id: CGWindowID, frame: CGRect, resized: Bool, isfullscreen: Bool?) {
         if let fs = isfullscreen, windowFullscreenRead(id, fs) { return }
-        guard let c = server.clientByIdAll(id) else { return }
+        guard let c = server.clientByWindowID(id) else { return }
         moved(c, to: frame, resized: resized)
     }
 
@@ -257,7 +259,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             backFromFullscreen(id)
             return true
         }
-        guard let c = server.clientByIdAll(id) else { return false }
+        guard let c = server.clientByWindowID(id) else { return false }
         if late, !fullscreen, fullscreenPending(c), !nativeFullscreen(c) {   // Port extension: chutney_fullscreen_tag
             FullscreenTag.notTaken(server, c)
             return true
@@ -291,7 +293,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     func backFromFullscreen(_ id: ClientID) {
         guard let c = away[id]?.client else { return }
         comeBack(id, .fullscreen)
-        guard server.clientByIdAll(id) === c else { return }
+        guard server.clientByWindowID(id) === c else { return }
         askFocus(c)
         returnedFromFullscreen(c)
     }
@@ -299,14 +301,14 @@ extension MacWindowSystem: AppWatcherDelegate {
     /// macOS moves a window out of fullscreen until its Space change is done, which may come before or
     /// after this: it is placed now, and again at the next Space change.
     func returnedFromFullscreen(_ c: Client) {
-        placeAgain(c.id)
-        fullscreenReturns.insert(c.id)
+        placeAgain(c.windowID)
+        fullscreenReturns.insert(c.windowID)
     }
 
     /// The window's frame read again and its monitor's layout written.
     func placeAgain(_ id: ClientID) {
-        guard let c = server.clientByIdAll(id), let m = c.mon else { return }
-        if let real = windowServerFrame(c.id) {
+        guard let c = server.clientByWindowID(id), let m = c.mon else { return }
+        if let real = windowServerFrame(c.windowID) {
             c.frame = real
             // macOS put it back where it stood before fullscreen: a window it shows is not parked
             if c.parked && !Hider.isParked(real, in: m.screen.frame) { shownByMacOS(c) }

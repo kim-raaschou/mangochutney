@@ -25,8 +25,8 @@ final class JumpModeTests: MangoTestCase {
         let labels = Array(r.server.config.jumpLabels)
         for (i, c) in r.server.clients.enumerated() {
             XCTAssertEqual(c.jumpChar, labels[i])
-            XCTAssertEqual(fake(r).jumpLabels[c.id]?.text, String(labels[i]))
-            XCTAssertEqual(fake(r).jumpLabels[c.id]?.enabled, true)
+            XCTAssertEqual(fake(r).jumpLabels[c.windowID]?.text, String(labels[i]))
+            XCTAssertEqual(fake(r).jumpLabels[c.windowID]?.enabled, true)
         }
     }
 
@@ -34,7 +34,7 @@ final class JumpModeTests: MangoTestCase {
         let (r, cs) = rig(1)
         jump(r)
         let card = r.server.selectedMonitor.ovCards[cs[0].id]!
-        let p = fake(r).jumpLabels[cs[0].id]!.position
+        let p = fake(r).jumpLabels[cs[0].windowID]!.position
         XCTAssertEqual(p.x, card.minX + ((card.width - 40) / 2).rounded(.towardZero))
         XCTAssertEqual(p.y, card.minY + ((card.height - 40) / 2).rounded(.towardZero))
     }
@@ -66,7 +66,7 @@ final class JumpModeTests: MangoTestCase {
         for c in r.server.clients {
             XCTAssertNil(c.jumpChar)
             XCTAssertEqual(c.jumpKeycodes, MultiKeycode())
-            XCTAssertEqual(fake(r).jumpLabels[c.id]?.enabled, false)
+            XCTAssertEqual(fake(r).jumpLabels[c.windowID]?.enabled, false)
         }
     }
 
@@ -122,7 +122,7 @@ final class JumpModeTests: MangoTestCase {
 
     func testTheLabelComesWithTheMapAndGoesWithTheUnmap() {
         let (r, cs) = rig(1)
-        let label = fake(r).jumpLabels[cs[0].id]!
+        let label = fake(r).jumpLabels[cs[0].windowID]!
         XCTAssertFalse(label.enabled)
         r.server.handleClientUnmap(cs[0])
         XCTAssertTrue(label.destroyed)
@@ -133,6 +133,6 @@ final class JumpModeTests: MangoTestCase {
         let (r, cs) = rig(1)
         r.server.config.jumplabeldata.paddingX = 7
         r.server.resetOption()
-        XCTAssertEqual(fake(r).jumpLabels[cs[0].id]?.data.paddingX, 7)
+        XCTAssertEqual(fake(r).jumpLabels[cs[0].windowID]?.data.paddingX, 7)
     }
 }

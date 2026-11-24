@@ -257,7 +257,7 @@ final class LayoutGoldenTests: MangoTestCase {
             m.visibleFakeTilingClients = Int32(n)
             layouts.first { $0.id == m.layout }!.arrange(r.server, m)
             for (i, c) in cs.enumerated() {
-                XCTAssertEqual(c.geom, expected[i], "\(line.prefix(24)) client \(c.id)")
+                XCTAssertEqual(c.geom, expected[i], "\(line.prefix(24)) client \(c.windowID)")
             }
             checked += 1
         }
@@ -354,11 +354,11 @@ final class LayoutGoldenTests: MangoTestCase {
             for step in 0..<6 {
                 let expected = Self.rects(parts[1 + step].split(separator: " "))
                 let focus = ids[seq[step]]
-                mon.sel = r.server.clientByIdAll(focus)
-                mon.prevsel = prev.flatMap { r.server.clientByIdAll($0) }
+                mon.sel = r.server.clientByWindowID(focus)
+                mon.prevsel = prev.flatMap { r.server.clientByWindowID($0) }
                 r.arrange()
                 for (i, cl) in cs.enumerated() {
-                    XCTAssertEqual(cl.geom, expected[i], "\(parts[0]) step \(step) client \(cl.id)")
+                    XCTAssertEqual(cl.geom, expected[i], "\(parts[0]) step \(step) client \(cl.windowID)")
                 }
                 prev = focus
             }
@@ -520,21 +520,21 @@ final class LayoutGoldenTests: MangoTestCase {
                 let a = tok.split(separator: ":")
                 expected[ClientID(a[0])!] = Self.rects([a[1]])[0]
             }
-            for id in vis where r.server.clientByIdAll(id) == nil { r.window(id) }
-            for c in r.server.clientsAll { c.tags = vis.contains(c.id) ? 1 : 2 }
+            for id in vis where r.server.clientByWindowID(id) == nil { r.window(id) }
+            for c in r.server.clientsAll { c.tags = vis.contains(c.windowID) ? 1 : 2 }
             if focus == 0 {
                 r.server.focusStack.removeAll()
             } else {
-                if let c = r.server.clientByIdAll(focus) {
+                if let c = r.server.clientByWindowID(focus) {
                     r.server.focusStack.removeAll { $0 === c }
                     r.server.focusStack.insert(c, at: 0)
                 }
             }
-            r.monitor.sel = focus == 0 ? nil : r.server.clientByIdAll(focus)
+            r.monitor.sel = focus == 0 ? nil : r.server.clientByWindowID(focus)
             (r.server.system as! FakeWindowSystem).fakePointer = CGPoint(x: cur[0], y: cur[1])
             r.arrange()
             for id in vis {
-                XCTAssertEqual(r.server.clientByIdAll(id)?.geom, expected[id],
+                XCTAssertEqual(r.server.clientByWindowID(id)?.geom, expected[id],
                                "\(scenario) \(head[1...3].joined(separator: " ")) client \(id)")
             }
             steps += 1

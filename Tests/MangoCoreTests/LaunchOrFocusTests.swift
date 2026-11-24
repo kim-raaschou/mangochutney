@@ -61,13 +61,13 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
         defer { picker.close(r.server) }
         r.server.launchOrFocus("test", command: "")
         XCTAssertTrue(picker.isOpen)
-        XCTAssertEqual(picker.highlighted, b.id, "the key's own choice: the one used before")
-        XCTAssertEqual(r.server.focused?.id, a.id, "nothing moves yet")
+        XCTAssertEqual(picker.highlighted, b.windowID, "the key's own choice: the one used before")
+        XCTAssertEqual(r.server.focused?.windowID, a.windowID, "nothing moves yet")
         r.server.launchOrFocus("test", command: "")
-        XCTAssertEqual(picker.highlighted, c.id, "the key again: the next")
+        XCTAssertEqual(picker.highlighted, c.windowID, "the key again: the next")
         picker.key(r.server, keyCode: 36, mods: [], opening: nil)
         XCTAssertFalse(picker.isOpen)
-        XCTAssertEqual(r.server.focused?.id, c.id)
+        XCTAssertEqual(r.server.focused?.windowID, c.windowID)
     }
 
     func testItsMinimizedWindowIsBroughtBack() {
@@ -93,7 +93,7 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
         r.server.launchOrFocus("test", command: "")
         picker.key(r.server, keyCode: 53, mods: [], opening: nil)
         XCTAssertFalse(picker.isOpen)
-        XCTAssertEqual(r.server.focused?.id, a.id)
+        XCTAssertEqual(r.server.focused?.windowID, a.windowID)
         r.server.launchOrFocus("test", command: "")
         picker.key(r.server, keyCode: 4, mods: [], opening: 0)
         XCTAssertFalse(picker.isOpen, "another key: closed, and it goes on to the app")
@@ -109,22 +109,22 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
         let fake = r.server.system as! FakeWindowSystem
 
         r.server.launchOrFocus("test", command: "")
-        let tile = picker.tileFrames[c.id]!
+        let tile = picker.tileFrames[c.windowID]!
         picker.click(r.server, at: CGPoint(x: tile.midX, y: tile.midY), button: 0)
         XCTAssertFalse(picker.isOpen)
-        XCTAssertEqual(r.server.focused?.id, c.id, "the left button: the window clicked")
+        XCTAssertEqual(r.server.focused?.windowID, c.windowID, "the left button: the window clicked")
 
         r.server.launchOrFocus("test", command: "")
         picker.click(r.server, at: CGPoint(x: 1, y: 1), button: 0)
         XCTAssertFalse(picker.isOpen, "outside the windows: closed")
-        XCTAssertEqual(r.server.focused?.id, c.id)
+        XCTAssertEqual(r.server.focused?.windowID, c.windowID)
 
         r.server.launchOrFocus("test", command: "")
-        let other = picker.tileFrames[b.id]!
+        let other = picker.tileFrames[b.windowID]!
         picker.click(r.server, at: CGPoint(x: other.midX, y: other.midY), button: 1)
         XCTAssertFalse(picker.isOpen)
-        XCTAssertEqual(fake.closed, [b.id], "the right button: closes the window clicked")
-        XCTAssertEqual(r.server.focused?.id, c.id)
+        XCTAssertEqual(fake.closed, [b.windowID], "the right button: closes the window clicked")
+        XCTAssertEqual(r.server.focused?.windowID, c.windowID)
     }
 
     func testTwoWindowsInTheAppStillToggle() {
@@ -134,6 +134,6 @@ final class LaunchOrFocusPickerTests: MangoTestCase {
         r.server.clientActive(a)
         r.server.launchOrFocus("test", command: "")
         XCTAssertFalse(LaunchOrFocusPicker.shared.isOpen)
-        XCTAssertEqual(r.server.focused?.id, b.id)
+        XCTAssertEqual(r.server.focused?.windowID, b.windowID)
     }
 }

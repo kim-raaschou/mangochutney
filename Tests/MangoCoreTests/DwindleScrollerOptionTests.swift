@@ -14,12 +14,12 @@ final class DwindleScrollerOptionTests: MangoTestCase {
 
     func dragRight(_ r: EngineRig, by dx: CGFloat) -> CGFloat {
         let resize = MouseBinding(mods: [.superKey], button: .right, dispatch: Dispatch(name: "moveresize", args: ["curresize"]))
-        let right = r.server.clientByIdAll(900_401)!.geom
+        let right = r.server.clientByWindowID(900_401)!.geom
         let p = CGPoint(x: right.midX, y: right.midY)
         r.server.mousebind(resize, at: p)
         motion(r, p, time: 1000)
         motion(r, CGPoint(x: p.x + dx, y: p.y), time: 1100)
-        return r.server.clientByIdAll(900_400)!.geom.width
+        return r.server.clientByWindowID(900_400)!.geom.width
     }
 
     /// The pointer moved there (macOS moves it before the event comes), then the motion.
@@ -32,12 +32,12 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let r = dwindle(2)
         let width = dragRight(r, by: 100)
         motion(r, CGPoint(x: 0, y: 0), time: 1110)
-        XCTAssertNotEqual(r.server.clientByIdAll(900_400)!.geom.width, width, "the next frame: laid out")
+        XCTAssertNotEqual(r.server.clientByWindowID(900_400)!.geom.width, width, "the next frame: laid out")
     }
 
     func testTheSplitIndicatorShowsTheNextSplitsSide() {
         let r = dwindle(2)
-        let c = r.server.clientByIdAll(900_400)!
+        let c = r.server.clientByWindowID(900_400)!
         XCTAssertNil(r.server.clientDrawSplitBorder(c, on: r.monitor), "only with dwindle_manual_split")
         r.server.config.dwindleManualSplit = true
         let horizontal = r.server.dwindleFindLeaf(r.monitor.pertag.dwindleRoot[getMonCurtag(r.monitor)], c)!.customLeafSplitH
@@ -60,7 +60,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         r.window(900_410, frame: CGRect(x: 100, y: 100, width: 600, height: 800))
         r.window(900_411, frame: CGRect(x: w.maxX - 300, y: 100, width: 600, height: 400))
         r.window(900_412, frame: CGRect(x: w.maxX - 300, y: 520, width: 600, height: 400))
-        r.server.clientFocus(r.server.clientByIdAll(900_410)!, false)
+        r.server.clientFocus(r.server.clientByWindowID(900_410)!, false)
         startFrames = [900_410: CGRect(x: 100, y: 100, width: 600, height: 800),
                        900_411: CGRect(x: w.maxX - 300, y: 100, width: 600, height: 400),
                        900_412: CGRect(x: w.maxX - 300, y: 520, width: 600, height: 400)]
@@ -71,12 +71,12 @@ final class DwindleScrollerOptionTests: MangoTestCase {
 
     func move(_ r: EngineRig, to id: CGWindowID, speed: CGFloat) {
         for (wid, frame) in r.app.frames where wid >= 900_410 && wid <= 900_412 {
-            r.server.clientByIdAll(wid)!.frame = startFrames[wid] ?? frame
-            r.server.clientByIdAll(wid)!.geom = startFrames[wid] ?? frame
-            r.server.clientByIdAll(wid)!.parked = false
-            r.server.clientByIdAll(wid)!.mac.sceneNodeEnabled = true
+            r.server.clientByWindowID(wid)!.frame = startFrames[wid] ?? frame
+            r.server.clientByWindowID(wid)!.geom = startFrames[wid] ?? frame
+            r.server.clientByWindowID(wid)!.parked = false
+            r.server.clientByWindowID(wid)!.mac.sceneNodeEnabled = true
         }
-        let f = r.server.clientByIdAll(id)!.frame
+        let f = r.server.clientByWindowID(id)!.frame
         r.server.cursorMotion(to: CGPoint(x: f.minX + 50, y: f.midY), time: 1, dx: Double(speed))
     }
 
@@ -84,10 +84,10 @@ final class DwindleScrollerOptionTests: MangoTestCase {
         let r = scroller()
         move(r, to: 900_411, speed: 0)
         move(r, to: 900_412, speed: 0)
-        XCTAssertEqual(r.monitor.sel?.id, 900_411, "locked")
+        XCTAssertEqual(r.monitor.sel?.windowID, 900_411, "locked")
         move(r, to: 900_410, speed: 0)
         move(r, to: 900_412, speed: 0)
-        XCTAssertEqual(r.monitor.sel?.id, 900_412, "the lock went with the window inside")
+        XCTAssertEqual(r.monitor.sel?.windowID, 900_412, "the lock went with the window inside")
     }
 }
 
@@ -117,7 +117,7 @@ final class TiledDragStaysFiniteTests: MangoTestCase {
                         for w in r.server.clientsAll {
                             let f = w.geom ?? w.frame
                             XCTAssertTrue(f.minX.isFinite && f.minY.isFinite && f.width.isFinite && f.height.isFinite,
-                                          "\(kind) \(count) windows: \(w.id) at \(f) after \(s)")
+                                          "\(kind) \(count) windows: \(w.windowID) at \(f) after \(s)")
                         }
                         for b in (r.server.system as! FakeWindowSystem).borderSpecs {
                             XCTAssertFalse(b.frame.isNull || !b.frame.width.isFinite || !b.frame.minX.isFinite,

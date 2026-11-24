@@ -27,8 +27,8 @@ package extension MangoServer {
     func overlayCards(_ m: Monitor) -> [OverviewCard] {
         m.ovCards.compactMap { id, frame in
             guard let c = clientByIdAll(id) else { return nil }
-            return OverviewCard(id: id, frame: frame, title: c.title.isEmpty ? c.appName : c.title,
-                                pid: c.pid, focused: id == m.sel?.id)
+            return OverviewCard(id: c.windowID, frame: frame, title: c.title.isEmpty ? c.appName : c.title,
+                                pid: c.pid, focused: c === m.sel)
         }
     }
 

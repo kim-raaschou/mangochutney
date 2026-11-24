@@ -12,6 +12,7 @@ final class RuleFieldTests: MangoTestCase {
         let c = Client(window: w, monitor: r.monitor, tags: 1)
         c.isPendingOpenAnimation = false
         r.app.frames[id] = float
+        c.id = r.server.generateClientId()
         r.server.clients.append(c)
         return c
     }

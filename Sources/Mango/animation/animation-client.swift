@@ -229,10 +229,10 @@ package extension MangoServer {
             frame: CGRect(x: bar.minX, y: bar.minY, width: bar.width, height: bar.height + under),
             barHeight: bar.height, cornerRadius: radius,
             segments: zip(members, barSegments(bar, members)).map { cur, box in
-                .init(id: cur.id, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur === sel,
+                .init(id: cur.windowID, title: cur.title.isEmpty ? cur.appName : cur.title, focused: cur === sel,
                       pid: cur.pid, frame: box)
             },
-            above: c.id,
+            above: c.windowID,
             closeButton: config.groupBarCloseButtonEnable
                 ? .init(size: CGFloat(config.groupBarButtonSize), margin: CGFloat(config.groupBarButtonMargin),
                         color: config.groupBarButtonColor)

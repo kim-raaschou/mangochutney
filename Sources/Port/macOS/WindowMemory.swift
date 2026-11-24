@@ -13,13 +13,13 @@ final class WindowMemory {
     private var pruning = false
 
     func back(_ c: Client) -> DepartedWindow? {
-        let back = departed.take(c.id).flatMap { d in d.bundleId.isEmpty || d.bundleId == c.bundleId ? d : nil }
+        let back = departed.take(c.windowID).flatMap { d in d.bundleId.isEmpty || d.bundleId == c.bundleId ? d : nil }
         departed.endWave()
         return back
     }
 
     func leaving(_ server: MangoServer, _ c: Client, group: [ClientID], groupFocus: ClientID?, order: [ClientID]) {
-        let snapshot = departed.orderSnapshot(leaving: c.id, order: order)
+        let snapshot = departed.orderSnapshot(leaving: c.windowID, order: order)
         var d = DepartedWindow(
             tags: c.tags, displayID: c.mon?.screen.displayID, isfloating: Self.isfloating(c), isglobal: c.isglobal,
             isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: SCRATCHPAD_SHOWN(c),
@@ -29,17 +29,17 @@ final class WindowMemory {
             iscustomsize: c.iscustomsize)
         d.isfullscreen = c.overviewBackedUp ? c.overviewIsfullscreenbak : c.isfullscreen
         d.ismaximizescreen = c.overviewBackedUp ? c.overviewIsmaximizescreenbak : c.ismaximizescreen
-        departed.remember(c.id, d)
+        departed.remember(c.windowID, d)
         departed.rememberGroup(DepartedGroup(members: group, focus: groupFocus))
     }
 
     func returned(_ server: MangoServer, _ c: Client) {
-        guard let gi = departed.groups.firstIndex(where: { $0.members.contains(c.id) }) else { return }
+        guard let gi = departed.groups.firstIndex(where: { $0.members.contains(c.windowID) }) else { return }
         let g = departed.groups[gi]
-        let present = g.members.compactMap { server.clientByIdAll($0) }.filter { $0.mon != nil || server.clientIsParked($0) }
+        let present = g.members.compactMap { server.clientByWindowID($0) }.filter { $0.mon != nil || server.clientIsParked($0) }
         if present.count == g.members.count { departed.groups.remove(at: gi) }
         guard present.count > 1, !server.monitors.contains(where: \.isoverview) else { return }
-        let focus = present.first { $0.id == g.focus }
+        let focus = present.first { $0.windowID == g.focus }
             ?? present.first { $0.isGroupFocus && !server.clientIsParked($0) } ?? present[0]
         for m in present where server.clientIsGroupMember(m) {
             if server.clientIsParked(m) { server.clientUnpark(m, focus) }
@@ -67,14 +67,14 @@ final class WindowMemory {
     func currentLayout(_ server: MangoServer) -> SavedLayout {
         var windows: [SavedLayout.Window] = server.clientsAll.map { c in
             // Port extension: chutney_fullscreen_tag saves a window on its own tags, not its F tag.
-            SavedLayout.Window(id: c.id, bundleId: c.bundleId, tags: FullscreenTag.savedTags(server, c), displayID: c.mon?.screen.displayID,
+            SavedLayout.Window(id: c.windowID, bundleId: c.bundleId, tags: FullscreenTag.savedTags(server, c), displayID: c.mon?.screen.displayID,
                                homeDisplayID: c.oldmonname, isfloating: Self.isfloating(c), isglobal: c.isglobal,
                                isoverlay: c.isoverlay, isminimized: c.isInScratchpad, isScratchpad: SCRATCHPAD_SHOWN(c),
                                isnamedscratchpad: c.isnamedscratchpad, floatFrame: c.floatGeom.insetBy(dx: c.bw, dy: c.bw),
                                scrollerProportion: CGFloat(c.scrollerProportion), orderSnapshot: nil,
                                iscustomsize: c.iscustomsize)
         }
-        for (id, d) in departed.entries where server.clientByIdAll(id) == nil {
+        for (id, d) in departed.entries where server.clientByWindowID(id) == nil {
             windows.append(SavedLayout.Window(id: id, bundleId: d.bundleId, tags: d.tags, displayID: d.displayID,
                                               homeDisplayID: d.homeDisplayID, isfloating: d.isfloating,
                                               isglobal: d.isglobal, isoverlay: d.isoverlay, isminimized: d.isminimized,
@@ -101,10 +101,10 @@ final class WindowMemory {
         var groups = departed.groups
         for c in server.clientsAll where server.clientIsGroupMember(c) && c.groupPrev == nil {
             let members = server.groupMembers(c)
-            groups.removeAll { !Set($0.members).isDisjoint(with: members.map(\.id)) }
-            groups.append(DepartedGroup(members: members.map(\.id), focus: members.first { $0.isGroupFocus }?.id))
+            groups.removeAll { !Set($0.members).isDisjoint(with: members.map(\.windowID)) }
+            groups.append(DepartedGroup(members: members.map(\.windowID), focus: members.first { $0.isGroupFocus }?.windowID))
         }
-        return SavedLayout(session: session, order: server.clients.map(\.id), windows: windows, tagsets: tagsets,
+        return SavedLayout(session: session, order: server.clients.map(\.windowID), windows: windows, tagsets: tagsets,
                            tagLayouts: tagLayouts, previousTagsets: previousTagsets, prevTags: prevTags,
                            groups: groups.isEmpty ? nil : groups)
     }

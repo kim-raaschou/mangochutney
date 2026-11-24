@@ -273,7 +273,8 @@ Hvor koden står, når den ikke står som i mango.
   global, overlay, scratchpad, ramme, proportion, fullscreen og maksimeret). Porten kalder
   `init_client_properties`, når den finder et vindue, som mangos første commit. Ingen macOS-del:
   swallowing, foreign toplevel, scene-noderne ved map, `client_reparent_group`, regel-felterne uden
-  et Client-felt.
+  et Client-felt. `id` er mangos (`generate_client_id`, 1, 2, 3 … ved hvert map); portens vindue er
+  `windowID` (wlroots' surface), som porten slår op med `clientByWindowID`.
 - **C's egne hjælpere:** hvad Swift selv har, findes ikke: `die`, `ecalloc`, `utf8_strlcpy`,
   `wayland_string_set`, `string_printf`, `join_strings`, `join_strings_with_suffix` (Swifts strenge),
   `wl_list_append` (listen er et array) og `timespec_to_ms` (`get_now_in_ms` regner selv i ms, og

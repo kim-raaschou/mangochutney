@@ -34,7 +34,7 @@ final class BorderInsideTheTileTests: MangoTestCase {
     func frames(_ r: EngineRig, borders: Bool) -> [CGWindowID: CGRect] {
         r.server.renderBorder = borders
         r.arrange()
-        return Dictionary(uniqueKeysWithValues: r.server.clientsAll.map { ($0.id, $0.tile) })
+        return Dictionary(uniqueKeysWithValues: r.server.clientsAll.map { ($0.windowID, $0.tile) })
     }
 
     func rig(_ n: Int, layout: LayoutKind = .tile) -> EngineRig {
@@ -54,7 +54,7 @@ final class BorderInsideTheTileTests: MangoTestCase {
 
     func testNoBorderFillsTheTile() {
         let r = rig(2)
-        r.server.clientByIdAll(900_500)!.noBorder = true
+        r.server.clientByWindowID(900_500)!.noBorder = true
         let boxes = frames(r, borders: false)
         let windows = frames(r, borders: true)
         XCTAssertEqual(windows[900_500], boxes[900_500])
@@ -90,7 +90,7 @@ final class BorderInsideTheTileTests: MangoTestCase {
         r.arrange()
         r.server.updateBorders()
         let ids = Set((r.server.system as! FakeWindowSystem).borderSpecs.map(\.id))
-        let shown = Set(r.server.clientsAll.filter { !$0.parked }.map(\.id))
+        let shown = Set(r.server.clientsAll.filter { !$0.parked }.map(\.windowID))
         XCTAssertTrue(shown.contains(900_500) && shown.contains(900_520))
         XCTAssertEqual(ids, shown, "client_draw_border has no layout test: the top tiled window keeps its border")
     }
@@ -112,11 +112,11 @@ final class BorderInsideTheTileTests: MangoTestCase {
     func testArrangingAgainMovesNothing() {
         for layout in [LayoutKind.scroller, .tile, .dwindle, .deck] {
             let r = rig(3, layout: layout)
-            r.monitor.sel = r.server.clientByIdAll(900_501)
+            r.monitor.sel = r.server.clientByWindowID(900_501)
             let first = frames(r, borders: true)
             r.arrange()
             r.arrange()
-            XCTAssertEqual(Dictionary(uniqueKeysWithValues: r.server.clientsAll.map { ($0.id, $0.tile) }), first, "\(layout)")
+            XCTAssertEqual(Dictionary(uniqueKeysWithValues: r.server.clientsAll.map { ($0.windowID, $0.tile) }), first, "\(layout)")
         }
     }
 

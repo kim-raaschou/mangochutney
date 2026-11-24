@@ -50,13 +50,13 @@ final class BindTests: XCTestCase {
         let cards = mango.monitor.ovCards
         let top = cards.values.map(\.minY).min()!
         let start = try XCTUnwrap(cards.filter { $0.value.minY == top }.max { $0.value.minX < $1.value.minX })
-        mango.server.clientFocus(mango.server.clientByIdAll(start.key)!, true)
+        mango.server.clientFocus(mango.server.clientByWindowID(start.key)!, true)
 
         mango.run("focusdir", "right")
 
-        XCTAssertEqual(mango.monitor.sel?.id, start.key, "no card to the right of the top row's last")
+        XCTAssertEqual(mango.monitor.sel?.windowID, start.key, "no card to the right of the top row's last")
         mango.run("focusdir", "left")
-        let to = try XCTUnwrap(mango.monitor.sel.flatMap { cards[$0.id] })
+        let to = try XCTUnwrap(mango.monitor.sel.flatMap { cards[$0.windowID] })
         XCTAssertLessThan(to.midX, start.value.midX, "a card to the left")
         XCTAssertEqual(to.minY, top, "in the same row")
     }
@@ -67,7 +67,7 @@ final class BindTests: XCTestCase {
         let mango = TestMango("warp_cursor=0")
         let side = mango.addMonitorOnTheRight()
         let a = mango.map("a")
-        mango.wlroots.seatPointerNotifyEnter(a.id)
+        mango.wlroots.seatPointerNotifyEnter(a.windowID)
 
         mango.run("focusmon", "right")
 

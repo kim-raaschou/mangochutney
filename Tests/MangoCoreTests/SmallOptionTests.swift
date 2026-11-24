@@ -17,11 +17,11 @@ final class SmallOptionTests: MangoTestCase {
         r.window(900_613, frame: frame)
         let p = CGPoint(x: 300, y: 300)
         fake.surfaceOverride = 1
-        XCTAssertEqual(r.server.nodeAtPoint(p)?.id, 900_611, "floating over tiled; the latest focused on top")
+        XCTAssertEqual(r.server.nodeAtPoint(p)?.windowID, 900_611, "floating over tiled; the latest focused on top")
         fake.surfaceOverride = 900_610
-        XCTAssertEqual(r.server.nodeAtPoint(p)?.id, 900_610, "the window server's top within the layer")
+        XCTAssertEqual(r.server.nodeAtPoint(p)?.windowID, 900_610, "the window server's top within the layer")
         full.isfullscreen = true
-        XCTAssertEqual(r.server.nodeAtPoint(p)?.id, 900_612, "fullscreen over floating")
+        XCTAssertEqual(r.server.nodeAtPoint(p)?.windowID, 900_612, "fullscreen over floating")
     }
 
     func testAKeyHidesThePointerAndMovingShowsIt() {

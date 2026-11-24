@@ -89,7 +89,7 @@ final class LayoutRunner {
 
         var order: [Client] = []
         for lc in input.clients {
-            let c = server.clientByIdAll(lc.id) ?? rig.window(lc.id)
+            let c = server.clientByWindowID(lc.id) ?? rig.window(lc.id)
             c.tags = 1
             c.geom = lc.currentFrame
             c.isfullscreen = lc.isfullscreen
@@ -105,19 +105,19 @@ final class LayoutRunner {
             order.append(c)
         }
         let ids = Set(input.clients.map(\.id))
-        for c in server.clientsAll where !ids.contains(c.id) { c.tags = 2 }
-        server.clients = order + server.clients.filter { !ids.contains($0.id) }
+        for c in server.clientsAll where !ids.contains(c.windowID) { c.tags = 2 }
+        server.clients = order + server.clients.filter { !ids.contains($0.windowID) }
         if let f = input.focusedID {
-            if let c = server.clientByIdAll(f) {
+            if let c = server.clientByWindowID(f) {
                 server.focusStack.removeAll { $0 === c }
                 server.focusStack.insert(c, at: 0)
             }
         }
-        m.sel = input.focusedID.flatMap { server.clientByIdAll($0) }
-        m.prevsel = input.prevFocusedID.flatMap { server.clientByIdAll($0) }
+        m.sel = input.focusedID.flatMap { server.clientByWindowID($0) }
+        m.prevsel = input.prevFocusedID.flatMap { server.clientByWindowID($0) }
         rig.arrange()
         var out = LayoutResult()
-        for lc in input.clients { out.frames[lc.id] = server.clientByIdAll(lc.id)!.geom }
+        for lc in input.clients { out.frames[lc.id] = server.clientByWindowID(lc.id)!.geom }
         return out
     }
 }
@@ -149,15 +149,15 @@ final class OverviewRunner {
         let m = rig.monitor
         var order: [Client] = []
         for item in clients {
-            let c = server.clientByIdAll(item.id) ?? rig.window(item.id)
+            let c = server.clientByWindowID(item.id) ?? rig.window(item.id)
             c.tags = 1
             c.overviewBackupGeom = CGRect(origin: .zero, size: item.size)
             order.append(c)
         }
         let ids = Set(clients.map(\.id))
-        for c in server.clientsAll where !ids.contains(c.id) { c.tags = 2 }
-        server.clients = order + server.clients.filter { !ids.contains($0.id) }
-        m.sel = focused.flatMap { server.clientByIdAll($0) }
+        for c in server.clientsAll where !ids.contains(c.windowID) { c.tags = 2 }
+        server.clients = order + server.clients.filter { !ids.contains($0.windowID) }
+        m.sel = focused.flatMap { server.clientByWindowID($0) }
         m.isoverview = true
         m.ovThumbnails = true   // the cards only; the windows stay
         m.ovCards = [:]

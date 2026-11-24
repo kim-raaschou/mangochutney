@@ -15,7 +15,7 @@ final class ArrangeTests: XCTestCase {
 
         mango.server.arrange(mango.monitor, false, false)
 
-        XCTAssertEqual(mango.monitor.sel?.id, a.id)
+        XCTAssertEqual(mango.monitor.sel?.windowID, a.windowID)
     }
 
     // MARK: resize_tile_client

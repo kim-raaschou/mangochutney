@@ -15,7 +15,7 @@ final class UnmanagedGlobalTests: MangoTestCase {
         u.isunglobal = true
         r.arrange()
         r.settle()
-        XCTAssertEqual(r.server.tiledClients(r.monitor).map(\.id), [a, b], "not a tile")
+        XCTAssertEqual(r.server.tiledClients(r.monitor).map(\.windowID), [a, b], "not a tile")
         XCTAssertFalse(r.app.writes.contains { $0.id == pet }, "mango does not move it")
         XCTAssertEqual(r.app.frames[pet], petFrame)
 
@@ -43,11 +43,11 @@ final class UnmanagedGlobalTests: MangoTestCase {
         let c = r.map(a)
         c.tags = 1 << 2
         r.server.mac.windowMinimized(id: a, minimized: true)
-        XCTAssertNil(r.server.clientByIdAll(a), "unmapped, as mango would have it")
+        XCTAssertNil(r.server.clientByWindowID(a), "unmapped, as mango would have it")
         XCTAssertEqual(r.server.mac.away[a]?.reasons, [.minimized])
         XCTAssertFalse(c.isInScratchpad)
         r.server.mac.windowMinimized(id: a, minimized: false)
-        XCTAssertTrue(r.server.clientByIdAll(a) === c, "mapped back")
+        XCTAssertTrue(r.server.clientByWindowID(a) === c, "mapped back")
         XCTAssertEqual(c.tags, 1 << 2, "on its tag")
         XCTAssertNil(r.server.mac.away[a])
     }
@@ -56,13 +56,13 @@ final class UnmanagedGlobalTests: MangoTestCase {
         let r = EngineRig()
         let c = r.map(a)
         r.server.mac.windowGeometryChanged(id: a, frame: c.frame, resized: false, isfullscreen: true)
-        XCTAssertNil(r.server.clientByIdAll(a))
+        XCTAssertNil(r.server.clientByWindowID(a))
         r.server.mac.appHidden(pid: c.pid, hidden: true)
         XCTAssertEqual(r.server.mac.away[a]?.reasons, [.fullscreen, .hidden])
         r.server.mac.windowGeometryChanged(id: a, frame: c.frame, resized: false, isfullscreen: false)
-        XCTAssertNil(r.server.clientByIdAll(a), "still hidden")
+        XCTAssertNil(r.server.clientByWindowID(a), "still hidden")
         r.server.mac.appHidden(pid: c.pid, hidden: false)
-        XCTAssertTrue(r.server.clientByIdAll(a) === c)
+        XCTAssertTrue(r.server.clientByWindowID(a) === c)
     }
 
     func testAWindowFoundAwayIsMappedWhenItIsBack() {
@@ -71,8 +71,8 @@ final class UnmanagedGlobalTests: MangoTestCase {
             id: a, pid: getpid(), element: r.app.element(for: a), bundleId: "test", appName: "Test", title: "t",
             subrole: "AXStandardWindow", isDialog: false, frame: CGRect(x: 100, y: 100, width: 800, height: 600),
             isminimized: true, isfullscreen: false, isAppHidden: false))
-        XCTAssertNil(r.server.clientByIdAll(a))
+        XCTAssertNil(r.server.clientByWindowID(a))
         r.server.mac.windowMinimized(id: a, minimized: false)
-        XCTAssertNotNil(r.server.clientByIdAll(a))
+        XCTAssertNotNil(r.server.clientByWindowID(a))
     }
 }

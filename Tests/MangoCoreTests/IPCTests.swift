@@ -72,7 +72,7 @@ final class IPCTests: MangoTestCase {
             id: id, pid: getpid(), element: rig.app.element(for: id), bundleId: app, appName: app, title: title,
             subrole: "AXStandardWindow", isDialog: false, frame: frame, isminimized: false,
             isfullscreen: false, isAppHidden: false))
-        return rig.server.clientByIdAll(id)!
+        return rig.server.clientByWindowID(id)!
     }
 
     override func setUp() async throws {
@@ -198,17 +198,17 @@ final class IPCTests: MangoTestCase {
 
     func testDispatchWithTargetClient() throws {
         XCTAssertEqual(query("dispatch togglefloating client,2"), #"{"success":true}"#)
-        XCTAssertTrue(rig.server.clientByIdAll(2)!.isfloating, "the target, not the focused window")
-        XCTAssertFalse(rig.server.clientByIdAll(1)!.isfloating)
+        XCTAssertTrue(rig.server.clientByWindowID(2)!.isfloating, "the target, not the focused window")
+        XCTAssertFalse(rig.server.clientByWindowID(1)!.isfloating)
         XCTAssertEqual(query("dispatch killclient client,99"), #"{"error":"no client found"}"#)
         XCTAssertEqual(query("dispatch frobnicate,1"), #"{"error":"unknown function"}"#)
     }
 
     func testDispatchTargetsAParkedMemberOnlyForFocusid() throws {
-        rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, rig.server.clientByIdAll(1)!)
-        let parked = [1, 2].compactMap { rig.server.clientByIdAll($0) }.first { rig.server.clientIsParked($0) }!
-        XCTAssertEqual(query("dispatch togglefloating client,\(parked.id)"), #"{"error":"no client found"}"#)
-        XCTAssertEqual(query("dispatch focusid client,\(parked.id)"), #"{"success":true}"#)
+        rig.server.clientGroupJoin(rig.server.clientByWindowID(2)!, rig.server.clientByWindowID(1)!)
+        let parked = [1, 2].compactMap { rig.server.clientByWindowID($0) }.first { rig.server.clientIsParked($0) }!
+        XCTAssertEqual(query("dispatch togglefloating client,\(parked.windowID)"), #"{"error":"no client found"}"#)
+        XCTAssertEqual(query("dispatch focusid client,\(parked.windowID)"), #"{"success":true}"#)
         XCTAssertEqual(query("dispatch focusdir,sideways"), #"{"success":true}"#)
     }
 

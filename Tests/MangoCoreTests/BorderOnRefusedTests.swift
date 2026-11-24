@@ -18,7 +18,7 @@ final class BorderOnRefusedTests: MangoTestCase {
         let fake = r.server.system as! FakeWindowSystem
         for (id, _) in min {
             let spec = fake.shownBorderSpecs.first { $0.id == id }
-            XCTAssertEqual(spec?.frame, r.app.frames[id], "\(layout) id \(id) anim \(animations): border \(String(describing: spec?.frame)) window \(String(describing: r.app.frames[id])) tile \(String(describing: r.server.clientByIdAll(id)?.geom))", file: file, line: line)
+            XCTAssertEqual(spec?.frame, r.app.frames[id], "\(layout) id \(id) anim \(animations): border \(String(describing: spec?.frame)) window \(String(describing: r.app.frames[id])) tile \(String(describing: r.server.clientByWindowID(id)?.geom))", file: file, line: line)
         }
     }
 

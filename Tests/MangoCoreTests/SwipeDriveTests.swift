@@ -59,7 +59,7 @@ final class SwipeDriveTests: MangoTestCase {
     func testTheTransitionFollowsTheFingersInAStraightLine() {
         let r = rig()
         begin(r)
-        let c = r.server.clientByIdAll(2)!
+        let c = r.server.clientByWindowID(2)!
         move(r, 20, 0, 0)
         let start = c.animation.current   // wholly off the monitor at first: hidden, not written
         move(r, 134, 0, 10)   // axis 154: half of the 300 from the base at 4
@@ -94,7 +94,7 @@ final class SwipeDriveTests: MangoTestCase {
 
     func testPastHalfWayItFinishesAtOnceWithAnimationsOff() {
         let r = rig()
-        let c = r.server.clientByIdAll(2)!
+        let c = r.server.clientByWindowID(2)!
         begin(r)
         slowly(r, to: 200)
         end(r)
@@ -105,7 +105,7 @@ final class SwipeDriveTests: MangoTestCase {
     func testWithAnimationsOnTheRestRunsFromWhereItIs() {
         let r = rig()
         r.server.config.animations = true
-        let c = r.server.clientByIdAll(2)!
+        let c = r.server.clientByWindowID(2)!
         begin(r)
         slowly(r, to: 200)
         let at = r.app.frames[2]!
@@ -148,7 +148,7 @@ final class SwipeDriveTests: MangoTestCase {
 
     func testADragMovesTheWindowWithTheFingers() {
         let r = rig("moveresize", UInt32(ALLDIR), args: ["curmove"])
-        let c = r.server.clientByIdAll(1)!
+        let c = r.server.clientByWindowID(1)!
         _ = r.server.dispatch(Dispatch(name: "togglefloating"), target: c)
         r.server.clientFocus(c, true)
         r.settle(0.2)
@@ -169,7 +169,7 @@ final class SwipeDriveTests: MangoTestCase {
     func testADragWithNoDistanceDoesNotMove() {
         let r = rig("moveresize", UInt32(ALLDIR), args: ["curmove"])
         r.server.config.gestureSwipeDistance = 0
-        let c = r.server.clientByIdAll(1)!
+        let c = r.server.clientByWindowID(1)!
         _ = r.server.dispatch(Dispatch(name: "togglefloating"), target: c)
         r.settle(0.2)
         let before = c.frame
@@ -184,19 +184,19 @@ final class SwipeDriveTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .scroller
         r.map(1); r.map(2); r.map(3)
-        r.server.clientFocus(r.server.clientByIdAll(2), true)
+        r.server.clientFocus(r.server.clientByWindowID(2), true)
         r.arrange()
         r.settle(0.2)
         r.server.config.gestureBindings = [GestureBinding(mods: [], motion: UInt32(ALLDIR), fingersCount: 4,
                                                           dispatch: Dispatch(name: "focusdir", args: ["right"]))]
-        let sel = r.monitor.sel?.id
+        let sel = r.monitor.sel?.windowID
         begin(r)
         move(r, -20, 0, 0)
         XCTAssertTrue(r.server.swipeDrive.pan)
         XCTAssertTrue(r.server.gestureDriveActive, "mango freezes for a pan too")
         move(r, -150, 0, 1000)
         end(r)
-        XCTAssertNotEqual(r.monitor.sel?.id, sel, "the window panned to the middle")
+        XCTAssertNotEqual(r.monitor.sel?.windowID, sel, "the window panned to the middle")
         XCTAssertFalse(r.server.gestureDriveActive)
     }
 }

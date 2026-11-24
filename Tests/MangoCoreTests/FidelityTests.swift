@@ -13,7 +13,7 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1)
         let b = r.map(2)
         r.server.clientFocus(a, true)
-        r.server.mac.windowFocused(id: b.id)
+        r.server.mac.windowFocused(id: b.windowID)
         XCTAssertTrue(r.server.focused === b)
         XCTAssertFalse(b.isurgent)
     }
@@ -30,10 +30,10 @@ final class FidelityTests: MangoTestCase {
         _ = r.server.dispatch(Dispatch(name: "focusdir", args: ["right"]))
         let fake = r.server.system as! FakeWindowSystem
         XCTAssertEqual(fake.warps.last, r.server.selectedMonitor.ovCards[f.id]?.center, "warp_cursor: to the card")
-        r.server.mac.windowFocused(id: f.id)
+        r.server.mac.windowFocused(id: f.windowID)
         XCTAssertTrue(r.server.anyOverview, "the overview stays")
         let other = r.server.clients.first { $0 !== f }!
-        r.server.mac.windowFocused(id: other.id)
+        r.server.mac.windowFocused(id: other.windowID)
         XCTAssertFalse(r.server.anyOverview, "another window is the one chosen")
         XCTAssertTrue(r.server.focused === other)
     }
@@ -43,9 +43,9 @@ final class FidelityTests: MangoTestCase {
         let a = r.map(1), b = r.map(2)
         a.ignoreMinimize = true
         r.server.clientFocus(a, true)
-        r.server.mac.windowReacquired(id: a.id, element: r.app.element(for: a.id),
+        r.server.mac.windowReacquired(id: a.windowID, element: r.app.element(for: a.windowID),
                                       state: ReacquiredState(frame: nil, minimized: true, fullscreen: false, appHidden: false))
-        XCTAssertNil(r.server.clientByIdAll(a.id), "away in the Dock: unmapped")
-        XCTAssertEqual(r.monitor.sel?.id, b.id, "the next window is focused")
+        XCTAssertNil(r.server.clientByWindowID(a.windowID), "away in the Dock: unmapped")
+        XCTAssertEqual(r.monitor.sel?.windowID, b.windowID, "the next window is focused")
     }
 }

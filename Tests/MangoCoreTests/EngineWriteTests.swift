@@ -14,12 +14,12 @@ final class EngineWriteTests: MangoTestCase {
         let tile = shown.frame
         _ = r.server.focusStack(Arg(i: 1))
         r.arrange()
-        XCTAssertEqual(r.app.frames[hidden.id], tile, "the window coming back is written")
+        XCTAssertEqual(r.app.frames[hidden.windowID], tile, "the window coming back is written")
         XCTAssertFalse(shown.parked, "the one leaving stays till its app has answered")
-        XCTAssertEqual(r.app.frames[shown.id], tile)
+        XCTAssertEqual(r.app.frames[shown.windowID], tile)
         r.settle()
         XCTAssertTrue(shown.parked, "and is parked then")
-        XCTAssertFalse(r.screen.frame.intersects(r.app.frames[shown.id]!.insetBy(dx: 1, dy: 1)))
+        XCTAssertFalse(r.screen.frame.intersects(r.app.frames[shown.windowID]!.insetBy(dx: 1, dy: 1)))
         XCTAssertFalse(hidden.parked)
     }
 
@@ -78,7 +78,7 @@ final class EngineWriteTests: MangoTestCase {
         r.window(2, tags: 1 << 1)
         r.arrange()
         r.settle()
-        XCTAssertTrue(r.server.clientByIdAll(2)!.parked)
+        XCTAssertTrue(r.server.clientByWindowID(2)!.parked)
         r.app.writes.removeAll()
         r.server.cleanup()
         XCTAssertEqual(r.app.writes.map(\.id), [2], "only the hidden window")
@@ -93,7 +93,7 @@ final class EngineWriteTests: MangoTestCase {
         r.settle()
         XCTAssertTrue(c.parked)
         r.server.mac.appHidden(pid: c.pid, hidden: true)
-        XCTAssertNil(r.server.clientByIdAll(2), "away")
+        XCTAssertNil(r.server.clientByWindowID(2), "away")
         XCTAssertFalse(r.screen.workArea.contains(r.app.frames[2]!), "still in the corner")
         r.app.writes.removeAll()
         r.server.cleanup()
@@ -119,8 +119,8 @@ final class EngineWriteTests: MangoTestCase {
         r.arrange()
         r.settle()
         for c in [a, b] {
-            XCTAssertEqual(r.app.frames[c.id], c.geom, "the window is where the layout put it")
-            XCTAssertEqual(c.frame, r.app.frames[c.id], "and mango knows it")
+            XCTAssertEqual(r.app.frames[c.windowID], c.geom, "the window is where the layout put it")
+            XCTAssertEqual(c.frame, r.app.frames[c.windowID], "and mango knows it")
             XCTAssertTrue(r.screen.workArea.contains(c.frame))
         }
         XCTAssertFalse(a.frame.intersects(b.frame.insetBy(dx: 1, dy: 1)))
@@ -222,8 +222,8 @@ final class EngineWriteTests: MangoTestCase {
         let off = r.server.clientsAll.filter { !$0.geom.intersects(r.screen.frame) }
         XCTAssertFalse(off.isEmpty, "columns beyond the monitor")
         for c in off {
-            XCTAssertTrue(c.isClipToHide, "\(c.id)")
-            XCTAssertTrue(c.parked, "\(c.id)")
+            XCTAssertTrue(c.isClipToHide, "\(c.windowID)")
+            XCTAssertTrue(c.parked, "\(c.windowID)")
         }
         XCTAssertTrue(r.server.clientsAll.filter { $0.geom.intersects(r.screen.frame) }.allSatisfy { !$0.parked })
     }
@@ -240,8 +240,8 @@ final class EngineWriteTests: MangoTestCase {
         let partly = r.server.clientsAll.filter { $0.geom.intersects(sf) && !sf.contains($0.geom) }
         XCTAssertFalse(partly.isEmpty, "a column across the monitor's edge")
         for c in partly {
-            XCTAssertFalse(c.parked, "\(c.id): no monitor beyond the edge, drawn whole as mango shows it")
-            XCTAssertEqual(r.app.frames[c.id]?.size, c.tile.size, "\(c.id): its own size")
+            XCTAssertFalse(c.parked, "\(c.windowID): no monitor beyond the edge, drawn whole as mango shows it")
+            XCTAssertEqual(r.app.frames[c.windowID]?.size, c.tile.size, "\(c.windowID): its own size")
         }
 
         let edge = partly[0]
@@ -252,12 +252,12 @@ final class EngineWriteTests: MangoTestCase {
         r.server.arrangeAll(false)
         r.settle()
         XCTAssertTrue(edge.parked, "the part beyond the edge would be on the external monitor")
-        let plate = (r.server.system as! FakeWindowSystem).plates[edge.id]
+        let plate = (r.server.system as! FakeWindowSystem).plates[edge.windowID]
         XCTAssertEqual(plate, edge.tile.intersection(sf), "a plate where mango shows the clipped part")
         r.server.rebuildMonitors(screens: [r.screen])
         r.server.arrangeAll(false)
         r.settle()
-        XCTAssertNil((r.server.system as! FakeWindowSystem).plates[edge.id], "no other monitor: the window itself again")
+        XCTAssertNil((r.server.system as! FakeWindowSystem).plates[edge.windowID], "no other monitor: the window itself again")
         XCTAssertFalse(edge.parked)
         XCTAssertTrue(r.server.clientsAll.filter { sf.contains($0.geom) }.allSatisfy { !$0.parked })
     }
@@ -275,9 +275,9 @@ final class EngineWriteTests: MangoTestCase {
         r.arrange()
         r.settle()
         let specs = (r.server.system as! FakeWindowSystem).borderSpecs
-        XCTAssertFalse(specs.filter { $0.id != f.id }.isEmpty)
-        XCTAssertTrue(specs.filter { $0.id != f.id }.allSatisfy { $0.clip == r.screen.frame }, "the scroller's columns")
-        XCTAssertNil(specs.first { $0.id == f.id }?.clip, "a floating window is not clipped")
+        XCTAssertFalse(specs.filter { $0.id != f.windowID }.isEmpty)
+        XCTAssertTrue(specs.filter { $0.id != f.windowID }.allSatisfy { $0.clip == r.screen.frame }, "the scroller's columns")
+        XCTAssertNil(specs.first { $0.id == f.windowID }?.clip, "a floating window is not clipped")
     }
 
     /// Till the app has answered a write to a larger tile, the border shown stays around the window where
@@ -294,10 +294,10 @@ final class EngineWriteTests: MangoTestCase {
         r.frame()
 
         XCTAssertFalse(c.mac.placed.inSync, "written, not yet answered")
-        XCTAssertEqual(fake.shownBorderSpecs.first { $0.id == c.id }?.frame, CGRect(x: 50, y: 60, width: 300, height: 400))
+        XCTAssertEqual(fake.shownBorderSpecs.first { $0.id == c.windowID }?.frame, CGRect(x: 50, y: 60, width: 300, height: 400))
         let drawn = fake.bordersDrawn
         r.settle()
-        XCTAssertEqual(fake.shownBorderSpecs.first { $0.id == c.id }?.frame, c.tile, "answered: around its tile")
+        XCTAssertEqual(fake.shownBorderSpecs.first { $0.id == c.windowID }?.frame, c.tile, "answered: around its tile")
         XCTAssertEqual(fake.bordersDrawn, drawn, "shown again by the port: mango's borders are unchanged by an answer")
     }
 
@@ -310,7 +310,7 @@ final class EngineWriteTests: MangoTestCase {
         let c = r.window(1, frame: CGRect(x: 50, y: 60, width: 300, height: 400))
         r.server.arrange(r.monitor, false, false)
         r.frame()
-        let spec = (r.server.system as! FakeWindowSystem).borderSpecs.first { $0.id == c.id }
+        let spec = (r.server.system as! FakeWindowSystem).borderSpecs.first { $0.id == c.windowID }
         XCTAssertEqual(spec?.frame, r.app.frames[1], "around the window where it is now")
         XCTAssertEqual(spec?.frame, c.tile)
     }
@@ -329,7 +329,7 @@ final class EngineWriteTests: MangoTestCase {
         let after = r.app.writes.dropFirst(n)
         XCTAssertEqual(after.filter { $0.id == 1 }.count, 1)
         XCTAssertEqual(after.filter { $0.id == 2 }.count, 1)
-        XCTAssertEqual(r.app.frames[2], r.server.clientByIdAll(2)!.tile)
+        XCTAssertEqual(r.app.frames[2], r.server.clientByWindowID(2)!.tile)
     }
 
     func testAHiddenWindowThatComesBackIntoViewIsParkedAgainAtMostThreeTimes() {
@@ -344,7 +344,7 @@ final class EngineWriteTests: MangoTestCase {
         r.app.movesBackTo[2] = nil
         _ = r.server.dispatch(Dispatch(name: "view", args: ["2"]))
         r.settle()
-        XCTAssertFalse(r.server.clientByIdAll(2)!.parked)
+        XCTAssertFalse(r.server.clientByWindowID(2)!.parked)
         _ = r.server.dispatch(Dispatch(name: "view", args: ["1"]))
         r.settle()
         XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame), "hidden again: parked again")
@@ -438,7 +438,7 @@ final class ScratchpadPlaceTests: MangoTestCase {
         r.window(1)
         r.window(2)
         r.arrange()
-        r.server.clientFocus(r.server.clientByIdAll(2)!, true)
+        r.server.clientFocus(r.server.clientByWindowID(2)!, true)
         _ = r.server.dispatch(Dispatch(name: "minimized", args: []))
         return r
     }
@@ -447,7 +447,7 @@ final class ScratchpadPlaceTests: MangoTestCase {
 
     func testRestoringAMinimizedWindowForgetsItsPlace() {
         let r = rig()
-        let c = r.server.clientByIdAll(2)!
+        let c = r.server.clientByWindowID(2)!
         c.iscustomsize = true
         _ = r.server.dispatch(Dispatch(name: "restore_minimized", args: []))
         XCTAssertFalse(c.isInScratchpad)

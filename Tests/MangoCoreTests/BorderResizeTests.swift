@@ -44,18 +44,18 @@ final class BorderResizeTests: MangoTestCase {
         let (r, a, _) = sideBySide()
         let s = r.server
         XCTAssertEqual(s.clientResizeEdgeAt(a, nil, 502, 400), .right, "on the border")
-        XCTAssertEqual(s.clientResizeEdgeAt(a, a.id, 496, 400), .right, "inside the window")
-        XCTAssertEqual(s.clientResizeEdgeAt(a, a.id, 400, 400), [], "away from the edge")
-        XCTAssertEqual(s.clientResizeEdgeAt(a, a.id, 98, 400), [], "the left edge faces no window")
-        XCTAssertEqual(s.clientResizeEdgeAt(a, a.id, 496, 98), .right, "a corner gives only the shared edge")
+        XCTAssertEqual(s.clientResizeEdgeAt(a, a.windowID, 496, 400), .right, "inside the window")
+        XCTAssertEqual(s.clientResizeEdgeAt(a, a.windowID, 400, 400), [], "away from the edge")
+        XCTAssertEqual(s.clientResizeEdgeAt(a, a.windowID, 98, 400), [], "the left edge faces no window")
+        XCTAssertEqual(s.clientResizeEdgeAt(a, a.windowID, 496, 98), .right, "a corner gives only the shared edge")
     }
 
     func testAFloatingWindowHasEveryEdgeAndCorner() {
         let (r, c) = floating()
         let s = r.server
         XCTAssertEqual(s.clientResizeEdgeAt(c, nil, 97, 97), [.left, .top])
-        XCTAssertEqual(s.clientResizeEdgeAt(c, c.id, 498, 398), [.right, .bottom])
-        XCTAssertEqual(s.clientResizeEdgeAt(c, c.id, 300, 98), [.top])
+        XCTAssertEqual(s.clientResizeEdgeAt(c, c.windowID, 498, 398), [.right, .bottom])
+        XCTAssertEqual(s.clientResizeEdgeAt(c, c.windowID, 300, 98), [.top])
         XCTAssertEqual(s.resizeCursorName([.left, .top], true), "nw-resize")
         XCTAssertEqual(s.resizeCursorName([.right], false), "col-resize")
         XCTAssertEqual(s.resizeCursorName([.bottom], false), "row-resize")
@@ -69,10 +69,10 @@ final class BorderResizeTests: MangoTestCase {
     func testNoStripInTheOverviewOrFullscreen() {
         let (r, a, _) = sideBySide()
         a.isfullscreen = true
-        XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.id, 496, 400), [])
+        XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.windowID, 496, 400), [])
         a.isfullscreen = false
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
-        XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.id, 496, 400), [])
+        XCTAssertEqual(r.server.clientResizeEdgeAt(a, a.windowID, 496, 400), [])
     }
 
     func testHoverSetsTheCursorAndLeavingGivesItBack() {
@@ -90,7 +90,7 @@ final class BorderResizeTests: MangoTestCase {
         r.server.config.sloppyfocus = true
         r.server.clientFocus(b, true)
         motion(r, CGPoint(x: 496, y: 400), time: 1)
-        XCTAssertEqual(r.monitor.sel?.id, a.id)
+        XCTAssertEqual(r.monitor.sel?.windowID, a.windowID)
         XCTAssertEqual(r.server.hoverResizeEdge, .right)
         XCTAssertNil(r.server.nodeAtPoint(CGPoint(x: 505, y: 400)), "the gap is no window's")
     }
@@ -170,7 +170,7 @@ final class BorderResizeTests: MangoTestCase {
         let (r, c) = floating()
         _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
         XCTAssertFalse(c.isfloating)
-        let saved = r.server.mac.memory.currentLayout(r.server).windows.first { $0.id == c.id }
+        let saved = r.server.mac.memory.currentLayout(r.server).windows.first { $0.id == c.windowID }
         XCTAssertEqual(saved?.isfloating, true)
     }
 

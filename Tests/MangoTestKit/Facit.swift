@@ -184,7 +184,7 @@ extension TestMango {
                 mango.scroll(vertical: rest == "up" || rest == "down", delta: rest == "up" || rest == "left" ? -15 : 15)
             case "get":
                 let words = rest.split(separator: " ").map { w in
-                    w.hasPrefix("@") ? "\(mango.client(String(w.dropFirst())).id)" : String(w)
+                    w.hasPrefix("@") ? "\(mango.client(String(w.dropFirst())).windowID)" : String(w)
                 }
                 gets.append((line, Facit.answer(mango.json(mango.mmsg(["get"] + words)))))
             case "check":
@@ -197,7 +197,7 @@ extension TestMango {
                 break
             }
             // The facit client goes when mango asks it to close (xdg_toplevel close).
-            for id in mango.wlroots.closed { if let c = mango.server.clientByIdAll(id) { mango.server.handleClientUnmap(c) } }
+            for id in mango.wlroots.closed { if let c = mango.server.clientByWindowID(id) { mango.server.handleClientUnmap(c) } }
             mango.wlroots.closed = []
             mango.frame()
         }
