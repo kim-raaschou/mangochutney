@@ -181,16 +181,6 @@ public final class MangoServer {
         configErrorNagDestroy()
     }
 
-    package func clientNoRadiusActive(_ c: Client) -> Bool {
-        guard let m = c.mon else { return false }
-
-        if c.isfullscreen || (config.noRadiusWhenSingle && m.visibleTilingClients == 1) {
-            return true
-        }
-
-        return config.monocleNoRadius && ISFAKETILED(c) && !m.isoverview && isMonocleLayout(m)
-    }
-
     /// Not in mango: the VISIBLEON filter as a list.
     func visibleClients(_ m: Monitor) -> [Client] {
         clients.filter { VISIBLEON($0, m) }
@@ -228,6 +218,7 @@ public final class MangoServer {
     }
 
 
+    // not in mango: server.scene_geometry, wlr_output_layout_get_box over the monitors' boxes
     var sceneGeometry: CGRect { monitors.map(\.m).reduce(CGRect.null) { $0.union($1) } }
 
     // not in mango: returns the frame instead of setting c->geom

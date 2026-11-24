@@ -29,6 +29,16 @@ package extension MangoServer {
         c.animationTypeOpen ?? config.animationTypeOpen
     }
 
+    func clientNoRadiusActive(_ c: Client) -> Bool {
+        guard let m = c.mon else { return false }
+
+        if c.isfullscreen || (config.noRadiusWhenSingle && m.visibleTilingClients == 1) {
+            return true
+        }
+
+        return config.monocleNoRadius && ISFAKETILED(c) && !m.isoverview && isMonocleLayout(m)
+    }
+
     func clientAnimationsEnabled(_ c: Client?) -> Bool {
         if let c, c.noAnimation { return false }
         if config.animations { return true }
@@ -329,7 +339,7 @@ package extension MangoServer {
             return
         }
 
-        let cursor = system.pointer
+        let cursor = system.pointer   // not in mango: the port's cursor
         let relX = Double(cursor.x - c.geom.minX) - Double(bw)
         let relY = Double(cursor.y - c.geom.minY) - Double(bw)
 
@@ -434,10 +444,10 @@ package extension MangoServer {
         dropArea(dropBox.x, dropBox.y, dropBox.width, dropBox.height)
     }
 
-    func clientSetClip(_ c: Client, _ factor: Double) {
+    func clientSetClip(_ c: Client, _ factor: Float) {
         if c.iskilling { return }
 
-        // not in mango: the overview's card tree (ov_card_tree) is the port's pictures
+        // not in mango: the overview's card tree (ov_card_tree) and overview_scene_surface are the port's pictures
 
         let offsets = computeEdgeOffsets(c)
 
@@ -486,7 +496,6 @@ package extension MangoServer {
 
         system.sceneSubsurfaceTreeSetClip(c, clipBox)   // not in mango: the port's wlr_scene_subsurface_tree_set_clip
         // not in mango: buffer_set_effect (no buffer effects on another app's window)
-        _ = factor
     }
 
     func clientAnimationNextTick(_ c: Client) {
@@ -506,7 +515,7 @@ package extension MangoServer {
         c.animation.current = CGRect(x: x, y: y, width: width, height: height)
 
         c.isPendingOpenAnimation = false
-        clientSetClip(c, Double(factor))
+        clientSetClip(c, Float(factor))
 
         if animationPassed >= 1.0 {
             c.animation.action = .move
