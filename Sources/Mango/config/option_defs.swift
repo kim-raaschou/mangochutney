@@ -293,9 +293,9 @@ extension ParserState {
             } else if key == "no_force_center" {
                 rule.noForceCenter = flag(val)
             } else if key == "width" {
-                rule.width = ValueParse.atof(val)
+                rule.width = Float(ValueParse.atof(val))
             } else if key == "height" {
-                rule.height = ValueParse.atof(val)
+                rule.height = Float(ValueParse.atof(val))
             } else if key == "no_border" {
                 rule.noBorder = flag(val)
             } else if key == "no_shadow" {
@@ -315,11 +315,11 @@ extension ParserState {
             } else if key == "is_global" {
                 rule.isglobal = flag(val)
             } else if key == "scroller_proportion_single" {
-                rule.scrollerProportionSingle = ValueParse.atof(val)
+                rule.scrollerProportionSingle = Float(ValueParse.atof(val))
             } else if key == "unfocused_opacity" {
-                rule.unfocusedOpacity = ValueParse.atof(val)
+                rule.unfocusedOpacity = Float(ValueParse.atof(val))
             } else if key == "focused_opacity" {
-                rule.focusedOpacity = ValueParse.atof(val)
+                rule.focusedOpacity = Float(ValueParse.atof(val))
             } else if key == "is_overlay" {
                 rule.isoverlay = flag(val)
             } else if key == "ignore_maximize" {
@@ -341,7 +341,7 @@ extension ParserState {
             } else if key == "no_blur" {
                 rule.noBlur = flag(val)
             } else if key == "scroller_proportion" {
-                rule.scrollerProportion = ValueParse.atof(val)
+                rule.scrollerProportion = Float(ValueParse.atof(val))
             } else if key == "is_fullscreen" {
                 rule.isfullscreen = flag(val)
             } else if key == "is_fake_fullscreen" {

@@ -97,8 +97,8 @@ public final class Client {
     package var enableDropAreaDraw = false
     package var dropDirection: Int32 = UNDIR
     package var dragTileFloatBackupGeom: CGRect = .zero
-    public var gridColPer: Float = 0
-    public var gridRowPer: Float = 0
+    public var gridColPer: Float = 1.0
+    public var gridRowPer: Float = 1.0
     var oldGridColPer: Float = 0
     var oldGridRowPer: Float = 0
     public var gridColIdx: Int32 = 0
@@ -216,6 +216,7 @@ package extension MangoServer {
     func clientIsFloatType(_ c: Client) -> Bool { c.platform.isFloatType }
     func clientSetSizeBound(_ c: Client) {
         let state = system.clientSizeHints(c)   // not in mango: the port's toplevel->current min and max size
+        // not in mango: the inner size is compared signed, not as uint32_t
 
         if c.geom.width - 2 * c.bw < state.minWidth && state.minWidth > 0 {
             c.geom.size.width = state.minWidth + 2 * c.bw
@@ -347,7 +348,7 @@ package extension MangoServer {
     }
 
     func findClientByDirection(_ tc: Client, _ arg: Arg, _ findfloating: Bool) -> Client? {
-        let t = directionGeom(tc)
+        let t = directionGeom(tc)   // not in mango: the card in the overview's pictures, else c->geom
         let tl = Int64(t.minX.rounded()), tr = Int64(t.maxX.rounded()), tt = Int64(t.minY.rounded()), tb = Int64(t.maxY.rounded())
         let tcx = tl + (tr - tl) / 2, tcy = tt + (tb - tt) / 2
         var best: Client?, bestSame: Client?
@@ -360,7 +361,7 @@ package extension MangoServer {
                 if !VISIBLEON(c, cm) || c.isunglobal { continue }
                 if !config.focusCrossMonitor && cm !== tc.mon { continue }
                 if c.tags & cm.tagset[cm.seltags] == 0 && !c.isglobal { continue }
-                let g = directionGeom(c)
+                let g = directionGeom(c)   // not in mango: as tc above
                 let l = Int64(g.minX.rounded()), r = Int64(g.maxX.rounded()), tp = Int64(g.minY.rounded()), b = Int64(g.maxY.rounded())
                 let cx = l + (r - l) / 2, cy = tp + (b - tp) / 2
                 var main: Int64 = 0, orth: Int64 = 0
@@ -420,7 +421,7 @@ package extension MangoServer {
     package func clientFocusTop(_ m: Monitor?) -> Client? {
         guard let m else { return nil }
         for c in focusStack {
-            if !c.iskilling, !c.isunglobal, VISIBLEON(c, m) { return c }
+            if !c.iskilling, !c.isunglobal, VISIBLEON(c, m) { return c }   // not in mango: every Client is a mapped window
         }
         return nil
     }
@@ -448,9 +449,16 @@ package extension MangoServer {
         return config.focuscolor
     }
 
+    func isSingleBitSet(_ x: UInt32) -> Bool { x != 0 && x & (x &- 1) == 0 }
+
     func clientOnlyInOneTag(_ c: Client) -> Bool {
         if c.tags & TAG0_MASK != 0 { return true }
-        return (c.tags & TAGMASK).nonzeroBitCount == 1
+        let masked = c.tags & TAGMASK
+        if isSingleBitSet(masked) {
+            return true
+        } else {
+            return false
+        }
     }
 
     func clientIsInSameStack(_ sc: Client, _ tc: Client, _ fc: Client?) -> Bool {
@@ -479,7 +487,7 @@ package extension MangoServer {
         case .centerTile:
             if tc.ismaster != sc.ismaster { return false }
             if let fc, fc.ismaster == sc.ismaster { return false }
-            return directionGeom(sc).minX == directionGeom(tc).minX
+            return directionGeom(sc).minX == directionGeom(tc).minX   // not in mango: the overview's cards, else geom.x
         default:
             return false
         }
@@ -579,10 +587,10 @@ package extension MangoServer {
         if let v = r.isoverlay { c.isoverlay = v }
         if let v = r.ignoreMinimize { c.ignoreMinimize = v }
         if let v = r.isunglobal { c.isunglobal = v }
-        if let v = r.scrollerProportion, v > 0 { c.scrollerProportion = Float(v); c.iscustomScrollerProportion = true }
-        if let v = r.scrollerProportionSingle, v > 0 { c.scrollerProportionSingle = Float(v); c.iscustomScrollerProportionSingle = true }
+        if let v = r.scrollerProportion, v > 0 { c.scrollerProportion = v }
+        if let v = r.scrollerProportionSingle, v > 0 { c.scrollerProportionSingle = v }
         if let v = r.animationTypeOpen { c.animationTypeOpen = v }
-        // not in mango: the rule fields MangoCompat lists as impossible on macOS are not applied
+        // not in mango: the rule fields with no Client field are not applied (docs/afvigelser.md §5)
     }
 
     func setFloatMalposition(_ tc: Client) {
@@ -620,6 +628,7 @@ package extension MangoServer {
     }
 
     package func checkMatchTagFloatingRule(_ c: Client, _ mon: Monitor) {
+        // not in mango: no swallowing (c->swallowing)
         if c.tags != 0 && !c.isfloating, mon.pertag.openAsFloating[getTagsFirstTagNum(c.tags)] {
             c.isfloating = true
         }
@@ -636,6 +645,7 @@ package extension MangoServer {
         var mon: Monitor = parent?.mon ?? selectedMonitor
 
         c.isfloating = clientIsFloatType(c) || parent != nil
+        // not in mango: no client_update_geometry (X11)
 
         for i in config.windowRules.indices {
             let r = config.windowRules[i]
@@ -658,9 +668,15 @@ package extension MangoServer {
 
             if c.isnamedscratchpad { c.isfloating = true }
 
+            if (r.scrollerProportion ?? 0) > 0.0 { c.iscustomScrollerProportion = true }
+
+            if (r.scrollerProportionSingle ?? 0) > 0.0 { c.iscustomScrollerProportionSingle = true }
+
+            // set geometry of floating client
+
             let full = mon.m
-            if let w = r.width, w > 1 { c.floatGeom.size.width = CGFloat(w) } else if let w = r.width, w > 0 { c.floatGeom.size.width = (full.width * CGFloat(w)).rounded() }
-            if let h = r.height, h > 1 { c.floatGeom.size.height = CGFloat(h) } else if let h = r.height, h > 0 { c.floatGeom.size.height = (full.height * CGFloat(h)).rounded() }
+            if let w = r.width, w > 1 { c.floatGeom.size.width = CGFloat(Int32(w)) } else if let w = r.width, w > 0 && w <= 1 { c.floatGeom.size.width = CGFloat((Float(full.width) * w).rounded()) }
+            if let h = r.height, h > 1 { c.floatGeom.size.height = CGFloat(Int32(h)) } else if let h = r.height, h > 0 && h <= 1 { c.floatGeom.size.height = CGFloat((Float(full.height) * h).rounded()) }
             if (r.width ?? 0) > 0 || (r.height ?? 0) > 0 { c.iscustomsize = true }
 
             let ox = r.offsetx ?? 0, oy = r.offsety ?? 0
@@ -698,8 +714,11 @@ package extension MangoServer {
 
         if !mapped { return (mon, newtags) }
 
+        // not in mango: no swallow rule (c->pid, client_find_terminal)
+
         let fullscreenStateBackup = c.isfullscreen   // not in mango: no client_wants_fullscreen (no xdg request)
 
+        // not in mango: no X11 popup (client_is_x11_popup)
         let shouldInitGetFocus = !c.isopensilent
             && (!c.istagsilent || newtags == 0 || newtags & mon.tagset[mon.seltags] != 0)
         if !shouldInitGetFocus {
@@ -742,6 +761,8 @@ package extension MangoServer {
         }
 
         if c.isnamedscratchpad { applyNamedScratchpad(c) }
+
+        // not in mango: the overlay rule's layer is the port's (clientTargetLayer, raised in arrange)
         return (mon, newtags)
     }
 
@@ -759,12 +780,12 @@ package extension MangoServer {
         let cw = c.geom.width - 2 * cbw
         let ch = c.geom.height - 2 * cbw
 
-        guard let m = c.mon, !c.iskilling else { return }
+        guard let m = c.mon, !c.iskilling else { return }   // not in mango: every Client is a mapped window
 
         if !c.isfloating || !config.enableFloatingSnap { return }
 
         for tc in clients {
-            if tc.isfloating && !tc.iskilling && VISIBLEON(tc, m) {
+            if tc.isfloating && !tc.iskilling && VISIBLEON(tc, m) {   // not in mango: every Client is a mapped window
 
                 tcbw = !renderBorder || tc.fakeNoBorder ? tc.bw : 0
                 tcx = tc.geom.minX + tcbw
@@ -857,7 +878,9 @@ package extension MangoServer {
     }
 
     package func handleClientMap(_ c: Client) {
-        guard clientByIdAll(c.id) == nil else { return }
+        guard clientByIdAll(c.id) == nil else { return }   // not in mango: the port may report a window twice
+        // not in mango: no generate_client_id (the id is the port's window id); no unmanaged clients, X11
+        // popups or client_should_global (X11)
         c.bw = CGFloat(config.borderpx)
 
         // init client geom
@@ -868,10 +891,12 @@ package extension MangoServer {
         // not in mango: no split indicator, group or tab bar, dim, drop area, border, shadow, blur or
         // shield nodes (the port draws bars and borders)
         clientAddJumpLabelNode(c)
-        c.mon = nil
+        c.mon = nil   // not in mango: the initial commit's client_set_monitor(c, NULL, 0, true)
         clientInsertTilingOrder(c)
         focusStack.insert(c, at: 0)
         clientSetRules(c)
+        // not in mango: no client_set_tiled (xdg state), buffer effects or client_update_border_color (the port
+        // draws the borders)
 
         if let cm = c.mon, cm.isoverview {
             overviewBackupSurface(c)
@@ -885,7 +910,7 @@ package extension MangoServer {
 
     package func handleClientUnmap(_ c: Client) {
         let id = c.id
-        guard clientByIdAll(id) === c else { return }
+        guard clientByIdAll(id) === c else { return }   // not in mango: the port may report a window gone twice
         c.iskilling = true
         if c.tabPrev != nil || c.tabNext != nil { tabDetachClient(c) }
         switcherRemoveClient(c)
@@ -932,11 +957,7 @@ package extension MangoServer {
             system.showDropArea(nil, color: config.dropcolor)   // not in mango: the port's one drop area, mango's goes with the client's scene
         }
 
-        // not in mango: the pending group-bar drag lets go of it, as of drop_client (a mango bug, docs/afvigelser.md §6)
-        if c === groupBarDragClient {
-            groupBarDragPending = false
-            groupBarDragClient = nil
-        }
+        clientRemoveGroupBar(c)   // not in mango: here, not after the jump label, as the port's unmap is ordered
 
         for m in monitors {
             if m.sel === c { m.sel = nil }
@@ -972,22 +993,25 @@ package extension MangoServer {
     }
 
     package func handleClientRequestMinimize(_ c: Client, _ minimized: Bool) {
-        guard clientByIdAll(c.id) === c, c.mon != nil, !c.isminimized, !c.groupParked else { return }
-// not in mango: no client_set_minimized; the port has done the Dock's part.
+        // not in mango: clientByIdAll stands for the listener being on a live client
+        guard clientByIdAll(c.id) === c, c.mon != nil, !c.iskilling, !c.isminimized, !clientIsParked(c) else { return }
+
+        // not in mango: no client_set_minimized and no unminimize here (an isminimized client returned above);
+        // the port has done the Dock's part
         if minimized && !c.ignoreMinimize {
-            setMinimized(c)
+            if !c.isminimized { setMinimized(c) }
         }
     }
 
     package func handleClientSetTitle(_ c: Client) {
-        guard clientByIdAll(c.id) === c else { return }
+        guard clientByIdAll(c.id) === c, !c.iskilling else { return }   // not in mango: clientByIdAll stands for the listener
         drawBars()   // not in mango: client_update_group_bar_title and client_update_tab_bar_title; the port draws all bars
         titleMessageBarUpdateTitle(c)
         if let m = c.mon, c === clientFocusTop(m) { printstatus(.arrangge) }
     }
 
     package func handleClientActivationRequest(_ c: Client) {
-        guard clientByIdAll(c.id) === c else { return }
+        guard clientByIdAll(c.id) === c else { return }   // not in mango: clientByIdAll stands for c->foreign_toplevel
         if config.focusOnActivate && !c.istagsilent && c !== selectedMonitor.sel {
             if c.tags & TAG0_MASK != 0, let m = c.mon {
                 if isSpecialActive(m) {
@@ -1000,12 +1024,16 @@ package extension MangoServer {
             clientActive(c)
         } else if c !== clientFocusTop(selectedMonitor) {
             c.isurgent = true
-            updateBorders()
+            updateBorders()   // not in mango: the port draws the borders (client_update_border_color)
             printstatus(.arrangge)
         }
     }
 
-    func pendingKillClient(_ c: Client) { system.clientSendClose(c) }
+    func pendingKillClient(_ c: Client) {
+        if c.iskilling { return }
+        system.clientSendClose(c)
+    }
+
     package func clientFocus(_ c: Client?, _ lift: Bool) {
         let oldKeyboardFocusSurface = system.keyboardFocusedSurface
 
@@ -1325,7 +1353,7 @@ package extension MangoServer {
         c.isfloating = floating
         var windowSizeOutofrange = false
 
-        guard let m = c.mon, !c.iskilling else { return }
+        guard let m = c.mon, !c.iskilling else { return }   // not in mango: every Client is a mapped window
 
         var targetBox = c.geom
 
@@ -1363,7 +1391,7 @@ package extension MangoServer {
                 resize(c, targetBox, ResizeOpts(interact: false))
             }
         } else if c.isfloating && c === grabClient {
-            // not in mango: no need_float_size_reduce (no X11 size hints)
+            // not in mango: no need_float_size_reduce (mango never reads it)
         } else {
             c.isInScratchpad = false
             c.isnamedscratchpad = false
@@ -1390,7 +1418,7 @@ package extension MangoServer {
     }
 
     func clientSetFullscreen(_ c: Client, _ fullscreen: Bool, rearrange: Bool) {
-        guard let m = c.mon, !c.iskilling, c !== grabClient else { return }
+        guard let m = c.mon, !c.iskilling, c !== grabClient else { return }   // not in mango: every Client is a mapped window
 
         if m.isoverview { return }
 
@@ -1439,7 +1467,7 @@ package extension MangoServer {
     }
 
     func clientSetMaximizeScreen(_ c: Client, _ maximizescreen: Bool, rearrange: Bool) {
-        guard let m = c.mon, !c.iskilling, c !== grabClient else { return }
+        guard let m = c.mon, !c.iskilling, c !== grabClient else { return }   // not in mango: every Client is a mapped window
 
         if m.isoverview { return }
 
@@ -1528,13 +1556,13 @@ package extension MangoServer {
     }
 
     func clearFullscreenAndMaximizedState(_ m: Monitor) {
-        for fc in clients where VISIBLEON(fc, m) && (fc.isfullscreen || fc.ismaximizescreen) {
+        for fc in clients where VISIBLEON(fc, m) && ISFULLSCREEN(fc) {
             clearFullscreenFlag(fc)
         }
     }
 
     func clearFullscreenFlag(_ c: Client) {
-        guard let m = c.mon else { return }
+        guard let m = c.mon else { return }   // not in mango: mango reads c->mon unchecked
         let layout = m.pertag.ltidxs[getClientTagIdx(c)]
         if !c.isfloating && (layout.isScroller || (layout == .monocle && config.monocleTabMode)) { return }
         if c.isfullscreen { clientSetFullscreen(c, false, rearrange: true) }
@@ -1557,7 +1585,7 @@ package extension MangoServer {
     }
 
     func showScratchpad(_ c: Client) {
-        guard let m = c.mon else { return }
+        guard let m = c.mon else { return }   // not in mango: mango reads c->mon unchecked
         if c.isfullscreen || c.ismaximizescreen {
             clientPendingFullscreenState(c, false)
             clientPendingMaximizedState(c, false)
@@ -1667,7 +1695,7 @@ package extension MangoServer {
 
     func clientIsParked(_ c: Client?) -> Bool {
         guard let c else { return false }
-        return !clients.contains { $0 === c }
+        return !clients.contains { $0 === c }   // not in mango: off the client list (wl_list_empty(&c->link))
     }
 
     private func clientUnlink(_ c: Client?) {
@@ -1703,6 +1731,8 @@ package extension MangoServer {
         c.bw = w.bw
         c.isfloating = w.isfloating
         c.isurgent = w.isurgent
+        c.isInScratchpad = w.isInScratchpad
+        c.isfloatingBeforeScratchpad = w.isfloatingBeforeScratchpad
         c.tags = w.tags
         c.geom = w.geom
         c.floatGeom = w.floatGeom
@@ -1712,23 +1742,27 @@ package extension MangoServer {
         c.masterSizeWeight = w.masterSizeWeight
         c.masterMfactPer = w.masterMfactPer
         c.scrollerProportion = w.scrollerProportion
-        c.scrollerStackProportion = w.scrollerStackProportion
         c.isglobal = w.isglobal
         c.overviewBackupGeom = w.overviewBackupGeom
         c.overviewBackedUp = w.overviewBackedUp   // not in mango: a mango bug, docs/afvigelser.md §6
         c.animation.current = w.animation.current
-        c.isInScratchpad = w.isInScratchpad
-        c.isfloatingBeforeScratchpad = w.isfloatingBeforeScratchpad
+        c.scrollerStackProportion = w.scrollerStackProportion
+
         if !isGroupChangeMember { clientGroupReplace(w, c) }   // not in mango: no swallowing (is_swallow)
 
         tabReplaceClient(w, c)
 
         clientUnpark(c, w)
-        // not in mango: the group bar's focus, w's overview card and foreign toplevel are the port's side
+        // not in mango: the group bar's focus is the port's side
+
+        /* If the old window is in overview, destroy its card tree. */
+        w.mon?.ovCards[w.id] = nil   // not in mango: overview_destroy_card's card; the picture is the port's
 
         if let cm = c.mon, cm.isoverview {
             overviewBackupSurface(c)
         }
+
+        // not in mango: no group bar node to disable (the port draws the bar)
 
         w.jumpLabelNode?.setEnabled(false)
 
@@ -1922,6 +1956,10 @@ package extension MangoServer {
 
     /* Single place judging whether a window's nodes should be enabled.
      * Each flag below is owned by the mechanism that sets it; this only reads. */
+    func clientGestureDriven(_ c: Client?) -> Bool {
+        gestureDriveActive && c != nil && c?.mon === gestureDriveMon
+    }
+
     func clientShouldVisible(_ c: Client) -> Bool {
         // not in mango: no snapshot_temp_visible (no close animation)
 
@@ -1952,7 +1990,7 @@ package extension MangoServer {
             system.sceneNodeSetEnabled(c, show)   // not in mango: the port's wlr_scene_node_set_enabled
         }
 
-        let surfaceShow = !c.isSurfaceHidden
+        let surfaceShow = !c.isSurfaceHidden   // not in mango: no ov_card_tree or overview_scene_surface (the port's pictures)
 
         if c.platform.sceneSurfaceEnabled != surfaceShow {
             system.sceneSurfaceSetEnabled(c, surfaceShow)   // not in mango: the port's wlr_scene_node_set_enabled
@@ -2020,10 +2058,24 @@ package extension MangoServer {
     }
 
     @discardableResult
+    func clientRemoveGroupBar(_ c: Client) {
+        if config.groupBarHeight <= 0 { return }   // not in mango: c->group_bar, which client_add_group_bar gives at map
+        // not in mango: no group_bar_hover (the port draws the close button's hover)
+        if groupBarDragClient === c {
+            groupBarDragClient = nil
+            groupBarDragPending = false
+        }
+        // not in mango: mango_bar_decoration_destroy is the port's
+    }
+
     func clientGroupSwapFocus(_ c: Client) -> Bool {
-        guard clientIsGroupMember(c), !c.isGroupFocus,
-              let current = groupMembers(c).first(where: { $0.isGroupFocus }), let m = current.mon,
-              !m.isoverview else { return false }
+        if !clientIsGroupMember(c) || c.isGroupFocus { return false }
+
+        let head = clientGroupHead(c)
+        guard let current = clientGroupFocused(head), let m = current.mon else { return false }
+
+        if m.isoverview { return false }
+
         current.isGroupFocus = false
         c.mon = m
         clientReplace(c, current, isGroupChangeMember: true)
@@ -2055,6 +2107,7 @@ package extension MangoServer {
         }
     }
 
+    // not in mango: the port's bar gives the client and whether it is a tab, not the bar decoration
     func clientHandleDecorateClick(_ c: Client, isTab: Bool) {
         if isTab {
             tabFocusMember(c)
@@ -2109,7 +2162,6 @@ package extension MangoServer {
         return out
     }
 
-    // not in mango: the chain's prev and next fields as key paths, not offsets
     func clientGroupFocused(_ c: Client?) -> Client? {
         var it = c
         while let x = it {
@@ -2153,6 +2205,12 @@ package extension MangoServer {
         old.groupNext?.groupPrev = new
         old.groupPrev = nil
         old.groupNext = nil
-        new.isGroupFocus = old.groupParked || !clientIsGroupMember(new) ? false : old.isGroupFocus
+        if clientIsParked(old) || !clientIsGroupMember(new) {
+            new.isGroupFocus = false
+        } else {
+            new.isGroupFocus = old.isGroupFocus
+        }
+
+        // not in mango: client_group_mark_dirty (no output flush)
     }
 }

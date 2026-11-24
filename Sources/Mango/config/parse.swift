@@ -192,7 +192,7 @@ public struct ConfigWinRule: Equatable, Sendable {
     public var isfloating: Bool?
     public var isfullscreen: Bool?
     public var isfakefullscreen: Bool?
-    public var scrollerProportion: Double?
+    public var scrollerProportion: Float?
     public var animationTypeOpen: AnimationType?
     public var animationTypeClose: AnimationType?
     public var noBorder: Bool?
@@ -211,8 +211,8 @@ public struct ConfigWinRule: Equatable, Sendable {
     public var monitor: String?
     public var offsetx: Int?
     public var offsety: Int?
-    public var width: Double?
-    public var height: Double?
+    public var width: Float?
+    public var height: Float?
     public var noFocus: Bool?
     public var noFadeIn: Bool?
     public var noFadeOut: Bool?
@@ -223,9 +223,9 @@ public struct ConfigWinRule: Equatable, Sendable {
     public var noSwallow: Bool?
     public var confinePointer: Bool?
     public var noBlur: Bool?
-    public var focusedOpacity: Double?
-    public var unfocusedOpacity: Double?
-    public var scrollerProportionSingle: Double?
+    public var focusedOpacity: Float?
+    public var unfocusedOpacity: Float?
+    public var scrollerProportionSingle: Float?
     public var globalkeybinding: String?   // not in mango: the bind's text; passmod, keysym and the binding are read from it
 
     public init() {}

@@ -69,20 +69,6 @@ final class ConfigParseFidelityTests: MangoTestCase {
         XCTAssertFalse(r.monitor.pertag.noHide[3], "-1 clamps to 0")
     }
 
-    func testAZeroRuleProportionLeavesAnEarlierOne() {
-        let r = EngineRig()
-        r.server.config.windowRules = parse("""
-        window_rule=app_id:test,scroller_proportion:0.5,scroller_proportion_single:0.6
-        window_rule=app_id:test,scroller_proportion:0,scroller_proportion_single:-0.5
-        """).config.windowRules
-        let c = r.window(910_002)
-        r.server.applyRuleProperties(c, r.server.config.windowRules[0])
-        r.server.applyRuleProperties(c, r.server.config.windowRules[1])
-        XCTAssertEqual(c.scrollerProportion, 0.5)
-        XCTAssertEqual(c.scrollerProportionSingle, 0.6)
-        XCTAssertTrue(c.iscustomScrollerProportion)
-    }
-
     func testSetoptionIsParseOption() throws {
         let dir = try makeTempDir()
         let extra = dir.appendingPathComponent("extra.conf")

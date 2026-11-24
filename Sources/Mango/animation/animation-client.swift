@@ -45,11 +45,6 @@ package extension MangoServer {
         return clientGestureDriven(c)
     }
 
-    /// mango client_gesture_driven (input/trackpad.c).
-    func clientGestureDriven(_ c: Client?) -> Bool {
-        gestureDriveActive && c != nil && c?.mon === gestureDriveMon
-    }
-
     func clientIsIgnoreOutputClip(_ c: Client) -> Bool {
         c === grabClient || (!ISSCROLLTILED(c) && !c.animation.tagining && !c.animation.tagouting)
     }

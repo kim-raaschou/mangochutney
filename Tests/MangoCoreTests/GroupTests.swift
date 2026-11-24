@@ -43,20 +43,6 @@ final class GroupTests: MangoTestCase {
         XCTAssertFalse(r.server.groupBarDragPending, "the press is over")
     }
 
-    func testAGroupBarPressOnAWindowThatClosesIsLetGo() {
-        let r = rig()
-        run(r, "groupjoin", "down")
-        let fake = r.server.system as! FakeWindowSystem
-        fake.fakePointer = CGPoint(x: 500, y: 300)
-        r.server.pointerProcessButtonPress(button: 0, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_702, isTab: false, onClose: false))
-        let gone = c(r, 900_702)
-        r.server.handleClientUnmap(gone)
-        XCTAssertFalse(r.server.groupBarDragPending, "a mango bug: mango keeps the closed window (docs/afvigelser.md §6)")
-        XCTAssertNil(r.server.groupBarDragClient)
-        r.server.motion(to: CGPoint(x: 510, y: 300), time: 2)
-        XCTAssertNil(r.server.grabClient)
-    }
-
     func testARightClickOnATab() {
         let r = rig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle

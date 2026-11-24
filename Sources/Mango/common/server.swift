@@ -211,28 +211,8 @@ public final class MangoServer {
     }
 
 
-/// mango client_center_geometry (manage/client.c). Not in mango: without offsets, in a work area.
-    func clientCenterGeometry(_ c: Client, _ f: CGRect, in work: CGRect) -> CGRect {
-        guard !c.noForceCenter else { return f }
-        return CGRect(x: work.midX - f.width / 2, y: work.midY - f.height / 2, width: f.width, height: f.height)
-    }
-
-
     // not in mango: server.scene_geometry, wlr_output_layout_get_box over the monitors' boxes
     var sceneGeometry: CGRect { monitors.map(\.m).reduce(CGRect.null) { $0.union($1) } }
-
-    // not in mango: returns the frame instead of setting c->geom
-    func clientSetBounds(_ c: Client, _ geom: CGRect, _ bbox: CGRect) -> CGRect {
-        var g = geom
-        let least = 1 + 2 * (c.mon.map { borderWidth(c, on: $0) } ?? 0)
-        g.size.width = max(least, g.width)
-        g.size.height = max(least, g.height)
-        if g.minX >= bbox.maxX { g.origin.x = bbox.maxX - g.width }
-        if g.minY >= bbox.maxY { g.origin.y = bbox.maxY - g.height }
-        if g.maxX <= bbox.minX { g.origin.x = bbox.minX }
-        if g.maxY <= bbox.minY { g.origin.y = bbox.minY }
-        return g
-    }
 
     /// Not in mango: a geometry helper.
     package static func frameDistance(_ a: CGRect, _ b: CGRect) -> CGFloat {
