@@ -101,7 +101,7 @@ package extension MangoServer {
         if selectedMonitor == nil { return 0 }
         guard let c = arg.tc ?? focused, !c.isfloating else { return 0 }
 
-        if (c.isfullscreen || c.ismaximizescreen) && !(c.mon.map { isScrollerLayout($0) } ?? false) { return 0 }
+        if (c.isfullscreen || c.ismaximizescreen) && !(c.mon.map { isScrollerLayout($0) } ?? false) { return 0 }   // not in mango: c->mon is always set here
 
         var tc = directionSelect(arg)
         tc = getFocusedStackClient(tc, arg.tc)
@@ -169,7 +169,7 @@ package extension MangoServer {
 
         if let sc = c, !selectedMonitor.isoverview {
             if sc.mon !== selectedMonitor {
-                guard let m = sc.mon else { return 0 }
+                guard let m = sc.mon else { return 0 }   // not in mango: c->mon is always set here
                 c = clientFocusTop(m)
                 if c == nil { return 0 }
                 setSelectedMonitor(m)
@@ -376,7 +376,7 @@ package extension MangoServer {
             return 0
         }
 
-        guard let tm, tm !== selectedMonitor else { return 0 }
+        guard let tm, tm !== selectedMonitor else { return 0 }   // not in mango: no wlr_output->enabled; the port's monitors are enabled
 
         setSelectedMonitor(tm)
         if config.warpcursor {
@@ -528,7 +528,7 @@ package extension MangoServer {
     }
 
     func setMasterFactor(_ arg: Arg) -> Int32 {
-        guard let sm = selectedMonitor else { return 0 }
+        guard let sm = selectedMonitor else { return 0 }   // not in mango: no ltidxs->arrange check; every layout has one
         let f: Float = arg.f < 1.0 ? arg.f + sm.pertag.mfacts[getMonCurtag(sm)] : arg.f - 1.0
         if f < 0.1 || f > 0.9 { return 0 }
 
@@ -1113,7 +1113,7 @@ package extension MangoServer {
             return 0
         }
 
-        guard let m else { return 0 }
+        guard let m else { return 0 }   // not in mango: no wlr_output->enabled; the port's monitors are enabled
 
         let newtags = arg.ui != 0 ? arg.ui : arg.i2 != 0 ? c.tags : 0
         let target: UInt32
@@ -1135,7 +1135,7 @@ package extension MangoServer {
         } else {
             arrange(selectedMonitor, false, false)
         }
-        if config.warpcursor, let cm = c.mon {
+        if config.warpcursor, let cm = c.mon {   // not in mango: c->mon is always set here
             pointerWarpToMonitor(cm)
         }
         return 0
@@ -1151,7 +1151,7 @@ package extension MangoServer {
             clearFullscreenFlag(fc)
         }
         clientFocus(clientFocusTop(selectedMonitor), true)
-        if let m = targetClient.mon { arrange(m, false, false) }
+        if let m = targetClient.mon { arrange(m, false, false) }   // not in mango: c->mon is always set here
         return 0
     }
 
@@ -1260,7 +1260,7 @@ package extension MangoServer {
         var layoutCopied = false
 
         for c in clients {
-            guard let oldmon = c.mon, oldmon !== target, !c.iskilling, c.tags & TAG0_MASK != 0 else { continue }
+            guard let oldmon = c.mon, oldmon !== target, !c.iskilling, c.tags & TAG0_MASK != 0 else { continue }   // not in mango: no wlr_output; the port's monitors have one
 
             if !layoutCopied {
                 monitorCopyTagLayout(target, oldmon, 0)
@@ -1519,8 +1519,12 @@ package extension MangoServer {
     private func tagsLastTagNum(_ tags: UInt32) -> UInt32 {
         var last: UInt32 = 0
 
-        for i in 1...UInt32(config.tagNum) where tags & (1 << (i - 1)) != 0 {
-            last = i
+        var i: UInt32 = 1
+        while i <= UInt32(config.tagNum) {
+            if tags & (1 << (i - 1)) != 0 {
+                last = i
+            }
+            i += 1
         }
         return last
     }
@@ -1740,7 +1744,7 @@ package extension MangoServer {
     func zoom(_ arg: Arg) -> Int32 {
         var sel: Client? = arg.tc ?? clientFocusTop(selectedMonitor)
 
-        guard let s0 = sel, selectedMonitor != nil, !s0.isfloating else { return 0 }
+        guard let s0 = sel, selectedMonitor != nil, !s0.isfloating else { return 0 }   // not in mango: no ltidxs->arrange check; every layout has one
 
         var found: Client?
         for c in clients where VISIBLEON(c, selectedMonitor) && !c.isfloating {

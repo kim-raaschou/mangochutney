@@ -60,7 +60,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/config/value_parse.c` | `config/value_parse.swift` | 1:1 | fff28a6, 24. nov. | `9f43771bf126` | `starts_with_ignore_case` (død i mango, §4) | libc's `atoi`/`strtol`/`strtod` står her som `ValueParse`; `remove_comment` med C's `isspace` (rettet 24. nov.) |
 | `src/config/variable_expand.c` | `config/variable_expand.swift` | 1:1 | fff28a6, 24. nov. | `6416bc924a82` | `var_buf_append` (Swifts strenge, §5) | `config.vars` er en tabel efter navn |
 | `src/config/watcher.c` | `config/watcher.swift` | 1:1 | 529f98e, 24. nov. | `0adc6f519b32` | `clear_dir_watches`, `dir_is_watched`, `add_dir_watch`, `find_dir_watch`, `event_matches`, `on_inotify_event` (mangos inotify-gren; macOS tager mangos kqueue-gren) | `read_symlink_target` med `readlink` (rettet 24. nov.); `chutney_menu_config` gennem `PortHooks` |
-| `src/dispatch/bind.c` | `dispatch/bind.swift` | ikke verificeret | | | | |
+| `src/dispatch/bind.c` | `dispatch/bind.swift` | 1:1 | 248ec6b, 24. nov. | `a86d21e7e64c` | | alle 114 funktioner; skærme, virtuelle outputs, HDR, `chvt` og tastaturlayout er stubbe, mærket (macOS styrer dem); `parse_func_name` kører i `dispatch`; `key_mode.isdefault` er `keyMode == "default"`; `ltidxs->arrange`-tjekket mangler (hvert layout har et) |
 | `src/draw/dim-node.c` | | porten | | | | `showSpecialDim` |
 | `src/draw/text-node.c` | `draw/text-node.swift` | ikke verificeret | | | | noderne er portens (`MangoBarDecoration`, `MangoJumpLabel`) |
 | `src/draw/title_message_bar.c` | `draw/title_message_bar.swift` | 1:1 | fff28a6, 24. nov. | `4c149b08b1af` | | baren tegner porten; i overcircle under kortet (§5 Title message bar); `chutney_launch_or_focus` gennem `PortHooks` |
