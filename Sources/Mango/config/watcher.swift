@@ -70,7 +70,22 @@ private func pathJoin(_ dir: String, _ name: String) -> String {
 }
 
 private func readSymlinkTarget(_ path: String) -> String? {
-    try? FileManager.default.destinationOfSymbolicLink(atPath: path)
+    var size = 256
+
+    while true {
+        var target = [CChar](repeating: 0, count: size + 1)
+
+        let len = readlink(path, &target, size)
+        if len < 0 {
+            return nil
+        }
+        if len < size {
+            target[len] = 0
+            return String(cString: target)
+        }
+
+        size *= 2
+    }
 }
 
 func resolveWatchPath(_ path: String) -> String? {

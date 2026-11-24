@@ -40,7 +40,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/animation/tag.c` | `animation/animation-tag.swift` | 1:1 | ae2a891, 24. nov. | `2148fc6236c2` | | `prevtag` 0, `c->mon`-værn, `ov_card_tree`: §5 |
 | `src/common/log.c` | `common/Log.swift` | 1:1 | fff28a6, 24. nov. | `38d0f49ac028` | `mango_error_impl` (`mangoError`, makroen `mango_error` og dens impl i én) | ingen buffer på 4096 bytes |
 | `src/common/scene_node.c` | | porten | | | | scenen; `surfaceAt`, `sceneNodeSetEnabled` |
-| `src/common/server.c` | `common/server.swift` | 1:1 | fff28a6, 24. nov. | `68e4580f4d32` | | kun startværdier; lytterne er portens, `child_pid` hører til `-s` (§4), `allow_frame_scheduling` til `main.c`; `server.h`'s struct står her |
+| `src/common/server.c` | `common/server.swift` | 1:1 | 529f98e, 24. nov. | `14188436b6fd` | | kun startværdier; lytterne er portens, `child_pid` hører til `-s` (§4), `allow_frame_scheduling` til `main.c`; `server.h`'s struct står her |
 | `src/common/util.c` | `common/util.swift` | 1:1 | de70e75, 24. nov. | `c73e42e65294` | `die`, `ecalloc`, `utf8_strlcpy`, `wayland_string_set`, `wl_list_append`, `timespec_to_ms`, `join_strings`, `join_strings_with_suffix`, `string_printf` (Swift har dem, §5), `fd_set_nonblock` (med `-s`, §4) | `wl_list`-hjælperne på klientlistens array; `regex_match` med ICU for PCRE2 |
 | `src/config/binding_parse.c` | `config/binding_parse.swift` | ikke verificeret | | | | |
 | `src/config/cleanup.c` | | ingen macOS-del | | | | frigørelse: Swift's ARC |
@@ -50,11 +50,11 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/config/load.c` | `config/load.swift` | 1:1 | a70a15e, 24. nov. | `3fed4484cc7a` | `resolve_keybinding_layout`, `resolve_bindings_to_configured_layouts` (tastekoderne læses med bindingen, §3), `set_default_key_bindings` (CHVT, ingen macOS-del), `config_current_file_index`, `config_file_path_at` (`BindingLocation`) | uden `SYSCONFDIR`; en kilde, der læser sig selv (§6); C's `isspace` i `detect_config_format` (rettet 24. nov.) |
 | `src/config/option_defs.c` | `config/option_defs.swift`, `config/parse.swift` | ikke verificeret | | | | `parse.h`'s typer i `parse.swift` |
 | `src/config/preset.c` | | ingen macOS-del | | | | kun data: `tags` til `ext-workspace.c`, `xkb_fallback_rules` til xkb's keymap |
-| `src/config/reapply.c` | `config/reapply.swift` | ikke verificeret | | | | |
+| `src/config/reapply.c` | `config/reapply.swift` | 1:1 | 529f98e, 24. nov. | `b4ad07d68542` | `apply_explicit_xcursor_env`, `set_xcursor_env`, `reapply_rootbg`, `reapply_pointer`, `reset_blur_params`, `reapply_monitor_rules`, `reapply_keyboard` (ingen macOS-del, §5 reset_option) | `parse_tagrule`'s mfact kun på skærmens vinduer (§6); portens `configLoaded` gennem `PortHooks` |
 | `src/config/toml_parse.c` | `config/toml_parse.swift` | 1:1 | e8e3384, 24. nov. | `8bd2aaabb67e` | | to mango-fejl rettet (§6: escaped citationstegn i en liste, keymode efter en sprunget sektion); C's `isspace` og listens grænse på 4096 (rettet 24. nov.); C-buffere §5 |
 | `src/config/value_parse.c` | `config/value_parse.swift` | 1:1 | fff28a6, 24. nov. | `9f43771bf126` | `starts_with_ignore_case` (død i mango, §4) | libc's `atoi`/`strtol`/`strtod` står her som `ValueParse`; `remove_comment` med C's `isspace` (rettet 24. nov.) |
 | `src/config/variable_expand.c` | `config/variable_expand.swift` | 1:1 | fff28a6, 24. nov. | `6416bc924a82` | `var_buf_append` (Swifts strenge, §5) | `config.vars` er en tabel efter navn |
-| `src/config/watcher.c` | `config/watcher.swift` | ikke verificeret | | | | |
+| `src/config/watcher.c` | `config/watcher.swift` | 1:1 | 529f98e, 24. nov. | `0adc6f519b32` | `clear_dir_watches`, `dir_is_watched`, `add_dir_watch`, `find_dir_watch`, `event_matches`, `on_inotify_event` (mangos inotify-gren; macOS tager mangos kqueue-gren) | `read_symlink_target` med `readlink` (rettet 24. nov.); `chutney_menu_config` gennem `PortHooks` |
 | `src/dispatch/bind.c` | `dispatch/bind.swift` | ikke verificeret | | | | |
 | `src/draw/dim-node.c` | | porten | | | | `showSpecialDim` |
 | `src/draw/text-node.c` | `draw/text-node.swift` | ikke verificeret | | | | noderne er portens (`MangoBarDecoration`, `MangoJumpLabel`) |
