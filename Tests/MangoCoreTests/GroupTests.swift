@@ -22,7 +22,7 @@ final class GroupTests: MangoTestCase {
         run(r, "groupjoin", "down")
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_702, isTab: false, onClose: false))
         XCTAssertEqual(r.monitor.sel?.id, 900_702)
-        XCTAssertTrue(c(r, 900_701).groupParked, "the group's focus swapped")
+        XCTAssertTrue(r.server.clientIsParked(c(r, 900_701)), "the group's focus swapped")
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_702, isTab: false, onClose: true))
         XCTAssertEqual((r.server.system as! FakeWindowSystem).closed, [900_702])
     }
@@ -69,7 +69,7 @@ final class GroupTests: MangoTestCase {
         let r = rig()
         run(r, "groupjoin", "down")
         r.server.mac.windowDestroyed(id: 900_701)
-        XCTAssertFalse(c(r, 900_702).groupParked)
+        XCTAssertFalse(r.server.clientIsParked(c(r, 900_702)))
         XCTAssertEqual(tiled(r), [900_700, 900_702])
         XCTAssertFalse(r.server.clientIsGroupMember(c(r, 900_702)))
     }
@@ -85,7 +85,7 @@ final class GroupTests: MangoTestCase {
         r.map(900_702)
         XCTAssertEqual(r.server.groupMembers(c(r, 900_701)).map(\.id), [900_701, 900_702])
         XCTAssertTrue(c(r, 900_701).isGroupFocus)
-        XCTAssertTrue(c(r, 900_702).groupParked)
+        XCTAssertTrue(r.server.clientIsParked(c(r, 900_702)))
         XCTAssertEqual(tiled(r), [900_700, 900_701], "one place for the group")
         XCTAssertTrue(r.server.mac.memory.departed.groups.isEmpty, "all back: forgotten")
     }
@@ -95,7 +95,7 @@ final class GroupTests: MangoTestCase {
         run(r, "groupjoin", "down")
         r.server.mac.windowFocused(id: 900_702)
         XCTAssertEqual(r.monitor.sel?.id, 900_702)
-        XCTAssertFalse(c(r, 900_702).groupParked)
+        XCTAssertFalse(r.server.clientIsParked(c(r, 900_702)))
     }
 
     /// The group bar as the port shows it, once the apps have answered.

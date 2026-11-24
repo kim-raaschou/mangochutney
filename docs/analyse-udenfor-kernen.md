@@ -34,7 +34,8 @@ i `applyWindowSnap`, `xkbOptions` er portens, og `isGroupMember` er mangos `clie
 | `groupMembers` | `manage/client.swift` | ja | Bliver |
 | `visibleClients`, `tiledClients`, `specialClients`, `arrangeAll`, `updateBorders`, `clientDrawSplitBorder` | `common/server.swift` | ja | Bliver; mangos filtre som lister og portens tegning af kanter |
 | `clientsAll`, `focused`, `started`, `drawsOverlays`, `mangoVersion` | `common/server.swift` | nej | Mærkes (`clientsAll` og `started` er nævnt i afvigelser.md §5) |
-| `Client.appid`, `isVisible(on:)`, `Monitor.screen` | `manage/client.swift`, `manage/monitor.swift` | nej | Mærkes |
+| `Client.appid`, `Monitor.screen` | `manage/client.swift`, `manage/monitor.swift` | nej | Mærkes |
+| `directionGeom` (overviewets kort i retningsvalget), `clientRaiseLayers` (`client_sync_layer`s lag), `clientByIdAll` (lytterens klient) | `manage/client.swift`, `layout/arrange.swift`, `IPC/ipc.swift` | ja | Bliver |
 | `KeyboardState`, `KeyInput`, `KeyAction`, `publishGlobalKeys` | `input/keyboard.swift` | delvis | Event tappets typer; mærkes |
 | Geometri-hjælpere | `common/util.swift` | ja | Bliver |
 | `DecorateStyle` (bjælkernes stil, mangos `DecorateDrawData`) | `draw/text-node.swift` | ja | Bliver |

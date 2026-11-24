@@ -20,8 +20,8 @@ final class BindTests: XCTestCase {
 
         mango.server.clientGroupJoin(a, b)
 
-        XCTAssertTrue([a, b].first { !$0.groupParked }!.mon === side)
-        XCTAssertNil([a, b].first { $0.groupParked }!.mon, "client_park: no monitor")
+        XCTAssertTrue([a, b].first { !mango.server.clientIsParked($0) }!.mon === side)
+        XCTAssertNil([a, b].first { mango.server.clientIsParked($0) }!.mon, "client_park: no monitor")
         let focus = [a, b].first { $0.isGroupFocus }!
         let other = focus === a ? b : a
         mango.server.clientGroupDetach(other)

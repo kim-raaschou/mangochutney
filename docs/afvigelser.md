@@ -266,7 +266,7 @@ Hvor koden står, når den ikke står som i mango.
   `tag_rule`'s `master_factor:nan` giver 0,1, og `monitor_rule`'s `refresh:nan` tæller som sat.
 - **Klienter:** mangos `manage/client.c` står i kernen (`manage/client.swift`) i mangos
   rækkefølge. `client_park` giver medlemmet `mon` nil, som mango, og `client_is_parked` er
-  listemedlemskab; `groupParked` er portens mærke (`clientsAll`), og porten parkerer et parkeret
+  listemedlemskab (`clientsAll` tager de parkerede gruppemedlemmer med), og porten parkerer et parkeret
   medlems vindue på gruppens skærm (`client_group_active`). Unmap nulstiller klienten med
   `init_client_properties` som mango; et vindue, der kommer tilbage (macOS-fuldskærm, minimeret,
   skjult), får sin tilstand fra portens hukommelse (`DepartedWindow`: tags, skærm, flydende,

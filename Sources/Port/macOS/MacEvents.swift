@@ -5,6 +5,7 @@ extension MacWindowSystem: AppWatcherDelegate {
     func windowDiscovered(_ w: DiscoveredWindow) {
         guard server.clientByIdAll(w.id) == nil else { return }
         let c = Client(window: w, monitor: server.selectedMonitor, tags: 0)
+        c.bw = CGFloat(server.config.borderpx)   // handle_new_xdg_toplevel
         server.initClientProperties(c)   // handle_client_commit's initial commit
         var reasons: Set<AwayReason> = []
         if w.isminimized { reasons.insert(.minimized) }
@@ -147,7 +148,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             if !m.isJumpMode, server.focused !== c, m === server.selectedMonitor { server.toggleOverview(Arg(tc: c)) }
             return
         }
-        if c.groupParked { server.clientFocusGroupMember(c); return }
+        if server.clientIsParked(c) { server.clientFocusGroupMember(c); return }
         if nativeFullscreen(c), !VISIBLEON(c, m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
         if VISIBLEON(c, m) {
             if m.sel?.id == id && server.selectedMonitor === m { seatFocus = c; restack(); return }

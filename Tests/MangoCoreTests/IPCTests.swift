@@ -206,7 +206,7 @@ final class IPCTests: MangoTestCase {
 
     func testDispatchTargetsAParkedMemberOnlyForFocusid() throws {
         rig.server.clientGroupJoin(rig.server.clientByIdAll(2)!, rig.server.clientByIdAll(1)!)
-        let parked = [1, 2].compactMap { rig.server.clientByIdAll($0) }.first { $0.groupParked }!
+        let parked = [1, 2].compactMap { rig.server.clientByIdAll($0) }.first { rig.server.clientIsParked($0) }!
         XCTAssertEqual(query("dispatch togglefloating client,\(parked.id)"), #"{"error":"no client found"}"#)
         XCTAssertEqual(query("dispatch focusid client,\(parked.id)"), #"{"success":true}"#)
         XCTAssertEqual(query("dispatch focusdir,sideways"), #"{"success":true}"#)

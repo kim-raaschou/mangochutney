@@ -108,7 +108,6 @@ public final class Client {
     public var groupPrev: Client?
     public var groupNext: Client?
     public var isGroupFocus = false
-    public var groupParked = false   // not in mango: a group member the port has parked (clientsAll)
     /* auto tab chain; state kept fully separate from group */
     var tabBarEnabled = false   // not in mango: c->tab_bar->scene->node.enabled
     public weak var tabPrev: Client?
@@ -146,12 +145,6 @@ public final class Client {
     // not in mango: the bundle id, else the app's name
     public var appid: String { bundleId.isEmpty ? appName : bundleId }
 
-    // not in mango: VISIBLEON without the port's parked group members
-    public func isVisible(on m: Monitor) -> Bool {
-        guard mon === m, !groupParked, !isminimized else { return false }
-        if isglobal || isunglobal { return true }
-        return tags & m.tagset[m.seltags] != 0
-    }
 }
 
 public let TAG0_MASK: UInt32 = 1 << 31
@@ -1200,7 +1193,7 @@ package extension MangoServer {
 
         guard let c else {
             let sm: Monitor = selectedMonitor
-            if let s = sm.sel, !(s.isVisible(on: sm) && !s.iskilling) {
+            if let s = sm.sel, !VISIBLEON(s, sm) || s.iskilling {   // not in mango: every Client is a mapped window
                 s.isfocusing = false
                 sm.sel = nil
             }
@@ -1804,7 +1797,6 @@ package extension MangoServer {
         guard let c else { return }
         c.animation.running = false
         c.mon = nil
-        c.groupParked = true   // not in mango: the port's mark of a parked member (clientsAll)
     }
 
     func clientUnpark(_ c: Client?, _ anchor: Client?) {
@@ -1818,7 +1810,6 @@ package extension MangoServer {
             clients.append(c)
             focusStack.insert(c, at: 0)
         }
-        c.groupParked = false   // not in mango: the port's mark of a parked member (clientsAll)
     }
 
     func clientReplace(_ c: Client, _ w: Client, isGroupChangeMember: Bool) {

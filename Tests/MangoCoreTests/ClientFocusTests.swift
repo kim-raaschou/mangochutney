@@ -114,7 +114,7 @@ final class ClientFocusTests: MangoTestCase {
         r.server.system.keyboardNotifyClearFocus()
         r.server.clientFocus(b, true)
         r.settle()
-        XCTAssertFalse(fake(r).raised.contains(where: { id in r.server.clientByIdAll(id)?.groupParked == true }),
+        XCTAssertFalse(fake(r).raised.contains(where: { id in r.server.clientByIdAll(id).map { r.server.clientIsParked($0) } == true }),
                        "a parked group member is not raised")
     }
 

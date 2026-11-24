@@ -154,7 +154,7 @@ final class TabStripTests: MangoTestCase {
         let r = rig(.monocle, windows: 3)
         let a = r.server.clientByIdAll(900_100)!, b = r.server.clientByIdAll(900_101)!
         r.server.clientGroupJoin(b, a)
-        let owner = [a, b].first { !$0.groupParked }!
+        let owner: Client = [a, b].first { !r.server.clientIsParked($0) }!
         r.server.clientFocus(owner, false)
         r.arrange()
         XCTAssertEqual(drawn(r).groupStrips.map(\.above), [owner.id])
@@ -168,7 +168,7 @@ final class TabStripTests: MangoTestCase {
         let r = rig(.tile, windows: 3)
         let a = r.server.clientByIdAll(900_100)!, b = r.server.clientByIdAll(900_101)!
         r.server.clientGroupJoin(b, a)
-        let owner = [a, b].first { !$0.groupParked }!
+        let owner: Client = [a, b].first { !r.server.clientIsParked($0) }!
         r.server.clientFocus(owner, false)
         XCTAssertEqual(drawn(r).groupStrips[0].segments.filter(\.focused).map(\.id), [owner.id])
         r.server.clientFocus(r.server.clientByIdAll(900_102)!, false)

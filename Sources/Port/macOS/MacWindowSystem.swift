@@ -212,7 +212,7 @@ class MacWindowSystem: WindowSystem {
         let raises = pendingRaises, f = pendingFocus
         pendingRaises = []
         pendingFocus = nil
-        let shown = raises.filter { server.clientByIdAll($0.id) === $0 && !$0.parked && !$0.groupParked }
+        let shown = raises.filter { server.clientByIdAll($0.id) === $0 && !$0.parked && !server.clientIsParked($0) }
         for r in shown where r !== f { sendNativeRaise(r) }
         guard let c = f, Self.stillFocused(c, in: server) else { return }
         let lift = Self.lifts(c, raise: shown.contains { $0 === c }, in: server)
