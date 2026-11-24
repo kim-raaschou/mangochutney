@@ -165,7 +165,7 @@ extension MacWindowSystem {
                 if abs(actual.minX - d.startFrame.minX) > 1 { dx = -dx }
                 if abs(actual.minY - d.startFrame.minY) > 1 { dy = -dy }
             }
-            server.resizeTileClient(c, offsetX: dx, offsetY: dy)
+            server.resizeTileClient(c, false, Int32(dx), Int32(dy))
         }
         c.frame = actual
         server.arrange(m, false, false)

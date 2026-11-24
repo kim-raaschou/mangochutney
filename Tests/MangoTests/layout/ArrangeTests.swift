@@ -25,7 +25,7 @@ final class ArrangeTests: XCTestCase {
         let first = mango.server.clients[0], second = mango.server.clients[1]
         let before = first.geom.width
 
-        mango.server.resizeTileClient(first, offsetX: 200, offsetY: 0)
+        mango.server.resizeTileClient(first, false, 200, 0)
 
         XCTAssertGreaterThan(first.gridColPer, 1)
         XCTAssertLessThan(second.gridColPer, 1)
@@ -42,14 +42,14 @@ final class ArrangeTests: XCTestCase {
         nextFrame(mango)
         let before = a.geom.width
 
-        mango.server.resizeTileClient(a, offsetX: 50, offsetY: 0)
+        mango.server.resizeTileClient(a, false, 50, 0)
         let once = a.geom.width
-        mango.server.resizeTileClient(a, offsetX: 50, offsetY: 0)
+        mango.server.resizeTileClient(a, false, 50, 0)
 
         XCTAssertNotEqual(once, before)
         XCTAssertEqual(a.geom.width, once, "the same frame: dropped")
         nextFrame(mango)
-        mango.server.resizeTileClient(a, offsetX: 50, offsetY: 0)
+        mango.server.resizeTileClient(a, false, 50, 0)
         XCTAssertNotEqual(a.geom.width, once, "the next frame: taken")
     }
 
@@ -61,9 +61,11 @@ final class ArrangeTests: XCTestCase {
         let left = tiled.filter { $0.gridColIdx == 0 }, right = tiled.filter { $0.gridColIdx == 2 }
         let grab = CGPoint(x: middle.geom.minX + 5, y: middle.geom.midY)
 
-        mango.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: grab)
+        mango.wlroots.pointer = grab
+        mango.server.resizeTileClient(middle, true, 0, 0)
         nextFrame(mango)
-        mango.server.resizeTileClient(middle, isdrag: true, offsetX: 0, offsetY: 0, cursor: CGPoint(x: grab.x - 80, y: grab.y))
+        mango.wlroots.pointer = CGPoint(x: grab.x - 80, y: grab.y)
+        mango.server.resizeTileClient(middle, true, 0, 0)
 
         XCTAssertGreaterThan(middle.gridColPer, 1, "the middle column grows to the left")
         XCTAssertTrue(left.allSatisfy { $0.gridColPer < 1 }, "the left column gives the room")

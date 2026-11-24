@@ -87,7 +87,7 @@ public final class MangoServer {
     package var dropToGroup = false
     var startDragWindow = false
     var confinePointerLast: Client?
-    var dragBeginCursor: CGPoint = .zero
+    var dragBeginCursorX: Int32 = 0, dragBeginCursorY: Int32 = 0
     package var system: WindowSystem!
     /// Port extension: not in mango. Where the port's extensions join (PortHooks.swift).
     package var portHooks = PortHooks()

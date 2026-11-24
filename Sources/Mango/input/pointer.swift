@@ -595,7 +595,7 @@ package extension MangoServer {
                 }
                 return
             } else {
-                resizeTileClient(gc, isdrag: true, offsetX: 0, offsetY: 0, cursor: cursor)
+                resizeTileClient(gc, true, 0, 0)
                 return
             }
         }

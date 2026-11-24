@@ -362,7 +362,8 @@ package extension MangoServer {
             startDragWindow = true
             dwindleLockedHorizontalNode = nil
             dwindleLockedVerticalNode = nil
-            dragBeginCursor = system.pointer   // not in mango: the port's cursor
+            dragBeginCursorX = Int32(system.pointer.x)   // not in mango: the port's cursor
+            dragBeginCursorY = Int32(system.pointer.y)
             var node = leaf.parent
             while let n = node {
                 if n.splitH && dwindleLockedHorizontalNode == nil {
@@ -383,12 +384,12 @@ package extension MangoServer {
         let cursor = system.pointer   // not in mango: the port's cursor
         if let h = dwindleLockedHorizontalNode {
             let cw = Float(MANGO_MAX(1, h.containerW))
-            var ox = Float(cursor.x - dragBeginCursor.x)
+            var ox = Float(cursor.x - CGFloat(dragBeginCursorX))
             if config.dwindleSmartResize {
                 /* Move the boundary toward the cursor: invert direction when
                  * the drag started on the right side of the split line. */
                 let splitX = Float(h.containerX) + cw * h.dragInitRatio
-                if Float(dragBeginCursor.x) >= splitX { ox = -ox }
+                if Float(dragBeginCursorX) >= splitX { ox = -ox }
             }
             h.ratio = h.dragInitRatio + ox / cw
             h.ratio = CLAMP_FLOAT(h.ratio, 0.05, 0.95)
@@ -396,11 +397,11 @@ package extension MangoServer {
 
         if let v = dwindleLockedVerticalNode {
             let ch = Float(MANGO_MAX(1, v.containerH))
-            var oy = Float(cursor.y - dragBeginCursor.y)
+            var oy = Float(cursor.y - CGFloat(dragBeginCursorY))
             if config.dwindleSmartResize {
                 /* Same logic for the vertical split line. */
                 let splitY = Float(v.containerY) + ch * v.dragInitRatio
-                if Float(dragBeginCursor.y) >= splitY { oy = -oy }
+                if Float(dragBeginCursorY) >= splitY { oy = -oy }
             }
             v.ratio = v.dragInitRatio + oy / ch
             v.ratio = CLAMP_FLOAT(v.ratio, 0.05, 0.95)

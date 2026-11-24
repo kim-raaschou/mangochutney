@@ -650,7 +650,7 @@ package extension MangoServer {
             default:
                 offsety = arg.i2
             }
-            resizeTileClient(c, isdrag: false, offsetX: CGFloat(offsetx), offsetY: CGFloat(offsety))
+            resizeTileClient(c, false, offsetx, offsety)
             config.animations = animationsStateBackup
             return 0
         }

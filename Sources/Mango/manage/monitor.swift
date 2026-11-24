@@ -105,41 +105,6 @@ public final class Monitor {
     }
 }
 
-package extension MangoServer {
-    func tagGatherResetSlot(_ m: Monitor, _ tag: UInt32) {
-        tagSlotSetDefaults(m, tag)
-        m.pertag.noHide[tag] = false
-        m.pertag.noRenderBorder[tag] = false
-        m.pertag.openAsFloating[tag] = false
-        m.pertag.dwindleRoot[tag] = nil
-        m.pertag.scrollerState[tag] = nil
-
-        for tr in config.tagRules {
-            if tagRuleMatchesMonitor(tr, m) && (tr.id == nil || tr.id == Int(tag)) {
-                tagRuleApplyToSlot(m, tr, tag)
-            }
-        }
-        m.pertag.ltidxs[tag] = m.pertag.configLtidxs[tag]
-    }
-
-    // move pertag state from src to dst, then reset src.
-    func tagGatherMovePertag(_ m: Monitor, _ dst: UInt32, _ src: UInt32) {
-        m.pertag.nmasters[dst] = m.pertag.nmasters[src]
-        m.pertag.mfacts[dst] = m.pertag.mfacts[src]
-        m.pertag.noHide[dst] = m.pertag.noHide[src]
-        m.pertag.noRenderBorder[dst] = m.pertag.noRenderBorder[src]
-        m.pertag.openAsFloating[dst] = m.pertag.openAsFloating[src]
-        m.pertag.scrollerDefaultProportion[dst] = m.pertag.scrollerDefaultProportion[src]
-        m.pertag.scrollerDefaultProportionSingle[dst] = m.pertag.scrollerDefaultProportionSingle[src]
-        m.pertag.scrollerIgnoreProportionSingle[dst] = m.pertag.scrollerIgnoreProportionSingle[src]
-        m.pertag.dwindleRoot[dst] = m.pertag.dwindleRoot[src]
-        m.pertag.configLtidxs[dst] = m.pertag.configLtidxs[src]
-        m.pertag.ltidxs[dst] = m.pertag.ltidxs[src]
-        m.pertag.scrollerState[dst] = m.pertag.scrollerState[src]
-        tagGatherResetSlot(m, src)
-    }
-}
-
 /// mango INSIDEMON (manage/monitor.h).
 @MainActor func INSIDEMON(_ a: Client) -> Bool {
     guard let m = a.mon else { return false }
