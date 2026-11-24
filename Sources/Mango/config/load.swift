@@ -115,7 +115,7 @@ public enum ConfigParser {
                 inComment = true
                 continue
             }
-            if c.isWhitespace {
+            if " \t\n\r\u{0B}\u{0C}".contains(c) || c == "\r\n" {
                 continue
             }
             return c == "[" ? .toml : .conf

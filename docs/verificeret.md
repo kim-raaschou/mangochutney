@@ -45,9 +45,9 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/config/binding_parse.c` | `config/binding_parse.swift` | ikke verificeret | | | | |
 | `src/config/cleanup.c` | | ingen macOS-del | | | | frigørelse: Swift's ARC |
 | `src/config/conflict_check.c` | `config/conflict_check.swift` | 1:1 | e8e3384, 24. nov. | `4de6c89f3d2f` | `get_mousebind_meta`, `get_axisbind_meta`, `get_switchbind_meta`, `get_gesturebind_meta` (bindingens `mode` og dens sted i `*Locs`), `mod_to_string` (død i mango, §4) | tasten er den første macOS-tastekode (§3) |
-| `src/config/error_nag.c` | `config/error_nag.swift` | ikke verificeret | | | | |
+| `src/config/error_nag.c` | `config/error_nag.swift` | 1:1 | a70a15e, 24. nov. | `7067464f7031` | `nag_client_destroyed`, `nag_set_cloexec`, `nag_kill` (mangonag kører i mangos proces, porten står for den: `system.nagSpawn`/`nagKill`, §3), `nag_initial_cb` (ingen timer, §2) | |
 | `src/config/error_store.c` | `config/error_store.swift` | 1:1 | ae2a891, 24. nov. | `e04f0ed36e35` | | |
-| `src/config/load.c` | `config/load.swift` | ikke verificeret | | | | |
+| `src/config/load.c` | `config/load.swift` | 1:1 | a70a15e, 24. nov. | `3fed4484cc7a` | `resolve_keybinding_layout`, `resolve_bindings_to_configured_layouts` (tastekoderne læses med bindingen, §3), `set_default_key_bindings` (CHVT, ingen macOS-del), `config_current_file_index`, `config_file_path_at` (`BindingLocation`) | uden `SYSCONFDIR`; en kilde, der læser sig selv (§6); C's `isspace` i `detect_config_format` (rettet 24. nov.) |
 | `src/config/option_defs.c` | `config/option_defs.swift`, `config/parse.swift` | ikke verificeret | | | | `parse.h`'s typer i `parse.swift` |
 | `src/config/preset.c` | | ingen macOS-del | | | | kun data: `tags` til `ext-workspace.c`, `xkb_fallback_rules` til xkb's keymap |
 | `src/config/reapply.c` | `config/reapply.swift` | ikke verificeret | | | | |
