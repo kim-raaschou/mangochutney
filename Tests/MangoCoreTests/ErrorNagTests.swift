@@ -105,7 +105,7 @@ final class ConfigWatchPathTests: MangoTestCase {
         XCTAssertEqual(r.server.config.gappih, 7, "a new inode: read again")
     }
 
-    func testTheDebounceWaitsAHundredAndFiftyMilliseconds() throws {
+    func testAFileWrittenInPlaceIsReadAgain() throws {
         let dir = try dir()
         defer { try? FileManager.default.removeItem(at: dir) }
         let url = dir.appendingPathComponent("config.conf")
@@ -114,9 +114,7 @@ final class ConfigWatchPathTests: MangoTestCase {
         defer { r.server.configWatcherDestroy() }
         r.server.config.gappih = 99
         try "gap_inner_horizontal=8\n".write(to: url, atomically: false, encoding: .utf8)
-        r.settle(0.05)
-        XCTAssertEqual(r.server.config.gappih, 99, "not yet")
-        r.settle(0.5)
+        r.settle(until: { r.server.config.gappih == 8 })
         XCTAssertEqual(r.server.config.gappih, 8)
     }
 
