@@ -108,8 +108,10 @@ final class LayoutRunner {
         for c in server.clientsAll where !ids.contains(c.id) { c.tags = 2 }
         server.clients = order + server.clients.filter { !ids.contains($0.id) }
         if let f = input.focusedID {
-            server.focusStack.removeAll { $0 == f }
-            server.focusStack.insert(f, at: 0)
+            if let c = server.clientByIdAll(f) {
+                server.focusStack.removeAll { $0 === c }
+                server.focusStack.insert(c, at: 0)
+            }
         }
         m.sel = input.focusedID.flatMap { server.clientByIdAll($0) }
         m.prevsel = input.prevFocusedID.flatMap { server.clientByIdAll($0) }

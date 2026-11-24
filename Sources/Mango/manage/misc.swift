@@ -23,7 +23,7 @@ package extension MangoServer {
         let top = hits.filter { clientTargetLayer($0) == layer }
         // not in mango: within the layer the window server's stacking, else the focus stack
         if let s = system.surfaceAt(p), let c = top.first(where: { $0.id == s }) { return c }
-        for id in focusStack { if let c = top.first(where: { $0.id == id }) { return c } }
+        for c in focusStack where top.contains(where: { $0 === c }) { return c }
         return top.first
     }
 

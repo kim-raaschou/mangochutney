@@ -295,9 +295,9 @@ package extension MangoServer {
         tc.mon = rc.mon
         clientUnpark(tc, rc)
         /* rc stays focused: put tc right behind it in the focus stack. */
-        focusStack.removeAll { $0 == tc.id }
+        focusStack.removeAll { $0 === tc }
         // not in mango: wl_list_insert(rc->flink.next) puts it two places behind (a mango bug, docs/afvigelser.md §6)
-        focusStack.insert(tc.id, at: (focusStack.firstIndex(of: rc.id) ?? -1) + 1)
+        focusStack.insert(tc, at: (focusStack.firstIndex { $0 === rc } ?? -1) + 1)
 
         tc.tagVisible = wasVisible
         clientUpdateVisibility(tc)
@@ -324,8 +324,7 @@ package extension MangoServer {
         var begin = false
         var target: UInt32 = 0
 
-        for id in focusStack {
-            guard let c = clientByIdAll(id) else { continue }
+        for c in focusStack {
             // not in mango: every Client is a mapped, managed window
             if c.iskilling || c.isminimized || c.isunglobal { continue }
 
@@ -2061,8 +2060,8 @@ package extension MangoServer {
             }
         }
 
-        for id in focusStack.reversed() {
-            guard let c = clientByIdAll(id), VISIBLEON(c, selectedMonitor) else { continue }
+        for c in focusStack.reversed() {
+            guard VISIBLEON(c, selectedMonitor) else { continue }
             clientRaiseGroup(c)
             clientRaiseTab(c)
         }

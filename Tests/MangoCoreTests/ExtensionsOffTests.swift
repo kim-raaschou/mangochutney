@@ -88,7 +88,7 @@ struct MangoState: Equatable {
         clients = server.clients.map {
             ClientState(id: $0.id, tags: $0.tags, geom: $0.geom, isfloating: $0.isfloating, isfullscreen: $0.isfullscreen)
         }
-        focusStack = server.focusStack
+        focusStack = server.focusStack.map(\.id)
         focused = server.focused?.id
         viewedTags = m.tagset[m.seltags]
         layout = m.pertag.ltidxs[getMonCurtag(m)].name

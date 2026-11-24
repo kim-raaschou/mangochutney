@@ -419,8 +419,8 @@ package extension MangoServer {
 
     package func clientFocusTop(_ m: Monitor?) -> Client? {
         guard let m else { return nil }
-        for id in focusStack {
-            if let c = clientByIdAll(id), !c.iskilling, !c.isunglobal, VISIBLEON(c, m) { return c }
+        for c in focusStack {
+            if !c.iskilling, !c.isunglobal, VISIBLEON(c, m) { return c }
         }
         return nil
     }
@@ -551,8 +551,8 @@ package extension MangoServer {
             isDwindle = true
             dwindleBlock = dwindleFocusBlockRoot(m.pertag.dwindleRoot[tag], sc, fc)
         }
-        for id in focusStack {
-            guard let tc = clientByIdAll(id), !tc.iskilling, !tc.isunglobal, VISIBLEON(tc, m), tc !== fc else { continue }
+        for tc in focusStack {
+            guard !tc.iskilling, !tc.isunglobal, VISIBLEON(tc, m), tc !== fc else { continue }
             if isDwindle {
                 if dwindleBlock != nil && dwindleFocusBlockHasClient(dwindleBlock, tc) { return tc }
                 continue
@@ -703,8 +703,8 @@ package extension MangoServer {
         let shouldInitGetFocus = !c.isopensilent
             && (!c.istagsilent || newtags == 0 || newtags & mon.tagset[mon.seltags] != 0)
         if !shouldInitGetFocus {
-            focusStack.removeAll { $0 == c.id }
-            focusStack.append(c.id)
+            focusStack.removeAll { $0 === c }
+            focusStack.append(c)
         }
 
         clientSetMonitor(c, mon, newtags, focus: shouldInitGetFocus)
@@ -870,7 +870,7 @@ package extension MangoServer {
         clientAddJumpLabelNode(c)
         c.mon = nil
         clientInsertTilingOrder(c)
-        focusStack.insert(c.id, at: 0)
+        focusStack.insert(c, at: 0)
         clientSetRules(c)
 
         if let cm = c.mon, cm.isoverview {
@@ -916,7 +916,7 @@ package extension MangoServer {
         let order = clients.map(\.id)
         clients.removeAll { $0 === c }
         portHooks.windowLeaving?(self, c, group.map(\.id), group.first { $0.isGroupFocus }?.id, order)   // Port extension
-        focusStack.removeAll { $0 == id }
+        focusStack.removeAll { $0 === c }
         if c === grabClient {
             cursorMode = CurNormal
             grabClient = nil
@@ -1044,8 +1044,8 @@ package extension MangoServer {
             // decide whether need to re-arrange
 
             // change focus link position
-            focusStack.removeAll { $0 == c.id }
-            focusStack.insert(c.id, at: 0)
+            focusStack.removeAll { $0 === c }
+            focusStack.insert(c, at: 0)
 
             if let p = m.prevsel, TAGMATCH(p, m), TAGMATCH(c, m), !c.isfloating,
                isScrollerLayout(m) || isMonocleLayout(m) || c.tabPrev != nil || c.tabNext != nil {
@@ -1673,7 +1673,7 @@ package extension MangoServer {
     private func clientUnlink(_ c: Client?) {
         guard let c, !clientIsParked(c) else { return }
         clients.removeAll { $0 === c }
-        focusStack.removeAll { $0 == c.id }
+        focusStack.removeAll { $0 === c }
     }
 
     func clientPark(_ c: Client?) {
@@ -1690,11 +1690,11 @@ package extension MangoServer {
 
         if let anchor, !clientIsParked(anchor) {
             wlListSafeReinsertNext(anchor, c)
-            focusStack.removeAll { $0 == c.id }   // wl_list_safe_reinsert_prev on the focus stack
-            focusStack.insert(c.id, at: focusStack.firstIndex(of: anchor.id) ?? 0)
+            focusStack.removeAll { $0 === c }   // wl_list_safe_reinsert_prev on the focus stack
+            focusStack.insert(c, at: focusStack.firstIndex { $0 === anchor } ?? 0)
         } else if clientIsParked(c) {
             clients.append(c)
-            focusStack.insert(c.id, at: 0)
+            focusStack.insert(c, at: 0)
         }
         c.groupParked = false   // not in mango: the port's mark of a parked member (clientsAll)
     }
@@ -1886,10 +1886,10 @@ package extension MangoServer {
             if let cm = c1.mon { arrange(cm, false, false) }
         }
 
-        // not in mango: wl_list_safe_reinsert_next on the focus stack, which holds ids here
-        if let i = focusStack.firstIndex(of: c1.id), !(i + 1 < focusStack.count && focusStack[i + 1] == c2.id), c1 !== c2 {
-            focusStack.removeAll { $0 == c2.id }
-            focusStack.insert(c2.id, at: focusStack.firstIndex(of: c1.id)! + 1)
+        // not in mango: wl_list_safe_reinsert_next on the focus stack's array
+        if let i = focusStack.firstIndex(where: { $0 === c1 }), !(i + 1 < focusStack.count && focusStack[i + 1] === c2), c1 !== c2 {
+            focusStack.removeAll { $0 === c2 }
+            focusStack.insert(c2, at: focusStack.firstIndex { $0 === c1 }! + 1)
         }
 
         if config.warpcursor { pointerWarpToClient(c1) }

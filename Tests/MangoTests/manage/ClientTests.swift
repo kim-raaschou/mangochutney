@@ -88,8 +88,8 @@ final class ClientTests: XCTestCase {
         mango.server.clientFocus(d, true)
         mango.server.clientSwitchView(Arg(ui: 1 << 1), true)
         mango.server.clientFocus(mango.map("e"), true)
-        mango.server.focusStack.removeAll { $0 == a.id }
-        mango.server.focusStack.insert(a.id, at: 0)
+        mango.server.focusStack.removeAll { $0 === a }
+        mango.server.focusStack.insert(a, at: 0)
 
         mango.server.clientSwitchView(Arg(ui: 1), true)
 

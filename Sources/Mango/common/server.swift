@@ -34,14 +34,87 @@ public enum Lyr: Int, Comparable {
 
 @MainActor
 public final class MangoServer {
-    public internal(set) var config = Config()
+    package var system: WindowSystem!   // the boundary, not in mango: wlroots and the display server
+    public package(set) var clients: [Client] = []    /* tiling order */
+    public package(set) var focusStack: [Client] = [] /* focus order */
+    package var cursorMode = CurNormal
+    /* Drag / resize */
+    package var grabClient: Client? {
+        didSet { if (oldValue == nil) != (grabClient == nil) { publishInputState() } }   // not in mango: the event tap's snapshot
+    }
+    package var dropClient: Client?
+    var resizeEdge: WlrEdges = []
+    package var hoverResizeEdge: WlrEdges = []
+    var hoverResizeFloating = false
+    var grabIsBorderResize = false               /* grab started by a border click */
+    var grabOffsetX: CGFloat = 0, grabOffsetY: CGFloat = 0   /* client-relative */
+    var grabPointerX: CGFloat = 0, grabPointerY: CGFloat = 0 /* pointer at grab start */
+    var dragBeginCursorX: Int32 = 0, dragBeginCursorY: Int32 = 0 /* client-relative */
+    var startDragWindow = false
+    package var groupBarDragPending = false
+    var groupBarDragClient: Client?
+    var groupBarDragX: CGFloat = 0, groupBarDragY: CGFloat = 0
+    package var dropToGroup = false
+    /* Outputs / monitors */
+    public internal(set) var monitors: [Monitor] = []
+    public package(set) var selectedMonitor: Monitor!
+    /* Layout / gestures */
+    package var enableGaps = true /* enables gaps; used by toggle_gaps */
+    var scrollerFocusLock = false
+    var gestureDriveMon: Monitor?
+    var gestureDriveActive = false
+    var swipeFingers: UInt32 = 0
+    var swipeDx = 0.0
+    var swipeDy = 0.0
+    package var renderBorder = true
+    /* Other runtime state */
+    var cursorHidden = false
+    package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
+    public var cliDebugLog = false
     var tagmask: UInt32 = (1 << 9) - 1 /* default 9 tags; updated with config.tag_num */
+    /* Pre-baked animation curves */
+    var bakedPointsMove: [DVec2] = []
+    var bakedPointsOpen: [DVec2] = []
+    var bakedPointsTag: [DVec2] = []
+    var bakedPointsClose: [DVec2] = []
+    var bakedPointsFocus: [DVec2] = []
+    /* Cursor hiding / input keep-alive */
+    var hideCursorSource: EventSource?
+    /* Key mode / IPC print-status signal */
+    public var keyMode = "default" { didSet { publishInputState() } }
+
+    // not in mango's struct MangoServer: mango's globals and its files' statics, kept on the server
+    public internal(set) var config = Config()
     public var configURL: URL
     public internal(set) var configErrors: [ConfigError] = []
     var configFiles: [URL] = []
+    var ipc: IPCServer?
+    var tabMemberCount: Int32 = 0   // tab.c's static tab_member_count
+    /// mango switcher_state (switcher/switcher.c)
+    package var switcherState = SwitcherState() {
+        didSet { if switcherState.tree != oldValue.tree { publishInputState() } }   // not in mango: the event tap's snapshot
+    }
+    var confinePointerLast: Client?
+    var swipeDrive = SwipeDrive()
+    var swipeActive = false
+    var swipeLocked = false
+    var swipeHorizontal = false
+    // mango's static locked_horizontal_node and locked_vertical_node (layout/dwindle.c)
+    weak var dwindleLockedHorizontalNode: DwindleNode?
+    weak var dwindleLockedVerticalNode: DwindleNode?
+    var watchTimer: EventSource?
+    var watchedFiles: [WatchedFile] = []
+    var watcherActive = false
+    var kqueueFd: Int32 = -1
+    var kqueueSource: EventSource?
 
-    public internal(set) var monitors: [Monitor] = []
-    public package(set) var clients: [Client] = []
+    // not in mango: the port's
+    /// Port extension: not in mango. Where the port's extensions join (PortHooks.swift).
+    package var portHooks = PortHooks()
+    var publishedGlobalKeys = false
+    package var drawsOverlays = false   // not in mango: whether the port draws (off in tests)
+    package internal(set) var started = false   // not in mango: the port has found its windows
+    var bordersDirty = false   // not in mango: a border changed; the port draws them all at once
     // not in mango: clients with the group members the port has parked (mango keeps all in clients)
     public var clientsAll: [Client] {
         var out: [Client] = []
@@ -50,73 +123,6 @@ public final class MangoServer {
         }
         return out
     }
-    public package(set) var focusStack: [ClientID] = []
-    public package(set) var selectedMonitor: Monitor!
-    public var keyMode = "default" { didSet { publishInputState() } }
-
-    var ipc: IPCServer?
-
-    var bakedPointsMove: [DVec2] = []
-    var bakedPointsOpen: [DVec2] = []
-    var bakedPointsTag: [DVec2] = []
-    var bakedPointsClose: [DVec2] = []
-    var bakedPointsFocus: [DVec2] = []
-
-    var tabMemberCount: Int32 = 0   // not in mango: tab.c's static tab_member_count
-    package var enableGaps = true
-    package var renderBorder = true
-    package var drawsOverlays = false   // not in mango: whether the port draws (off in tests)
-    package internal(set) var started = false   // not in mango: the port has found its windows
-    public var cliDebugLog = false
-
-    package var tagCombo = false { didSet { if tagCombo != oldValue { publishInputState() } } }
-    /// mango switcher_state (switcher/switcher.c)
-    package var switcherState = SwitcherState() {
-        didSet { if switcherState.tree != oldValue.tree { publishInputState() } }   // not in mango: the event tap's snapshot
-    }
-    var publishedGlobalKeys = false
-    package var cursorMode = CurNormal
-    package var grabClient: Client? {
-        didSet { if (oldValue == nil) != (grabClient == nil) { publishInputState() } }   // not in mango: the event tap's snapshot
-    }
-    var grabOffsetX: CGFloat = 0, grabOffsetY: CGFloat = 0
-    var grabPointerX: CGFloat = 0, grabPointerY: CGFloat = 0
-    var grabIsBorderResize = false
-    var resizeEdge: WlrEdges = []
-    package var dropClient: Client?
-    package var dropToGroup = false
-    var startDragWindow = false
-    var confinePointerLast: Client?
-    var dragBeginCursorX: Int32 = 0, dragBeginCursorY: Int32 = 0
-    package var system: WindowSystem!
-    /// Port extension: not in mango. Where the port's extensions join (PortHooks.swift).
-    package var portHooks = PortHooks()
-    package var groupBarDragPending = false
-    var groupBarDragClient: Client?
-    var groupBarDragX: CGFloat = 0, groupBarDragY: CGFloat = 0
-    var cursorHidden = false
-    var hideCursorSource: EventSource?
-    package var hoverResizeEdge: WlrEdges = []
-    var hoverResizeFloating = false
-    var swipeDrive = SwipeDrive()
-    var swipeActive = false
-    var swipeLocked = false
-    var swipeHorizontal = false
-    var swipeDx = 0.0
-    var swipeDy = 0.0
-    var swipeFingers: UInt32 = 0
-    var gestureDriveMon: Monitor?
-    var gestureDriveActive = false
-    // mango's static locked_horizontal_node and locked_vertical_node (layout/dwindle.c)
-    weak var dwindleLockedHorizontalNode: DwindleNode?
-    weak var dwindleLockedVerticalNode: DwindleNode?
-    var bordersDirty = false   // not in mango: a border changed; the port draws them all at once
-    var watchTimer: EventSource?
-    var watchedFiles: [WatchedFile] = []
-    var watcherActive = false
-    var kqueueFd: Int32 = -1
-    var kqueueSource: EventSource?
-    var scrollerFocusLock = false
 
     /// The boundary, not in mango: the port's status change, which printstatus gives.
     public var onStateChange: (() -> Void)?

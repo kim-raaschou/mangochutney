@@ -42,8 +42,10 @@ final class LayoutTests: MangoTestCase {
         for id in visible where r.server.clientByIdAll(id) == nil { r.window(id) }
         for c in r.server.clientsAll { c.tags = visible.contains(c.id) ? 1 : 2 }
         if let focus {
-            r.server.focusStack.removeAll { $0 == focus }
-            r.server.focusStack.insert(focus, at: 0)
+            if let c = r.server.clientByIdAll(focus) {
+                r.server.focusStack.removeAll { $0 === c }
+                r.server.focusStack.insert(c, at: 0)
+            }
         }
         r.monitor.sel = focus.flatMap { r.server.clientByIdAll($0) }
         r.arrange()

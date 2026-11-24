@@ -525,8 +525,10 @@ final class LayoutGoldenTests: MangoTestCase {
             if focus == 0 {
                 r.server.focusStack.removeAll()
             } else {
-                r.server.focusStack.removeAll { $0 == focus }
-                r.server.focusStack.insert(focus, at: 0)
+                if let c = r.server.clientByIdAll(focus) {
+                    r.server.focusStack.removeAll { $0 === c }
+                    r.server.focusStack.insert(c, at: 0)
+                }
             }
             r.monitor.sel = focus == 0 ? nil : r.server.clientByIdAll(focus)
             (r.server.system as! FakeWindowSystem).fakePointer = CGPoint(x: cur[0], y: cur[1])

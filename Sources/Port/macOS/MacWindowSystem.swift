@@ -758,8 +758,8 @@ class MacWindowSystem: WindowSystem {
             surfaceOwners[surface] = p
             pid = p
         }
-        for id in server.focusStack {
-            if let c = server.clientByIdAll(id), c.pid == pid, c.mon != nil { return c }
+        for c in server.focusStack {
+            if c.pid == pid, c.mon != nil { return c }
         }
         return nil
     }
@@ -767,8 +767,8 @@ class MacWindowSystem: WindowSystem {
     /// macOS has no parent toplevel: a dialog's parent is its app's window that had the focus last.
     func clientGetParent(_ c: Client) -> Client? {
         guard c.mac.isFloatType else { return nil }
-        for id in server.focusStack where id != c.id {
-            if let p = server.clientByIdAll(id), p.pid == c.pid, !p.mac.isFloatType, p.mon != nil { return p }
+        for p in server.focusStack where p !== c {
+            if p.pid == c.pid, !p.mac.isFloatType, p.mon != nil { return p }
         }
         return nil
     }

@@ -173,6 +173,19 @@ Hvor koden står, når den ikke står som i mango.
   `no_fade_in`, `no_fade_out`, `force_fakemaximize`, `force_tiled_state`, `old_ismaster`,
   `snapshot_temp_visible`. Portens egne felter står øverst og er mærket (`platform`, `bundleId`,
   `appName`, `title`).
+- **`struct MangoServer` (`server.h`):** felterne står i `server.h`'s rækkefølge med mangos navne;
+  `clients` og `focus_stack` er lister af klienter som mangos `wl_list`'er. Samme faste omskrivninger
+  som `Client` (`int32_t`-flag som `Bool`, koordinater som `CGFloat`); `resize_edge` er `WlrEdges`;
+  `key_mode` er tilstandens navn (`isdefault` er `keyMode == "default"`). Efter mangos felter står
+  mangos globaler og filernes statiske variabler, som vi har på serveren (`config`, ipc's socket,
+  `switcher_state`, trackpad's swipe-tilstand, dwindle's låste knuder, watcherens filer), og
+  derefter portens egne, mærket. Uden macOS-del, så felterne mangler: wlroots' globaler,
+  managere, lyttere og scenen, sessionslåsen (`session_locked`, `locked_modifiers`, `locked_bg`),
+  touch og tablet, `chvt_backup_*`, `exclusive_focus`, `active_capture_count`,
+  `keep_idle_inhibit_source` og kurverne til opacity (`baked_points_opafadein/out`). Afgøres med
+  deres fil: `axis_apply_time`/`axis_apply_dir` (i porten, `pointer.c`), `last_hold_keycode`
+  (`keyboard.c`), `group_bar_hover` (`pointer.c`), `allow_frame_scheduling`, `next_client_id`,
+  `cli_config_path` og `child_pid` (`main.c`).
 - **Faner:** mangos `manage/tab.c` står i kernen (`manage/tab.swift`) med fanekæden på klienten
   (`tab_prev`, `tab_next`, `is_tab_focus`, `is_tab_hidden`) og `tab_member_count` på serveren.
   `client_chain_head` og `client_chain_unlink` tager felterne som key paths, ikke offsets. Barens

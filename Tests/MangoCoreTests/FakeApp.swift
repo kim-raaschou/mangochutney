@@ -282,7 +282,7 @@ final class EngineRig {
         c.scrollerProportionSingle = monitor.pertag.scrollerDefaultProportionSingle[getMonCurtag(monitor)]
         app.frames[id] = frame
         server.clients.append(c)
-        server.focusStack.insert(id, at: 0)
+        server.focusStack.insert(c, at: 0)
         return c
     }
 

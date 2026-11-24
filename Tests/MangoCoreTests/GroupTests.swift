@@ -74,7 +74,7 @@ final class GroupTests: MangoTestCase {
         let r = rig()
         run(r, "groupjoin", "down")
         run(r, "groupleave")
-        let stack = r.server.focusStack
+        let stack = r.server.focusStack.map(\.id)
         XCTAssertEqual(stack.count, 3)
         XCTAssertEqual(stack.firstIndex(of: 900_701), stack.firstIndex(of: 900_702).map { $0 + 1 }, "\(stack)")
     }

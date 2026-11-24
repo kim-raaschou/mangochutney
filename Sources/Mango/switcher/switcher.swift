@@ -227,7 +227,7 @@ package extension MangoServer {
         switcherState.mon = selectedMonitor
         switcherState.scope = scope
 
-        for c in focusStack.compactMap({ clientByIdAll($0) }) {
+        for c in focusStack {
             if switcherCandidate(c) {
                 n += 1
             }
@@ -257,7 +257,7 @@ package extension MangoServer {
 
         switcherState.tree = true   // not in mango: the port's panel (the scene tree and its bg)
         switcherState.tiles = []
-        for c in focusStack.compactMap({ clientByIdAll($0) }) {
+        for c in focusStack {
             if !switcherCandidate(c) {
                 continue
             }

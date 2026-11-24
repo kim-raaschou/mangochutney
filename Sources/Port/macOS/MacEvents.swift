@@ -44,7 +44,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         server.clientAddJumpLabelNode(c)
         c.mon = nil
         server.clientInsertTilingOrder(c)
-        server.focusStack.insert(c.id, at: 0)
+        server.focusStack.insert(c, at: 0)
         let frame = c.floatGeom
         let selected = server.selectedMonitor
         server.selectedMonitor = server.monitorAtPoint(c.frame.center) ?? selected
@@ -71,7 +71,7 @@ extension MacWindowSystem: AppWatcherDelegate {
         c.mon = nil
         server.clients.insert(c, at: DepartedWindow.insertionIndex(of: c.id, snapshot: d.orderSnapshot,
                                                                    into: server.clients.map(\.id)))
-        server.focusStack.append(c.id)
+        server.focusStack.append(c)
         var (mon, _) = server.clientSetRules(c, mapped: false)
         c.oldmonname = d.homeDisplayID
         if let m = server.monitors.first(where: { $0.screen.displayID == d.displayID }) {

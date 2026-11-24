@@ -28,7 +28,7 @@ extension MangoServer {
         let picker = LaunchOrFocusPicker.shared
         if picker.app == key { return picker.move(self, by: 1) }
         let windows = appWindowsInGridOrder(key)
-        let rule = LaunchOrFocusRule.decide(windows: windows.map(\.id), current: focused?.id, recent: focusStack)
+        let rule = LaunchOrFocusRule.decide(windows: windows.map(\.id), current: focused?.id, recent: focusStack.map(\.id))
         if case .focus(let id) = rule, LaunchOrFocusPicker.shows(windows: windows.map(\.id), current: focused?.id) {
             return picker.open(self, app: key, windows: windows.map(\.id), start: id)
         }

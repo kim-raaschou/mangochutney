@@ -204,7 +204,7 @@ package final class TestMango {
     package var clients: [String] { server.clients.map(\.title) }
 
     /// mango's focus stack, by title, the last focused first.
-    package var focusStack: [String] { server.focusStack.compactMap { server.clientByIdAll($0)?.title } }
+    package var focusStack: [String] { server.focusStack.map(\.title) }
 
     /// The tags viewed on the selected monitor.
     package var viewedTags: UInt32 { monitor.tagset[monitor.seltags] }
