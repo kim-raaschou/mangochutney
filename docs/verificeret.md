@@ -78,7 +78,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/layout/dwindle.c` | `layout/dwindle.swift` | 1:1 | de70e75, 24. nov. | `7c1bf821750a` | `dwindle_free_tree`, `cleanup_monitor_dwindle` (ARC, §5), `dwindle_predict` (§3) | markøren er portens (`system.pointer`) |
 | `src/layout/horizontal.c` | `layout/horizontal.swift` | 1:1 | 1cceefb, 24. nov. | `08b9f6dfd68b` | `tile_predict`, `right_tile_predict`, `center_tile_predict`, `deck_predict`, `monocle_predict`, `grid_predict`, `fair_predict` (§3) | `layout.h`'s `LayoutContext` og `util.h`'s `MANGO_MIN`/`MANGO_MAX` står her; `m->w` som `int32_t` (`WBox`); ingen X11-popups |
 | `src/layout/overview.c` | `layout/layout-overview.swift` | 1:1 | e8e3384, 24. nov. | `4782e020d705` | | kortene er portens (`ovCards`, `overviewLayoutCards`); klienterne tælles her, hvor mango læser `visible_clients`; ingen X11-popups |
-| `src/layout/scroll.c` | `layout/scroll.swift` | ikke verificeret | | | | |
+| `src/layout/scroll.c` | `layout/scroll.swift` | 1:1 | 35bc19c, 24. nov. | `63d4852bef2c` | `scroller_predict`, `vertical_scroller_predict` (§3) | stakkenes hoveder samles i én hjælper (`scrollerHeads`); `scroller_swap_different_stacks` bytter klientlistens to løb i arrayet |
 | `src/layout/vertical.c` | `layout/vertical.swift` | 1:1 | 1cceefb, 24. nov. | `87f2c8d9708c` | `vertical_tile_predict`, `vertical_deck_predict`, `vertical_grid_predict`, `vertical_fair_predict` (§3) | `vertical_grid_core` tæller som `grid_core` (§6); ingen X11-popups |
 | `src/main.c` | `common/server.swift` | ikke verificeret | | | | `main` og `run` er appens (`Sources/MangoApp/main.swift`) |
 | `src/manage/client.c` | `manage/client.swift` | ikke verificeret | | | | |
