@@ -215,7 +215,7 @@ final class BindTests: XCTestCase {
         mango.run("toggle_special_tag")
 
         XCTAssertEqual(mango.viewedTags, TAG0_MASK, "the special tag alone")
-        XCTAssertFalse(a.parked, "the client of the tag before stays")
+        XCTAssertTrue(a.platform.sceneNodeEnabled, "the client of the tag before stays")
         let s = mango.map("s")
         XCTAssertEqual(s.tags, TAG0_MASK, "a new client opens on the special tag")
         mango.unmap("s")

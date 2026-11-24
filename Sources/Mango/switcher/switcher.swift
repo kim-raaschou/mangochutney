@@ -115,7 +115,7 @@ package extension MangoServer {
             SwitcherTilePicture(id: tile.c.id,
                                 frame: CGRect(x: Int(switcherState.panelX + tile.x), y: Int(switcherState.panelY + tile.y),
                                               width: Int(tile.cw + 2 * SW_PAD), height: Int(frameH)),
-                                size: tile.c.frame.size, pid: tile.c.pid, highlighted: Int32(i) == switcherState.index)
+                                size: system.clientGetGeometry(tile.c).size, pid: tile.c.pid, highlighted: Int32(i) == switcherState.index)
         }
     }
 
@@ -327,8 +327,8 @@ package extension MangoServer {
     }
 
     func switcherContentSize(_ c: Client) -> (Float, Float) {
-        // not in mango: the window's frame, where mango reads the xdg geometry
-        (Float(c.frame.width), Float(c.frame.height))
+        let geom = system.clientGetGeometry(c)   // not in mango: client_get_geometry for xdg and X11 alike
+        return (Float(geom.width), Float(geom.height))
     }
 }
 

@@ -135,8 +135,13 @@ Hvor koden står, når den ikke står som i mango.
   kommentarer eller mærker om, hvor vi afviger (CLAUDE.md regel 8). En funktion med andet navn
   end mangos har én linje `/// mango <funktion> (<fil>)` (52 i alt, mest typer og hjælpere fra
   mangos headere og funktioner delt i to, fordi portens tråde kalder dem hver for sig).
-- **Bevidst i kernen, mærket:** `c.parked` (portens slukkede scene-node) læses nogle steder (ikke ved kant
-  og bjælker: dem skjuler porten selv for et parkeret vindue), overview med
+- **Portens vindue i kernen:** kernen læser ikke `c.parked` eller `c.frame` (felterne er portens).
+  Hvor mango spørger wlroots, spørger kernen porten: `c->scene->node.enabled`
+  (`c.platform.sceneNodeEnabled`) for pointerens tjek og `node_at_point`, `client_get_geometry`
+  (`clientGetGeometry`) for switcherens størrelse og `wlr_scene_node_coords`
+  (`sceneSurfaceCoords`) for hvor et vindue rammes. Et skjult vindue, mango flytter til en anden
+  skærm, parkerer porten selv i den nye skærms hjørne (`Placement.commitFrame`).
+- **Bevidst i kernen, mærket:** overview med
   billeder (`Monitor.ovThumbnails`, `ovCards`), `parse_option` som en tabel,
   og `resize_tile_master` i begge retninger i én funktion. Hvad der ellers står i kernen uden at
   være mangos, står i `docs/analyse-udenfor-kernen.md`.

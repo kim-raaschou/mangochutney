@@ -30,12 +30,13 @@ final class PointerTests: XCTestCase {
         let a = mango.map("a")
         mango.map("b")
         mango.frame()
-        let bar = CGPoint(x: a.frame.midX, y: a.frame.minY - CGFloat(mango.server.config.groupBarHeight) / 2)
+        let af = (a.platform as! FakeSurface).frame
+        let bar = CGPoint(x: af.midX, y: af.minY - CGFloat(mango.server.config.groupBarHeight) / 2)
         XCTAssertTrue(mango.server.groupBarTargetAt(bar.x, bar.y, nil) === a)
         let box = CGRect(x: bar.x - 50, y: bar.y - 50, width: 100, height: 100)
 
         let f = mango.map("f", size: box.size)
-        f.frame = box
+        (f.platform as! FakeSurface).frame = box
 
         XCTAssertNil(mango.server.groupBarTargetAt(bar.x, bar.y, nil), "the floating client lies over the bar")
         XCTAssertTrue(mango.server.groupBarTargetAt(bar.x, bar.y, f) === a, "the dragged client does not hide it")

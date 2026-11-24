@@ -517,7 +517,7 @@ class MacWindowSystem: WindowSystem {
     var appliedKeyMappings: [KeyboardOptions.Mapping]?
 
     func setKeyboardOptions(_ options: String) {
-        var m = KeyboardOptions.mappings(MangoServer.xkbOptions(options))
+        var m = KeyboardOptions.mappings(KeyboardOptions.xkbOptions(options))
         if let h = KeyboardOptions.hyperKeyMapping(server.config.chutneyHyperKey), !m.contains(where: { $0.src == h.src }) {
             m.append(h)
         }
@@ -690,7 +690,7 @@ class MacWindowSystem: WindowSystem {
 
     func publishInput(_ state: InputState) {
         let hyperKey = !server.config.chutneyHyperKey.isEmpty
-            || MangoServer.xkbOptions(server.config.xkbRulesOptions).contains("caps:hyper")
+            || KeyboardOptions.xkbOptions(server.config.xkbRulesOptions).contains("caps:hyper")
         let hyper = KeyboardOptions.hyperSet(server.config)
         router.publish { s in
             s.keymode = state.keymode

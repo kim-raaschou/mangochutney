@@ -57,3 +57,29 @@ extension MangoServer {
         }
     }
 }
+
+public struct BezierCurve: Equatable, Sendable {
+    public var x1: Double, y1: Double, x2: Double, y2: Double
+    public init(x1: Double, y1: Double, x2: Double, y2: Double) {
+        self.x1 = x1; self.y1 = y1; self.x2 = x2; self.y2 = y2
+    }
+    public static let mangoDefault = BezierCurve(x1: 0.46, y1: 1.0, x2: 0.29, y2: 0.99)
+    public static let linear = BezierCurve(x1: 0, y1: 0, x2: 1, y2: 1)
+
+    private func calculateAnimationCurveAt(_ t: Double, _ a: Double, _ b: Double) -> Double {
+        let mt = 1 - t
+        return 3 * mt * mt * t * a + 3 * mt * t * t * b + t * t * t
+    }
+    public func findAnimationCurveAt(at x: Double) -> Double {
+        if x <= 0 { return 0 }
+        if x >= 1 { return 1 }
+        var lo = 0.0, hi = 1.0, t = x
+        for _ in 0..<24 {
+            let sx = calculateAnimationCurveAt(t, x1, x2)
+            if abs(sx - x) < 1e-5 { break }
+            if sx < x { lo = t } else { hi = t }
+            t = (lo + hi) / 2
+        }
+        return calculateAnimationCurveAt(t, y1, y2)
+    }
+}

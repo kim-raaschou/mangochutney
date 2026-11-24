@@ -43,6 +43,16 @@ extension Client {
 
     var mac: MacWindow { platform as! MacWindow }
 
+    /// Where the macOS window stands, and whether it is parked off screen.
+    var frame: CGRect {
+        get { mac.frame }
+        set { mac.frame = newValue }
+    }
+    var parked: Bool {
+        get { mac.parked }
+        set { mac.parked = newValue }
+    }
+
     /// The window's box in its tile: mango's geom without the border.
     var tile: CGRect { geom.insetBy(dx: bw, dy: bw) }
 

@@ -108,7 +108,7 @@ final class ClientFocusTests: MangoTestCase {
         let (r, a, b) = rig()
         r.server.clientGroupJoin(b, a)
         r.arrange()
-        XCTAssertTrue(b.isGroupMember)
+        XCTAssertTrue(r.server.clientIsGroupMember(b))
         r.settle()
         fake(r).raised = []
         r.server.system.keyboardNotifyClearFocus()

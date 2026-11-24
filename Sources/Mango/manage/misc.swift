@@ -16,8 +16,8 @@ package extension MangoServer {
             return hits.first { $0.isfloating } ?? hits.first
         }
         // not in mango: the scene's enabled client nodes where they stand, on any monitor
-        let hits = (isSpecialActive(mon) ? specialClients(mon) : clients.filter { $0.platform.sceneNodeEnabled })
-            .filter { !$0.parked && clientGeom($0).contains(p) }
+        let hits = (isSpecialActive(mon) ? specialClients(mon) : clients)
+            .filter { $0.platform.sceneNodeEnabled && clientGeom($0).contains(p) }
         // not in mango: node_at_point's walk from the top layer down, as the topmost layer among the hits
         guard let layer = hits.map({ clientTargetLayer($0) }).max() else { return nil }
         let top = hits.filter { clientTargetLayer($0) == layer }
@@ -35,9 +35,9 @@ package extension MangoServer {
         return nil
     }
 
-    /// Not in mango: mango's geom, with the border (our frame is without it).
+    /// Not in mango: the client's scene node where it stands, its surface with the border.
     func clientGeom(_ c: Client) -> CGRect {
         let bw = borderWidth(c, on: c.mon ?? selectedMonitor)
-        return c.frame.insetBy(dx: -bw, dy: -bw)
+        return CGRect(origin: system.sceneSurfaceCoords(c), size: system.clientGetGeometry(c).size).insetBy(dx: -bw, dy: -bw)
     }
 }

@@ -295,7 +295,7 @@ package extension MangoServer {
             if c.id == id {
                 return c
             }
-            if !c.isGroupMember {
+            if !clientIsGroupMember(c) {
                 continue
             }
             var it: Client? = clientGroupHead(c)
@@ -641,8 +641,8 @@ package extension MangoServer {
             ("is_xwayland", .bool(false)),   // not in mango: no X11 clients
             ("is_swallowing", .bool(false)),   // not in mango: no swallowing (MangoCompat)
             ("is_swallowedby", .bool(false)),
-            ("is_group", .bool(c.isGroupMember)),
-            ("is_group_focus", .bool(c.isGroupMember && c.isGroupFocus)),
+            ("is_group", .bool(clientIsGroupMember(c))),
+            ("is_group_focus", .bool(clientIsGroupMember(c) && c.isGroupFocus)),
             ("is_visible", .bool(c.mon.map { VISIBLEON(c, $0) } ?? false)),
             ("is_focused", .bool(c.isfocusing)),
             ("is_fullscreen", .bool(c.isfullscreen)),
@@ -668,7 +668,7 @@ package extension MangoServer {
         var arr: [JSONValue] = []
         for c in clients {
             arr.append(buildClientJson(c))
-            if !c.isGroupMember {
+            if !clientIsGroupMember(c) {
                 continue
             }
             var it: Client? = clientGroupHead(c)

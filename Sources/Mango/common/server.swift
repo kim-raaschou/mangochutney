@@ -46,7 +46,7 @@ public final class MangoServer {
     public var clientsAll: [Client] {
         var out: [Client] = []
         for c in clients {
-            if c.isGroupMember { out += groupMembers(c).filter { m in m === c || m.groupParked } } else { out.append(c) }
+            if clientIsGroupMember(c) { out += groupMembers(c).filter { m in m === c || m.groupParked } } else { out.append(c) }
         }
         return out
     }

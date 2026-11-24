@@ -35,10 +35,10 @@ final class GroupTests: MangoTestCase {
         r.server.pointerProcessButtonPress(button: 0, pressed: true, at: r.server.system.pointer, mods: [], bar: BarButton(client: 900_702, isTab: false, onClose: false))
         r.server.motion(to: CGPoint(x: 502, y: 301), time: 1)
         XCTAssertTrue(r.server.groupBarDragPending, "the bar's motion")
-        XCTAssertTrue(c(r, 900_702).isGroupMember, "not yet 5 px")
+        XCTAssertTrue(r.server.clientIsGroupMember(c(r, 900_702)), "not yet 5 px")
         XCTAssertNil(r.server.grabClient)
         r.server.motion(to: CGPoint(x: 510, y: 300), time: 2)
-        XCTAssertFalse(c(r, 900_702).isGroupMember, "out of the group")
+        XCTAssertFalse(r.server.clientIsGroupMember(c(r, 900_702)), "out of the group")
         XCTAssertTrue(r.server.grabClient === c(r, 900_702), "moved with the pointer")
         XCTAssertFalse(r.server.groupBarDragPending, "the press is over")
     }
@@ -85,7 +85,7 @@ final class GroupTests: MangoTestCase {
         r.server.mac.windowDestroyed(id: 900_701)
         XCTAssertFalse(c(r, 900_702).groupParked)
         XCTAssertEqual(tiled(r), [900_700, 900_702])
-        XCTAssertFalse(c(r, 900_702).isGroupMember)
+        XCTAssertFalse(r.server.clientIsGroupMember(c(r, 900_702)))
     }
 
     func testAGroupComesBackWithItsMembers() {
@@ -93,7 +93,7 @@ final class GroupTests: MangoTestCase {
         run(r, "groupjoin", "down")
         XCTAssertEqual(r.server.mac.memory.currentLayout(r.server).groups, [DepartedGroup(members: [900_701, 900_702], focus: 900_701)])
         r.server.mac.windowDestroyed(id: 900_702)
-        XCTAssertFalse(c(r, 900_701).isGroupMember)
+        XCTAssertFalse(r.server.clientIsGroupMember(c(r, 900_701)))
         XCTAssertEqual(r.server.mac.memory.departed.groups.count, 1, "kept")
         XCTAssertNotNil(r.server.mac.memory.departed.entries[900_702], "departed")
         r.map(900_702)

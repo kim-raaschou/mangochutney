@@ -1,6 +1,204 @@
 import Foundation
 import CoreGraphics
 
+@MainActor
+public protocol PlatformWindow: AnyObject {
+    var isFloatType: Bool { get }   // not in mango: wlroots' side of client_is_float_type
+    var sceneNodeEnabled: Bool { get }   // not in mango: wlroots' c->scene->node.enabled
+    var sceneSurfaceEnabled: Bool { get }   // not in mango: wlroots' c->scene_surface->node.enabled
+}
+
+@MainActor
+public final class Client {
+    public let id: ClientID
+    public let pid: pid_t
+    public let platform: PlatformWindow
+    public let bundleId: String
+    public let appName: String
+    public var title: String
+    public weak var mon: Monitor?
+    public var tags: UInt32
+
+    public var isfloating = false
+    public var isfullscreen = false
+    public var isfakefullscreen = false
+    public var ismaximizescreen = false
+    public var isglobal = false
+    public var isunglobal = false
+    public var ignoreMinimize = true
+    public var isoverlay = false
+    public var isInScratchpad = false
+    public var oldtags: UInt32 = 0
+    public var isminimized = false
+    public var isnamedscratchpad = false
+    public var iscustomsize = false
+    public var iscustompos = false
+    public var isopensilent = false
+    public var istagsilent = false
+    public var isurgent = false
+    public var iskilling = false
+
+    // not in mango: the display ID, not the output's name (two displays can share a name).
+    public var oldmonname: CGDirectDisplayID?
+
+    public var masterMfactPer: CGFloat = 0
+    public var gridColPer: CGFloat = 1
+    public var gridRowPer: CGFloat = 1
+    public var gridColIdx = 0
+    public var gridRowIdx = 0
+    public var isTabFocus = false
+    public var isTabHidden = false
+    public weak var tabPrev: Client?
+    public var tabNext: Client?
+    var tabBarEnabled = false   // not in mango: c->tab_bar->scene->node.enabled
+    public var groupPrev: Client?
+    public var groupNext: Client?
+    public var isGroupFocus = false
+    public var groupParked = false   // not in mango: a group member the port has parked (clientsAll)
+
+    public var noBorder = false
+    public var noAnimation = false
+    public var noSizeHint = false
+    public var noForceCenter = false
+    public var noFocus = false
+    public var confinePointer = false
+    public var animationTypeOpen: AnimationType?
+    public var scrollerProportion: Float = 0
+    public var scrollerProportionSingle: Float = 0
+    public var isfocusing = false
+    public var iscustomScrollerProportion = false
+    public var iscustomScrollerProportionSingle = false
+    public var masterSizeWeight: CGFloat = 0
+    public var stackSizeWeight: CGFloat = 0
+    public var masterInnerPer: CGFloat = 0
+    public var stackInnerPer: CGFloat = 0
+    public var ismaster = false
+    public var isleftstack = false
+    public var scrollerStackProportion: Float = 0
+    public var scrollerOldStackProportion: Float = 0
+    package var dropDirection: Int32 = UNDIR
+    package var dragToTile = false
+    package var dragTileFloatBackupGeom: CGRect = .zero
+    package var enableDropAreaDraw = false
+    var dropareaEnabled = false   // not in mango: c->droparea's node.enabled (the port draws the area)
+    var oldMasterMfactPer: CGFloat = 0
+    var oldMasterInnerPer: CGFloat = 0
+    var oldStackInnerPer: CGFloat = 0
+    var oldScrollerPproportion: Double = 0
+    var oldGridColPer: CGFloat = 0
+    var oldGridRowPer: CGFloat = 0
+    var cursorInUpperHalf = false
+    var cursorInLeftHalf = false
+    var dragBeginGeom: CGRect = .zero
+
+    public var floatGeom: CGRect
+    public var geom: CGRect
+    public var pending: CGRect
+    public var current: CGRect
+    public var animainitGeom: CGRect
+    public var bw: CGFloat = 0
+    public var dirty = false
+    public var configureSerial: UInt32 = 0
+    public var isPendingOpenAnimation = true
+    public var needOutputFlush = false
+    public var animation = MangoAnimation()
+    public var isfloatingBeforeScratchpad = false
+    public var isClipToHide = false
+    public var scratchpadSwitchingMon = false
+    public var scratchpadTagin = false
+    public var fakeNoBorder = false
+    public var tagVisible = false
+    public var isSurfaceHidden = false
+    public var overviewBackupGeom: CGRect = .zero
+    public var overviewBackedUp = false   // not in mango: overview_backup ran (a mango bug, docs/afvigelser.md §6)
+    public var overviewBackupBw: CGFloat = 0
+    public var overviewIsfloatingbak = false
+    public var overviewIsfullscreenbak = false
+    public var overviewIsmaximizescreenbak = false
+    public var isRestoringFromOv = false
+    public var jumpChar: Character?
+    public var jumpKeycodes = MultiKeycode()
+    package var jumpLabelNode: MangoJumpLabel?
+
+    package init(id: ClientID, pid: pid_t, platform: PlatformWindow, bundleId: String, appName: String, title: String,
+         monitor: Monitor, tags: UInt32, frame: CGRect) {
+        self.id = id
+        self.pid = pid
+        self.platform = platform
+        self.bundleId = bundleId
+        self.appName = appName
+        self.title = title
+        self.mon = monitor
+        self.tags = tags
+        floatGeom = frame
+        // not in mango: the window's frame as the port finds it; handle_client_map's border comes with the first resize
+        geom = frame
+        pending = frame
+        current = frame
+        animainitGeom = frame
+        animation.current = frame
+        animation.initial = frame
+    }
+
+
+    /// mango client_get_appid (client.c)
+    // not in mango: the bundle id, else the app's name
+    public var appid: String { bundleId.isEmpty ? appName : bundleId }
+
+    // not in mango: VISIBLEON without the port's parked group members
+    public func isVisible(on m: Monitor) -> Bool {
+        guard mon === m, !groupParked, !isminimized else { return false }
+        if isglobal || isunglobal { return true }
+        return tags & m.tagset[m.seltags] != 0
+    }
+}
+
+public let TAG0_MASK: UInt32 = 1 << 31
+
+extension MangoServer {
+    var TAGMASK: UInt32 { tagmask }
+}
+
+@MainActor public func ISTILED(_ a: Client?) -> Bool {
+    guard let a else { return false }
+    return !a.isfloating && !a.isminimized && !a.iskilling && !a.ismaximizescreen && !a.isfullscreen && !a.isunglobal
+}
+
+@MainActor public func ISNORMAL(_ a: Client?) -> Bool {
+    guard let a else { return false }
+    return !a.isminimized && !a.iskilling && !a.isunglobal
+}
+
+@MainActor public func ISSCROLLTILED(_ a: Client?) -> Bool {
+    guard let a else { return false }
+    return !a.isfloating && !a.isminimized && !a.iskilling && !a.isunglobal
+}
+
+@MainActor public func ISFAKETILED(_ a: Client?) -> Bool {
+    guard let a else { return false }
+    return !a.isfloating && !a.isminimized && !a.iskilling && !a.isunglobal
+}
+
+@MainActor public func VISIBLEON(_ c: Client?, _ m: Monitor?) -> Bool {
+    guard let c, let m else { return false }
+    return c.mon === m && !c.isminimized
+        && ((c.tags & m.tagset[m.seltags]) != 0 || c.isglobal || c.isunglobal)
+}
+
+@MainActor public func TAGMATCH(_ c: Client?, _ m: Monitor?) -> Bool {
+    guard let c, let m else { return false }
+    return c.mon === m && !c.isminimized && (c.tags & m.tagset[m.seltags]) != 0
+}
+
+@MainActor public func SCRATCHPAD_SHOWN(_ c: Client?) -> Bool {
+    guard let c else { return false }
+    return c.isInScratchpad && !c.isminimized
+}
+
+@MainActor public func ISFULLSCREEN(_ a: Client) -> Bool {
+    a.isfullscreen || a.ismaximizescreen || a.overviewIsmaximizescreenbak || a.overviewIsfullscreenbak
+}
+
 package let UP: Int32 = 0, DOWN: Int32 = 1, LEFT: Int32 = 2, RIGHT: Int32 = 3, UNDIR: Int32 = 4, ALLDIR: Int32 = 5 /* smartmovewin */
 
 package extension MangoServer {
@@ -547,22 +745,87 @@ package extension MangoServer {
     }
 
     func applyWindowSnap(_ c: Client) {
-        func inner(_ x: Client) -> CGRect {
-            let xbw: CGFloat = !renderBorder || x.fakeNoBorder ? x.bw : 0
-            return x.geom.insetBy(dx: xbw, dy: xbw)
-        }
+        var snapUp: CGFloat = 99999, snapDown: CGFloat = 99999, snapLeft: CGFloat = 99999, snapRight: CGFloat = 99999
+        var snapUpTemp: CGFloat = 0, snapDownTemp: CGFloat = 0, snapLeftTemp: CGFloat = 0, snapRightTemp: CGFloat = 0
+        var snapUpScreen: CGFloat = 0, snapDownScreen: CGFloat = 0, snapLeftScreen: CGFloat = 0, snapRightScreen: CGFloat = 0
+        var snapUpMon: CGFloat = 0, snapDownMon: CGFloat = 0, snapLeftMon: CGFloat = 0, snapRightMon: CGFloat = 0
+
+        let cbw: CGFloat = !renderBorder || c.fakeNoBorder ? c.bw : 0
+        var tcbw: CGFloat
+        var tcx: CGFloat, tcy: CGFloat, tcw: CGFloat, tch: CGFloat
+        let cx = c.geom.minX + cbw
+        let cy = c.geom.minY + cbw
+        let cw = c.geom.width - 2 * cbw
+        let ch = c.geom.height - 2 * cbw
 
         guard let m = c.mon, !c.iskilling else { return }
 
         if !c.isfloating || !config.enableFloatingSnap { return }
 
-        // not in mango: the snap distances are worked out apart (FloatingSnap), as apply_window_snap does
-        let others = clients.filter { $0.isfloating && !$0.iskilling && VISIBLEON($0, m) }.map(inner)
-        let from = inner(c)
-        let to = FloatingSnap.snapped(from, others: others, monitor: m.m, workArea: m.w,
-                                      distance: CGFloat(config.snapDistance))
-        c.geom.origin.x += to.minX - from.minX
-        c.geom.origin.y += to.minY - from.minY
+        for tc in clients {
+            if tc.isfloating && !tc.iskilling && VISIBLEON(tc, m) {
+
+                tcbw = !renderBorder || tc.fakeNoBorder ? tc.bw : 0
+                tcx = tc.geom.minX + tcbw
+                tcy = tc.geom.minY + tcbw
+                tcw = tc.geom.width - 2 * tcbw
+                tch = tc.geom.height - 2 * tcbw
+
+                snapLeftTemp = cx - tcx - tcw
+                snapRightTemp = tcx - cx - cw
+                snapUpTemp = cy - tcy - tch
+                snapDownTemp = tcy - cy - ch
+
+                if snapLeftTemp < snapLeft && snapLeftTemp >= 0 {
+                    snapLeft = snapLeftTemp
+                }
+                if snapRightTemp < snapRight && snapRightTemp >= 0 {
+                    snapRight = snapRightTemp
+                }
+                if snapUpTemp < snapUp && snapUpTemp >= 0 {
+                    snapUp = snapUpTemp
+                }
+                if snapDownTemp < snapDown && snapDownTemp >= 0 {
+                    snapDown = snapDownTemp
+                }
+            }
+        }
+
+        snapLeftMon = cx - m.m.minX
+        snapRightMon = m.m.minX + m.m.width - cx - cw
+        snapUpMon = cy - m.m.minY
+        snapDownMon = m.m.minY + m.m.height - cy - ch
+
+        if snapUpMon >= 0 && snapUpMon < snapUp { snapUp = snapUpMon }
+        if snapDownMon >= 0 && snapDownMon < snapDown { snapDown = snapDownMon }
+        if snapLeftMon >= 0 && snapLeftMon < snapLeft { snapLeft = snapLeftMon }
+        if snapRightMon >= 0 && snapRightMon < snapRight { snapRight = snapRightMon }
+
+        snapLeftScreen = cx - m.w.minX
+        snapRightScreen = m.w.minX + m.w.width - cx - cw
+        snapUpScreen = cy - m.w.minY
+        snapDownScreen = m.w.minY + m.w.height - cy - ch
+
+        if snapUpScreen >= 0 && snapUpScreen < snapUp { snapUp = snapUpScreen }
+        if snapDownScreen >= 0 && snapDownScreen < snapDown { snapDown = snapDownScreen }
+        if snapLeftScreen >= 0 && snapLeftScreen < snapLeft { snapLeft = snapLeftScreen }
+        if snapRightScreen >= 0 && snapRightScreen < snapRight { snapRight = snapRightScreen }
+
+        if snapLeft < snapRight && snapLeft < CGFloat(config.snapDistance) {
+            c.geom.origin.x = c.geom.minX - snapLeft
+        }
+
+        if snapRight <= snapLeft && snapRight < CGFloat(config.snapDistance) {
+            c.geom.origin.x = c.geom.minX + snapRight
+        }
+
+        if snapUp < snapDown && snapUp < CGFloat(config.snapDistance) {
+            c.geom.origin.y = c.geom.minY - snapUp
+        }
+
+        if snapDown <= snapUp && snapDown < CGFloat(config.snapDistance) {
+            c.geom.origin.y = c.geom.minY + snapDown
+        }
 
         c.floatGeom = c.geom
         resize(c, c.geom, ResizeOpts(interact: false))
@@ -630,15 +893,15 @@ package extension MangoServer {
         let stackNext = targetNode?.nextInStack?.client
         // Port extension: not in mango. Its group and its place in the order, for when the
         // window comes back (macOS reports windows gone and back around sleep).
-        let group = c.isGroupMember ? groupMembers(c) : []
+        let group = clientIsGroupMember(c) ? groupMembers(c) : []
 
         if let label = c.jumpLabelNode {
             label.destroy()
             c.jumpLabelNode = nil
         }
 
-        let replaced = c.isGroupMember && c.isGroupFocus && (c.groupNext ?? c.groupPrev) != nil
-        if c.isGroupMember {
+        let replaced = clientIsGroupMember(c) && c.isGroupFocus && (c.groupNext ?? c.groupPrev) != nil
+        if clientIsGroupMember(c) {
             if c.isGroupFocus, let r = c.groupNext ?? c.groupPrev {
                 r.mon = c.mon
                 clientReplace(r, c, isGroupChangeMember: false)
@@ -1002,7 +1265,6 @@ package extension MangoServer {
         if c.mon !== m { return false }
 
         clientUpdateOldmonnameRecord(c, m)
-        c.parked = false   // not in mango: the system places it on the new display
         clientAdaptGeometryToMonitor(c, oldmon)
         if c.isfloating { c.geom = c.floatGeom }
         return true
@@ -1010,7 +1272,6 @@ package extension MangoServer {
 
     func clientChangeMon(_ c: Client, _ m: Monitor?) {
         clientSetMonitor(c, m, c.tags, focus: true)
-        c.parked = false   // not in mango: the system places it on the new display
         if c.isfloating {
             c.geom = clientCenterGeometry(c, c.mon, c.geom)
             c.floatGeom = c.geom
@@ -1528,7 +1789,6 @@ package extension MangoServer {
         if old.sel == c.id { old.sel = nil }
         if old.prevsel == c.id { old.prevsel = nil }
         c.mon = m
-        c.parked = false   // not in mango: the system places it on the new display
         if !VISIBLEON(c, m) { clientResetMonTags(c, m, 0) }
         m.sel = c.id
         setSelectedMonitor(m)
@@ -1755,12 +2015,12 @@ package extension MangoServer {
     }
 
     func clientWantsGroupBar(_ c: Client) -> Bool {
-        c.isGroupMember || config.alwaysShowGroupBar
+        clientIsGroupMember(c) || config.alwaysShowGroupBar
     }
 
     @discardableResult
     func clientGroupSwapFocus(_ c: Client) -> Bool {
-        guard c.isGroupMember, !c.isGroupFocus,
+        guard clientIsGroupMember(c), !c.isGroupFocus,
               let current = groupMembers(c).first(where: { $0.isGroupFocus }), let m = current.mon,
               !m.isoverview else { return false }
         current.isGroupFocus = false
@@ -1781,7 +2041,6 @@ package extension MangoServer {
     func clientCheckTabNodeVisible(_ c: Client, on m: Monitor) -> Bool {
         !m.isoverview && config.groupBarHeight > 0 && clientWantsGroupBar(c) && TAGMATCH(c, m) && ISNORMAL(c)
             && !c.isfullscreen
-            && !c.parked   // not in mango: a window macOS has parked off screen
     }
 
     func clientRaiseGroup(_ c: Client) {
@@ -1798,7 +2057,7 @@ package extension MangoServer {
     func clientHandleDecorateClick(_ c: Client, isTab: Bool) {
         if isTab {
             tabFocusMember(c)
-        } else if !c.isGroupMember {
+        } else if !clientIsGroupMember(c) {
             clientFocus(c, true)
         } else {
             clientFocusGroupMember(c)
@@ -1834,6 +2093,19 @@ package extension MangoServer {
 
     func clientGroupHead(_ c: Client) -> Client {
         clientChainHead(c, \.groupPrev)
+    }
+
+    func clientIsGroupMember(_ c: Client?) -> Bool {
+        guard let c else { return false }
+        return c.groupPrev != nil || c.groupNext != nil
+    }
+
+    // not in mango: the group from client_group_head along group_next
+    func groupMembers(_ c: Client) -> [Client] {
+        var out: [Client] = []
+        var it: Client? = clientGroupHead(c)
+        while let m = it { out.append(m); it = m.groupNext }
+        return out
     }
 
     // not in mango: the chain's prev and next fields as key paths, not offsets
@@ -1880,6 +2152,6 @@ package extension MangoServer {
         old.groupNext?.groupPrev = new
         old.groupPrev = nil
         old.groupNext = nil
-        new.isGroupFocus = old.groupParked || !new.isGroupMember ? false : old.isGroupFocus
+        new.isGroupFocus = old.groupParked || !clientIsGroupMember(new) ? false : old.isGroupFocus
     }
 }

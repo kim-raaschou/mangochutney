@@ -74,6 +74,7 @@ final class DwindleScrollerOptionTests: MangoTestCase {
             r.server.clientByIdAll(wid)!.frame = startFrames[wid] ?? frame
             r.server.clientByIdAll(wid)!.geom = startFrames[wid] ?? frame
             r.server.clientByIdAll(wid)!.parked = false
+            r.server.clientByIdAll(wid)!.mac.sceneNodeEnabled = true
         }
         let f = r.server.clientByIdAll(id)!.frame
         r.server.cursorMotion(to: CGPoint(x: f.minX + 50, y: f.midY), time: 1, dx: Double(speed))

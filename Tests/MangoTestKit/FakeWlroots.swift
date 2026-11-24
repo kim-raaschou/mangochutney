@@ -6,7 +6,6 @@ import Foundation
 @MainActor
 package final class FakeSurface: PlatformWindow {
     package var frame: CGRect
-    package var parked = false
     package let isFloatType: Bool
     package var sceneNodeEnabled = true
     package var sceneSurfaceEnabled = true
@@ -63,8 +62,8 @@ package final class FakeWlroots: WindowSystem {
     package func surfaceAt(_ p: CGPoint) -> ClientID? {
         if let surfaceUnderPointer { return surfaceUnderPointer }
         let hits = stacking.enumerated().compactMap { i, id -> (layer: Int, i: Int, id: ClientID)? in
-            guard let c = server.clientByIdAll(id), c.platform.sceneNodeEnabled, !c.parked,
-                  c.frame.insetBy(dx: -c.bw, dy: -c.bw).contains(p) else { return nil }
+            guard let c = server.clientByIdAll(id), c.platform.sceneNodeEnabled,
+                  surface(c).frame.insetBy(dx: -c.bw, dy: -c.bw).contains(p) else { return nil }
             return (server.clientTargetLayer(c).rawValue, i, id)
         }
         return hits.max { ($0.layer, $0.i) < ($1.layer, $1.i) }?.id
@@ -146,6 +145,8 @@ package final class FakeWlroots: WindowSystem {
             s.configured = nil
         }
     }
+    package func clientGetGeometry(_ c: Client) -> CGRect { CGRect(origin: .zero, size: surface(c).frame.size) }
+    package func sceneSurfaceCoords(_ c: Client) -> CGPoint { surface(c).frame.origin }
     package func clientSizeHints(_ c: Client) -> ClientSizeHints { (c.platform as? FakeSurface)?.sizeHints ?? ClientSizeHints() }
     package func clientSetMinimized(_ c: Client, _ minimizeWindow: Bool) {}
     package func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) {}

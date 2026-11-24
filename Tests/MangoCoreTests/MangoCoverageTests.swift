@@ -21,8 +21,8 @@ final class MangoCoverageTests: MangoTestCase {
 
     static var engineSources: String {
         let base = repo.appendingPathComponent("Sources")
-        let skip = ["Mango/Config/"]
-        let engine = ["Mango/Config/watcher.swift", "Mango/Config/reapply.swift"]
+        let skip = ["Mango/config/"]
+        let engine = ["Mango/config/watcher.swift", "Mango/config/reapply.swift"]
         var out = ""
         let files = FileManager.default.enumerator(at: base, includingPropertiesForKeys: nil)
         while let f = files?.nextObject() as? URL {
@@ -125,10 +125,10 @@ final class MangoCoverageTests: MangoTestCase {
         }
         XCTAssertNil(BindingParser.parseFuncName("frobnicate", &arg, "0", "0", "0", "0", "0"))
 
-        let parse = Self.source("Sources/Mango/Config/binding_parse.swift")
+        let parse = Self.source("Sources/Mango/config/binding_parse.swift")
         let functions = Self.source("Sources/Mango/dispatch/bind.swift") + Self.source("Sources/Mango/ext-protocol/hdr.swift")
-            + Self.source("Sources/Mango/Engine/MangoServer.swift") + Self.source("Sources/Mango/switcher/switcher.swift")
-            + Self.source("Sources/Mango/Config/reapply.swift")
+            + Self.source("Sources/Mango/common/server.swift") + Self.source("Sources/Mango/switcher/switcher.swift")
+            + Self.source("Sources/Mango/config/reapply.swift")
         let re = try NSRegularExpression(pattern: #"funcName == "([a-z_]+)" \{\n(?:\s*/\*.*\*/\n)?\s*`func` = MangoServer\.(\w+)\(_:\)"#)
         var withoutEffect = Set<String>()
         let matches = re.matches(in: parse, range: NSRange(parse.startIndex..., in: parse))
@@ -188,7 +188,7 @@ final class MangoCoverageTests: MangoTestCase {
     static let readOnlyToWarn: Set<String> = ["focused_opacity", "unfocused_opacity", "no_size_hint"]
 
     func testOptionsWithoutEffectAreExactlyTheUnreadOnes() throws {
-        let setters = Self.source("Sources/Mango/Config/option_defs.swift")
+        let setters = Self.source("Sources/Mango/config/option_defs.swift")
         let engine = Self.engineSources
         let re = try NSRegularExpression(pattern: #"t\["([a-z_0-9]+)"\] = \w+\(\\\.(\w+)"#)
         var unreadButNotListed: [String] = [], listedButRead: [String] = []
@@ -205,7 +205,7 @@ final class MangoCoverageTests: MangoTestCase {
     }
 
     func testWindowRuleFieldsWithoutEffectAreExactlyTheUnreadOnes() throws {
-        let parser = Self.source("Sources/Mango/Config/option_defs.swift")
+        let parser = Self.source("Sources/Mango/config/option_defs.swift")
         let engine = Self.engineSources
         let re = try NSRegularExpression(pattern: #"key == "([a-z_]+)" \{\n\s*rule\.(\w+) ="#)
         var unreadButNotListed: [String] = [], listedButRead: [String] = []

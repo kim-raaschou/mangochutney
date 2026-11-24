@@ -13,7 +13,7 @@ final class KeyboardOptionsTests: MangoTestCase {
                                                        .init(src: K.leftControl, dst: K.capsLock)])
         XCTAssertEqual(K.mappings(["caps:super", "caps:escape"]), [.init(src: K.capsLock, dst: K.leftGUI)], "the first wins")
         XCTAssertEqual(K.mappings(["grp:alt_shift_toggle", "compose:ralt"]), [], "not a key move")
-        XCTAssertEqual(MangoServer.xkbOptions(" Caps:Hyper , ctrl:swapcaps,,"), ["caps:hyper", "ctrl:swapcaps"])
+        XCTAssertEqual(KeyboardOptions.xkbOptions(" Caps:Hyper , ctrl:swapcaps,,"), ["caps:hyper", "ctrl:swapcaps"])
     }
 
     func testCapsLocksLockIsTurnedOffWhenItsKeyIsTaken() {

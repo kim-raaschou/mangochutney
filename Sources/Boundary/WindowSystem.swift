@@ -63,6 +63,10 @@ package protocol WindowSystem: AnyObject {
     func clientSetSize(_ c: Client, _ width: CGFloat, _ height: CGFloat, _ forceConfigure: Bool) -> UInt32
     /// The toplevel's min and max size (toplevel->current), 0 where it has none.
     func clientSizeHints(_ c: Client) -> ClientSizeHints
+    /// client_get_geometry: the surface's geometry (the xdg geometry), its size.
+    func clientGetGeometry(_ c: Client) -> CGRect
+    /// wlr_scene_node_coords on the client's surface: where the surface stands in the layout.
+    func sceneSurfaceCoords(_ c: Client) -> CGPoint
     /// wlr_scene_node_set_position on the client's scene: where its box (with the border) stands.
     func sceneNodeSetPosition(_ c: Client, _ x: CGFloat, _ y: CGFloat)
     /// wlr_scene_subsurface_tree_set_clip on the client's surface.

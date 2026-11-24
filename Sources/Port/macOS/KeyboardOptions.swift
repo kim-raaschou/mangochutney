@@ -4,6 +4,11 @@ import IOKit.hid
 import Mango
 
 package enum KeyboardOptions {
+    /// xkb_rules_options split into its options.
+    static func xkbOptions(_ s: String) -> [String] {
+        s.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces).lowercased() }.filter { !$0.isEmpty }
+    }
+
     static let capsLock: UInt64 = 0x7_0000_0039
     static let escape: UInt64 = 0x7_0000_0029
     static let f18: UInt64 = 0x7_0000_006D

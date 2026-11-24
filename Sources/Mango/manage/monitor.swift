@@ -1,4 +1,159 @@
 import CoreGraphics
+import Foundation
+
+/// not in mango: C's fixed per-tag arrays (PERTAG_SLOTS), indexed by mango's uint32_t tag.
+public struct PertagSlots<Element>: Sequence {
+    var a: [Element]
+    init(_ value: @autoclosure () -> Element) { a = (0..<Int(PERTAG_SLOTS)).map { _ in value() } }
+    public subscript(i: UInt32) -> Element {
+        get { a[Int(i)] }
+        set { a[Int(i)] = newValue }
+    }
+    public subscript(i: Int) -> Element {
+        get { a[i] }
+        set { a[i] = newValue }
+    }
+    public func makeIterator() -> IndexingIterator<[Element]> { a.makeIterator() }
+}
+
+public let tag_num_MAX: UInt32 = 31
+public let PERTAG_SLOTS: UInt32 = tag_num_MAX + 1
+
+@MainActor
+public final class Pertag {
+    public var curtag: UInt32 = 0, prevtag: UInt32 = 0
+    public var nmasters = PertagSlots<Int32>(0)
+    public var mfacts = PertagSlots<Float>(0)
+    public var noHide = PertagSlots<Bool>(false)
+    public var noRenderBorder = PertagSlots<Bool>(false)
+    public var openAsFloating = PertagSlots<Bool>(false)
+    public var scrollerDefaultProportion = PertagSlots<Float>(0)
+    public var scrollerDefaultProportionSingle = PertagSlots<Float>(0)
+    public var scrollerIgnoreProportionSingle = PertagSlots<Bool>(false)
+    package var dwindleRoot = PertagSlots<DwindleNode?>(nil)
+    public var configLtidxs = PertagSlots<LayoutKind>(.tile)
+    public var ltidxs = PertagSlots<LayoutKind>(.tile)
+    package var scrollerState = PertagSlots<TagScrollerState?>(nil)
+}
+
+@MainActor
+public final class Monitor {
+    public var screen: Screen   // not in mango: the port's output (wlr_output)
+    public var m: CGRect      /* monitor area, layout-relative */
+    public var w: CGRect      /* window area, layout-relative */
+    public var seltags = 0
+    public var tagset: [UInt32] = [1, 1]
+    var frameSerial: UInt32 = 1
+    package var lastResizeFrame: UInt32 = 0   // not in mango: package, for the port's fit (chutney_fit_layout)
+
+    public var gappih: Int32 /* horizontal gap between windows */
+    public var gappiv: Int32 /* vertical gap between windows */
+    public var gappoh: Int32 /* horizontal outer gaps */
+    public var gappov: Int32 /* vertical outer gaps */
+    // special workspace gaps, per monitor
+    public var specialGappih: Int32
+    public var specialGappiv: Int32
+    public var specialGappoh: Int32
+    public var specialGappov: Int32
+    public let pertag = Pertag()
+    public var ovbkCurrentTagset: UInt32 = 0
+    public var ovbkPrevTagset: UInt32 = 0
+    public var sel: ClientID?
+    public var prevsel: ClientID?
+    public var isoverview = false
+    public var isJumpMode = false
+    public var isInHotarea = false
+    public var ovNormalMode = false /* Uses the normal grid layout when entering via the
+                                       hot area. */
+    public var ovTabLayout = false  /* Uses the centered tab layout when entering via
+                                       overcircle. */
+    public var specialEmptyView = false // user intentionally opened the empty special view
+    public var visibleClients: Int32 = 0
+    public var visibleTilingClients: Int32 = 0
+    public var visibleScrollTilingClients: Int32 = 0
+    public var visibleFakeTilingClients: Int32 = 0
+    public var hideClients: UInt32 = 0
+    package var titleMessageBar: MangoBarDecoration?
+    public var carouselAnimDir = 0
+    // not in mango: the cards, where client_tile_resize puts the clients in overview (the port's windows stay under its pictures)
+    package var ovCards: [ClientID: CGRect] = [:]
+    // not in mango: the port shows pictures of the windows (screen capture granted)
+    package var ovThumbnails = false
+
+    // not in mango: the layout of the tag in view, m->pertag->ltidxs[get_mon_curtag(m)]
+    public var layout: LayoutKind { pertag.ltidxs[getMonCurtag(self)] }
+
+    init(screen: Screen, config: Config) {
+        self.screen = screen
+        m = screen.frame
+        w = screen.workArea
+        gappih = Int32(config.gappih)
+        gappiv = Int32(config.gappiv)
+        gappoh = Int32(config.gappoh)
+        gappov = Int32(config.gappov)
+        specialGappih = Int32(config.specialGappih)
+        specialGappiv = Int32(config.specialGappiv)
+        specialGappoh = Int32(config.specialGappoh)
+        specialGappov = Int32(config.specialGappov)
+        pertag.curtag = 1
+        pertag.prevtag = 1
+        for i in 0...config.tagNum {
+            pertag.nmasters[i] = Int32(config.defaultNmaster)
+            pertag.mfacts[i] = Float(config.defaultMfact)
+            pertag.ltidxs[i] = .tile
+        }
+    }
+}
+
+package extension MangoServer {
+    func tagGatherResetSlot(_ m: Monitor, _ tag: UInt32) {
+        tagSlotSetDefaults(m, tag)
+        m.pertag.noHide[tag] = false
+        m.pertag.noRenderBorder[tag] = false
+        m.pertag.openAsFloating[tag] = false
+        m.pertag.dwindleRoot[tag] = nil
+        m.pertag.scrollerState[tag] = nil
+
+        for tr in config.tagRules {
+            if tagRuleMatchesMonitor(tr, m) && (tr.id == nil || tr.id == Int(tag)) {
+                tagRuleApplyToSlot(m, tr, tag)
+            }
+        }
+        m.pertag.ltidxs[tag] = m.pertag.configLtidxs[tag]
+    }
+
+    // move pertag state from src to dst, then reset src.
+    func tagGatherMovePertag(_ m: Monitor, _ dst: UInt32, _ src: UInt32) {
+        m.pertag.nmasters[dst] = m.pertag.nmasters[src]
+        m.pertag.mfacts[dst] = m.pertag.mfacts[src]
+        m.pertag.noHide[dst] = m.pertag.noHide[src]
+        m.pertag.noRenderBorder[dst] = m.pertag.noRenderBorder[src]
+        m.pertag.openAsFloating[dst] = m.pertag.openAsFloating[src]
+        m.pertag.scrollerDefaultProportion[dst] = m.pertag.scrollerDefaultProportion[src]
+        m.pertag.scrollerDefaultProportionSingle[dst] = m.pertag.scrollerDefaultProportionSingle[src]
+        m.pertag.scrollerIgnoreProportionSingle[dst] = m.pertag.scrollerIgnoreProportionSingle[src]
+        m.pertag.dwindleRoot[dst] = m.pertag.dwindleRoot[src]
+        m.pertag.configLtidxs[dst] = m.pertag.configLtidxs[src]
+        m.pertag.ltidxs[dst] = m.pertag.ltidxs[src]
+        m.pertag.scrollerState[dst] = m.pertag.scrollerState[src]
+        tagGatherResetSlot(m, src)
+    }
+}
+
+/// mango INSIDEMON (manage/monitor.h).
+@MainActor func INSIDEMON(_ a: Client) -> Bool {
+    guard let m = a.mon else { return false }
+    let g = a.geom, mm = m.m
+    return g.minX >= mm.minX && g.minY >= mm.minY && g.minX + g.width <= mm.minX + mm.width
+        && g.minY + g.height <= mm.minY + mm.height
+}
+
+/// mango GEOMINSIDEMON (manage/monitor.h).
+@MainActor func GEOMINSIDEMON(_ a: CGRect, _ m: Monitor) -> Bool {
+    let mm = m.m
+    return a.minX >= mm.minX && a.minY >= mm.minY && a.minX + a.width <= mm.minX + mm.width
+        && a.minY + a.height <= mm.minY + mm.height
+}
 
 @MainActor public func isSpecialActive(_ m: Monitor?) -> Bool {
     guard let m else { return false }

@@ -2,26 +2,29 @@ import XCTest
 @testable import Mango
 @testable import Port
 
+@MainActor
 final class FloatingSnapTests: MangoTestCase {
-    let monitor = CGRect(x: 0, y: 0, width: 1728, height: 1117)
-    let work = CGRect(x: 0, y: 37, width: 1728, height: 1080)
-
-    func snap(_ f: CGRect, others: [CGRect] = [], distance: CGFloat = 30) -> CGRect {
-        FloatingSnap.snapped(f, others: others, monitor: monitor, workArea: work, distance: distance)
+    /// apply_window_snap on a floating client alone on its monitor (borderpx 0).
+    func snap(_ f: CGRect, distance: Int = 30) -> CGRect {
+        let r = EngineRig()
+        r.server.config.enableFloatingSnap = true
+        r.server.config.borderpx = 0
+        r.server.config.snapDistance = distance
+        let c = r.window(1, floating: true, frame: f)
+        c.geom = f
+        r.server.applyWindowSnap(c)
+        return c.floatGeom
     }
 
     func testAnEdgeWithinTheDistanceSnaps() {
-        let f = CGRect(x: 20, y: 60, width: 400, height: 300)
-        let s = snap(f)
+        let s = snap(CGRect(x: 20, y: 60, width: 400, height: 300))
         XCTAssertEqual(s.minX, 0, "20 from the left edge")
         XCTAssertEqual(s.minY, 37, "23 below the work area's top (the menu bar)")
     }
 
     func testTheNearerSideWinsAndATieGoesRightOrDown() {
-        let wide = CGRect(x: 10, y: 400, width: 1710, height: 200)
-        XCTAssertEqual(snap(wide).maxX, 1728)
-        let tie = CGRect(x: 10, y: 400, width: 1708, height: 200)
-        XCTAssertEqual(snap(tie).minX, 20)
+        XCTAssertEqual(snap(CGRect(x: 10, y: 400, width: 1710, height: 200)).maxX, 1728)
+        XCTAssertEqual(snap(CGRect(x: 10, y: 400, width: 1708, height: 200)).minX, 20)
     }
 }
 

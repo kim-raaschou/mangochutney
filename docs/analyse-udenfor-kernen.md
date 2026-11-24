@@ -23,26 +23,26 @@ plus `mmsg` og `mangonag`. Grænsen står i `Sources/Boundary`, porten i `Source
 Der er 581 linjer med "not in mango" i kernen; de fleste er ét kald over grænsen eller en del, macOS
 ikke har.
 
-**Det, der står i kernen uden at være mangos** (resten af mangos gamle `Engine/` og `Model/`):
+**Det, der står i kernen uden at være mangos.** 24. november: `Engine/` og `Model/` er tømt ind i
+mangos filer, `Config`, `IPC` og `Layout` hedder som mangos mapper, `FloatingSnap` er foldet tilbage
+i `applyWindowSnap`, `xkbOptions` er portens, og `isGroupMember` er mangos `clientIsGroupMember`.
 
 | Hvad | Fil | Mærket | Vurdering |
 |---|---|---|---|
-| `dispatch(_:)`, indgangen for en binding, IPC og portens dispatchere | `Engine/Dispatch.swift` | ja | Bliver (afvigelser.md §5, Dispatchere) |
-| `publishInputState`, event tappets øjebliksbillede | `Engine/Input.swift` | ja | Bliver (afvigelser.md §3, event tappet) |
-| `MangoServer.xkbOptions`, kun brugt af porten | `Engine/Input.swift` | nej | Flyttes til porten |
-| `groupMembers` | `Engine/Groups.swift` | nej | Mærkes eller fjernes |
-| `FloatingSnap.snapped`, `apply_window_snap`s regning for sig | `Engine/FloatingSnap.swift` | ja | Bliver |
-| `visibleClients`, `tiledClients`, `specialClients`, `arrangeAll`, `updateBorders`, `clientDrawSplitBorder` | `Engine/MangoServer.swift` | ja | Bliver; mangos filtre som lister og portens tegning af kanter |
-| `clientsAll`, `focused`, `started`, `drawsOverlays`, `mangoVersion` | `Engine/MangoServer.swift` | nej | Mærkes (`clientsAll` og `started` er nævnt i afvigelser.md §5) |
-| `Client.appid`, `isVisible(on:)`, `isGroupMember`, `frame`, `parked`, `Monitor.screen` | `Engine/Client.swift` | nej | Mærkes; `isGroupMember` bør hedde mangos `client_is_group_member` |
+| `dispatch(_:)`, indgangen for en binding, IPC og portens dispatchere | `dispatch/bind.swift` | ja | Bliver (afvigelser.md §5, Dispatchere) |
+| `publishInputState`, event tappets øjebliksbillede | `input/keyboard.swift` | ja | Bliver (afvigelser.md §3, event tappet) |
+| `groupMembers` | `manage/client.swift` | ja | Bliver |
+| `visibleClients`, `tiledClients`, `specialClients`, `arrangeAll`, `updateBorders`, `clientDrawSplitBorder` | `common/server.swift` | ja | Bliver; mangos filtre som lister og portens tegning af kanter |
+| `clientsAll`, `focused`, `started`, `drawsOverlays`, `mangoVersion` | `common/server.swift` | nej | Mærkes (`clientsAll` og `started` er nævnt i afvigelser.md §5) |
+| `Client.appid`, `isVisible(on:)`, `Monitor.screen` | `manage/client.swift`, `manage/monitor.swift` | nej | Mærkes |
 | `KeyboardState`, `KeyInput`, `KeyAction`, `publishGlobalKeys` | `input/keyboard.swift` | delvis | Event tappets typer; mærkes |
-| Geometri-hjælpere og `BezierCurve` | `Model/Geometry.swift` | ja; `BezierCurve.extremes` nej | `extremes` har ingen kalder: fjernes |
-| `DecorateStyle` (bjælkernes stil) | `Model/Decorate.swift` | ja | Bliver |
-| `LayoutKind.isMonocleLike` (portens parkering) | `Layout/Layout.swift` | ja | Bliver |
-| `LayoutKind.isVertical` | `Layout/Layout.swift` | nej | Ingen kalder: fjernes |
+| Geometri-hjælpere | `common/util.swift` | ja | Bliver |
+| `DecorateStyle` (bjælkernes stil, mangos `DecorateDrawData`) | `draw/text-node.swift` | ja | Bliver |
+| `LayoutKind.isMonocleLike` (portens parkering) | `layout/Layout.swift` | ja | Bliver |
+| `LayoutKind.isVertical` | `layout/Layout.swift` | nej | Ingen kalder: fjernes |
 | `mangoBarDecorationApplyConfig`, en fletning med mangos navn | `draw/text-node.swift` | ja | Omdøbes eller listes |
-| `Dispatch.arg`, kun brugt af `Port/Extensions/Shortcuts.swift` | `Config/parse.swift` | ja | Kan flyttes til porten |
-| `ConfigParser` (`parse_config` uden server: `mango -p`, `setoption`, tests) og portens noter | `Config/load.swift` | ja | Bliver |
+| `Dispatch.arg`, kun brugt af `Port/Extensions/Shortcuts.swift` | `config/parse.swift` | ja | Kan flyttes til porten |
+| `ConfigParser` (`parse_config` uden server: `mango -p`, `setoption`, tests) og portens noter | `config/load.swift` | ja | Bliver |
 | JSON-kodningen for cJSON | `IPC/ipc.swift` | ja | Bliver |
 
 Afsnittene nedenfor er analysen fra 2. november; filnavnene i dem er fra før ombygningen.
@@ -79,7 +79,7 @@ Det skal ud af kernen efter den regel:
 | Grænsefladen | `Engine/WindowSystem`, `Model/Screen`, `Engine/PortHooks`, `Engine/InputState` | ~290 | Et eget modul ved siden af kernen, der hvor wlroots står |
 | Portens tabeller | `Config/MangoCompat`, `Config/PortOptions` | ~440 | Porten. Parseren får dem gennem en krog |
 | Port-funktioner | `Engine/Shortcuts`, `Engine/DepartedWindows`, `Engine/SavedLayout`, `Engine/SwipeTracker` | ~430 | Porten, med en krog hvor mangos kode bruger dem |
-| Portens felter i `Config` | omkring 20 `chutney*`-felter i `Config/parse.swift` | ~60 | Porten, fx en tabel med portens værdier |
+| Portens felter i `Config` | omkring 20 `chutney*`-felter i `config/parse.swift` | ~60 | Porten, fx en tabel med portens værdier |
 | Mærket port-logik inde i mangos filer | omkring 210 mærker, mest i `MangoServer`, `WindowSystem`, `Dispatch`, `Input`, `Tabs` | ? | Gås igennem én ad gangen: et kald over grænsen bliver, port-logik flyttes ud bag en krog |
 
 Rækkefølgen er de hele filer først, fordi de er mekaniske at flytte. Mærkerne kommer bagefter og kræver en vurdering hver især.

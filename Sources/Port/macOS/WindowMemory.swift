@@ -38,7 +38,7 @@ final class WindowMemory {
         guard present.count > 1, !server.monitors.contains(where: \.isoverview) else { return }
         let focus = present.first { $0.id == g.focus }
             ?? present.first { $0.isGroupFocus && !$0.groupParked } ?? present[0]
-        for m in present where m.isGroupMember {
+        for m in present where server.clientIsGroupMember(m) {
             if m.groupParked { server.clientUnpark(m, focus) }
             server.clientGroupDetach(m)
         }
@@ -96,7 +96,7 @@ final class WindowMemory {
             }
         }
         var groups = departed.groups
-        for c in server.clientsAll where c.isGroupMember && c.groupPrev == nil {
+        for c in server.clientsAll where server.clientIsGroupMember(c) && c.groupPrev == nil {
             let members = server.groupMembers(c)
             groups.removeAll { !Set($0.members).isDisjoint(with: members.map(\.id)) }
             groups.append(DepartedGroup(members: members.map(\.id), focus: members.first { $0.isGroupFocus }?.id))

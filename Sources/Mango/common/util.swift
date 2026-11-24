@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 // not in mango: mango's wl_list helpers (common/util.c) on server.clients, which is an array here
 package extension MangoServer {
@@ -46,4 +47,52 @@ func regexMatch(_ pattern: String?, _ str: String?) -> Bool {
     }
 
     return re.firstMatch(in: str, range: NSRange(str.startIndex..., in: str)) != nil
+}
+
+public typealias ClientID = UInt32
+
+public extension CGRect {
+    var center: CGPoint { CGPoint(x: midX, y: midY) }
+    var topLeft: CGPoint { CGPoint(x: minX, y: minY) }
+    var bottomRight: CGPoint { CGPoint(x: maxX, y: maxY) }
+    var bottomLeft: CGPoint { CGPoint(x: minX, y: maxY) }
+
+    /// Not in mango: a geometry helper.
+    func insetBy(horizontal: CGFloat, vertical: CGFloat) -> CGRect {
+        CGRect(x: minX + horizontal, y: minY + vertical,
+               width: max(1, width - 2 * horizontal), height: max(1, height - 2 * vertical))
+    }
+
+    /// Not in mango: a geometry helper.
+    func overlapArea(_ other: CGRect) -> CGFloat {
+        let i = intersection(other)
+        return i.isNull ? 0 : i.width * i.height
+    }
+
+    /// Not in mango: whole-point rounding of macOS frames.
+    func rounded() -> CGRect {
+        func up(_ v: CGFloat) -> CGFloat { (v + 0.5).rounded(.down) }
+        let x = up(minX), y = up(minY)
+        return CGRect(x: x, y: y, width: up(maxX) - x, height: up(maxY) - y)
+    }
+}
+
+public extension CGPoint {
+    /// Not in mango: a geometry helper.
+    func distance(to p: CGPoint) -> CGFloat {
+        let dx = x - p.x, dy = y - p.y
+        return (dx * dx + dy * dy).squareRoot()
+    }
+    static func + (a: CGPoint, b: CGPoint) -> CGPoint { CGPoint(x: a.x + b.x, y: a.y + b.y) }
+    static func - (a: CGPoint, b: CGPoint) -> CGPoint { CGPoint(x: a.x - b.x, y: a.y - b.y) }
+}
+
+public struct RGBA: Equatable, Sendable {
+    public var r: Double, g: Double, b: Double, a: Double
+    public init(r: Double, g: Double, b: Double, a: Double) {
+        self.r = r; self.g = g; self.b = b; self.a = a
+    }
+    public var hexString: String {
+        String(format: "0x%02x%02x%02x%02x", Int(r * 255), Int(g * 255), Int(b * 255), Int(a * 255))
+    }
 }

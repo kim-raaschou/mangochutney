@@ -61,4 +61,33 @@ final class EngineParkAgainTests: MangoTestCase {
         XCTAssertEqual(rig.app.frames[2]?.origin, CGPoint(x: 5087, y: 2239))
         XCTAssertTrue(Hider.isParked(rig.app.frames[2]!, in: benq.frame))
     }
+
+    /// A hidden client mango moves to another monitor takes its disabled scene with it: the window is
+    /// parked in the corner of its new monitor, not left in the old one's.
+    @MainActor
+    func testAHiddenWindowMovedToAnotherMonitorIsParkedInItsCorner() {
+        let rig = EngineRig()
+        let laptop = Screen(displayID: 1, name: "Built-in", frame: CGRect(x: 0, y: 0, width: 1728, height: 1117),
+                            workArea: CGRect(x: 0, y: 37, width: 1728, height: 1080), scale: 2, isMain: true)
+        let benq = Screen(displayID: 2, name: "BenQ", frame: CGRect(x: 1728, y: 0, width: 3360, height: 2240),
+                          workArea: CGRect(x: 1728, y: 30, width: 3360, height: 2210), scale: 2, isMain: false)
+        rig.server.rebuildMonitors(screens: [laptop, benq])
+        rig.window(1, tags: 1)
+        let hidden = rig.window(2, tags: 2)
+        rig.server.arrangeAll(false)
+        rig.settle()
+        let a = hidden.mon!, b = rig.server.monitors.first { $0 !== hidden.mon }!
+        XCTAssertTrue(hidden.parked)
+        XCTAssertEqual(rig.app.frames[2]?.origin, rig.server.mac.parkedOrigin(hidden, on: a))
+        XCTAssertNotEqual(rig.server.mac.parkedOrigin(hidden, on: a), rig.server.mac.parkedOrigin(hidden, on: b))
+
+        rig.server.clientChangeMon(hidden, b)
+        rig.server.arrangeAll(false)
+        rig.settle()
+        XCTAssertTrue(hidden.mon === b)
+        XCTAssertFalse(hidden.mac.sceneNodeEnabled)
+        XCTAssertTrue(hidden.parked)
+        XCTAssertEqual(rig.app.frames[2]?.origin, rig.server.mac.parkedOrigin(hidden, on: b))
+        XCTAssertTrue(Hider.isParked(rig.app.frames[2]!, in: b.screen.frame))
+    }
 }

@@ -47,11 +47,6 @@ package extension MangoServer {
             cursor.y >= box.minY + box.height
     }
 
-    // not in mango: the client's scene node, which the port parks when it is disabled
-    func pointerNodeEnabled(_ c: Client) -> Bool {
-        !c.parked
-    }
-
     func pointerConfineRuleClient() -> Client? {
         var c: Client?
 
@@ -65,7 +60,7 @@ package extension MangoServer {
         // not in mango: mapped is being in the client list
         guard let c, c.confinePointer, clientByIdAll(c.id) === c, let m = c.mon,
               !m.isoverview, !c.isminimized, VISIBLEON(c, m),
-              pointerNodeEnabled(c) else {
+              c.platform.sceneNodeEnabled else {
             return nil
         }
         return c
@@ -203,7 +198,7 @@ package extension MangoServer {
     }
 
     func clientResizeEdgeAt(_ c: Client?, _ surface: ClientID?, _ x: CGFloat, _ y: CGFloat) -> WlrEdges {
-        guard let c, pointerNodeEnabled(c) else { return [] }
+        guard let c, c.platform.sceneNodeEnabled else { return [] }
         if ISFULLSCREEN(c) { return [] }
         /* A popup or any other child surface sitting on the border grab strip
          * must keep receiving its own input instead of resizing the parent. */
@@ -460,7 +455,7 @@ package extension MangoServer {
         // not in mango: the group bars are the port's panels, so node_at_point's walk is spelled out;
         // a bar lies at the bottom of its client's layer
         if let m = monitorAtPoint(p), !m.isoverview {
-            let vis = (isSpecialActive(m) ? specialClients(m) : visibleClients(m)).filter { $0 !== ignore && !$0.parked }
+            let vis = (isSpecialActive(m) ? specialClients(m) : visibleClients(m)).filter { $0 !== ignore && $0.platform.sceneNodeEnabled }
             let window = vis.filter { clientGeom($0).contains(p) }.map { clientTargetLayer($0) }.max()
             let bars = vis.filter { g in
                 guard clientCheckTabNodeVisible(g, on: m), let s = clientDrawGroupBar(g, computeEdgeOffsets(g)) else { return false }
@@ -544,7 +539,7 @@ package extension MangoServer {
                 groupBarDragPending = false
                 groupBarDragClient = nil
                 if let dc, !dc.iskilling {
-                    if dc.isGroupMember {
+                    if clientIsGroupMember(dc) {
                         _ = clientGroupLeave(dc)
                     }
                     clientFocus(dc, true)
@@ -663,7 +658,7 @@ package extension MangoServer {
          * previous keyboard surface. Do not turn each drag motion into a focus
          * change: the keyboard focus would be restored after the drag ends. */
         if config.sloppyfocus && !startDragWindow,
-           let c, time != 0, pointerNodeEnabled(c),
+           let c, time != 0, c.platform.sceneNodeEnabled,
            c.mon == nil || !isOvercircleMode(c.mon), !c.animation.tagining,
            surface != system.pointerFocusedSurface ||
             (selectedMonitor != nil && selectedMonitor.isoverview && selectedMonitor.sel != c.id),
@@ -846,7 +841,7 @@ package extension MangoServer {
             c = bar == nil ? nodeAtPoint(p) : nil
             let surface = bar == nil ? surfaceAt(c, p) : nil
             if let c {
-                if pointerNodeEnabled(c) && VISIBLEON(c, c.mon) {
+                if c.platform.sceneNodeEnabled && VISIBLEON(c, c.mon) {
                     clientFocus(c, true)
                 }
 

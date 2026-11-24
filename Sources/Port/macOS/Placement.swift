@@ -28,6 +28,8 @@ final class PlacedWindow {
     fileprivate(set) var retryTarget: CGRect?
     fileprivate(set) var retryCount = 0
     fileprivate(set) var parkRetries = 0
+    /// The display whose corner the window is parked in.
+    fileprivate(set) var parkedOn: CGDirectDisplayID?
     fileprivate(set) var deferredRetryPending = false
 }
 
@@ -87,6 +89,9 @@ extension MacWindowSystem {
 
     /// toplevel->current's min and max size: macOS does not tell them.
     func clientSizeHints(_ c: Client) -> ClientSizeHints { ClientSizeHints() }
+    /// The window's size where it stands, and where it stands (the surface is the macOS window).
+    func clientGetGeometry(_ c: Client) -> CGRect { CGRect(origin: .zero, size: c.frame.size) }
+    func sceneSurfaceCoords(_ c: Client) -> CGPoint { c.frame.origin }
 
     func sceneNodeSetPosition(_ c: Client, _ x: CGFloat, _ y: CGFloat) {
         c.mac.nodePosition = CGPoint(x: x, y: y)
@@ -172,6 +177,15 @@ extension MacWindowSystem {
             && !c.leftToMacOS && !fullscreenTagViewed(c) && !ids.contains(c.id) && !placing.parkWhenArrived.contains(c.id) {
             park(c)
             changed = changed || c.parked
+        }
+        // A disabled scene goes with its client to another monitor: a window parked in another
+        // monitor's corner is parked in its own.
+        for c in server.clientsAll where c.parked && (!c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled) {
+            guard let m = monitor(of: c), c.mac.placed.parkedOn != m.screen.displayID else { continue }
+            c.parked = false
+            c.mac.placed.parkRetries = 0
+            park(c)
+            changed = true
         }
         // the borders follow the windows as they are now shown, not as the frame left them before
         if changed { server.updateBorders() }
@@ -463,6 +477,7 @@ extension MacWindowSystem {
         // Port extension: chutney_fullscreen_tag (leftToMacOS, fullscreenTagViewed)
         guard !c.parked, !c.leftToMacOS, !fullscreenTagViewed(c), let m = monitor(of: c), let q = writer(for: c.pid) else { return }
         c.mac.placed.moving = false
+        c.mac.placed.parkedOn = m.screen.displayID
         c.parked = true
         let was = c.frame
         c.frame = CGRect(origin: parkedOrigin(c, on: m), size: c.frame.size)
