@@ -335,8 +335,6 @@ package extension MangoServer {
         arrange(m, false, false)
     }
 
-    // not in mango: only the tree's part; exchange_two_client swaps the layout properties, monitors and
-    // list itself (Dispatch.swift)
     func dwindleSwapClients(_ c1: Client, _ c2: Client) {
         guard let m1 = c1.mon, let m2 = c2.mon, c1 !== c2 else { return }
 

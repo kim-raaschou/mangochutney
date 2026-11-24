@@ -68,6 +68,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Ingen skygge, blur, dæmpning, gennemsigtighed eller runde hjørner fra mango; ingen luk- og fade-animationer | macOS tegner andre apps' vinduer; gennemsigtighed kræver SIP slået fra |
 | Et vindue, som mango klipper ved sin skærms kant (scroller, tag-skift), tegnes helt; ligger der en anden skærm ud over kanten, parkeres det i stedet, så intet af det når nabo-skærmen, og hvor mango viser den klippede del, viser porten en plade: et stillbillede af vinduet taget ved parkeringen, klippet ved kanten (appens ikon uden Skærmoptagelse); pladen har vinduets kant, klippet ved kanten med den, og et klik fokuserer vinduet. Det parkeres også, når mango slukker det. Under en animation skifter vinduet størrelse billede for billede, hvor mango skalerer sin buffer | Andre apps' vinduer kan ikke klippes eller skaleres |
 | Animationer skrives via Accessibility (højst 60 Hz) | Ingen compositor |
+| Intet `client_negotiate_initial_size`, og derfor ingen af layouternes `*_predict` (`layout_predict_box`): mango giver et nyt vindue dets felts størrelse, før det vises; porten giver det sin plads, når mango mapper det. `LayoutContext` står i layouterne som i mango, uden kalder med `probe` | Et macOS-vindue findes med sin størrelse, før porten ser det; der er ingen første configure at svare på |
 | Overview og switcher viser billeder (Skærmoptagelse), stillbilleder taget ved åbning; de rigtige vinduer bliver under dem, så `warp_cursor` sætter markøren på kortet (mangos `geom` i overview) | Andre apps' vinduer kan ikke skaleres; en strøm pr. vindue koster meget |
 | Kantgrebet (`enable_border_resize`) tager kun et klik, som event tap'en har taget fra appen; den afgør det ud fra mangos `hover_resize_edge` ved forrige bevægelse. Er markøren lige kommet på eller af striben, kan det ene klik gå til appen, eller gå tabt | Tap'en skal afgøre klikket med det samme, før appen får det, og kan ikke vente på mango |
 | `mangonag` er ikke et eget program: dens kode (`Sources/Mango/mangonag`, 1:1) kører i mangos proces, og porten står for dens Wayland-side (`NagDisplay`): bjælken tegnes med AppKit (mangonags farver, skrift, fire linjer, ANSI-farver og knapper) og står under menulinjen (eller over Dock'en); `-y` (lag) gør intet, bjælken står over vinduerne; tilvalgene læses med macOS' `getopt`, som ikke flytter tilvalg efter et løst argument frem, som glibc's gør | mangonag er en Wayland-klient på en layer surface, tegnet med cairo og pango; et program at kalde selv har en Mac ikke brug for (macOS' notifikationer) |
@@ -222,6 +223,13 @@ Hvor koden står, når den ikke står som i mango.
   væk (macOS-fuldskærm, minimeret, skjult), genbruges af porten, så af `init_client_properties` i
   unmap nulstilles kun `iskilling` og `drag_to_tile`. Ingen macOS-del: swallowing, foreign toplevel,
   scene-noderne ved map, `client_reparent_group`, regel-felterne MangoCompat lister.
+- **C's egne hjælpere:** hvad Swift selv har, findes ikke: `die`, `ecalloc`, `utf8_strlcpy`,
+  `wayland_string_set`, `string_printf`, `join_strings`, `join_strings_with_suffix` (Swifts strenge),
+  `wl_list_append` (listen er et array) og `timespec_to_ms` (`get_now_in_ms` regner selv i ms, og
+  tests kan stille dens ur, `nowInMsOverride`).
+- **Frigørelse:** Swift frigør selv, hvad ingen holder (ARC): `cleanup.c`, `dwindle_free_tree`,
+  `cleanup_monitor_dwindle` og mangos andre rene `free`-funktioner findes ikke. Et dwindle-blad,
+  hvis klient er væk (klienten holdes svagt), tages ud af træet i `dwindleCore` (`removeDeadLeaf`).
 - **Mangos filtre som lister:** hvor mango går `server.clients` igennem med `VISIBLEON`,
   `ISTILED` eller special-tagget, har kernen `visibleClients`, `tiledClients` og `specialClients`
   (`common/server.swift`), og `arrangeAll` for mangos løkke over skærmene; alle mærket.

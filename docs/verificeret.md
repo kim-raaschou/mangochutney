@@ -41,7 +41,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/common/log.c` | `common/Log.swift` | ikke verificeret | | | | |
 | `src/common/scene_node.c` | | porten | | | | scenen; `surfaceAt`, `sceneNodeSetEnabled` |
 | `src/common/server.c` | `common/server.swift` | ikke verificeret | | | | |
-| `src/common/util.c` | `common/util.swift` | ikke verificeret | | | | |
+| `src/common/util.c` | `common/util.swift` | 1:1 | de70e75, 24. nov. | `c73e42e65294` | `die`, `ecalloc`, `utf8_strlcpy`, `wayland_string_set`, `wl_list_append`, `timespec_to_ms`, `join_strings`, `join_strings_with_suffix`, `string_printf` (Swift har dem, §5), `fd_set_nonblock` (med `-s`, §4) | `wl_list`-hjælperne på klientlistens array; `regex_match` med ICU for PCRE2 |
 | `src/config/binding_parse.c` | `config/binding_parse.swift` | ikke verificeret | | | | |
 | `src/config/cleanup.c` | | ingen macOS-del | | | | frigørelse: Swift's ARC |
 | `src/config/conflict_check.c` | `config/conflict_check.swift` | ikke verificeret | | | | |
@@ -75,7 +75,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/input/trackpad.c` | `input/trackpad.swift` | ikke verificeret | | | | |
 | `src/ipc/ipc.c` | `ipc/ipc.swift` | ikke verificeret | | | | |
 | `src/layout/arrange.c` | `layout/arrange.swift`, `layout/Layout.swift` | ikke verificeret | | | | |
-| `src/layout/dwindle.c` | `layout/dwindle.swift` | ikke verificeret | | | | |
+| `src/layout/dwindle.c` | `layout/dwindle.swift` | 1:1 | de70e75, 24. nov. | `7c1bf821750a` | `dwindle_free_tree`, `cleanup_monitor_dwindle` (ARC, §5), `dwindle_predict` (§3) | markøren er portens (`system.pointer`) |
 | `src/layout/horizontal.c` | `layout/horizontal.swift` | ikke verificeret | | | | |
 | `src/layout/overview.c` | `layout/layout-overview.swift` | ikke verificeret | | | | |
 | `src/layout/scroll.c` | `layout/scroll.swift` | ikke verificeret | | | | |
@@ -85,7 +85,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/manage/layer.c` | | ingen macOS-del | | | | layer shell |
 | `src/manage/misc.c` | `manage/misc.swift` | ikke verificeret | | | | |
 | `src/manage/monitor.c` | `manage/monitor.swift` | ikke verificeret | | | | |
-| `src/manage/tab.c` | `manage/tab.swift` | ikke verificeret | | | | |
+| `src/manage/tab.c` | `manage/tab.swift` | 1:1 | de70e75, 24. nov. | `7775e180ad64` | `tab_update_input_penetration`, `client_reparent_tab`, `client_add_tab_bar`, `client_remove_tab_bar`, `client_update_tab_bar_title`, `client_set_tab_bar_config`, `global_draw_tab_bar` (barens node er portens, §5 Faner) | `client_draw_tabbar` giver stripen til porten; delte `clipBar`/`barSegments` i `animation-client.swift` |
 | `src/manage/xwayland_primary.c` | | ingen macOS-del | | | | Xwayland |
 | `src/overview/overview.c` | `overview/overview.swift` | ikke verificeret | | | | |
 | `src/switcher/switcher.c` | `switcher/switcher.swift` | ikke verificeret | | | | |

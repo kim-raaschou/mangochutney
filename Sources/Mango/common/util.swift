@@ -30,6 +30,17 @@ package extension MangoServer {
     }
 }
 
+@MainActor
+public func getNowInMs() -> UInt32 {
+    // not in mango: the port's clock; tests move it
+    if let now = nowInMsOverride { return now() }
+    return UInt32(truncatingIfNeeded: clock_gettime_nsec_np(CLOCK_MONOTONIC) / 1_000_000)
+}
+
+/// Not in mango: a clock the tests can set.
+@MainActor
+public var nowInMsOverride: (() -> UInt32)?
+
 /// mango regex_match (common/util.c)
 // not in mango: ICU's regex (NSRegularExpression) stands for PCRE2; its error has no offset, and the
 // empty pattern, which ICU refuses, is PCRE2's "(?:)"

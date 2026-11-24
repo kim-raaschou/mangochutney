@@ -25,18 +25,6 @@ public struct MangoAnimation: Equatable {
     public init() {}
 }
 
-/// mango get_now_in_ms (common/util.c).
-@MainActor
-public func getNowInMs() -> UInt32 {
-    // not in mango: the port's clock; tests move it
-    if let now = nowInMsOverride { return now() }
-    return UInt32(truncatingIfNeeded: clock_gettime_nsec_np(CLOCK_MONOTONIC) / 1_000_000)
-}
-
-/// Not in mango: a clock the tests can set.
-@MainActor
-public var nowInMsOverride: (() -> UInt32)?
-
 extension MangoServer {
     /// mango find_animation_curve_at (animation/common.c). Not in mango: the curve is solved, not baked.
     package func findAnimationCurveAt(_ t: Double, _ type: AnimationAction) -> Double {

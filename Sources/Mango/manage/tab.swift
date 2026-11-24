@@ -176,6 +176,7 @@ package extension MangoServer {
     }
 
     func tabSyncMonitor(_ m: Monitor) {
+        // not in mango: no wlr_output->enabled or iscleanuping; the port's monitors are enabled
         if m.isoverview { return }
 
         if !tabLayoutEnabled(m) && tabMemberCount == 0 { return }
