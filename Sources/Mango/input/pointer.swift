@@ -12,7 +12,9 @@ import CoreGraphics
 // motion and frame events; handle_cursor_motion_absolute (the port gives every motion to
 // handle_cursor_motion); the relative pointer, the idle notifier, ipc_notify_device_event, the session
 // lock, check_trackpad_disabled (MangoCompat) and unmanaged (X11) clients. device.c, switch.c, tablet.c
-// and touch.c have no macOS part.
+// and touch.c have no macOS part. server.cursor is the port's pointer (system.pointer); pointer_node_enabled's
+// walk up the scene is the port's (sceneNodeEnabled); handle_cursor_button and handle_cursor_axis's seat part
+// are the port's event tap.
 
 /* Resize corners. */
 let TOP_LEFT = 0, TOP_RIGHT = 1, BOTTOM_LEFT = 2, BOTTOM_RIGHT = 3
@@ -50,7 +52,7 @@ package extension MangoServer {
     func pointerConfineRuleClient() -> Client? {
         var c: Client?
 
-        if let focused = system.keyboardFocusedSurface {
+        if let focused = system.keyboardFocusedSurface {   // not in mango: the port's seat, toplevel_from_wlr_surface
             c = focused
         }
         if c == nil, let sm = selectedMonitor {
@@ -313,7 +315,7 @@ package extension MangoServer {
         c.dragTileFloatBackupGeom = c.floatGeom
         c.oldStackInnerPer = 0.0
         c.oldMasterInnerPer = 0.0
-        if let m = c.mon { setSizePer(m, c) }
+        if let m = c.mon { setSizePer(m, c) }   // not in mango: c->mon is always set here
     }
 
     @discardableResult
