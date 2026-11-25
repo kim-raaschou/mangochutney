@@ -160,13 +160,13 @@ public final class MangoServer {
 
         // not in mango: run's part of the start, in setup
         setEnvDisplay()
+        printstatus(.arrangge)
         /* At this point the outputs are initialized, choose initial
          * selected_monitor based on cursor position, and set default cursor image
          */
         if let m = monitorAtPoint(system.pointer) { setSelectedMonitor(m) }   // not in mango: kept when the pointer is on no monitor
         started = true
-        arrangeAll(false)
-        printstatus(.arrangge)
+        arrangeAll(false)   // not in mango: the windows the port found at the start, arranged once
         pointerCursorActivity()
         runExec()
         runExecOnce()
