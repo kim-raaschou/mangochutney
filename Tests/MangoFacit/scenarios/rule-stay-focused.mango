@@ -1,0 +1,11 @@
+# stay_focused: a window with it keeps the focus when another opens; moving the focus away lets
+# the next one take it.
+config window_rule=app_id:a,stay_focused:1
+open a
+check
+open b
+check
+dispatch focusdir,right
+check
+open c
+check

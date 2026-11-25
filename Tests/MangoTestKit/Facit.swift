@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 @testable import Mango
 
-/// A scenario of Tests/MangoFacit and mango's own answers to it: what `mmsg get` said in mango 0.18.6
+/// A scenario of Tests/MangoFacit and mango's own answers to it: what `mmsg get` said in mango 0.19.0
 /// at each `check` (Tests/MangoFacit/record wrote them). The screens are in the order the backend
 /// gave them to mango.
 package struct Facit {
@@ -231,7 +231,7 @@ extension TestMango {
     }
 }
 
-/// A config file of Tests/MangoFacit/configs (.conf or .toml) and how mango 0.18.6 judged it: `mango -c <file> -p`, its
+/// A config file of Tests/MangoFacit/configs (.conf or .toml) and how mango 0.19.0 judged it: `mango -c <file> -p`, its
 /// exit and its errors as it printed them.
 package struct ConfigFacit {
     /// One mango_error: its tag, its message and the line report_config_line_error named (nil for none).

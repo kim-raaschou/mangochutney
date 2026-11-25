@@ -34,7 +34,7 @@ final class OptionDefsTests: XCTestCase {
             """, baseDirectory: nil, fileName: "t")
 
         XCTAssertEqual(c.errors.count, 0)
-        XCTAssertEqual(c.config.animationCurveOpen, BezierCurve(x1: 0.46, y1: 1, x2: 0.29, y2: 0.99))
+        XCTAssertEqual(c.config.animationCurveOpen, AnimationCurve(bezier: [0.46, 1, 0.29, 0.99]))
         XCTAssertEqual(c.config.animationTypeOpen, .slide)
     }
 
@@ -53,7 +53,7 @@ final class OptionDefsTests: XCTestCase {
 
     func testJumpLabelsTheProportionPresetAndTheDropColour() {
         var c = Config()
-        XCTAssertEqual(c.dropcolor.a, 0.5)
+        XCTAssertEqual(c.dropcolor.a, 0x55 / 255.0)
 
         parseOption("jump_labels", "", to: &c)
         XCTAssertEqual(c.jumpLabels, "")

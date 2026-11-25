@@ -42,6 +42,7 @@ offset_y
 scroller_proportion
 scroller_proportion_single
 shield_when_capture
+stay_focused
 tags
 title
 unfocused_opacity

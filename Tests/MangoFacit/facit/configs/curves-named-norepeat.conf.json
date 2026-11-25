@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Invalid number in array: wobbly\n[ERROR]: Failed to parse animation_curve_focus: wobbly\n\u2570\u2500[Index] /configs/curves-named-norepeat.conf:7\n   \u2570\u2500animation_curve_focus=wobbly\n\n\n[ERROR]: Unknown keyword: bindq\n\u2570\u2500[Index] /configs/curves-named-norepeat.conf:11\n   \u2570\u2500bindq=SUPER,c,spawn,w\n\n\n[WARN]: Key binding conflict in keymode default:\n  File \"/configs/curves-named-norepeat.conf\", line 8\n  File \"/configs/curves-named-norepeat.conf\", line 10\n"
+}

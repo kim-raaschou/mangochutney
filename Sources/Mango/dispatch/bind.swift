@@ -154,6 +154,20 @@ package extension MangoServer {
     func focusDirection(_ arg: Arg) -> Int32 {
         if selectedMonitor == nil { return 0 }
 
+        let sel = focused
+        // not in mango: not in the overview, whose cards are no monocle (a mango bug, docs/afvigelser.md §6)
+        if !config.focusCrossMonitor && isMonocleLayout(selectedMonitor) && !selectedMonitor.isoverview,
+           let sel, !sel.isfloating, arg.i == LEFT || arg.i == RIGHT {
+            if let tabTarget = tabGetAdjacentMember(sel, arg.i == RIGHT) {
+                clientFocus(tabTarget, true)
+                if config.warpcursor { pointerWarpToClient(tabTarget) }
+                return 0
+            }
+            var a = arg
+            a.i = arg.i == LEFT ? PREV : NEXT
+            return focusStack(a)
+        }
+
         var c = directionSelect(arg)
 
         if let sc = c, sc.mon !== selectedMonitor && !config.focusCrossMonitor { return 0 }
@@ -523,10 +537,7 @@ package extension MangoServer {
         let f: Float = arg.f < 1.0 ? arg.f + sm.pertag.mfacts[getMonCurtag(sm)] : arg.f - 1.0
         if f < 0.1 || f > 0.9 { return 0 }
 
-        sm.pertag.mfacts[getMonCurtag(sm)] = f
-        for c in clients where VISIBLEON(c, sm) && ISTILED(c) {
-            c.masterMfactPer = CGFloat(f)
-        }
+        tagRatioStateSetMasterMfact(sm, getMonCurtag(sm), CGFloat(f))
         arrange(sm, false, false)
         return 0
     }
@@ -1494,12 +1505,14 @@ package extension MangoServer {
         newtagset = m.tagset[m.seltags] ^ (target & TAGMASK)
 
         if newtagset != 0 {
+            let oldtag = m.pertag.curtag
             m.tagset[m.seltags] = newtagset
-            clientFocus(clientFocusTop(m), true)
-            for c in clients where VISIBLEON(c, m) && ISTILED(c) {
-                setSizePer(m, c, resetProportion: true)
+            m.pertag.curtag = getTagsFirstTagNum(newtagset)
+            if oldtag != m.pertag.curtag {
+                m.pertag.prevtag = oldtag
             }
-            arrange(m, false, false)
+            clientFocus(clientFocusTop(m), true)
+            arrange(m, false, true)
         }
         printstatus(.arrangge)
     }

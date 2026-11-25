@@ -693,10 +693,10 @@
      "tags": [
       2
      ],
-     "x": 10,
-     "y": 205,
-     "width": 947,
-     "height": 689,
+     "x": -1480,
+     "y": 10,
+     "width": 1687,
+     "height": 1060,
      "is_focused": false,
      "is_visible": true,
      "is_floating": false,
@@ -720,10 +720,10 @@
      "tags": [
       2
      ],
-     "x": 962,
-     "y": 205,
-     "width": 947,
-     "height": 689,
+     "x": 212,
+     "y": 10,
+     "width": 1687,
+     "height": 1060,
      "is_focused": true,
      "is_visible": true,
      "is_floating": false,
@@ -750,8 +750,8 @@
      "y": 0,
      "width": 1920,
      "height": 1080,
-     "layout_symbol": "G",
-     "layout_index": 2,
+     "layout_symbol": "S",
+     "layout_index": 1,
      "tag_num": 9,
      "tags": [
       {
@@ -867,10 +867,10 @@
      "tags": [
       2
      ],
-     "x": 10,
-     "y": 205,
-     "width": 947,
-     "height": 689,
+     "x": -1480,
+     "y": 10,
+     "width": 1687,
+     "height": 1060,
      "is_focused": false,
      "is_visible": false,
      "is_floating": false,
@@ -894,10 +894,10 @@
      "tags": [
       2
      ],
-     "x": 962,
-     "y": 205,
-     "width": 947,
-     "height": 689,
+     "x": 212,
+     "y": 10,
+     "width": 1687,
+     "height": 1060,
      "is_focused": false,
      "is_visible": false,
      "is_floating": false,

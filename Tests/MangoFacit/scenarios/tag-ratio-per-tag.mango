@@ -1,0 +1,18 @@
+# the master ratio is kept per tag: setmfact on one tag stays there, and a window sent to another
+# tag takes that tag's ratio.
+config new_is_master=0
+dispatch setlayout,tile
+open a
+open b
+dispatch setmfact,+0.2
+check
+dispatch view,2
+dispatch setlayout,tile
+open c
+open d
+check
+dispatch view,1
+check
+dispatch tag,2
+dispatch view,2
+check

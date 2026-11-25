@@ -253,6 +253,9 @@ package extension ParserState {
         if word == "conflict" {
             return "c"
         }
+        if word == "norepeat" {
+            return "n"
+        }
         return nil
     }
 

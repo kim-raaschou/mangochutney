@@ -1,0 +1,6 @@
+# TOML's norepeat bind flag
+[keybind.default.norepeat]
+"SUPER+c" = "spawn,x"
+
+[bind.default.sym.norepeat]
+"SUPER+d" = "spawn,y"

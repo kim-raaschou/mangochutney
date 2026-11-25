@@ -63,24 +63,6 @@ final class EngineMonitorChangeTests: MangoTestCase {
     }
 
     @MainActor
-    func testAReloadKeepsEachMonitorsOwnMfact() throws {
-        let server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/mango.conf"))
-        server.system = FakeWindowSystem(server)
-        server.rebuildMonitors(screens: [laptop, external])
-        let lap = try XCTUnwrap(server.monitors.first { $0.screen.displayID == 1 })
-        let ext = try XCTUnwrap(server.monitors.first { $0.screen.displayID == 2 })
-        let a = client(server, id: 20, on: lap, tags: 1, floating: false, frame: CGRect(x: 0, y: 40, width: 800, height: 600))
-        let b = client(server, id: 21, on: ext, tags: 1, floating: false, frame: CGRect(x: 1800, y: 40, width: 800, height: 600))
-        server.config.tagRules = ConfigParser.parse(text: """
-            tag_rule=id:1,monitor_name:Built-in,master_factor:0.3
-            tag_rule=id:1,monitor_name:LG,master_factor:0.7
-            """, baseDirectory: nil, fileName: "t").config.tagRules
-        for m in server.monitors { server.parseTagrule(m) }
-        XCTAssertEqual(a.masterMfactPer, 0.3, accuracy: 0.001)
-        XCTAssertEqual(b.masterMfactPer, 0.7, accuracy: 0.001)
-    }
-
-    @MainActor
     func testTagRuleMatchesMakeModelSerial() throws {
         var benq = external
         benq.make = "BNQ"; benq.model = "BenQ RD280U"; benq.serial = "J7R0095701Q"

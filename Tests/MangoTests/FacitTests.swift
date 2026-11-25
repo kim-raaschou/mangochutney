@@ -2,7 +2,7 @@ import XCTest
 @testable import Mango
 import MangoTestKit
 
-/// mango's own answers. Each scenario in Tests/MangoFacit/scenarios was played on mango 0.18.6
+/// mango's own answers. Each scenario in Tests/MangoFacit/scenarios was played on mango 0.19.0
 /// (Tests/MangoFacit/record); played on our mango, mmsg must get the same answers.
 @MainActor
 final class FacitTests: XCTestCase {

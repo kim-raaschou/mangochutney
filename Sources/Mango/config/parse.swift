@@ -21,11 +21,11 @@ public struct Config: Sendable {
     public var animationDurationTag = 300
     public var animationDurationClose = 300
     public var animationDurationFocus = 0
-    public var animationCurveMove = BezierCurve.mangoDefault
-    public var animationCurveOpen = BezierCurve.mangoDefault
-    public var animationCurveTag = BezierCurve.mangoDefault
-    public var animationCurveClose = BezierCurve.mangoDefault
-    public var animationCurveFocus = BezierCurve.mangoDefault
+    public var animationCurveMove = AnimationCurve(bezier: [0.46, 1.0, 0.29, 0.99])
+    public var animationCurveOpen = AnimationCurve(bezier: [0.46, 1.0, 0.29, 0.99])
+    public var animationCurveTag = AnimationCurve(bezier: [0.46, 1.0, 0.29, 0.99])
+    public var animationCurveClose = AnimationCurve(bezier: [0.46, 1.0, 0.29, 0.99])
+    public var animationCurveFocus = AnimationCurve(bezier: [0.46, 1.0, 0.29, 0.99])
 
     public var scrollerStructs = 20
     public var scrollerDefaultProportion: Float = 0.9
@@ -96,7 +96,7 @@ public struct Config: Sendable {
     public var scratchpadcolor = parseColor("0x516c93ff")!
     public var globalcolor = parseColor("0xb153a7ff")!
     public var overlaycolor = parseColor("0x14a57cff")!
-    public var dropcolor = RGBA(r: 0xd5 / 255.0, g: 0x89 / 255.0, b: 0x9d / 255.0, a: 0.5)
+    public var dropcolor = RGBA(r: 0x8f / 255.0, g: 0xba / 255.0, b: 0x7c / 255.0, a: 0x55 / 255.0)
     public var splitcolor = parseColor("0xeb441eff")!
     public var scratchpadWidthRatio: Float = 0.8
     public var scratchpadHeightRatio: Float = 0.9
@@ -189,6 +189,7 @@ public struct ConfigWinRule: Equatable, Sendable {
     public var isOnceApplied = false
     public var tags: UInt32?
     public var isfloating: Bool?
+    public var stayfocused: Bool?
     public var isfullscreen: Bool?
     public var isfakefullscreen: Bool?
     public var scrollerProportion: Float?
@@ -300,7 +301,8 @@ public struct Dispatch: Equatable, Hashable, Sendable {
         "restore_minimized", "toggle_scratchpad", "toggle_named_scratchpad", "toggle_special_tag",
         "tag_special_tag", "tag_special_silent", "movewin", "resizewin", "smartmovewin",
         "smartresizewin", "moveresize", "incgaps", "togglegaps", "togglegroupbar", "groupjoin",
-        "groupleave", "groupfocus", "toggleoverview", "enteroverview", "leaveoverview", "overcircle",
+        "groupleave", "groupfocus", "toggleoverview", "enteroverview", "leaveoverview",
+        "toggleworkspaceoverview", "enterworkspaceoverview", "leaveworkspaceoverview", "overcircle",
         "togglejump", "switcher", "spawn", "spawn_shell", "spawn_on_empty", "reload_config",
         "load_config_file", "quit", "setkeymode", "setoption", "switch_keyboard_layout",
         "toggle_trackpad_enable", "create_virtual_output", "destroy_all_virtual_output",
@@ -338,6 +340,7 @@ public struct KeyBindingFlags: OptionSet, Hashable, Sendable {
     public static let release = KeyBindingFlags(rawValue: 1 << 2)
     public static let passthrough = KeyBindingFlags(rawValue: 1 << 3)
     public static let allowConflict = KeyBindingFlags(rawValue: 1 << 4)
+    public static let norepeat = KeyBindingFlags(rawValue: 1 << 5)
 }
 
 public struct KeyBinding: Equatable, Hashable, Sendable {

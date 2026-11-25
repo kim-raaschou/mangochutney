@@ -1,8 +1,38 @@
 import CoreGraphics
 
+package final class TagTabNode {
+    var prev: TagTabNode?
+    var next: TagTabNode?
+    var allNext: TagTabNode?
+    var client: Client
+    init(client: Client) { self.client = client }
+}
+
+package final class TagTabState {
+    var head: TagTabNode?
+    var tail: TagTabNode?
+    var allFirst: TagTabNode?
+    var focusId: ClientID = 0
+    var count: Int32 = 0
+}
+
 package extension MangoServer {
     private func tabHead(_ c: Client) -> Client {
         clientChainHead(c, \.tabPrev)
+    }
+
+    func tabGetAdjacentMember(_ c: Client?, _ next: Bool) -> Client? {
+        guard let c, c.tabPrev != nil || c.tabNext != nil else { return nil }
+
+        if let target = next ? c.tabNext : c.tabPrev { return target }
+
+        var target = c
+        if next {
+            while let p = target.tabPrev { target = p }
+        } else {
+            while let n = target.tabNext { target = n }
+        }
+        return target !== c ? target : nil
     }
 
     func tabIsMember(_ c: Client?) -> Bool {
@@ -15,48 +45,22 @@ package extension MangoServer {
         c.tabBarEnabled = on
     }
 
-    private func tabChainFocus(_ head: Client) {
-        var sel: Client?
-        var focus: Client?
-
-        var it: Client? = head
-        while let x = it {
-            if let m = x.mon, x === m.sel { sel = x }
-            if focus == nil && x.isTabFocus { focus = x }
-            it = x.tabNext
-        }
-
-        let f = sel ?? focus ?? head
-
-        it = head
-        while let x = it {
-            x.isTabFocus = x === f
-            it = x.tabNext
-        }
-    }
-
-    private func tabLeave(_ c: Client) {
-        clientChainUnlink(c, \.tabPrev, \.tabNext)
-        c.isTabFocus = false
-        tabBarSetEnabled(c, false)
-        tabMemberCount -= 1
-        clientUpdateVisibility(c)
-    }
-
-    func tabLayoutIdSupported(_ id: LayoutKind) -> Bool {
+    private func tabLayoutEnabledForTag(_ m: Monitor?, _ tag: UInt32) -> Bool {
+        guard let m, tag < PERTAG_SLOTS else { return false }
+        let id = m.pertag.ltidxs[tag]
         if id == .monocle { return config.monocleTabMode }
         if id == .deck || id == .verticalDeck { return config.deckTabMode }
         return false
     }
 
-    private func tabLayoutEnabled(_ m: Monitor?) -> Bool {
+    private func isTabLayout(_ m: Monitor?) -> Bool {
         guard let m else { return false }
-        return tabLayoutIdSupported(m.pertag.ltidxs[getMonCurtag(m)])
+        return tabLayoutEnabledForTag(m, getMonCurtag(m))
     }
 
     func tabLayoutActive(_ m: Monitor?) -> Bool {
         guard let m else { return false }
-        return !m.isoverview && tabLayoutEnabled(m)
+        return !m.isoverview && isTabLayout(m)
     }
 
     private func tabStateOk(_ c: Client) -> Bool {
@@ -72,8 +76,9 @@ package extension MangoServer {
         return !target.ismaster
     }
 
-    private func tabMemberKept(_ m: Monitor, _ cur: UInt32, _ c: Client) -> Bool {
-        tabLayoutEnabled(m) && (c.tags & cur) != 0 && tabStateOk(c) && tabIsStackCandidate(m, c)
+    private func tabClientInState(_ m: Monitor, _ c: Client?) -> Bool {
+        guard let c else { return false }
+        return VISIBLEON(c, m) && tabStateOk(c) && tabIsStackCandidate(m, c)
     }
 
     private func tabMemberInView(_ c: Client?, _ m: Monitor?) -> Bool {
@@ -86,7 +91,139 @@ package extension MangoServer {
         return !c.isfullscreen && !c.ismaximizescreen
     }
 
-    private func tabRefreshBars(_ head: Client) {
+    private func ensureTabState(_ m: Monitor?, _ tag: UInt32) -> TagTabState? {
+        guard let m, tag < PERTAG_SLOTS else { return nil }
+        if m.pertag.tabState[tag] == nil {
+            m.pertag.tabState[tag] = TagTabState()
+        }
+        return m.pertag.tabState[tag]
+    }
+
+    // not in mango: clear_tab_state frees the nodes; ARC does (docs/afvigelser.md §5)
+
+    private func findTabNode(_ state: TagTabState?, _ client: Client?) -> TagTabNode? {
+        guard let state, let client else { return nil }
+        var node = state.allFirst
+        while let n = node {
+            if n.client === client { return n }
+            node = n.allNext
+        }
+        return nil
+    }
+
+    private func tabNodeCreate(_ state: TagTabState, _ client: Client) -> TagTabNode {
+        let node = TagTabNode(client: client)
+        node.allNext = state.allFirst
+        state.allFirst = node
+        state.count += 1
+        return node
+    }
+
+    private func tabNodeAppend(_ state: TagTabState, _ node: TagTabNode) {
+        node.prev = state.tail
+        node.next = nil
+        if let tail = state.tail {
+            tail.next = node
+        } else {
+            state.head = node
+        }
+        state.tail = node
+    }
+
+    private func tabNodeRemove(_ state: TagTabState?, _ node: TagTabNode?) {
+        guard let state, let node else { return }
+
+        if let prev = node.prev {
+            prev.next = node.next
+        } else if state.head === node {
+            state.head = node.next
+        }
+        if let next = node.next {
+            next.prev = node.prev
+        } else if state.tail === node {
+            state.tail = node.prev
+        }
+        if state.count > 0 { state.count -= 1 }
+        if state.focusId == node.client.id { state.focusId = 0 }
+
+        if state.allFirst === node {
+            state.allFirst = node.allNext
+        } else {
+            var link = state.allFirst
+            while let l = link, l.allNext !== node { link = l.allNext }
+            link?.allNext = node.allNext
+        }
+    }
+
+    private func clearTabProjection(_ m: Monitor) {
+        for c in clients {
+            if c.mon !== m { continue }
+            // not in mango: no workspace overview (wsov_hidden)
+            let wasHidden = c.isTabHidden
+            c.tabPrev = nil
+            c.tabNext = nil
+            c.isTabFocus = false
+            c.isTabHidden = false
+            tabBarSetEnabled(c, false)
+            if wasHidden { clientUpdateVisibility(c) }
+        }
+    }
+
+    private func updateTabState(_ m: Monitor) {
+        let tag = getMonCurtag(m)
+        guard let state = ensureTabState(m, tag) else { return }
+
+        var node = state.allFirst
+        while let n = node {
+            let next = n.allNext
+            if !tabClientInState(m, n.client) { tabNodeRemove(state, n) }
+            node = next
+        }
+
+        for c in clients {
+            if !tabClientInState(m, c) { continue }
+            if findTabNode(state, c) == nil {
+                tabNodeAppend(state, tabNodeCreate(state, c))
+            }
+        }
+    }
+
+    private func getTabStateFocus(_ m: Monitor, _ state: TagTabState) -> Client? {
+        var selected: Client?
+        var remembered: Client?
+        var fallback: Client?
+
+        var node = state.head
+        while let n = node {
+            node = n.next
+            if n.client.mon !== m { continue }
+            if fallback == nil { fallback = n.client }
+            if n.client === m.sel && n.client.isfocusing { selected = n.client }
+            if state.focusId != 0 && n.client.id == state.focusId { remembered = n.client }
+        }
+
+        let focus = selected ?? remembered ?? fallback
+        if focus == nil { state.focusId = 0 }
+        return focus
+    }
+
+    func tabClientHiddenOnTag(_ m: Monitor?, _ tag: UInt32, _ c: Client?) -> Bool {
+        guard let m, tag != 0, tag < PERTAG_SLOTS, let c, c.mon === m, tabLayoutEnabledForTag(m, tag) else {
+            return false
+        }
+
+        guard let state = m.pertag.tabState[tag], state.count >= 2, state.focusId != 0,
+              state.focusId != c.id, tabStateOk(c), !c.isglobal else { return false }
+
+        let layoutId = m.pertag.ltidxs[tag]
+        if (layoutId == .deck || layoutId == .verticalDeck) && c.ismaster { return false }
+        let bit: UInt32 = 1 << (tag - 1)
+        return c.tags & bit != 0
+    }
+
+    private func tabRefreshBars(_ head: Client?) {
+        guard let head, head.mon != nil else { return }
+
         var members: Int32 = 0
         var focus = head
 
@@ -111,10 +248,53 @@ package extension MangoServer {
         }
     }
 
+    private func syncTabStateToClients(_ m: Monitor, _ tag: UInt32) {
+        let state = m.pertag.tabState[tag]
+        clearTabProjection(m)
+        guard let state else { return }
+
+        let focus = getTabStateFocus(m, state)
+        if let focus { state.focusId = focus.id }
+
+        var head: Client?
+        var tail: Client?
+        var count: Int32 = 0
+        var node = state.head
+        while let n = node {
+            node = n.next
+            let c = n.client
+            if c.mon !== m { continue }
+            if head == nil { head = c }
+            c.tabPrev = tail
+            c.tabNext = nil
+            tail?.tabNext = c
+            c.isTabFocus = c === focus
+            c.isTabHidden = false
+            tail = c
+            count += 1
+        }
+
+        if count >= 2 { tabRefreshBars(head) }
+    }
+
+    func tabSyncCurrent(_ m: Monitor?) {
+        guard let m else { return }
+        if !isTabLayout(m) {
+            clearTabProjection(m)
+            return
+        }
+        let tag = getMonCurtag(m)
+        syncTabStateToClients(m, tag)
+    }
+
     // not in mango: tab_update_input_penetration (the port's bars take clicks only where drawn)
 
     func tabSyncFocus(_ c: Client?) {
-        guard let c, tabIsMember(c), !c.isTabFocus else { return }
+        guard let c, let m = c.mon else { return }
+        let tag = getMonCurtag(m)
+        guard let state = ensureTabState(m, tag), findTabNode(state, c) != nil else { return }
+        state.focusId = c.id
+        if !tabIsMember(c) || c.isTabFocus { return }
 
         let head = tabHead(c)
         var it: Client? = head
@@ -126,102 +306,51 @@ package extension MangoServer {
         tabRefreshBars(head)
     }
 
-    func tabDetachClient(_ c: Client) {
-        if !tabIsMember(c) { return }
-
-        let head = tabHead(c)
-        let next = c.tabNext
-
-        tabLeave(c)
-
-        guard let rest = head === c ? next : head else { return }
-
-        if rest.tabNext == nil {
-            tabLeave(rest)
-            return
+    @discardableResult
+    func tabRemoveClientInTag(_ m: Monitor, _ tag: UInt32, _ c: Client) -> Bool {
+        let state = m.pertag.tabState[tag]
+        var changed = false
+        while let node = findTabNode(state, c) {
+            tabNodeRemove(state, node)
+            changed = true
         }
-
-        tabChainFocus(rest)
-        tabRefreshBars(rest)
+        return changed
     }
 
-    func tabReplaceClient(_ old: Client, _ new: Client) {
-        if !tabIsMember(old) { return }
-
-        let wasFocus = old.isTabFocus
-        let wasHidden = old.isTabHidden
-
-        if tabIsMember(new) {
-            if tabHead(new) === tabHead(old) {
-                tabDetachClient(old)
-                if wasFocus { tabSyncFocus(new) }
-                return
-            }
-            tabLeave(new)
+    @discardableResult
+    func tabReplaceClientInTag(_ m: Monitor, _ tag: UInt32, _ old: Client, _ new: Client) -> Bool {
+        if old === new { return false }
+        guard let state = m.pertag.tabState[tag] else { return false }
+        guard let oldNode = findTabNode(state, old) else { return false }
+        if let newNode = findTabNode(state, new), newNode !== oldNode {
+            tabNodeRemove(state, newNode)
         }
-
-        new.tabPrev = old.tabPrev
-        new.tabNext = old.tabNext
-        old.tabPrev?.tabNext = new
-        old.tabNext?.tabPrev = new
-
-        old.tabPrev = nil
-        old.tabNext = nil
-        old.isTabFocus = false
-        old.isTabHidden = false
-        tabBarSetEnabled(old, false)
-
-        new.isTabFocus = wasFocus
-        new.isTabHidden = wasHidden
+        if state.focusId == old.id { state.focusId = new.id }
+        oldNode.client = new
+        while let node = findTabNode(state, old) {
+            tabNodeRemove(state, node)
+        }
+        return true
     }
 
     func tabSyncMonitor(_ m: Monitor) {
         // not in mango: no wlr_output->enabled or iscleanuping; the port's monitors are enabled
         if m.isoverview { return }
 
-        if !tabLayoutEnabled(m) && tabMemberCount == 0 { return }
-
-        let cur = m.tagset[m.seltags]
-        let canMerge = tabLayoutEnabled(m)
-
-        for c in clients {
-            if !tabIsMember(c) || c.mon !== m { continue }
-            if tabMemberKept(m, cur, c) { continue }
-            tabDetachClient(c)
-        }
-
-        var head: Client?, tail: Client?
-        for c in clients {
-            if c.mon !== m || (c.tags & cur) == 0 { continue }
-            if !tabIsMember(c) {
-                if c.isTabHidden {
-                    c.isTabHidden = false
-                    clientUpdateVisibility(c)
-                }
-                if !canMerge { continue }
-                if !tabStateOk(c) || !tabIsStackCandidate(m, c) { continue }
-                tabMemberCount += 1
-            }
-
-            if tabIsMember(c) { clientChainUnlink(c, \.tabPrev, \.tabNext) }
-
-            c.tabPrev = tail
-            c.tabNext = nil
-            if let tail {
-                tail.tabNext = c
-            } else {
-                head = c
-            }
-            tail = c
-        }
-
-        guard let head, head.tabNext != nil else {
-            if head != nil { tabMemberCount -= 1 }
+        if !isTabLayout(m) {
+            clearTabProjection(m)
             return
         }
 
-        tabChainFocus(head)
-        tabRefreshBars(head)
+        let tag = getMonCurtag(m)
+        updateTabState(m)
+        syncTabStateToClients(m, tag)
+    }
+
+    func cleanupMonitorTab(_ m: Monitor) {
+        for tag in 0..<PERTAG_SLOTS {
+            m.pertag.tabState[tag] = nil
+        }
     }
 
     func tabFocusMember(_ c: Client) {

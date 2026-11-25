@@ -73,6 +73,7 @@ package extension MangoServer {
     /* Creates a new node and inserts it into the tag state all list. */
     @discardableResult
     func scrollerNodeCreate(_ st: TagScrollerState, _ c: Client) -> ScrollerStackNode {
+        if let existing = findScrollerNode(st, c) { return existing }
         let n = ScrollerStackNode(client: c)
         n.scrollerProportion = c.scrollerProportion
         n.scrollerStackWeight = c.scrollerStackProportion
@@ -148,6 +149,11 @@ package extension MangoServer {
             c.scrollerProportionSingle = node.scrollerProportionSingle
             n = node.allNext
         }
+    }
+
+    func scrollerSyncCurrent(_ m: Monitor?) {
+        guard let m, isScrollerLayout(m) else { return }
+        syncScrollerStateToClients(m, getMonCurtag(m))
     }
 
     func verticalScrollAdjustFullandmax(_ c: Client, _ targetGeom: inout CGRect) {
@@ -697,19 +703,36 @@ package extension MangoServer {
         syncScrollerStateToClients(m, tag)
     }
 
-    func scrollerRemoveClient(_ c: Client) {
-        for m in monitors {
-            for t in 0..<UInt32(PERTAG_SLOTS) {
-                guard let st = m.pertag.scrollerState[t] else { continue }
-                if let node = findScrollerNode(st, c) {
-                    scrollerNodeRemove(st, node)
-                }
-            }
+    @discardableResult
+    func scrollerRemoveClientInTag(_ m: Monitor, _ tag: UInt32, _ c: Client) -> Bool {
+        var changed = false
+        while let st = m.pertag.scrollerState[tag], let node = findScrollerNode(st, c) {
+            scrollerNodeRemove(st, node)
+            changed = true
         }
+        return changed
+    }
+
+    @discardableResult
+    func scrollerReplaceClientInTag(_ m: Monitor, _ tag: UInt32, _ old: Client, _ new: Client) -> Bool {
+        if old === new { return false }
+        guard let st = m.pertag.scrollerState[tag] else { return false }
+        guard let node = findScrollerNode(st, old) else { return false }
+        var changed = false
+        while let newNode = findScrollerNode(st, new) {
+            scrollerNodeRemove(st, newNode)
+            changed = true
+        }
+        node.client = new
+        changed = true
+        while let node = findScrollerNode(st, old) {
+            scrollerNodeRemove(st, node)
+        }
+        return changed
     }
 
     func scrollerInsertStack(_ c: Client, _ targetClient: Client?, _ insertBefore: Bool) {
-        guard let targetClient, targetClient.mon === c.mon else { return }
+        guard let targetClient, targetClient !== c, targetClient.mon === c.mon else { return }
 
         if c.isfullscreen { clientSetFullscreen(c, false, rearrange: true) }
         if c.ismaximizescreen { clientSetMaximizeScreen(c, false, rearrange: true) }

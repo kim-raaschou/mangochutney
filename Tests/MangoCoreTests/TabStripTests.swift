@@ -64,18 +64,15 @@ final class TabStripTests: MangoTestCase {
         XCTAssertFalse(r.server.clientByWindowID(900_102)!.parked, "the master focused: the stack keeps its last focused member")
     }
 
-    func testTheSelectedMemberIsFocusedElseTheOneShownLast() {
+    func testTheSelectedMemberIsFocusedElseTheOneRemembered() {
         let r = rig(.monocle, windows: 3)
         r.arrange()
-        r.monitor.sel = r.server.clientByWindowID(900_102)
+        r.server.clientFocus(r.server.clientByWindowID(900_101), false)
         r.server.tabSyncMonitor(r.monitor)
-        XCTAssertEqual(r.server.tabFocus(r.monitor)?.windowID, 900_102)
+        XCTAssertEqual(r.server.tabFocus(r.monitor)?.windowID, 900_101)
         r.monitor.sel = nil
         r.server.tabSyncMonitor(r.monitor)
-        XCTAssertEqual(r.server.tabFocus(r.monitor)?.windowID, 900_102)
-        for c in r.server.tabChain(r.monitor) { c.isTabFocus = false }
-        r.server.tabSyncMonitor(r.monitor)
-        XCTAssertEqual(r.server.tabFocus(r.monitor)?.windowID, 900_100, "none shown yet: the first")
+        XCTAssertEqual(r.server.tabFocus(r.monitor)?.windowID, 900_101, "the tag remembers its tab focus")
     }
 
     func testTheStripSitsOnTheFocusedMemberOnly() {
@@ -83,7 +80,7 @@ final class TabStripTests: MangoTestCase {
         let fake = r.server.system as! FakeWindowSystem
         r.server.drawsOverlays = true
         r.arrange()
-        r.monitor.sel = r.server.clientByWindowID(900_101)
+        r.server.clientFocus(r.server.clientByWindowID(900_101), false)
         r.server.tabSyncMonitor(r.monitor)
         r.server.drawBars()
         XCTAssertEqual(fake.tabStrips.first?.segments.first(where: \.focused)?.id, 900_101)

@@ -8,6 +8,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         r.window(1); r.window(2)
+        r.server.clientFocus(r.server.clientByWindowID(1), false)
         r.arrange()
         r.settle()
         let shown = r.server.clientsAll.first { !$0.parked }!, hidden = r.server.clientsAll.first { $0.parked }!
@@ -28,6 +29,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         r.window(1); r.window(2)
+        r.server.clientFocus(r.server.clientByWindowID(1), false)
         r.arrange()
         r.settle()
         let shown = r.server.clientsAll.first { !$0.parked }!, hidden = r.server.clientsAll.first { $0.parked }!
@@ -61,6 +63,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.monitor.pertag.ltidxs[getMonCurtag(r.monitor)] = .monocle
         r.window(1); r.window(2)
+        r.server.clientFocus(r.server.clientByWindowID(1), false)
         r.arrange()
         r.settle()
         let shown = r.server.clientsAll.first { !$0.parked }!

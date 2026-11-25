@@ -5,7 +5,7 @@ import QuartzCore
 // not in mango: the port's own version
 public let mangoVersion = "0.0.4-20261109-beta"
 // not in mango: meson.build's VERSION, with the commit of mango this port follows
-public let VERSION = "0.18.6(2c6a664)"
+public let VERSION = "0.19.0(a005a27)"
 
 /* Scene layer ids; the scene tree keeps one tree per layer. */
 public enum Lyr: Int, Comparable {
@@ -73,12 +73,6 @@ public final class MangoServer {
     public var cliDebugLog = false
     var tagmask: UInt32 = (1 << 9) - 1 /* default 9 tags; updated with config.tag_num */
     var nextClientId: UInt32 = 0
-    /* Pre-baked animation curves */
-    var bakedPointsMove: [DVec2] = []
-    var bakedPointsOpen: [DVec2] = []
-    var bakedPointsTag: [DVec2] = []
-    var bakedPointsClose: [DVec2] = []
-    var bakedPointsFocus: [DVec2] = []
     /* Cursor hiding / input keep-alive */
     var hideCursorSource: EventSource?
     /* Key mode / IPC print-status signal */
@@ -90,7 +84,6 @@ public final class MangoServer {
     public internal(set) var configErrors: [ConfigError] = []
     var configFiles: [URL] = []
     var ipc: IPCServer?
-    var tabMemberCount: Int32 = 0   // tab.c's static tab_member_count
     /// mango switcher_state (switcher/switcher.c)
     package var switcherState = SwitcherState() {
         didSet { if switcherState.tree != oldValue.tree { publishInputState() } }   // not in mango: the event tap's snapshot
@@ -130,7 +123,6 @@ public final class MangoServer {
 
     public init(configURL: URL? = nil) {
         self.configURL = configURL ?? ConfigParser.defaultConfigURL()
-        initBakedPoints()   // not in mango: baked for a server that is not set up too (the tests)
     }
 
     public func setup() {
@@ -140,7 +132,6 @@ public final class MangoServer {
         if cliDebugLog {
             config.logLevel = .debug
         }
-        initBakedPoints()
         setEnvWithoutDisplay()
         wlrLogInit(config.logLevel)
         system.setKeyboardOptions(config.xkbRulesOptions)   // not in mango: keyboard_group_create's keymap, the port's side

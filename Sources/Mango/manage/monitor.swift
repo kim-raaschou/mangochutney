@@ -34,6 +34,8 @@ public final class Pertag {
     public var configLtidxs = PertagSlots<LayoutKind>(.tile)
     public var ltidxs = PertagSlots<LayoutKind>(.tile)
     package var scrollerState = PertagSlots<TagScrollerState?>(nil)
+    package var tabState = PertagSlots<TagTabState?>(nil)
+    package var tagRatioState = PertagSlots<TagRatioState?>(nil)
 }
 
 @MainActor
@@ -290,9 +292,10 @@ package extension MangoServer {
         dst.scrollerDefaultProportionSingle[tag] = src.scrollerDefaultProportionSingle[tag]
         dst.scrollerIgnoreProportionSingle[tag] = src.scrollerIgnoreProportionSingle[tag]
         dst.ltidxs[tag] = src.ltidxs[tag]
+        tagRatioStateCopy(target, tag, source, tag)
 
-        /* Layout trees and scroller nodes are monitor-owned and rebuilt on the
-         * target after the clients have moved. */
+        /* Layout trees, scroller nodes, and tab chains are monitor-owned and
+         * rebuilt on the target after the clients have moved. */
     }
 
     // Gets the tagmask of the first tag in tags.
@@ -426,6 +429,8 @@ package extension MangoServer {
         titleMessageBarFinish(m)
 
         cleanupMonitorScroller(m)   // not in mango: no cleanup_monitor_dwindle, ARC frees the trees
+        cleanupMonitorTab(m)
+        cleanupMonitorTagRatioStates(m)
     }
 
     func setSelectedMonitor(_ m: Monitor?) { selectedMonitor = m }

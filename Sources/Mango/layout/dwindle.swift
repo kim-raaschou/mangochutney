@@ -456,10 +456,15 @@ package extension MangoServer {
                       w.height - 2 * gapOv, gapIh, gapIv)
     }
 
-    func dwindleRemoveClient(_ c: Client) {
-        for m in monitors {
-            for t in 0..<PERTAG_SLOTS { dwindleRemove(&m.pertag.dwindleRoot[t], c) }
-        }
+    func dwindleRemoveClientInTag(_ m: Monitor, _ tag: UInt32, _ c: Client) {
+        dwindleRemove(&m.pertag.dwindleRoot[tag], c)
+    }
+
+    func dwindleReplaceClientInTag(_ m: Monitor, _ tag: UInt32, _ old: Client, _ new: Client) {
+        if old === new { return }
+        guard let node = dwindleFindLeaf(m.pertag.dwindleRoot[tag], old) else { return }
+        dwindleRemove(&m.pertag.dwindleRoot[tag], new)
+        node.client = new
     }
 
     /* Insert a new client respecting dwindle_vsplit, dwindle_hsplit, and

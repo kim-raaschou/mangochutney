@@ -31,6 +31,8 @@ extension BindingParser {
                 kb.insert(.passthrough)
             case "c":
                 kb.insert(.allowConflict)
+            case "n":
+                kb.insert(.norepeat)
             default:
                 error("Unknown bind flag: \(mangoHighlight(String(c)))")
             }
@@ -331,6 +333,32 @@ extension BindingParser {
             `func` = MangoServer.enterOverview(_:)
         } else if funcName == "leaveoverview" {
             `func` = MangoServer.leaveOverview(_:)
+        } else if funcName == "toggleworkspaceoverview" {
+            `func` = MangoServer.toggleWorkspaceOverview(_:)
+            arg.i2 = WORKSPACE_OVERVIEW_GRID
+            if argValue == "scroll_occupied" {
+                arg.i = OCCUPIED_WORKSPACE
+                arg.i2 = WORKSPACE_OVERVIEW_SCROLL
+            } else if argValue == "scroll_all" {
+                arg.i = ALL_WORKSPACE
+                arg.i2 = WORKSPACE_OVERVIEW_SCROLL
+            } else {
+                arg.i = argValue == "occupied" ? OCCUPIED_WORKSPACE : ALL_WORKSPACE
+            }
+        } else if funcName == "enterworkspaceoverview" {
+            `func` = MangoServer.enterWorkspaceOverview(_:)
+            arg.i2 = WORKSPACE_OVERVIEW_GRID
+            if argValue == "scroll_occupied" {
+                arg.i = OCCUPIED_WORKSPACE
+                arg.i2 = WORKSPACE_OVERVIEW_SCROLL
+            } else if argValue == "scroll_all" {
+                arg.i = ALL_WORKSPACE
+                arg.i2 = WORKSPACE_OVERVIEW_SCROLL
+            } else {
+                arg.i = argValue == "occupied" ? OCCUPIED_WORKSPACE : ALL_WORKSPACE
+            }
+        } else if funcName == "leaveworkspaceoverview" {
+            `func` = MangoServer.leaveWorkspaceOverview(_:)
         } else if funcName == "togglejump" {
             `func` = MangoServer.toggleJump(_:)
         } else if funcName == "set_proportion" {

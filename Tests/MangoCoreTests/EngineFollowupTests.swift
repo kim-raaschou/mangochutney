@@ -54,10 +54,10 @@ final class EngineFollowupTests: MangoTestCase {
                                         baseDirectory: FileManager.default.temporaryDirectory, fileName: "t.conf")
         XCTAssertEqual(parsed.errors, [])
         r.server.dispatch(parsed.config.keyBindings[0].dispatch)
-        XCTAssertEqual(r.server.config.animationCurveMove, BezierCurve(x1: 0, y1: 0, x2: 1, y2: 1))
+        XCTAssertEqual(r.server.config.animationCurveMove, AnimationCurve(bezier: [0, 0, 1, 1]))
 
-        r.server.config.animationCurveMove = BezierCurve(x1: 0.5, y1: 0.5, x2: 0.5, y2: 0.5)
+        r.server.config.animationCurveMove = AnimationCurve(bezier: [0.5, 0.5, 0.5, 0.5])
         r.server.dispatch(Dispatch(name: "setoption", args: ["animation_curve_move", "0", "0", "1", "1"]), notGiven: "")
-        XCTAssertEqual(r.server.config.animationCurveMove, BezierCurve(x1: 0, y1: 0, x2: 1, y2: 1), "IPC's path")
+        XCTAssertEqual(r.server.config.animationCurveMove, AnimationCurve(bezier: [0, 0, 1, 1]), "IPC's path")
     }
 }

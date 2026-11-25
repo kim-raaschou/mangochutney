@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds mango at the pinned commit and the test client into /build (a volume, kept between runs).
 set -e
-COMMIT=2c6a664   # mango 0.18.6, the version the port follows (CLAUDE.md)
+COMMIT=a005a27   # mango 0.19.0, the version the port follows (CLAUDE.md)
 
 if [ ! -x /build/mango/build/mango ] || [ "$(cat /build/commit 2>/dev/null)" != "$COMMIT" ]; then
     rm -rf /build/mango

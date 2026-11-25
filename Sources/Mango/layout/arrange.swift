@@ -320,12 +320,7 @@ package extension MangoServer {
             gc.masterInnerPer = CGFloat(newMasterInnerPer)
             gc.stackInnerPer = CGFloat(newStackInnerPer)
 
-            /* Broadcasts master_mfact_per to all tiled windows. */
-            for tc in clients {
-                if VISIBLEON(tc, m) && ISTILED(tc) {
-                    tc.masterMfactPer = CGFloat(newMasterMfactPer)
-                }
-            }
+            tagRatioStateSetMasterMfact(m, getMonCurtag(m), CGFloat(newMasterMfactPer))
 
             persistTileSizeWeights(m)
 
@@ -489,12 +484,7 @@ package extension MangoServer {
             gc.masterInnerPer = CGFloat(newMasterInnerPer)
             gc.stackInnerPer = CGFloat(newStackInnerPer)
 
-            /* Broadcasts master_mfact_per. */
-            for tc in clients {
-                if VISIBLEON(tc, m) && ISTILED(tc) {
-                    tc.masterMfactPer = CGFloat(newMasterMfactPer)
-                }
-            }
+            tagRatioStateSetMasterMfact(m, getMonCurtag(m), CGFloat(newMasterMfactPer))
 
             persistTileSizeWeights(m)
 
@@ -1135,18 +1125,18 @@ package extension MangoServer {
         m.hideClients = 0
 
         let tag = getMonCurtag(m)
-        let st = m.pertag.scrollerState[tag]
-
         let curLayout = m.pertag.ltidxs[tag]
+        if layoutUsesTagRatios(curLayout) {
+            tagRatioStateBegin(m, tag, fromView)
+        }
+
+        let st = m.pertag.scrollerState[tag]
         if curLayout == .scroller || curLayout == .verticalScroller {
             updateScrollerState(m)
         }
 
         for c in clients {
-            if fromView && (c.isglobal || c.isunglobal) {
-                setSizePer(m, c, resetProportion: true)
-            }
-
+            // not in mango: no workspace overview (wsov_hidden_from_arrange)
             // not in mango: client_check_tab_node_visible; the port draws the bars from the state
 
             if c.mon === m && (c.isglobal || c.isunglobal) {
@@ -1162,10 +1152,6 @@ package extension MangoServer {
             }
 
             if VISIBLEON(c, m) {
-                if fromView && !clientOnlyInOneTag(c) {
-                    setSizePer(m, c, resetProportion: true)
-                }
-
                 if !c.isunglobal {
                     m.visibleClients += 1
                 }
@@ -1276,6 +1262,8 @@ package extension MangoServer {
         m.pertag.openAsFloating[tag] = false
         m.pertag.dwindleRoot[tag] = nil
         m.pertag.scrollerState[tag] = nil
+        m.pertag.tabState[tag] = nil
+        tagRatioStateReset(m, tag)
 
         for tr in config.tagRules {
             if tagRuleMatchesMonitor(tr, m) && (tr.id == nil || tr.id == Int(tag)) {
@@ -1299,6 +1287,8 @@ package extension MangoServer {
         m.pertag.configLtidxs[dst] = m.pertag.configLtidxs[src]
         m.pertag.ltidxs[dst] = m.pertag.ltidxs[src]
         m.pertag.scrollerState[dst] = m.pertag.scrollerState[src]
+        m.pertag.tabState[dst] = m.pertag.tabState[src]
+        tagRatioStateMove(m, dst, src)
         tagGatherResetSlot(m, src)
     }
 
@@ -1433,7 +1423,12 @@ package extension MangoServer {
         if m.isoverview {
             overviewlayout.arrange(self, m)
         } else {
-            layouts.first { $0.id == m.pertag.ltidxs[getMonCurtag(m)] }!.arrange(self, m)   // not in mango: ltidxs holds the id
+            let tag = getMonCurtag(m)
+            let layout = layouts.first { $0.id == m.pertag.ltidxs[tag] }!   // not in mango: ltidxs holds the id
+            layout.arrange(self, m)
+            if layoutUsesTagRatios(layout.id) {
+                syncTagRatioStateFromClients(m, tag)
+            }
         }
 
         if isTag0 {

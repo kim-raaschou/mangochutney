@@ -267,6 +267,8 @@ extension ParserState {
 
             if key == "is_floating" {
                 rule.isfloating = flag(val)
+            } else if key == "stay_focused" {
+                rule.stayfocused = flag(val)
             } else if key == "title" {
                 rule.title = val
             } else if key == "app_id" {
@@ -424,10 +426,10 @@ extension ParserState {
 }
 
 extension BindingParser {
-    // not in mango: parse_option's regex_match("^bind[s|l|r|p|c]*$", key)
+    // not in mango: parse_option's regex_match("^bind[s|l|r|p|c|n]*$", key)
     public static func isKeyBindKeyword(_ keyword: String) -> Bool {
         guard keyword.hasPrefix("bind") else { return false }
-        return keyword.dropFirst(4).allSatisfy { "s|lrpc".contains($0) }
+        return keyword.dropFirst(4).allSatisfy { "s|lrpcn".contains($0) }
     }
 
     // not in mango: sscanf's fields for "%255[^,],…,%255[^,],%255[^\n]" with `count` conversions: the
@@ -934,14 +936,77 @@ public enum ConfigOptions {
         }
     }
 
-    static func curve(_ kp: WritableKeyPath<Config, BezierCurve>, _ name: String) -> Setter {
+    static func parseNamedEasing(_ value: String) -> AnimationEasing? {
+        let names: [(String, AnimationEasing)] = [
+            ("linear", .linear),
+            ("easeinsine", .easeInSine),
+            ("easeoutsine", .easeOutSine),
+            ("easeinoutsine", .easeInOutSine),
+            ("easeinquad", .easeInQuad),
+            ("easeoutquad", .easeOutQuad),
+            ("easeinoutquad", .easeInOutQuad),
+            ("quad", .easeOutQuad),
+            ("easeincubic", .easeInCubic),
+            ("easeoutcubic", .easeOutCubic),
+            ("easeinoutcubic", .easeInOutCubic),
+            ("cubic", .easeOutCubic),
+            ("ease", .easeOutCubic),
+            ("easein", .easeInCubic),
+            ("easeout", .easeOutCubic),
+            ("easeinout", .easeInOutCubic),
+            ("easeinquart", .easeInQuart),
+            ("easeoutquart", .easeOutQuart),
+            ("easeinoutquart", .easeInOutQuart),
+            ("quart", .easeOutQuart),
+            ("easeinquint", .easeInQuint),
+            ("easeoutquint", .easeOutQuint),
+            ("easeinoutquint", .easeInOutQuint),
+            ("quint", .easeOutQuint),
+            ("easeinexpo", .easeInExpo),
+            ("easeoutexpo", .easeOutExpo),
+            ("easeinoutexpo", .easeInOutExpo),
+            ("expo", .easeOutExpo),
+            ("easeincirc", .easeInCirc),
+            ("easeoutcirc", .easeOutCirc),
+            ("easeinoutcirc", .easeInOutCirc),
+            ("circ", .easeOutCirc),
+            ("easeinback", .easeInBack),
+            ("easeoutback", .easeOutBack),
+            ("easeinoutback", .easeInOutBack),
+            ("back", .easeOutBack),
+            ("overshoot", .easeOutBack),
+            ("easeinelastic", .easeInElastic),
+            ("easeoutelastic", .easeOutElastic),
+            ("easeinoutelastic", .easeInOutElastic),
+            ("elastic", .easeOutElastic),
+            ("easeinbounce", .easeInBounce),
+            ("easeoutbounce", .easeOutBounce),
+            ("easeinoutbounce", .easeInOutBounce),
+            ("bounce", .easeOutBounce),
+            ("snappy", .snappy),
+            ("default", .snappy),
+        ]
+        for (name, easing) in names where strcasecmp(value, name) == 0 {
+            return easing
+        }
+        return nil
+    }
+
+    // mango parse_animation_curve_value (config/option_defs.c), with the branch's error
+    static func curve(_ kp: WritableKeyPath<Config, AnimationCurve>, _ name: String) -> Setter {
         { config, value in
+            if let easing = parseNamedEasing(value) {
+                config[keyPath: kp].easing = easing
+                config[keyPath: kp].type = .named
+                return .applied
+            }
             var v: [Double] = []
             let (num, error) = ValueParse.parseDoubleArray(value, &v, 4)
-            config[keyPath: kp] = BezierCurve(x1: v[0], y1: v[1], x2: v[2], y2: v[3])
+            config[keyPath: kp].bezier = Array(v.prefix(4))
             if num != 4 {
                 return .invalid("Failed to parse \(name): \(mangoHighlight(value))", earlier: error.map { [$0] } ?? [])
             }
+            config[keyPath: kp].type = .bezier
             return .applied
         }
     }

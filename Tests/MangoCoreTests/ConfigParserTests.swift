@@ -536,7 +536,7 @@ final class ConfigParserTests: MangoTestCase {
         XCTAssertTrue(parseOption("focus_color", "0x112233ff", to: &c))
         XCTAssertEqual(c.focuscolor, parseColor("0x112233ff"))
         XCTAssertTrue(parseOption("animation_curve_move", "0.1,0.2,0.3,0.4", to: &c))
-        XCTAssertEqual(c.animationCurveMove, BezierCurve(x1: 0.1, y1: 0.2, x2: 0.3, y2: 0.4))
+        XCTAssertEqual(c.animationCurveMove, AnimationCurve(bezier: [0.1, 0.2, 0.3, 0.4]))
         XCTAssertTrue(parseOption("animation_type_open", "zoom", to: &c))
         XCTAssertEqual(c.animationTypeOpen, .zoom)
         XCTAssertTrue(parseOption("circle_layout", "tile, scroller,monocle", to: &c))

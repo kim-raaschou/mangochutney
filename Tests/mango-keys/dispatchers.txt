@@ -10,6 +10,7 @@ dwindle_toggle_current_split
 dwindle_toggle_split_direction
 enable_monitor
 enteroverview
+enterworkspaceoverview
 exchange_client
 exchange_stack_client
 focus_window_or_workspace
@@ -25,6 +26,7 @@ incgaps
 incnmaster
 killclient
 leaveoverview
+leaveworkspaceoverview
 load_config_file
 minimized
 move_client
@@ -81,6 +83,7 @@ toggleoverlay
 toggleoverview
 toggletag
 toggleview
+toggleworkspaceoverview
 view
 view_insert
 viewcrossmon

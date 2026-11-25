@@ -38,18 +38,18 @@ final class ConfigParseFidelityTests: MangoTestCase {
     // D3: parse_double_array clears the curve first and fills it until it fails.
     func testABadCurveIsZeroedAndFilledAsFarAsItGoes() {
         let few = parse("animation_curve_move=0.46,1.0,0.29")
-        XCTAssertEqual(few.config.animationCurveMove, BezierCurve(x1: 0.46, y1: 1, x2: 0.29, y2: 0))
+        XCTAssertEqual(few.config.animationCurveMove, AnimationCurve(bezier: [0.46, 1, 0.29, 0]))
         XCTAssertEqual(few.errors.map(\.message.plain), ["Failed to parse animation_curve_move: 0.46,1.0,0.29"])
 
         let bad = parse("animation_curve_open=x")
-        XCTAssertEqual(bad.config.animationCurveOpen, BezierCurve(x1: 0, y1: 0, x2: 0, y2: 0))
+        XCTAssertEqual(bad.config.animationCurveOpen, AnimationCurve(bezier: [0, 0, 0, 0]))
         XCTAssertEqual(bad.errors.map(\.message.plain),
                        ["Invalid number in array: x", "Failed to parse animation_curve_open: x"])
         XCTAssertEqual(bad.errors.map(\.reportsLine), [false, true], "one [Index] for the line, after its messages")
 
         let negative = parse("animation_curve_tag=0.1,-1,0.2,0.3")
         XCTAssertEqual(negative.errors.first?.message.plain, "Invalid number in array (must be non-negative): -1")
-        XCTAssertEqual(negative.config.animationCurveTag, BezierCurve(x1: 0.1, y1: 0, x2: 0, y2: 0))
+        XCTAssertEqual(negative.config.animationCurveTag, AnimationCurve(bezier: [0.1, 0, 0, 0]))
     }
 
     // D4: every matching tag rule writes no_render_border, open_as_floating and no_hide (default 0).

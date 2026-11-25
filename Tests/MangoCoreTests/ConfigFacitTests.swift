@@ -3,7 +3,7 @@ import XCTest
 @testable import Port
 import MangoTestKit
 
-/// mango's own judgement of a config. Each file in Tests/MangoFacit/configs was checked by mango 0.18.6
+/// mango's own judgement of a config. Each file in Tests/MangoFacit/configs was checked by mango 0.19.0
 /// (`mango -c <file> -p`, Tests/MangoFacit/record); read by our parser with the macOS port's side of
 /// the config, as our `mango -p` reads it, it must give the same errors and the same exit.
 final class ConfigFacitTests: XCTestCase {

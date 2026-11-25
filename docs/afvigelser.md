@@ -1,6 +1,6 @@
 # Afvigelser fra mango
 
-Hvor Mango Chutney gør andet end mango 0.18.6 (`~/sources/mango`, commit `2c6a664`), og hvorfor. Kun det, der
+Hvor Mango Chutney gør andet end mango 0.19.0 (`~/sources/mango`, commit `a005a27`), og hvorfor. Kun det, der
 gælder nu; det rettede og hvordan vi kom hertil står i [afvigelser-historik.md](afvigelser-historik.md).
 Hver mango-nøgle, macOS ikke kan, står med grunden i [compatibility.md](compatibility.md) og
 i `mango -p`.
@@ -104,9 +104,13 @@ Gælder for alle. Står i koden mærket "not in mango".
 
 ## 4. Mangler endnu
 
-Det af mango 0.18.6, macOS tillader, og som ikke er bygget endnu (`switch_keyboard_layout` er
+Det af mango 0.19.0, macOS tillader, og som ikke er bygget endnu (`switch_keyboard_layout` er
 fravalgt, afsnit 2):
 
+- Workspace overview (0.19.0, `src/workspace_overview/`, aftalt 25. nov. at tage for sig): de tre
+  dispatchere (`toggleworkspaceoverview`, `enterworkspaceoverview`, `leaveworkspaceoverview`) er stubbe,
+  dens 17 nøgler er kendt, men gør intet (`MangoCompat`: ikke bygget), og kernens kald ind i den
+  (`workspace_overview_*`, `wsov_hidden`, `is_ws_overview`) står ikke; uden den er de altid falske.
 - Fokus-animationen (`client_start_focus_animation` og dens fire hjælpere): kantens farve glider
   ikke fra `bordercolor` til `focuscolor`; `animation_duration_focus` og `animation_curve_focus`
   læses ikke (`MangoCompat`: ikke bygget). Gennemsigtigheds-halvdelen kan macOS ikke (afsnit 3).
@@ -410,12 +414,12 @@ sin egen test; at resten er 1:1, kontrolleres fil for fil i `docs/verificeret.md
 |---|---|---|---|
 | Værnet mod en `source`, der læser sig selv (direkte eller gennem en anden fil): mango læser den igen og igen, til stakken løber tør | går ned | filen læses én gang, og det meldes (én linje uden `[Index]`) | `includeStack` i `Config/load.swift`; `testASourceCycleIsReadOnce` |
 | Et træk i `fair`, `vertical_fair`, `grid` og `vertical_grid` vælger naboen på den side af vinduet, man trækker i (`cursor_in_left_half`), og overskriver straks valget med tastaturets (*"Keyboard hotkey logic unchanged"*): naboen til højre, og kun for den yderste kolonne til højre den til venstre | tre kolonner, træk i midterste vindues venstre kant: dens højre kant flytter sig | venstre kant flytter sig | Tastaturets valg bruges kun ved tastaturet (`!isdrag`), og trækkets valg, som mango selv udregner, står. `resizeTileGridFair` i `Layout/arrange.swift`; `testAGridDragMovesTheEdgeItGrabs` |
+| `focus_direction` sender venstre og højre gennem `focus_stack`, når tagget er monocle og `focus_cross_monitor` er slået fra, også i overview, hvor kortene ligger i et gitter; samme funktion springer stakken over i overview tre linjer længere nede (`if (!isoverview)`) | overview fra et monocle-tag: venstre/højre følger vinduernes rækkefølge, ikke kortene | venstre/højre går til kortet ved siden af | Monocle-grenen gælder ikke i overview, som mangos egen `!isoverview`. `focusDirection` i `dispatch/bind.swift`; `testMonocleInTheOverviewGoesByTheCards` |
 | `togglejump` på en skærm uden vinduer sætter `is_jump_mode` (`begin_jump_mode`), men `set_overview` vender om uden at gå i overview, så flaget bliver stående: kun at forlade overview rydder det | indtil næste overview er switcheren afvist, og Escape sluges i alle apps (`toggle_jump`) | jump-tilstanden slutter igen | Den tomme vej kalder `finish_jump_mode`, som mangos egen vej ud af overview gør. `setOverview` i `dispatch/bind.swift`; `testToggleJumpOnAnEmptyMonitorLeavesNoJumpMode` |
 | `togglejump` under et træk med musen (`grab_client`): `toggle_jump` har intet værn, så `begin_jump_mode` sætter `is_jump_mode`, og `toggle_overview` afviser bagefter | som rækken over: jump-tilstanden bliver stående uden overview | intet sker | Værnet mod `grab_client`, som `toggle_overview` selv har, står før `toggle_jump`. `toggleJump` i `dispatch/bind.swift`; `testNoOverviewWhileGrabbed` |
 | Hot area på en skærm uden vinduer: `toggle_hotarea` sætter `ov_normal_mode`, og `set_overview`s tomme vej rydder den ikke | næste `overcircle` viser gitteret, og i overview går den ud i stedet for at skifte | `ov_normal_mode` ryddes | Den tomme vej rydder den, som mangos vej ud af overview gør. `setOverview` i `dispatch/bind.swift`; `testTheHotAreaOnAnEmptyMonitorLeavesNoNormalMode` |
 | `monitor_close` på en skærm i overview kalder `toggle_overview`, som virker på den valgte skærm | fjernes en anden skærm end den valgte, går den valgte ind i (eller ud af) overview, og den fjernede bliver i det | den fjernede skærm går ud af overview | `toggle_overview` kører med den fjernede skærm som den valgte og sætter den valgte tilbage. `monitor_close` i `manage/monitor.swift`; `testRemovingAMonitorInOverviewLeavesTheSelectedOneAlone` |
 | Et vindue, der åbner i overview, får kun `overview_backup_surface`, ikke `overview_backup`, så `overview_restore` giver det de nulstillede kopier tilbage | en dialog, der åbner i overview, mister sin flydende tilstand og lægges i layoutet, når overview lukker | vinduet beholder sin tilstand (fx flydende) | `overview_restore` springer et vindue over, som `overview_backup` ikke har kørt for (`overviewBackedUp`); `overview_backup_geom` sættes ved map, som i mango. `overviewRestore` i `overview/overview.swift`; `testAClientMappedInTheOverviewKeepsItsState` |
-| Ved reload giver `parse_tagrule` alle vinduer master-bredden fra den sidste skærms tag, også vinduer på andre skærme, så en `tag_rule` med `monitor_name` kun virker på den sidste skærm | to skærme, 0,3 og 0,7: begge får 0,7 | hver skærms vinduer får deres egen | `c.mon === self` i `parseTagrule` i `Config/reapply.swift`; `testAReloadKeepsEachMonitorsOwnMfact` |
 | `toml_foreach_array_element` kopierer `\` og det escapede tegn, men tester bagefter, om tegnet er citattegnet, så et escapet `"` afslutter strengen; mangos egne `remove_toml_comment` og `toml_statement_complete` springer det escapede tegn over | `exec = ["notify-send \"a, b\""]` deles ved kommaet i to `exec` | én `exec`: `notify-send "a, b"` | Det escapede tegn afslutter ikke strengen, som i mangos to andre TOML-læsere. `tomlForeachArrayElement` i `Config/toml_parse.swift`; `testAnEscapedQuoteStaysInsideATomlString` |
 | `toml_section_begin` sætter `kind = BIND`, før den læser keymode og flag; afvises sektionen, sætter `toml_section_flush` `config->keymode` til `""` | efter `[bind.default.bogus]` får alle senere bindinger keymode `""` og virker aldrig | keymode er uændret | Kun en sektion, der ikke er afvist, sætter keymode tilbage. `tomlSectionFlush` i `Config/toml_parse.swift`; `testARejectedTomlBindSectionKeepsTheKeymode` |
 | `increase_gaps` lægger tallet til de normale mellemrum, også på special-tagget, og `setgaps` skriver dem så som special-tagets | `incgaps,5` på special-tagget giver special-mellemrummene de normales + 5 | special-tagets egne + 5 | `increase_gaps` regner fra special-mellemrummene, når special-tagget er aktivt. `increaseGaps` i `dispatch/bind.swift`; facit `bind-special-incgaps.mango` (`ours`) |

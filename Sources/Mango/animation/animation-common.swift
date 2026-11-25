@@ -30,80 +30,180 @@ package struct DVec2 {
     var x: Double = 0, y: Double = 0
 }
 
-/// mango BAKED_POINTS_COUNT (animation/common.h).
-let BAKED_POINTS_COUNT: Int32 = 256
-
 extension MangoServer {
-    package func calculateAnimationCurveAt(_ t: Double, _ type: AnimationAction) -> DVec2 {
+    private func calculateBezierCurveFor(_ t: Double, _ curve: [Double]) -> DVec2 {
         var point = DVec2()
-        let animationCurve: BezierCurve
-        if type == .move {
-            animationCurve = config.animationCurveMove
-        } else if type == .open {
-            animationCurve = config.animationCurveOpen
-        } else if type == .tag {
-            animationCurve = config.animationCurveTag
-        } else if type == .close {
-            animationCurve = config.animationCurveClose
-        } else if type == .focus {
-            animationCurve = config.animationCurveFocus
-        } else {
-            // not in mango: no animation_curve_opafadein or animation_curve_opafadeout (no fades on macOS)
-            animationCurve = config.animationCurveMove
-        }
+        point.x = 3 * t * (1 - t) * (1 - t) * curve[0] +
+            3 * t * t * (1 - t) * curve[2] + t * t * t
 
-        point.x = 3 * t * (1 - t) * (1 - t) * animationCurve.x1 +
-            3 * t * t * (1 - t) * animationCurve.x2 + t * t * t
-
-        point.y = 3 * t * (1 - t) * (1 - t) * animationCurve.y1 +
-            3 * t * t * (1 - t) * animationCurve.y2 + t * t * t
-
+        point.y = 3 * t * (1 - t) * (1 - t) * curve[1] +
+            3 * t * t * (1 - t) * curve[3] + t * t * t
         return point
     }
 
-    package func initBakedPoints() {
-        func baked(_ type: AnimationAction) -> [DVec2] {
-            (0..<BAKED_POINTS_COUNT).map { i in
-                calculateAnimationCurveAt(Double(i) / Double(BAKED_POINTS_COUNT - 1), type)
+    private func animationCurveForType(_ type: AnimationAction) -> AnimationCurve {
+        if type == .open { return config.animationCurveOpen }
+        if type == .tag { return config.animationCurveTag }
+        if type == .close { return config.animationCurveClose }
+        if type == .focus { return config.animationCurveFocus }
+        // not in mango: no animation_curve_opafadein or animation_curve_opafadeout (no fades on macOS)
+        return config.animationCurveMove
+    }
+
+    package func animationCurveEase(_ curve: AnimationCurve?, _ progress: Double) -> Double {
+        guard let curve else { return fmax(0.0, fmin(1.0, progress)) }
+        let progress = fmax(0.0, fmin(1.0, progress))
+        if curve.type == .named { return applyNamedEasing(curve.easing, progress) }
+
+        let bezier = curve.bezier
+        var low = 0.0
+        var high = 1.0
+        for _ in 0..<24 {
+            let mid = (low + high) / 2.0
+            if calculateBezierCurveFor(mid, bezier).x < progress {
+                low = mid
+            } else {
+                high = mid
             }
         }
-        bakedPointsMove = baked(.move)
-        bakedPointsOpen = baked(.open)
-        bakedPointsTag = baked(.tag)
-        bakedPointsClose = baked(.close)
-        bakedPointsFocus = baked(.focus)
-        // not in mango: no baked_points_opafadein or baked_points_opafadeout (no fades on macOS)
+        return calculateBezierCurveFor((low + high) / 2.0, bezier).y
+    }
+
+    package func animationCurveDurationMs(_ curve: AnimationCurve?, _ fallbackMs: UInt32) -> UInt32 {
+        fallbackMs
+    }
+
+    package func animationDurationForType(_ type: AnimationAction, _ fallbackMs: UInt32) -> UInt32 {
+        animationCurveDurationMs(animationCurveForType(type), fallbackMs)
+    }
+
+    private func easeOutBounce(_ t: Double) -> Double {
+        var t = t
+        let n1 = 7.5625
+        let d1 = 2.75
+        if t < 1.0 / d1 { return n1 * t * t }
+        if t < 2.0 / d1 {
+            t -= 1.5 / d1
+            return n1 * t * t + 0.75
+        }
+        if t < 2.5 / d1 {
+            t -= 2.25 / d1
+            return n1 * t * t + 0.9375
+        }
+        t -= 2.625 / d1
+        return n1 * t * t + 0.984375
+    }
+
+    private func applyNamedEasing(_ easing: AnimationEasing, _ t: Double) -> Double {
+        let pi = acos(-1.0)
+        switch easing {
+        case .linear:
+            return t
+        case .easeInSine:
+            return 1.0 - cos(t * pi / 2.0)
+        case .easeOutSine:
+            return sin(t * pi / 2.0)
+        case .easeInOutSine:
+            return -(cos(pi * t) - 1.0) / 2.0
+        case .easeInQuad:
+            return t * t
+        case .easeOutQuad:
+            return 1.0 - (1.0 - t) * (1.0 - t)
+        case .easeInOutQuad:
+            return t < 0.5 ? 2.0 * t * t : 1.0 - pow(-2.0 * t + 2.0, 2) / 2.0
+        case .easeInCubic:
+            return t * t * t
+        case .easeOutCubic:
+            return 1.0 - pow(1.0 - t, 3)
+        case .easeInOutCubic:
+            return t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3) / 2.0
+        case .easeInQuart:
+            return pow(t, 4)
+        case .easeOutQuart:
+            return 1.0 - pow(1.0 - t, 4)
+        case .easeInOutQuart:
+            return t < 0.5 ? 8.0 * pow(t, 4) : 1.0 - pow(-2.0 * t + 2.0, 4) / 2.0
+        case .easeInQuint:
+            return pow(t, 5)
+        case .easeOutQuint:
+            return 1.0 - pow(1.0 - t, 5)
+        case .easeInOutQuint:
+            return t < 0.5 ? 16.0 * pow(t, 5) : 1.0 - pow(-2.0 * t + 2.0, 5) / 2.0
+        case .easeInExpo:
+            return t <= 0.0 ? 0.0 : pow(2.0, 10.0 * t - 10.0)
+        case .easeOutExpo:
+            return t >= 1.0 ? 1.0 : 1.0 - pow(2.0, -10.0 * t)
+        case .easeInOutExpo:
+            if t <= 0.0 { return 0.0 }
+            if t >= 1.0 { return 1.0 }
+            return t < 0.5 ? pow(2.0, 20.0 * t - 10.0) / 2.0
+                : (2.0 - pow(2.0, -20.0 * t + 10.0)) / 2.0
+        case .easeInCirc:
+            return 1.0 - sqrt(1.0 - pow(t, 2))
+        case .easeOutCirc:
+            return sqrt(1.0 - pow(t - 1.0, 2))
+        case .easeInOutCirc:
+            return t < 0.5 ? (1.0 - sqrt(1.0 - pow(2.0 * t, 2))) / 2.0
+                : (sqrt(1.0 - pow(-2.0 * t + 2.0, 2)) + 1.0) / 2.0
+        case .easeInBack:
+            let c1 = 1.70158
+            let c3 = c1 + 1.0
+            return c3 * t * t * t - c1 * t * t
+        case .easeOutBack:
+            let c1 = 1.70158
+            let c3 = c1 + 1.0
+            let x = t - 1.0
+            return 1.0 + c3 * x * x * x + c1 * x * x
+        case .easeInOutBack:
+            let c1 = 1.70158 * 1.525
+            let c2 = c1 + 1.0
+            return t < 0.5 ? (pow(2.0 * t, 2) * ((c2 + 1.0) * 2.0 * t - c2)) / 2.0
+                : (pow(2.0 * t - 2.0, 2) * ((c2 + 1.0) * (2.0 * t - 2.0) + c2) + 2.0) / 2.0
+        case .easeInElastic:
+            let c4 = 2.0 * pi / 3.0
+            if t <= 0.0 { return 0.0 }
+            if t >= 1.0 { return 1.0 }
+            return -pow(2.0, 10.0 * t - 10.0) * sin((t * 10.0 - 10.75) * c4)
+        case .easeOutElastic:
+            let c4 = 2.0 * pi / 3.0
+            if t <= 0.0 { return 0.0 }
+            if t >= 1.0 { return 1.0 }
+            return pow(2.0, -10.0 * t) * sin((t * 10.0 - 0.75) * c4) + 1.0
+        case .easeInOutElastic:
+            let c5 = 2.0 * pi / 4.5
+            if t <= 0.0 { return 0.0 }
+            if t >= 1.0 { return 1.0 }
+            return t < 0.5 ? -(pow(2.0, 20.0 * t - 10.0) * sin((20.0 * t - 11.125) * c5)) / 2.0
+                : (pow(2.0, -20.0 * t + 10.0) * sin((20.0 * t - 11.125) * c5)) / 2.0 + 1.0
+        case .easeInBounce:
+            return 1.0 - easeOutBounce(1.0 - t)
+        case .easeOutBounce:
+            return easeOutBounce(t)
+        case .easeInOutBounce:
+            return t < 0.5 ? (1.0 - easeOutBounce(1.0 - 2.0 * t)) / 2.0
+                : (1.0 + easeOutBounce(2.0 * t - 1.0)) / 2.0
+        case .snappy:
+            let curve = [0.05, 0.9, 0.1, 1.05]
+            var low = 0.0
+            var high = 1.0
+            for _ in 0..<24 {
+                let mid = (low + high) / 2.0
+                if calculateBezierCurveFor(mid, curve).x < t {
+                    low = mid
+                } else {
+                    high = mid
+                }
+            }
+            return calculateBezierCurveFor((low + high) / 2.0, curve).y
+        }
+    }
+
+    package func findAnimationCurveFor(_ t: Double, _ curve: AnimationCurve?) -> Double {
+        animationCurveEase(curve, t)
     }
 
     package func findAnimationCurveAt(_ t: Double, _ type: AnimationAction) -> Double {
-        var down: Int32 = 0
-        var up: Int32 = BAKED_POINTS_COUNT - 1
-
-        var middle = (up + down) / 2
-        let bakedPoints: [DVec2]
-        if type == .move {
-            bakedPoints = bakedPointsMove
-        } else if type == .open {
-            bakedPoints = bakedPointsOpen
-        } else if type == .tag {
-            bakedPoints = bakedPointsTag
-        } else if type == .close {
-            bakedPoints = bakedPointsClose
-        } else if type == .focus {
-            bakedPoints = bakedPointsFocus
-        } else {
-            bakedPoints = bakedPointsMove
-        }
-
-        while up - down != 1 {
-            if bakedPoints[Int(middle)].x <= t {
-                down = middle
-            } else {
-                up = middle
-            }
-            middle = (up + down) / 2
-        }
-        return bakedPoints[Int(up)].y
+        animationCurveEase(animationCurveForType(type), t)
     }
 
     package func requestFreshAllMonitors() {
@@ -113,12 +213,33 @@ extension MangoServer {
     }
 }
 
-// not in mango: an animation_curve_* option's double[4] as its four points
-public struct BezierCurve: Equatable, Sendable {
-    public var x1: Double, y1: Double, x2: Double, y2: Double
-    public init(x1: Double, y1: Double, x2: Double, y2: Double) {
-        self.x1 = x1; self.y1 = y1; self.x2 = x2; self.y2 = y2
-    }
-    public static let mangoDefault = BezierCurve(x1: 0.46, y1: 1.0, x2: 0.29, y2: 0.99)
-    public static let linear = BezierCurve(x1: 0, y1: 0, x2: 1, y2: 1)
+/// mango enum animation_curve_type (config/parse.h)
+public enum AnimationCurveType: Equatable, Sendable {
+    case bezier, named
+}
+
+/// mango enum animation_easing (config/parse.h)
+public enum AnimationEasing: Equatable, Sendable {
+    case linear
+    case easeInSine, easeOutSine, easeInOutSine
+    case easeInQuad, easeOutQuad, easeInOutQuad
+    case easeInCubic, easeOutCubic, easeInOutCubic
+    case easeInQuart, easeOutQuart, easeInOutQuart
+    case easeInQuint, easeOutQuint, easeInOutQuint
+    case easeInExpo, easeOutExpo, easeInOutExpo
+    case easeInCirc, easeOutCirc, easeInOutCirc
+    case easeInBack, easeOutBack, easeInOutBack
+    case easeInElastic, easeOutElastic, easeInOutElastic
+    case easeInBounce, easeOutBounce, easeInOutBounce
+    case snappy
+}
+
+/// mango AnimationCurve (config/parse.h)
+public struct AnimationCurve: Equatable, Sendable {
+    public var type: AnimationCurveType = .bezier
+    public var easing: AnimationEasing = .linear
+    public var bezier: [Double] = [0, 0, 0, 0]
+    public init() {}
+    // not in mango: set_bezier_curve's values as an initialiser
+    public init(bezier: [Double]) { self.bezier = bezier }
 }

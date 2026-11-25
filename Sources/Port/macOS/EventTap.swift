@@ -200,7 +200,7 @@ public final class HotkeyMatcher {
     public func match(_ ev: KeyEvent, lastHeldIsThisKey: Bool) -> [KeyBinding] {
         Keyboard.keyboardCheckKeybinding(bindings, mode: mode, keyCode: ev.keyCode, mods: ev.mods, isDown: ev.isDown,
                                          keyModifier: ev.isModifierKey ? Self.modifier(forKeyCode: ev.keyCode) : nil,
-                                         lastHoldKeycodeIsThisKey: lastHeldIsThisKey)
+                                         lastHoldKeycodeIsThisKey: lastHeldIsThisKey, isRepeat: ev.isRepeat)
     }
 
     static func modifier(forKeyCode code: UInt16) -> Modifiers {

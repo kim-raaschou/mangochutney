@@ -5,12 +5,15 @@ package struct ResizeOpts {
     package var interact = false // Interactive resize (window resized by mouse drag).
     package var skipOvEnterAnim = false // Pre-arrangement stage: skip the overview enter
                                        // zoom.
+    package var skipAnimation = false  // Commit the final geometry without a move animation.
     package var forceConfigure = false // Must be sent even if the box did not change (client
                                       // ConfigureRequest).
     package var dragEdge: WlrEdges = []
-    package init(interact: Bool = false, skipOvEnterAnim: Bool = false, forceConfigure: Bool = false, dragEdge: WlrEdges = []) {
+    package init(interact: Bool = false, skipOvEnterAnim: Bool = false, skipAnimation: Bool = false,
+                 forceConfigure: Bool = false, dragEdge: WlrEdges = []) {
         self.interact = interact
         self.skipOvEnterAnim = skipOvEnterAnim
+        self.skipAnimation = skipAnimation
         self.forceConfigure = forceConfigure
         self.dragEdge = dragEdge
     }
@@ -81,7 +84,11 @@ package extension MangoServer {
         let visibleTilingClients = m.visibleTilingClients
         if isScrollerLayout(m) && !c.isfloating {
             return DOWN
-        } else if visibleTilingClients == 1 && !c.isfloating {
+        /* A newly mapped client is not counted until monitor state is refreshed.
+         * When no other tiled client is visible, zero still means this opening
+         * client will be the sole tiled window. Requiring exactly one selects the
+         * generic direction and causes the first frame to start from the side. */
+        } else if visibleTilingClients <= 1 && !c.isfloating {
             return DOWN
         } else if visibleTilingClients == 2 && !c.isfloating && !config.newIsMaster && isHorizontalStackLayout(m) {
             return RIGHT
@@ -294,9 +301,120 @@ package extension MangoServer {
         return offset
     }
 
+    func clientDropZone(_ layout: LayoutKind?, _ ismaster: Bool, _ visibleTilingClients: Int32, _ relX: Double,
+                        _ relY: Double, _ width: Int32, _ height: Int32,
+                        _ zone: inout (x: Int32, y: Int32, width: Int32, height: Int32)) -> Int32 {
+        var dropBox = (x: Int32(0), y: Int32(0), width: MANGO_MAX(1, width), height: MANGO_MAX(1, height))
+        var dropDirection = UNDIR
+        guard let layout else {
+            zone = dropBox
+            return dropDirection
+        }
+
+        let dwindleFamiliar = layout == .dwindle && config.dwindleDropSimpleSplit
+
+        if dwindleFamiliar {
+            let splitH = width >= height
+            let ratio = config.dwindleSplitRatio
+            if splitH {
+                if relX < Double(width) * 0.5 {
+                    dropDirection = LEFT
+                    dropBox.width = MANGO_MAX(1, Int32(Float(width) * ratio))
+                } else {
+                    dropDirection = RIGHT
+                    dropBox.x = Int32(Float(width) * ratio)
+                    dropBox.width = MANGO_MAX(1, width - Int32(Float(width) * ratio))
+                }
+            } else {
+                if relY < Double(height) * 0.5 {
+                    dropDirection = UP
+                    dropBox.height = MANGO_MAX(1, Int32(Float(height) * ratio))
+                } else {
+                    dropDirection = DOWN
+                    dropBox.y = Int32(Float(height) * ratio)
+                    dropBox.height = MANGO_MAX(1, height - Int32(Float(height) * ratio))
+                }
+            }
+        } else if layout == .tile || layout == .deck || layout == .centerTile || layout == .rightTile {
+            if ismaster {
+                if visibleTilingClients == 1 {
+                    if relX < Double(width) * 0.5 {
+                        dropDirection = LEFT
+                        dropBox.width = width / 2
+                    } else {
+                        dropDirection = RIGHT
+                        dropBox.x = width / 2
+                        dropBox.width = width / 2
+                    }
+                    dropBox.width = MANGO_MAX(1, dropBox.width)
+                }
+            } else {
+                if relY < Double(height) * 0.5 {
+                    dropDirection = UP
+                    dropBox.height = height / 2
+                } else {
+                    dropDirection = DOWN
+                    dropBox.y = height / 2
+                    dropBox.height = height / 2
+                }
+                dropBox.height = MANGO_MAX(1, dropBox.height)
+            }
+        } else if layout == .verticalTile || layout == .verticalDeck {
+            if ismaster {
+                if visibleTilingClients == 1 {
+                    if relY < Double(height) * 0.5 {
+                        dropDirection = UP
+                        dropBox.height = height / 2
+                    } else {
+                        dropDirection = DOWN
+                        dropBox.y = height / 2
+                        dropBox.height = height / 2
+                    }
+                    dropBox.height = MANGO_MAX(1, dropBox.height)
+                }
+            } else {
+                if relX < Double(width) * 0.5 {
+                    dropDirection = LEFT
+                    dropBox.width = width / 2
+                } else {
+                    dropDirection = RIGHT
+                    dropBox.x = width / 2
+                    dropBox.width = width / 2
+                }
+                dropBox.width = MANGO_MAX(1, dropBox.width)
+            }
+        } else {
+            let distLeft = relX
+            let distRight = Double(width) - relX
+            let distTop = relY
+            let distBottom = Double(height) - relY
+
+            if distLeft <= distRight && distLeft <= distTop &&
+                distLeft <= distBottom {
+                dropDirection = LEFT
+                dropBox.width = MANGO_MAX(1, width / 2)
+            } else if distRight <= distTop && distRight <= distBottom {
+                dropDirection = RIGHT
+                dropBox.x = width / 2
+                dropBox.width = MANGO_MAX(1, width / 2)
+            } else if distTop <= distBottom {
+                dropDirection = UP
+                dropBox.height = MANGO_MAX(1, height / 2)
+            } else {
+                dropDirection = DOWN
+                dropBox.y = height / 2
+                dropBox.height = MANGO_MAX(1, height / 2)
+            }
+        }
+
+        zone = dropBox
+        return dropDirection
+    }
+
+    // not in mango: client_set_drop_area_color (the port draws the drop area in config.dropcolor)
+
     func clientSetDropArea(_ c: Client?) {
         var firstDraw = false
-        var dropDirection = UNDIR
 
         guard let c, let mon = c.mon else { return }
 
@@ -337,101 +455,12 @@ package extension MangoServer {
         let cursor = system.pointer   // not in mango: the port's cursor
         let relX = Double(cursor.x - c.geom.minX) - Double(bw)
         let relY = Double(cursor.y - c.geom.minY) - Double(bw)
-
-        var dropBox = (x: Int32(0), y: Int32(0), width: Int32(0), height: Int32(0))
         let curLayout = mon.pertag.ltidxs[getClientTagIdx(c)]
-        let dwindleFamiliar = curLayout == .dwindle && config.dwindleDropSimpleSplit
-
-        if dwindleFamiliar {
-            let splitH = c.geom.width >= c.geom.height
-            let ratio = config.dwindleSplitRatio
-            if splitH {
-                if relX < Double(clientWidth) * 0.5 {
-                    dropDirection = LEFT
-                    dropBox = (bw, bw, Int32(Float(clientWidth) * ratio), clientHeight)
-                } else {
-                    dropDirection = RIGHT
-                    dropBox = (bw + Int32(Float(clientWidth) * ratio), bw,
-                               clientWidth - Int32(Float(clientWidth) * ratio), clientHeight)
-                }
-            } else {
-                if relY < Double(clientHeight) * 0.5 {
-                    dropDirection = UP
-                    dropBox = (bw, bw, clientWidth, Int32(Float(clientHeight) * ratio))
-                } else {
-                    dropDirection = DOWN
-                    dropBox = (bw, bw + Int32(Float(clientHeight) * ratio),
-                               clientWidth, clientHeight - Int32(Float(clientHeight) * ratio))
-                }
-            }
-        } else if curLayout == .tile || curLayout == .deck ||
-                    curLayout == .centerTile || curLayout == .rightTile {
-            if c.ismaster {
-                if mon.visibleTilingClients == 1 {
-                    if relX < Double(clientWidth) * 0.5 {
-                        dropDirection = LEFT
-                        dropBox = (bw, bw, clientWidth / 2, clientHeight)
-                    } else {
-                        dropDirection = RIGHT
-                        dropBox = (bw + clientWidth / 2, bw, clientWidth / 2, clientHeight)
-                    }
-                } else {
-                    dropBox = (bw, bw, clientWidth, clientHeight)
-                    dropDirection = UNDIR
-                }
-            } else {
-                if relY < Double(clientHeight) * 0.5 {
-                    dropDirection = UP
-                    dropBox = (bw, bw, clientWidth, clientHeight / 2)
-                } else {
-                    dropDirection = DOWN
-                    dropBox = (bw, bw + clientHeight / 2, clientWidth, clientHeight / 2)
-                }
-            }
-        } else if curLayout == .verticalTile || curLayout == .verticalDeck {
-            if c.ismaster {
-                if mon.visibleTilingClients == 1 {
-                    if relY < Double(clientHeight) * 0.5 {
-                        dropDirection = UP
-                        dropBox = (bw, bw, clientWidth, clientHeight / 2)
-                    } else {
-                        dropDirection = DOWN
-                        dropBox = (bw, bw + clientHeight / 2, clientWidth, clientHeight / 2)
-                    }
-                } else {
-                    dropBox = (bw, bw, clientWidth, clientHeight)
-                    dropDirection = UNDIR
-                }
-            } else {
-                if relX < Double(clientWidth) * 0.5 {
-                    dropDirection = LEFT
-                    dropBox = (bw, bw, clientWidth / 2, clientHeight)
-                } else {
-                    dropDirection = RIGHT
-                    dropBox = (bw + clientWidth / 2, bw, clientWidth / 2, clientHeight)
-                }
-            }
-        } else {
-            let distLeft = relX
-            let distRight = Double(clientWidth) - relX
-            let distTop = relY
-            let distBottom = Double(clientHeight) - relY
-
-            if distLeft <= distRight && distLeft <= distTop &&
-                distLeft <= distBottom {
-                dropDirection = LEFT
-                dropBox = (bw, bw, clientWidth / 2, clientHeight)
-            } else if distRight <= distTop && distRight <= distBottom {
-                dropDirection = RIGHT
-                dropBox = (bw + clientWidth / 2, bw, clientWidth / 2, clientHeight)
-            } else if distTop <= distBottom {
-                dropDirection = UP
-                dropBox = (bw, bw, clientWidth, clientHeight / 2)
-            } else {
-                dropDirection = DOWN
-                dropBox = (bw, bw + clientHeight / 2, clientWidth, clientHeight / 2)
-            }
-        }
+        var dropBox = (x: Int32(0), y: Int32(0), width: Int32(0), height: Int32(0))
+        let dropDirection = clientDropZone(curLayout, c.ismaster, mon.visibleTilingClients, relX, relY,
+                                           clientWidth, clientHeight, &dropBox)
+        dropBox.x += bw
+        dropBox.y += bw
 
         if !firstDraw && c.dropDirection == dropDirection { return }
         c.dropDirection = dropDirection
@@ -686,21 +715,21 @@ package extension MangoServer {
 
         if c.animation.overining {
             c.animation.action = .overview
-            c.animation.duration = UInt32(config.animationDurationTag)
+            c.animation.duration = animationDurationForType(.tag, UInt32(config.animationDurationTag))
         } else if c.animation.action == .open && !c.animation.tagining
                     && !c.animation.tagouting && c.geom == c.current {
             /* keep current action */
         } else if c.animation.tagouting {
-            c.animation.duration = UInt32(config.animationDurationTag)
+            c.animation.duration = animationDurationForType(.tag, UInt32(config.animationDurationTag))
             c.animation.action = .tag
         } else if c.animation.tagining {
-            c.animation.duration = UInt32(config.animationDurationTag)
+            c.animation.duration = animationDurationForType(.tag, UInt32(config.animationDurationTag))
             c.animation.action = .tag
         } else if c.isPendingOpenAnimation {
-            c.animation.duration = UInt32(config.animationDurationOpen)
+            c.animation.duration = animationDurationForType(.open, UInt32(config.animationDurationOpen))
             c.animation.action = .open
         } else {
-            c.animation.duration = UInt32(config.animationDurationMove)
+            c.animation.duration = animationDurationForType(.move, UInt32(config.animationDurationMove))
             c.animation.action = .move
         }
 
@@ -783,6 +812,15 @@ package extension MangoServer {
         }
 
         clientSetPendingState(c)
+        if opts.skipAnimation {
+            c.animation.running = false
+            c.animation.shouldAnimate = false
+            c.animation.duration = 0
+            c.animation.tagining = false
+            c.animation.tagouting = false
+            c.animation.action = .move
+            clientSetFinishGeometry(c)
+        }
         bordersDirty = true   // not in mango: client_update_border_color; the port draws the borders at once
     }
 

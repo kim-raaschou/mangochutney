@@ -32,6 +32,7 @@ public final class Client {
     public var dirty = false
     public var configureSerial: UInt32 = 0
     public var isfloating = false
+    public var stayfocused = false
     public var isurgent = false
     public var isfullscreen = false
     public var isfakefullscreen = false
@@ -197,6 +198,15 @@ extension MangoServer {
 package let UP: Int32 = 0, DOWN: Int32 = 1, LEFT: Int32 = 2, RIGHT: Int32 = 3, UNDIR: Int32 = 4, ALLDIR: Int32 = 5 /* smartmovewin */
 
 package extension MangoServer {
+    func clientStayFocusedBlocks(_ incoming: Client?) -> Bool {
+        let current = selectedMonitor?.sel
+        guard let incoming, let current, incoming !== current, current.stayfocused, !current.iskilling,
+              let m = current.mon else { return false }
+
+        // not in mango: every Client is a mapped window (client_surface(current)->mapped)
+        return VISIBLEON(current, m)
+    }
+
     func getClientTagIdx(_ c: Client?) -> UInt32 {
         guard let c, c.tags & TAG0_MASK == 0 else { return 0 }
         return getTagsFirstTagNum(c.tags)
@@ -564,27 +574,54 @@ package extension MangoServer {
         return sc
     }
 
-    func applyRuleProperties(_ c: Client, _ r: ConfigWinRule) {
+    func resetFixedRuleProperties(_ c: Client?) {
+        guard let c else { return }
+
+        // not in mango: only the fields the Client has (docs/afvigelser.md §5)
+        c.confinePointer = false
+        c.stayfocused = false
+        c.noFocus = false
+        c.noForceCenter = false
+        c.noBorder = false   // not in mango: no unmanaged clients or X11 popups
+        c.noAnimation = false
+        c.isopensilent = false
+        c.istagsilent = false
+        c.ignoreMinimize = true
+        c.noSizeHint = false
+        c.animationTypeOpen = nil
+    }
+
+    func applyFixedRuleProperties(_ c: Client, _ r: ConfigWinRule) {
         if let v = r.noFocus { c.noFocus = v }
         if let v = r.confinePointer { c.confinePointer = v }
         if let v = r.noForceCenter { c.noForceCenter = v }
-        if let v = r.isfloating { c.isfloating = v }
-        if let v = r.isfullscreen { c.isfullscreen = v }
-        if let v = r.isfakefullscreen { c.isfakefullscreen = v }
+        if let v = r.stayfocused { c.stayfocused = v }
         if let v = r.noBorder { c.noBorder = v }
         if let v = r.noAnimation { c.noAnimation = v }
         if let v = r.noSizeHint { c.noSizeHint = v }
         if let v = r.isopensilent { c.isopensilent = v }
         if let v = r.istagsilent { c.istagsilent = v }
+        if let v = r.ignoreMinimize { c.ignoreMinimize = v }
+        if let v = r.animationTypeOpen { c.animationTypeOpen = v }
+        // not in mango: the rule fields with no Client field are not applied (docs/afvigelser.md §5)
+    }
+
+    func applyRuntimeRuleProperties(_ c: Client, _ r: ConfigWinRule) {
+        if let v = r.isfloating { c.isfloating = v }
+        if let v = r.isfullscreen { c.isfullscreen = v }
+        if let v = r.isfakefullscreen { c.isfakefullscreen = v }
         if let v = r.isnamedscratchpad { c.isnamedscratchpad = v }
         if let v = r.isglobal { c.isglobal = v }
         if let v = r.isoverlay { c.isoverlay = v }
-        if let v = r.ignoreMinimize { c.ignoreMinimize = v }
         if let v = r.isunglobal { c.isunglobal = v }
+
         if let v = r.scrollerProportion, v > 0 { c.scrollerProportion = v }
         if let v = r.scrollerProportionSingle, v > 0 { c.scrollerProportionSingle = v }
-        if let v = r.animationTypeOpen { c.animationTypeOpen = v }
-        // not in mango: the rule fields with no Client field are not applied (docs/afvigelser.md §5)
+    }
+
+    func applyInitialRuleProperties(_ c: Client, _ r: ConfigWinRule) {
+        applyFixedRuleProperties(c, r)
+        applyRuntimeRuleProperties(c, r)
     }
 
     func setFloatMalposition(_ tc: Client) {
@@ -647,7 +684,7 @@ package extension MangoServer {
             if r.isOnce && r.isOnceApplied { continue }
             if r.isOnce { config.windowRules[i].isOnceApplied = true }
 
-            applyRuleProperties(c, r)
+            applyInitialRuleProperties(c, r)
 
             // // set tags
             if let t = r.tags, t != 0 {
@@ -712,9 +749,11 @@ package extension MangoServer {
 
         let fullscreenStateBackup = c.isfullscreen   // not in mango: no client_wants_fullscreen (no xdg request)
 
+        let stayFocusedBlocked = clientStayFocusedBlocks(c)
         // not in mango: no X11 popup (client_is_x11_popup)
         let shouldInitGetFocus = !c.isopensilent
             && (!c.istagsilent || newtags == 0 || newtags & mon.tagset[mon.seltags] != 0)
+            && !stayFocusedBlocked
         if !shouldInitGetFocus {
             focusStack.removeAll { $0 === c }
             focusStack.append(c)
@@ -729,7 +768,7 @@ package extension MangoServer {
         }
 
         if let cm = c.mon, !(cm === selectedMonitor && c.tags & cm.tagset[cm.seltags] != 0),
-           !c.isopensilent, !c.istagsilent {
+           !c.isopensilent, !c.istagsilent, !stayFocusedBlocked {
             c.animation.tagFromRule = true
             clientViewOnMonitor(Arg(ui: c.tags), true, cm, true)
         }
@@ -866,6 +905,7 @@ package extension MangoServer {
         c.enableDropAreaDraw = false
         c.isfocusing = false
         c.isfloating = false
+        c.stayfocused = false
         c.isfakefullscreen = false
         c.noAnimation = false
         c.isopensilent = false
@@ -985,14 +1025,64 @@ package extension MangoServer {
         printstatus(.arrangge)
     }
 
+    private func clientTagStatesUpdate(_ old: Client?, _ new: Client?, _ replace: Bool) {
+        guard let old else { return }
+        if replace && (new == nil || old === new) { return }
+        var tabChanged = false
+        var scrollerChanged = false
+        for m in monitors {
+            for tag in 0..<PERTAG_SLOTS {
+                if m.pertag.scrollerState[tag] != nil {
+                    if replace, let new {
+                        scrollerChanged = scrollerReplaceClientInTag(m, tag, old, new) || scrollerChanged
+                    } else {
+                        scrollerRemoveClientInTag(m, tag, old)
+                    }
+                }
+                if m.pertag.dwindleRoot[tag] != nil {
+                    if replace, let new {
+                        dwindleReplaceClientInTag(m, tag, old, new)
+                    } else {
+                        dwindleRemoveClientInTag(m, tag, old)
+                    }
+                }
+                if m.pertag.tagRatioState[tag] != nil {
+                    if replace, let new {
+                        tagRatioStateReplaceClientInTag(m, tag, old, new)
+                    } else {
+                        tagRatioStateRemoveClientInTag(m, tag, old)
+                    }
+                }
+                if m.pertag.tabState[tag] != nil {
+                    if replace, let new {
+                        tabChanged = tabReplaceClientInTag(m, tag, old, new) || tabChanged
+                    } else {
+                        tabChanged = tabRemoveClientInTag(m, tag, old) || tabChanged
+                    }
+                }
+            }
+        }
+        if replace && scrollerChanged, let m = old.mon { scrollerSyncCurrent(m) }
+        if !replace && tabChanged, let m = old.mon { tabSyncCurrent(m) }
+    }
+
+    private func clientTagStatesReplace(_ old: Client, _ new: Client) {
+        clientTagStatesUpdate(old, new, true)
+    }
+
+    private func clientTagStatesRemove(_ c: Client) {
+        clientTagStatesUpdate(c, nil, false)
+    }
+
     package func handleClientUnmap(_ c: Client) {
         guard clientByIdAll(c.id) === c else { return }   // not in mango: the port may report a window gone twice
+        // not in mango: no workspace overview (workspace_overview_active_workspace_will_empty)
         c.iskilling = true
-        if c.tabPrev != nil || c.tabNext != nil { tabDetachClient(c) }
         switcherRemoveClient(c)
         let targetNode = c.mon.flatMap { findScrollerNode($0.pertag.scrollerState[getClientTagIdx(c)], c) }
-        let prevNode = targetNode?.prevInStack
-        let nextNode = targetNode?.nextInStack
+
+        let prevStackClient = targetNode?.prevInStack?.client
+        let nextStackClient = targetNode?.nextInStack?.client
         // Port extension: not in mango. Its group, for when the window comes back (macOS reports
         // windows gone and back around sleep).
         let group = clientIsGroupMember(c) ? groupMembers(c) : []
@@ -1001,14 +1091,15 @@ package extension MangoServer {
 
         // If the client is in a stack, remove it from the stack
 
+        var replaced = false
         // not in mango: no swallowing (c->swallowing)
         if clientIsGroupMember(c) && c.isGroupFocus, let groupReplacement = c.groupNext ?? c.groupPrev {
             groupReplacement.mon = c.mon
             clientReplace(groupReplacement, c, isGroupChangeMember: false)
-        } else {
-            scrollerRemoveClient(c)
-            dwindleRemoveClient(c)
+            replaced = true
         }
+        if !replaced { clientTagStatesRemove(c) }
+        // not in mango: no workspace overview (workspace_overview_client_removed)
 
         if c === grabClient {
             cursorMode = CurNormal
@@ -1032,10 +1123,10 @@ package extension MangoServer {
 
         if let m = c.mon, m === selectedMonitor {
             var nextfocus: Client?
-            if let nextNode {
-                nextfocus = nextNode.client
-            } else if let prevNode {
-                nextfocus = prevNode.client
+            if let nextStackClient, nextStackClient !== c {
+                nextfocus = nextStackClient
+            } else if let prevStackClient, prevStackClient !== c {
+                nextfocus = prevStackClient
             } else {
                 nextfocus = clientFocusTop(selectedMonitor)
             }
@@ -1079,7 +1170,9 @@ package extension MangoServer {
 
     package func handleClientDestroy(_ c: Client) {
         switcherRemoveClient(c)
+        // not in mango: no workspace overview (workspace_overview_client_removed)
         pointerClientDestroyed(c)
+        clientTagStatesRemove(c)
     }
 
     package func handleClientRequestMinimize(_ c: Client, _ minimized: Bool) {
@@ -1102,6 +1195,15 @@ package extension MangoServer {
 
     package func handleClientActivationRequest(_ c: Client) {
         guard clientByIdAll(c.id) === c else { return }   // not in mango: clientByIdAll stands for c->foreign_toplevel
+
+        if clientStayFocusedBlocks(c) {
+            if c !== clientFocusTop(selectedMonitor) {
+                c.isurgent = true
+                updateBorders()   // not in mango: the port draws the borders (client_update_border_color)
+            }
+            return
+        }
+
         if config.focusOnActivate && !c.istagsilent && c !== selectedMonitor.sel {
             if c.tags & TAG0_MASK != 0, let m = c.mon {
                 if isSpecialActive(m) {
@@ -1313,11 +1415,7 @@ package extension MangoServer {
         if let targetClient, arg.ui & (TAGMASK | TAG0_MASK) != 0 {
             targetClient.tags = arg.ui & TAG0_MASK != 0 ? TAG0_MASK : arg.ui & TAGMASK
             // not in mango: client_reparent_group (no macOS part)
-
-            for fc in clients where fc !== targetClient && targetClient.tags & fc.tags != 0 && ISFULLSCREEN(fc)
-                && !targetClient.isfloating {
-                clearFullscreenFlag(fc)
-            }
+            clearFullscreenForIncomingTiledClient(targetClient)
             if arg.ui & TAG0_MASK != 0, let cm = targetClient.mon {
                 arrange(cm, false, false)
             }
@@ -1328,6 +1426,7 @@ package extension MangoServer {
         }
 
         clientFocus(targetClient, true)
+        // not in mango: no workspace overview (workspace_overview_client_tags_changed)
         printstatus(.arrangge)
     }
 
@@ -1361,6 +1460,7 @@ package extension MangoServer {
             resize(c, c.geom, ResizeOpts(interact: false))
             clientResetMonTags(c, m, newtags)
             checkMatchTagFloatingRule(c, m)
+            tagRatioStateSeedClient(c)
             clientSetFloating(c, c.isfloating)
             clientSetFullscreen(c, c.isfullscreen, rearrange: true)
         }
@@ -1534,9 +1634,12 @@ package extension MangoServer {
             if c.isfloating { clientSetFloating(c, true, false) }
         }
 
-        // not in mango: client_reparent_group, check_vrr_enable and check_keep_idle_inhibit (no macOS part)
+        // not in mango: client_reparent_group (no macOS part)
+        if fullscreen { clientRaiseGroup(c) }
+        // not in mango: check_vrr_enable and check_keep_idle_inhibit (no macOS part)
 
         if rearrange { arrange(m, false, false) }
+        // not in mango: no workspace overview (workspace_overview_client_stack_changed)
     }
 
     func clientSetFakeFullscreen(_ c: Client, _ fakefullscreen: Bool) {
@@ -1648,6 +1751,14 @@ package extension MangoServer {
     func clearFullscreenAndMaximizedState(_ m: Monitor) {
         for fc in clients where VISIBLEON(fc, m) && ISFULLSCREEN(fc) {
             clearFullscreenFlag(fc)
+        }
+    }
+
+    func clearFullscreenForIncomingTiledClient(_ incoming: Client?) {
+        guard let incoming, !incoming.isfloating else { return }
+
+        for other in clients where other !== incoming && incoming.tags & other.tags != 0 && ISFULLSCREEN(other) {
+            clearFullscreenFlag(other)
         }
     }
 
@@ -1804,7 +1915,6 @@ package extension MangoServer {
     }
 
     func clientPark(_ c: Client?) {
-        if let c, c.tabPrev != nil || c.tabNext != nil { tabDetachClient(c) }
         clientUnlink(c)
         guard let c else { return }
         c.animation.running = false
@@ -1825,6 +1935,9 @@ package extension MangoServer {
     }
 
     func clientReplace(_ c: Client, _ w: Client, isGroupChangeMember: Bool) {
+        // not in mango: no workspace overview (workspace_overview_client_replaced)
+        pointerClientReplaced(w, c)
+
         c.bw = w.bw
         c.isfloating = w.isfloating
         c.isurgent = w.isurgent
@@ -1838,16 +1951,22 @@ package extension MangoServer {
         c.stackSizeWeight = w.stackSizeWeight
         c.masterSizeWeight = w.masterSizeWeight
         c.masterMfactPer = w.masterMfactPer
+        c.gridColPer = w.gridColPer
+        c.gridRowPer = w.gridRowPer
+        c.gridColIdx = w.gridColIdx
+        c.gridRowIdx = w.gridRowIdx
         c.scrollerProportion = w.scrollerProportion
         c.isglobal = w.isglobal
+        c.isoverlay = w.isoverlay
         c.overviewBackupGeom = w.overviewBackupGeom
         c.overviewBackedUp = w.overviewBackedUp   // not in mango: a mango bug, docs/afvigelser.md §6
         c.animation.current = w.animation.current
         c.scrollerStackProportion = w.scrollerStackProportion
+        c.dragToTile = w.dragToTile
+        c.dragTileFloatBackupGeom = w.dragTileFloatBackupGeom
+        clientTagStatesReplace(w, c)
 
         if !isGroupChangeMember { clientGroupReplace(w, c) }   // not in mango: no swallowing (is_swallow)
-
-        tabReplaceClient(w, c)
 
         clientUnpark(c, w)
         // not in mango: the group bar's focus is the port's side
@@ -1864,6 +1983,7 @@ package extension MangoServer {
         w.jumpLabelNode?.setEnabled(false)
 
         c.tagVisible = w.tagVisible
+        // not in mango: no workspace overview (wsov_hidden)
         w.tagVisible = false
         clientUpdateVisibility(w)
         clientUpdateVisibility(c)
@@ -1871,31 +1991,6 @@ package extension MangoServer {
         clientPendingFullscreenState(c, w.isfullscreen)
         clientPendingMaximizedState(c, w.ismaximizescreen)
         clientPendingMinimizedState(c, w.isminimized)
-
-        if let m = w.mon {
-            let layout = m.pertag.ltidxs[getClientTagIdx(w)]
-            for i in 0..<Int(PERTAG_SLOTS) {
-                if layout == .dwindle {
-                    dwindleRemove(&m.pertag.dwindleRoot[i], c)
-                    if let dnode = dwindleFindLeaf(m.pertag.dwindleRoot[i], w) { dnode.client = c }
-                }
-
-                // scroller
-                if layout == .scroller || layout == .verticalScroller {
-                    guard let st = m.pertag.scrollerState[UInt32(i)] else { continue }
-                    if let cn = findScrollerNode(st, c) { scrollerNodeRemove(st, cn) }
-
-                    if let wn = findScrollerNode(st, w) { wn.client = c }
-                }
-            }
-
-            /* Syncs the global client fields of the currently active tag. */
-            if layout == .scroller || layout == .verticalScroller {
-                syncScrollerStateToClients(m, getClientTagIdx(w))
-            }
-        } else {
-            return
-        }
 
         if w.iskilling {
             clientUnlink(w)
@@ -1922,6 +2017,7 @@ package extension MangoServer {
         if old.prevsel === c { old.prevsel = nil }
         c.mon = m
         if !VISIBLEON(c, m) { clientResetMonTags(c, m, 0) }
+        tagRatioStateSeedClient(c)
         m.sel = c
         setSelectedMonitor(m)
     }
@@ -2007,6 +2103,8 @@ package extension MangoServer {
         c1.mon = tmpMon
         c2.tags = c1.tags
         c1.tags = tmpTags
+        tagRatioStateSeedClient(c1)
+        tagRatioStateSeedClient(c2)
     }
 
     func finishExchangeArrangeAndFocus(_ c1: Client, _ c2: Client, _ m1: Monitor, _ m2: Monitor) {

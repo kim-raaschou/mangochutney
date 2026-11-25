@@ -23,9 +23,9 @@
      "tags": [
       1
      ],
-     "x": 116,
+     "x": 10,
      "y": 10,
-     "width": 1687,
+     "width": 1900,
      "height": 1060,
      "is_focused": true,
      "is_visible": true,
@@ -53,8 +53,8 @@
      "y": 0,
      "width": 1920,
      "height": 1080,
-     "layout_symbol": "S",
-     "layout_index": 1,
+     "layout_symbol": "T",
+     "layout_index": 0,
      "tag_num": 9,
      "tags": [
       {

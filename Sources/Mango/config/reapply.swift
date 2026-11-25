@@ -43,6 +43,13 @@ package extension MangoServer {
                 }
                 clientSetGroupConfig(c)
                 // not in mango: no client_set_tab_bar_config, the port draws the tab bar from the config
+
+                // not in mango: the port's appid and title (client_get_appid, client_get_title) are never NULL
+                resetFixedRuleProperties(c)
+                for r in config.windowRules
+                where r.isWindowRuleMatches(appId: c.bundleId, appName: c.appName, title: c.title) {
+                    applyFixedRuleProperties(c, r)
+                }
             }
         }
     }
@@ -54,7 +61,6 @@ package extension MangoServer {
     }
 
     func resetOption() {
-        initBakedPoints()
         pointerCursorActivity()
         resetKeyboardLayout()
         // not in mango: no reset_blur_params, macOS has no blur (MangoCompat)
@@ -191,14 +197,8 @@ package extension MangoServer {
         }
 
         for i in 1...UInt32(config.tagNum) {
-            for c in clients {
-                if (c.tags & (1 << (i - 1)) & TAGMASK) != 0 && ISTILED(c) {
-                    // not in mango: this monitor's windows only; mango's gives every window the last monitor's mfact (a mango bug, docs/afvigelser.md §6).
-                    guard c.mon === m else { continue }
-                    if m.pertag.mfacts[i] > 0.0 {
-                        c.masterMfactPer = CGFloat(m.pertag.mfacts[i])
-                    }
-                }
+            if m.pertag.mfacts[i] > 0.0 {
+                tagRatioStateSetMasterMfact(m, i, CGFloat(m.pertag.mfacts[i]))
             }
         }
     }
@@ -227,6 +227,7 @@ package extension MangoServer {
                     m.pertag.prevtag = UInt32(config.tagNum)
                 }
                 // not in mango: no sync_workspaces_to_tag_num, macOS has no ext-workspace
+                tagRatioStateBegin(m, getMonCurtag(m), true)
             }
         }
     }

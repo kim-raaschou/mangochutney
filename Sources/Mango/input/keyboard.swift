@@ -60,7 +60,7 @@ package enum Keyboard {
     // with a modifier key's own modifier added (release) or taken away (press), as xkb's state is before the key
     package static func keyboardCheckKeybinding(_ bindings: [KeyBinding], mode: String, keyCode: UInt16,
                                                 mods: Modifiers, isDown: Bool, keyModifier: Modifiers?,
-                                                lastHoldKeycodeIsThisKey: Bool) -> [KeyBinding] {
+                                                lastHoldKeycodeIsThisKey: Bool, isRepeat: Bool) -> [KeyBinding] {
         var out: [KeyBinding] = []
         for b in bindings {
             guard b.mode == "common" || b.mode == mode else { continue }
@@ -82,6 +82,13 @@ package enum Keyboard {
                     guard isDown else { continue }
                 }
             }
+
+            /* A "n" binding fires once per press: ignore key repeat events.
+             * Stop here so a repeat never falls through to another binding. */
+            if isRepeat && b.flags.contains(.norepeat) {
+                break
+            }
+
             out.append(b)
             // not in mango: the dispatchers that return non-zero, known before they run (docs/afvigelser.md §3)
             if ["setkeymode", "chvt", "reload_config", "load_config_file"].contains(b.dispatch.name) { break }
@@ -173,7 +180,8 @@ extension Keyboard {
 
         let matches = keyboardCheckKeybinding(bindings, mode: mode, keyCode: k.keyCode, mods: k.mods, isDown: k.isDown,
                                               keyModifier: k.keyModifier,
-                                              lastHoldKeycodeIsThisKey: !k.isDown && state.lastHoldKeycode == k.keyCode)
+                                              lastHoldKeycodeIsThisKey: !k.isDown && state.lastHoldKeycode == k.keyCode,
+                                              isRepeat: k.isRepeat)
         var handled = false
         for b in matches {
             // not in mango: macOS repeats every held key; mango's keyboard_repeat repeats only a handled one

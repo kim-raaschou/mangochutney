@@ -129,6 +129,7 @@ final class MangoCoverageTests: MangoTestCase {
         let functions = Self.source("Sources/Mango/dispatch/bind.swift") + Self.source("Sources/Mango/ext-protocol/hdr.swift")
             + Self.source("Sources/Mango/common/server.swift") + Self.source("Sources/Mango/switcher/switcher.swift")
             + Self.source("Sources/Mango/config/reapply.swift")
+            + Self.source("Sources/Mango/workspace_overview/workspace_overview.swift")
         let re = try NSRegularExpression(pattern: #"funcName == "([a-z_]+)" \{\n(?:\s*/\*.*\*/\n)?\s*`func` = MangoServer\.(\w+)\(_:\)"#)
         var withoutEffect = Set<String>()
         let matches = re.matches(in: parse, range: NSRange(parse.startIndex..., in: parse))

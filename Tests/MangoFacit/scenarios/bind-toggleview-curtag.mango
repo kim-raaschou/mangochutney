@@ -1,0 +1,12 @@
+# toggleview moves the current tag to the first tag of the new tagset, so its layout is the one used.
+dispatch view,2
+dispatch setlayout,monocle
+dispatch view,1
+open a
+open b
+dispatch toggleview,2
+check
+dispatch toggleview,1
+check
+dispatch toggleview,1
+check

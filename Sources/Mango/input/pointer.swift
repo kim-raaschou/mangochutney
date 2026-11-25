@@ -84,6 +84,23 @@ package extension MangoServer {
         }
     }
 
+    func pointerClientReplaced(_ old: Client?, _ new: Client?) {
+        guard let old, let new, old !== new else { return }
+
+        if grabClient === old { grabClient = new }
+
+        if dropClient === old {
+            let draw = old.enableDropAreaDraw
+            old.enableDropAreaDraw = false
+            new.enableDropAreaDraw = draw
+            dropClient = new
+        }
+
+        if groupBarDragClient === old { groupBarDragClient = new }
+
+        // not in mango: no group_bar_hover (the port draws the bar's close hover)
+    }
+
     func toggleHotarea(_ xRoot: Int32, _ yRoot: Int32) {
         // Computes the hot-area coordinates in the lower-left corner; supports
         // multiple monitors.
@@ -750,9 +767,7 @@ package extension MangoServer {
         return closest
     }
 
-    func pointerPlaceDragTile(_ c: Client) {
-        let closest = findClosestTiledClient(c)
-
+    func pointerPlaceDragTileOn(_ c: Client, _ closest: Client?) {
         if let closest, let cm = closest.mon {
             let layout = cm.pertag.ltidxs[getClientTagIdx(closest)]
 
@@ -803,6 +818,10 @@ package extension MangoServer {
         }
 
         clientSetFloating(c, false, false)
+    }
+
+    func pointerPlaceDragTile(_ c: Client) {
+        pointerPlaceDragTileOn(c, findClosestTiledClient(c))
     }
 
     // not in mango: the button as macOS numbers it, `p` where the press was, `bar` the port's bar panel that

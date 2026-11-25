@@ -1,0 +1,18 @@
+# monocle's tabs keep their focus per tag; focusdir left and right walk the tabs.
+dispatch setlayout,monocle
+open a
+open b
+open c
+dispatch focusdir,left
+check
+dispatch view,2
+dispatch setlayout,monocle
+open d
+open e
+check
+dispatch view,1
+check
+dispatch focusdir,right
+check
+dispatch focusdir,right
+check

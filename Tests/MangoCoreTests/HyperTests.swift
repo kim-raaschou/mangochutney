@@ -47,7 +47,7 @@ final class HyperTests: MangoTestCase {
             func fired(_ binds: [KeyBinding], _ mods: Modifiers) -> [Dispatch] {
                 Keyboard.keyboardCheckKeybinding(binds, mode: b.mode, keyCode: b.keyCodes[0], mods: mods, isDown: !release,
                                                  keyModifier: modifier.isEmpty ? nil : modifier,
-                                                 lastHoldKeycodeIsThisKey: true).map(\.dispatch)
+                                                 lastHoldKeycodeIsThisKey: true, isRepeat: false).map(\.dispatch)
             }
             XCTAssertEqual(fired(c.keyBindings, KeyboardOptions.hyperMods(held, hyper: h, keyHeld: false)), fired(old, held),
                            "\(name): \(b.mods.mangoDescription),\(b.keyName)")
