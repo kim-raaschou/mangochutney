@@ -76,9 +76,9 @@ final class FakeBar: MangoBarDecoration {
     var lastText: String?
     var lastScale = 0.0
     var frame = CGRect.zero
-    var data: DecorateStyle
+    var data: DecorateDrawData
     var updates = 0, raises = 0, destroyed = false
-    init(_ data: DecorateStyle) { self.data = data }
+    init(_ data: DecorateDrawData) { self.data = data }
     func setEnabled(_ enabled: Bool) { self.enabled = enabled }
     func setPosition(_ x: CGFloat, _ y: CGFloat) { frame.origin = CGPoint(x: x, y: y) }
     func raiseToTop() { raises += 1 }
@@ -86,7 +86,7 @@ final class FakeBar: MangoBarDecoration {
     func setSize(_ width: CGFloat, _ height: CGFloat) { frame.size = CGSize(width: width, height: height) }
     func setFocus(_ focused: Bool) {}
     func setCenterSecondaryLine(_ center: Bool) {}
-    func applyConfig(_ data: DecorateStyle) { self.data = data }
+    func applyConfig(_ data: DecorateDrawData) { self.data = data }
     func destroy() { destroyed = true }
 }
 
@@ -98,14 +98,14 @@ final class FakeJumpLabel: MangoJumpLabel {
     var logicalHeight: CGFloat = 0
     var text: String?
     var position = CGPoint.zero
-    var data: DecorateStyle
+    var data: DecorateDrawData
     var destroyed = false
-    init(_ data: DecorateStyle) { self.data = data }
+    init(_ data: DecorateDrawData) { self.data = data }
     func setEnabled(_ enabled: Bool) { self.enabled = enabled }
     func setPosition(_ x: CGFloat, _ y: CGFloat) { position = CGPoint(x: x, y: y) }
     func raiseToTop() {}
     func update(_ text: String, _ scale: Double) { self.text = text; logicalWidth = 40; logicalHeight = 40 }
-    func applyConfig(_ data: DecorateStyle) { self.data = data }
+    func applyConfig(_ data: DecorateDrawData) { self.data = data }
     func destroy() { destroyed = true }
 }
 
@@ -185,13 +185,13 @@ final class FakeWindowSystem: MacWindowSystem {
     override func switcherApplyHighlight(_ tiles: [SwitcherTilePicture]) { switcherTiles = tiles }
     override func closeSwitcherPanel() { switcherTiles = nil }
     var bars: [FakeBar] = []
-    override func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateStyle, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
+    override func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateDrawData, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
         let bar = FakeBar(data)
         bars.append(bar)
         return bar
     }
     var jumpLabels: [ClientID: FakeJumpLabel] = [:]
-    override func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel? {
+    override func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateDrawData) -> MangoJumpLabel? {
         let label = FakeJumpLabel(data)
         jumpLabels[c.windowID] = label
         return label

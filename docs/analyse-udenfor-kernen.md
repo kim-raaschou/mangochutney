@@ -38,10 +38,9 @@ i `applyWindowSnap`, `xkbOptions` er portens, og `isGroupMember` er mangos `clie
 | `directionGeom` (overviewets kort i retningsvalget), `clientRaiseLayers` (`client_sync_layer`s lag), `clientByIdAll` (lytterens klient) | `manage/client.swift`, `layout/arrange.swift`, `IPC/ipc.swift` | ja | Bliver |
 | `KeyboardState`, `KeyInput`, `KeyAction`, `publishGlobalKeys` | `input/keyboard.swift` | delvis | Event tappets typer; mærkes |
 | Geometri-hjælpere | `common/util.swift` | ja | Bliver |
-| `DecorateStyle` (bjælkernes stil, mangos `DecorateDrawData`) | `draw/text-node.swift` | ja | Bliver |
+| `DecorateDrawData` med tomme felter for nøgler, config ikke sætter, og `filled(from:)` med `set_value_default`s værdier | `draw/text-node.swift` | ja | Bliver (`chutney_macos_appearance` skal vide, hvad der er sat); `FontDescription` (pangos læsning) flyttet til `Port/macOS` 25. nov. |
 | `LayoutKind.isMonocleLike` (portens parkering) | `layout/Layout.swift` | ja | Bliver |
 | `LayoutKind.isVertical` | `layout/Layout.swift` | nej | Ingen kalder: fjernes |
-| `mangoBarDecorationApplyConfig`, en fletning med mangos navn | `draw/text-node.swift` | ja | Omdøbes eller listes |
 | `Dispatch.arg`, kun brugt af `Port/Extensions/Shortcuts.swift` | `config/parse.swift` | ja | Kan flyttes til porten |
 | `ConfigParser` (`parse_config` uden server: `mango -p`, `setoption`, tests) og portens noter | `config/load.swift` | ja | Bliver |
 | JSON-kodningen for cJSON | `IPC/ipc.swift` | ja | Bliver |

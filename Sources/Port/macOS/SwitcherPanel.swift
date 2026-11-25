@@ -168,7 +168,7 @@ final class TitleMessageBar {
         window.contentView = container
     }
 
-    func show(frame: CGRect, title: String, appid: String, style: DecorateStyle) {
+    func show(frame: CGRect, title: String, appid: String, style: DecorateDrawData) {
         view.title = title
         view.appid = appid
         view.style = style
@@ -195,13 +195,13 @@ final class TitleMessageBar {
 final class TitleMessageBarDecoration: MangoBarDecoration {
     private let bar = TitleMessageBar()
     private let config: @MainActor () -> Config
-    private var data: DecorateStyle
+    private var data: DecorateDrawData
     private var frame = CGRect.zero
     private(set) var enabled = true
     private(set) var lastText: String?
     private(set) var lastScale = 0.0
 
-    init(_ data: DecorateStyle, config: @escaping @MainActor () -> Config) {
+    init(_ data: DecorateDrawData, config: @escaping @MainActor () -> Config) {
         self.data = data
         self.config = config
     }
@@ -235,7 +235,7 @@ final class TitleMessageBarDecoration: MangoBarDecoration {
     /// The second line is drawn centred, as mango always sets it.
     func setCenterSecondaryLine(_ center: Bool) {}
 
-    func applyConfig(_ data: DecorateStyle) {
+    func applyConfig(_ data: DecorateDrawData) {
         self.data = data
         draw()
     }
@@ -257,7 +257,7 @@ private final class TitleMessageBarView: NSView {
     static let macRadius = 12
     var title = ""
     var appid = ""
-    var style = DecorateStyle()
+    var style = DecorateDrawData()
 
     override var isFlipped: Bool { true }
 

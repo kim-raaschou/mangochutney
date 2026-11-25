@@ -16,6 +16,6 @@ package protocol MangoJumpLabel: AnyObject {
     /// wlr_scene_node_raise_to_top
     func raiseToTop()
     func update(_ text: String, _ scale: Double)
-    func applyConfig(_ data: DecorateStyle)
+    func applyConfig(_ data: DecorateDrawData)
     func destroy()
 }

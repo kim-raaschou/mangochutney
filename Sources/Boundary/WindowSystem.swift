@@ -38,9 +38,9 @@ package protocol WindowSystem: AnyObject {
     func closeSwitcherPanel()
     /// mango_bar_decoration_create for the title message bar: its type and its layer
     /// (LyrSpecialOverlay, ignoring hits) are the port's.
-    func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateStyle, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration?
+    func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateDrawData, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration?
     /// mango_jump_label_node_create on the client's scene.
-    func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel?
+    func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateDrawData) -> MangoJumpLabel?
     /// find_keycodes_for_keysym on xkb's keymap: the keys that type this character.
     func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode
     func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>)

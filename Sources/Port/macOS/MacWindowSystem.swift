@@ -450,13 +450,13 @@ class MacWindowSystem: WindowSystem {
         .init(id: t.id, frame: t.frame, size: t.size, pid: t.pid, highlighted: t.highlighted)
     }
 
-    func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateStyle, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
+    func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateDrawData, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
         let bar = TitleMessageBarDecoration(data) { [unowned self] in server.config }
         bar.setSize(width, height)
         return bar
     }
 
-    func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel? {
+    func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateDrawData) -> MangoJumpLabel? {
         JumpLabelNode(data) { [unowned self] in server.config }
     }
 

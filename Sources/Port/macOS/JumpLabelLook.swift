@@ -11,7 +11,7 @@ struct JumpLabelLook {
     var borderWidth: CGFloat
     var cornerRadius: CGFloat
 
-    init(_ label: String, decorate d: DecorateStyle, side: CGFloat, ring: CGColor) {
+    init(_ label: String, decorate d: DecorateDrawData, side: CGFloat, ring: CGColor) {
         func cg(_ c: RGBA) -> CGColor { CGColor(red: c.r, green: c.g, blue: c.b, alpha: c.a) }
         let mangoSized = d.fontDesc != nil || d.paddingX != nil || d.paddingY != nil
         font = d.fontDesc.map { decorateFont(FontDescription($0)) } ?? .boldSystemFont(ofSize: side * 0.53)

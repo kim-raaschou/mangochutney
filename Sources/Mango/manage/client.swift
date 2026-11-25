@@ -2098,7 +2098,7 @@ package extension MangoServer {
     func clientAddJumpLabelNode(_ c: Client) {
         // not in mango: the port's side (mango_jump_label_node_create)
         c.jumpLabelNode = system.mangoJumpLabelNodeCreate(
-            c, decorateDrawData(config.jumplabeldata, mango: .mangoJumpLabel))
+            c, config.jumplabeldata.filled(from: .mangoJumpLabel))
         guard let label = c.jumpLabelNode else { return }
         /* In overview, labels must be displayed above the card tree. */
         // not in mango: the port's label is its own panel, above the overview's
@@ -2222,7 +2222,7 @@ package extension MangoServer {
     func clientSetGroupConfig(_ c: Client) {
         var cur: Client? = clientGroupHead(c)
         while let it = cur {
-            it.jumpLabelNode?.applyConfig(decorateDrawData(config.jumplabeldata, mango: .mangoJumpLabel))
+            it.jumpLabelNode?.applyConfig(config.jumplabeldata.filled(from: .mangoJumpLabel))
             // not in mango: the drop area, split indicators and group bar are drawn by the port from the config
             cur = it.groupNext
         }

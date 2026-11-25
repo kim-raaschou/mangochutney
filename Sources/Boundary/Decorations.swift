@@ -48,7 +48,7 @@ public struct TabStripStyle: Equatable {
     public var accent: RGBA
     public var accentWidth: CGFloat = 2
     public var appIcons = false
-    public var decorate = DecorateStyle()
+    public var decorate = DecorateDrawData()
 }
 
 public struct OverviewCard: Equatable {

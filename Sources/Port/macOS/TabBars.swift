@@ -244,7 +244,7 @@ final class TabStripView: NSView {
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
         let height = strip.barHeight
-        let d = shown?.1.decorate ?? DecorateStyle()
+        let d = shown?.1.decorate ?? DecorateDrawData()
         let inset: CGFloat = 3, gap: CGFloat = 2, pad = CGFloat(d.paddingX ?? 10)
         let padY = CGFloat(d.paddingY ?? 0)
         let inner = strip.frame.width - 2 * inset

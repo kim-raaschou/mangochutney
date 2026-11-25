@@ -72,10 +72,10 @@ public struct Config: Sendable {
     public var monocleRightButtonClose = false
     public var titleMessageBarHeight = 52
     public var titleMessageBarGap = 20
-    public var titleMessageBardata = DecorateStyle()
-    public var tabbardata = DecorateStyle()
-    public var groupbardata = DecorateStyle()
-    public var jumplabeldata = DecorateStyle()
+    public var titleMessageBardata = DecorateDrawData()
+    public var tabbardata = DecorateDrawData()
+    public var groupbardata = DecorateDrawData()
+    public var jumplabeldata = DecorateDrawData()
 
     public var gappih = 5
     public var gappiv = 5

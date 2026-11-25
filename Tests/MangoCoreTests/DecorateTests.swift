@@ -22,7 +22,7 @@ final class DecorateTests: MangoTestCase {
         let r = EngineRig()
         r.server.config.chutneyMacOSAppearance = true
         r.server.config.tabbardata.bgColor = parseColor("0x112233ff")
-        let mango = r.server.decorateDrawData(r.server.config.tabbardata, mango: .mangoTabBar)
+        let mango = r.server.config.tabbardata.filled(from: .mangoTabBar)
         XCTAssertEqual(mango.fontDesc, "monospace Bold 13", "the core is mango's, whatever the port draws")
         XCTAssertEqual(mango.focusFgColor, parseColor("0x7aa2f7ff"))
         XCTAssertEqual(mango.bgColor, parseColor("0x112233ff"))
@@ -35,7 +35,7 @@ final class DecorateTests: MangoTestCase {
     }
 
     func testAJumpLabelTakesMangosSize() {
-        let square = JumpLabelLook("A", decorate: DecorateStyle(), side: 64, ring: .white)
+        let square = JumpLabelLook("A", decorate: DecorateDrawData(), side: 64, ring: .white)
         XCTAssertEqual(square.size, CGSize(width: 64, height: 64))
         let mango = JumpLabelLook("A", decorate: .mangoJumpLabel, side: 64, ring: .white)
         XCTAssertEqual(mango.cornerRadius, 5)

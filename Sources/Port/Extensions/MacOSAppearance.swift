@@ -5,7 +5,7 @@ import Mango
 /// drawn the macOS way, and the border follows the window's own corners.
 enum MacOSAppearance {
     /// A bar's look: mango's, or with chutney_macos_appearance only the keys set.
-    static func bar(_ mango: DecorateStyle, set: DecorateStyle, _ config: Config) -> DecorateStyle {
+    static func bar(_ mango: DecorateDrawData, set: DecorateDrawData, _ config: Config) -> DecorateDrawData {
         config.chutneyMacOSAppearance ? set : mango
     }
 

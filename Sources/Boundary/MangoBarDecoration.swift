@@ -19,6 +19,6 @@ package protocol MangoBarDecoration: AnyObject {
     func setSize(_ width: CGFloat, _ height: CGFloat)
     func setFocus(_ focused: Bool)
     func setCenterSecondaryLine(_ center: Bool)
-    func applyConfig(_ data: DecorateStyle)
+    func applyConfig(_ data: DecorateDrawData)
     func destroy()
 }

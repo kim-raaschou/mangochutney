@@ -4,17 +4,8 @@ import Foundation
 // bar decorations, their geometry, close buttons and colours) are the port's, behind MangoBarDecoration
 // and MangoJumpLabel (Sources/Boundary)
 
-package extension MangoServer {
-
-    // not in mango: the config's fields over mango's defaults (set_value_default), the data that
-    // mango_bar_decoration_apply_config and mango_jump_label_node_apply_config copy into the node
-    func decorateDrawData(_ set: DecorateStyle, mango: DecorateStyle) -> DecorateStyle {
-        set.filled(from: mango)
-    }
-}
-
 // not in mango: a nil field is one the config does not set
-public struct DecorateStyle: Equatable, Sendable {
+public struct DecorateDrawData: Equatable, Sendable {
     public var fontDesc: String?
     public var fgColor: RGBA?
     public var bgColor: RGBA?
@@ -43,26 +34,26 @@ public struct DecorateStyle: Equatable, Sendable {
     }
 
     // not in mango: set_value_default's values for each bar, as styles
-    public static let mangoGroupBar = DecorateStyle(
+    public static let mangoGroupBar = DecorateDrawData(
         fontDesc: "monospace Bold 13", fg: "0xc0caf5ff", bg: "0x1d2021ff", focusFg: "0x9ece6aff", focusBg: "0x3c3836ff",
         border: "0x3b4261ff", borderWidth: 4, cornerRadius: 5, paddingX: 0, paddingY: 0)
-    public static var mangoTabBar: DecorateStyle {
+    public static var mangoTabBar: DecorateDrawData {
         var s = mangoGroupBar
         s.focusFgColor = parseColor("0x7aa2f7ff")
         return s
     }
-    public static var mangoTitleMessageBar: DecorateStyle {
+    public static var mangoTitleMessageBar: DecorateDrawData {
         var s = mangoGroupBar
         s.borderWidth = 0
         s.cornerRadius = 15
         return s
     }
-    public static let mangoJumpLabel = DecorateStyle(
+    public static let mangoJumpLabel = DecorateDrawData(
         fontDesc: "monospace Bold 16", fg: "0xc4939dff", bg: "0x323232ff", focusFg: "0xeda6b4ff", focusBg: "0x4e453cff",
         border: "0x8baa9bff", borderWidth: 4, cornerRadius: 5, paddingX: 10, paddingY: 10)
 
     // not in mango: the fields the config sets, the others from d
-    public func filled(from d: DecorateStyle) -> DecorateStyle {
+    public func filled(from d: DecorateDrawData) -> DecorateDrawData {
         var s = self
         s.fontDesc = fontDesc ?? d.fontDesc
         s.fgColor = fgColor ?? d.fgColor
@@ -75,41 +66,5 @@ public struct DecorateStyle: Equatable, Sendable {
         s.paddingX = paddingX ?? d.paddingX
         s.paddingY = paddingY ?? d.paddingY
         return s
-    }
-}
-
-public struct FontDescription: Equatable, Sendable {
-    public enum Weight: Int, Sendable { case thin = 100, ultraLight = 200, light = 300, regular = 400, medium = 500,
-                                             semiBold = 600, bold = 700, ultraBold = 800, heavy = 900 }
-    public var families: [String]
-    public var weight: Weight = .regular
-    public var italic = false
-    public var pixelSize: Double = 13.0 * 96 / 72
-
-    public init(_ desc: String) {
-        var words = desc.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
-        if let last = words.last {
-            if last.hasSuffix("px"), let px = Double(last.dropLast(2)) {
-                pixelSize = px
-                words.removeLast()
-            } else if let pt = Double(last) {
-                pixelSize = pt * 96 / 72
-                words.removeLast()
-            }
-        }
-        let weights: [String: Weight] = [
-            "thin": .thin, "ultra-light": .ultraLight, "extra-light": .ultraLight, "light": .light,
-            "book": .regular, "regular": .regular, "normal": .regular, "medium": .medium,
-            "semi-bold": .semiBold, "demi-bold": .semiBold, "bold": .bold, "ultra-bold": .ultraBold,
-            "extra-bold": .ultraBold, "heavy": .heavy, "black": .heavy,
-        ]
-        while let w = words.last?.lowercased() {
-            if let weight = weights[w] { self.weight = weight } else if w == "italic" || w == "oblique" { italic = true }
-            else if ["condensed", "expanded", "small-caps", "semi-condensed", "semi-expanded"].contains(w) {}
-            else { break }
-            words.removeLast()
-        }
-        families = words.joined(separator: " ").split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 }

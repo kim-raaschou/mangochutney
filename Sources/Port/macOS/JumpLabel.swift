@@ -6,7 +6,7 @@ import Mango
 @MainActor
 final class JumpLabelNode: MangoJumpLabel {
     private let config: @MainActor () -> Config
-    private var data: DecorateStyle
+    private var data: DecorateDrawData
     private var text: String?
     private var origin = CGPoint.zero
     private var window: NSWindow?
@@ -14,7 +14,7 @@ final class JumpLabelNode: MangoJumpLabel {
     private(set) var logicalWidth: CGFloat = 0
     private(set) var logicalHeight: CGFloat = 0
 
-    init(_ data: DecorateStyle, config: @escaping @MainActor () -> Config) {
+    init(_ data: DecorateDrawData, config: @escaping @MainActor () -> Config) {
         self.data = data
         self.config = config
     }
@@ -39,7 +39,7 @@ final class JumpLabelNode: MangoJumpLabel {
         if enabled { draw() }
     }
 
-    func applyConfig(_ data: DecorateStyle) {
+    func applyConfig(_ data: DecorateDrawData) {
         self.data = data
         measure()
         if enabled { draw() }

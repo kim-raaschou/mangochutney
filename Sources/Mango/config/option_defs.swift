@@ -897,7 +897,7 @@ public enum ConfigOptions {
         }
     }
 
-    static func decorate(_ t: inout [String: Setter], _ prefix: String, _ kp: WritableKeyPath<Config, DecorateStyle>) {
+    static func decorate(_ t: inout [String: Setter], _ prefix: String, _ kp: WritableKeyPath<Config, DecorateDrawData>) {
         let k = prefix + "_decorate_"
         t[k + "font_desc"] = { config, value in
             config[keyPath: kp].fontDesc = value

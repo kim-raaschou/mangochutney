@@ -12,7 +12,7 @@ package extension MangoServer {
 
         // not in mango: the port's side (mango_bar_decoration_create)
         m.titleMessageBar = system.mangoBarDecorationCreate(
-            m, decorateDrawData(config.titleMessageBardata, mango: .mangoTitleMessageBar), 0, 0)
+            m, config.titleMessageBardata.filled(from: .mangoTitleMessageBar), 0, 0)
         guard let bar = m.titleMessageBar else { return }
 
         // not in mango: no mango_scene_node_set_ignore_hit; the port's bar takes no input
@@ -55,7 +55,7 @@ package extension MangoServer {
     func titleMessageBarApplyConfig(_ m: Monitor?) {
         guard let m, let bar = m.titleMessageBar else { return }
 
-        bar.applyConfig(decorateDrawData(config.titleMessageBardata, mango: .mangoTitleMessageBar))
+        bar.applyConfig(config.titleMessageBardata.filled(from: .mangoTitleMessageBar))
         bar.setFocus(true)
     }
 

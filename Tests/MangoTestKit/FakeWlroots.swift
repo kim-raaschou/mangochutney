@@ -170,8 +170,8 @@ package final class FakeWlroots: WindowSystem {
     package func showSwitcher(panel: CGRect, tiles: [SwitcherTilePicture], look: SwitcherLook, scale: CGFloat) {}
     package func switcherApplyHighlight(_ tiles: [SwitcherTilePicture]) {}
     package func closeSwitcherPanel() {}
-    package func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateStyle, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? { nil }
-    package func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateStyle) -> MangoJumpLabel? { nil }
+    package func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateDrawData, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? { nil }
+    package func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateDrawData) -> MangoJumpLabel? { nil }
     /// xkb's keymap (us): the key that gives the character.
     package func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode { MultiKeycode(keycode1: FakeKeymap.code(String(keysym))) }
     package func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>) {}
