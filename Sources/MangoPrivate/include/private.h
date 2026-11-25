@@ -7,6 +7,9 @@
 
 // Accessibility -> CGWindowID (used by yabai, AeroSpace, rift).
 AXError _AXUIElementGetWindow(AXUIElementRef element, uint32_t *identifier);
+// An app's element by its remote token (pid, 0, 'coco', element id): reaches the windows on other
+// Spaces, which the app's window list leaves out (used by AltTab).
+AXUIElementRef _AXUIElementCreateWithRemoteToken(CFDataRef data) CF_RETURNS_RETAINED;
 
 // SkyLight read-only helpers (reverse engineered by yabai / rift).
 int SLSMainConnectionID(void);

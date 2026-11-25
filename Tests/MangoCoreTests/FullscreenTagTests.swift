@@ -401,6 +401,68 @@ final class FullscreenTagTests: MangoTestCase {
         XCTAssertEqual(before(r) & mask(r), 0)
     }
 
+    /// With the port's pictures a window on an F tag has a card in mango's overview, under which it
+    /// stays in fullscreen; out of overview it is on its F tag alone.
+    func testInOverviewItHasACardAndStaysInFullscreen() throws {
+        let r = rig()
+        fake(r).fakeCanCapture = true
+        fullscreen(r, 2, true)
+        let c = try XCTUnwrap(r.server.clientByWindowID(2))
+        let frames = r.app.frames
+        _ = r.server.dispatch(Dispatch(name: "view", args: ["1"]))
+        r.server.clientFocus(r.server.clientByWindowID(1)!, true)
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        XCTAssertTrue(r.monitor.isoverview)
+        XCTAssertNotNil(r.monitor.ovCards[c.id], "its card")
+        XCTAssertTrue(fake(r).overviewCards?.contains { $0.id == 2 } == true)
+        XCTAssertEqual(r.app.frames[2], frames[2], "nothing written to it")
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        XCTAssertEqual(c.tags, f1, "on its F tag alone")
+        XCTAssertEqual(viewed(r) & mask(r), 0, "another window chosen: the desktop's view")
+        XCTAssertEqual(r.app.frames[2], frames[2])
+    }
+
+    /// Chosen in jump mode, its F tag is viewed.
+    func testChosenByItsJumpLabelItsFTagIsViewed() throws {
+        let r = rig()
+        fake(r).fakeCanCapture = true
+        fullscreen(r, 2, true)
+        let c = try XCTUnwrap(r.server.clientByWindowID(2))
+        r.server.clientFocus(r.server.clientByWindowID(1)!, true)
+        _ = r.server.dispatch(Dispatch(name: "togglejump"))
+        let key = try XCTUnwrap(c.jumpKeycodes.keycode1, "a jump label")
+        r.server.handleKeyboardKey([.overviewKey(.jump(key))])
+        XCTAssertFalse(r.server.anyOverview)
+        XCTAssertEqual(c.tags, f1)
+        XCTAssertEqual(viewed(r), f1)
+        XCTAssertTrue(r.server.focused === c)
+    }
+
+    /// Into overview from its F tag it keeps the focus, and left without a choice its F tag is viewed again.
+    func testIntoOverviewFromItsFTagItKeepsTheFocus() throws {
+        let r = rig()
+        fake(r).fakeCanCapture = true
+        fullscreen(r, 2, true)
+        let c = try XCTUnwrap(r.server.clientByWindowID(2))
+        XCTAssertEqual(viewed(r), f1)
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        XCTAssertTrue(r.server.focused === c)
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        XCTAssertEqual(viewed(r), f1)
+        XCTAssertTrue(r.server.focused === c)
+    }
+
+    /// Without the pictures the cards are the windows: it stays out of overview.
+    func testWithoutPicturesItIsNotInOverview() throws {
+        let r = rig()
+        fullscreen(r, 2, true)
+        let c = try XCTUnwrap(r.server.clientByWindowID(2))
+        r.server.clientFocus(r.server.clientByWindowID(1)!, true)
+        _ = r.server.dispatch(Dispatch(name: "toggleoverview"))
+        XCTAssertEqual(c.tags, f1)
+        XCTAssertNil(r.monitor.ovCards[c.id])
+    }
+
     func testHiddenInFullscreenComesBackOnItsFTag() {
         let r = rig()
         fullscreen(r, 2, true)

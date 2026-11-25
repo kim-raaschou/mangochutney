@@ -57,6 +57,13 @@ public struct ReacquiredState {
 final class WatcherShared: @unchecked Sendable {
     private let lock = NSLock()
     private var suppressUntil: [CGWindowID: TimeInterval] = [:]
+    private var rememberedIDs: Set<CGWindowID> = []
+
+    /// The windows mango managed before it restarted: taken again from another Space too.
+    var remembered: Set<CGWindowID> {
+        get { lock.lock(); defer { lock.unlock() }; return rememberedIDs }
+        set { lock.lock(); rememberedIDs = newValue; lock.unlock() }
+    }
 
     func suppress(_ id: CGWindowID, until t: TimeInterval) {
         lock.lock()
@@ -106,6 +113,8 @@ public final class AppWorker: @unchecked Sendable {
 
     private var pendingGeometry: [CGWindowID: (CGRect, Bool, Bool?)] = [:]
     private var geometryScheduled = false
+    /// The window server's windows of the app looked up on other Spaces, found or not: each once.
+    private var lookedUpAway: Set<CGWindowID> = []
 
     init(nsApp: NSRunningApplication, shared: WatcherShared, initial: Bool,
          deliver: @escaping (AppEvent) -> Void) {
@@ -215,7 +224,8 @@ public final class AppWorker: @unchecked Sendable {
         }
         unresponsive = false
         subscribeApp()   // again, now that it answers
-        let listed = ((value as? [AXUIElement]) ?? []).compactMap { el in el.windowID.map { ($0, el) } }
+        var listed = ((value as? [AXUIElement]) ?? []).compactMap { el in el.windowID.map { ($0, el) } }
+        if isInitialScan || fullscreen || notified { listed += onOtherSpaces(besides: listed.map(\.0)) }
         let out = book.refresh(listed: listed, recheck: recheck, notified: notified, answers: .init(
             subscribe: { [self] in subscribeWindow($0) },
             unsubscribe: { [self] in unsubscribeWindow($0) },
@@ -244,6 +254,48 @@ public final class AppWorker: @unchecked Sendable {
             }
             post(.destroyed(id))
         }
+    }
+
+    /// The app's windows on other Spaces, which its window list leaves out: the window server's windows
+    /// of the app, not listed and not known, looked up by the app's elements' remote tokens (AltTab's
+    /// way), each once. A window in macOS fullscreen is taken, and one mango managed before it restarted;
+    /// a window on another desktop is not.
+    private func onOtherSpaces(besides listed: [CGWindowID]) -> [(CGWindowID, AXUIElement)] {
+        guard let info = CGWindowListCopyWindowInfo([.optionAll, .excludeDesktopElements], kCGNullWindowID)
+                as? [[String: Any]] else { return [] }
+        var wanted = Set<CGWindowID>()
+        for w in info {
+            guard (w[kCGWindowOwnerPID as String] as? pid_t) == pid, (w[kCGWindowLayer as String] as? Int) == 0,
+                  let id = w[kCGWindowNumber as String] as? CGWindowID,
+                  let b = w[kCGWindowBounds as String] as? NSDictionary,
+                  let r = CGRect(dictionaryRepresentation: b as CFDictionary), r.width >= 100, r.height >= 100,
+                  !listed.contains(id), book.windows[id] == nil, !lookedUpAway.contains(id) else { continue }
+            wanted.insert(id)
+        }
+        guard !wanted.isEmpty else { return [] }
+        lookedUpAway.formUnion(wanted)
+        let remembered = shared.remembered
+        var found: [(CGWindowID, AXUIElement)] = []
+        var token = Data(count: 20)
+        token.withUnsafeMutableBytes { b in
+            b.storeBytes(of: pid, toByteOffset: 0, as: Int32.self)
+            b.storeBytes(of: 0, toByteOffset: 4, as: Int32.self)
+            b.storeBytes(of: 0x636f636f, toByteOffset: 8, as: Int32.self)
+        }
+        let start = CACurrentMediaTime()
+        for element in UInt64(0)..<1000 where !wanted.isEmpty {
+            if CACurrentMediaTime() - start > 0.3 { break }
+            token.withUnsafeMutableBytes { $0.storeBytes(of: element, toByteOffset: 12, as: UInt64.self) }
+            let el = _AXUIElementCreateWithRemoteToken(token as CFData)
+            guard let el, let id = el.windowID, wanted.contains(id), el.role == kAXWindowRole as String else { continue }
+            wanted.remove(id)
+            AXUIElementSetMessagingTimeout(el, AX.messagingTimeout)
+            let fullscreen = Self.answeredBool(el, "AXFullScreen") == true
+            guard fullscreen || remembered.contains(id) else { continue }
+            wlrLog(.debug, "\(name): window \(id) found on another Space (\(fullscreen ? "in fullscreen" : "managed before the restart"))")
+            found.append((id, el))
+        }
+        return found
     }
 
     private static func answeredBool(_ el: AXUIElement, _ name: String) -> Bool? {

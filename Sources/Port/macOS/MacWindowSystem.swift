@@ -406,17 +406,22 @@ class MacWindowSystem: WindowSystem {
     var windowCornerRadius: CGFloat { BorderGeometry.cornerRadius }
 
     func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) {
+        showOverviewPanel(cards, on: m, look: look)
+        FullscreenTag.overviewShown(server, m)   // Port extension: chutney_fullscreen_tag
+    }
+
+    func showOverviewPanel(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) {
         overviewOverlays[ObjectIdentifier(m)]?.close()
         let macOS = server.config.chutneyMacOSAppearance
         let overlay = OverviewOverlay(workArea: m.screen.workArea, top: m.screen.frame.minY, focusColor: look.focusColor, borderColor: look.borderColor,
                                       mango: macOS ? nil : .init(root: look.mango.root, borderWidth: look.mango.borderWidth,
                                                                  cornerRadius: look.mango.cornerRadius))
         overviewOverlays[ObjectIdentifier(m)] = overlay
-        overlay.show(cards.map(Self.card))
+        overlay.show(cards.map(card))
     }
 
     func updateOverview(_ cards: [OverviewCard], on m: Monitor) {
-        overviewOverlays[ObjectIdentifier(m)]?.update(cards.map(Self.card))
+        overviewOverlays[ObjectIdentifier(m)]?.update(cards.map(card))
     }
 
     func captureOverviewCards(on m: Monitor, scale: CGFloat) {
@@ -428,8 +433,9 @@ class MacWindowSystem: WindowSystem {
         releaseHeldFocus()
     }
 
-    static func card(_ c: OverviewCard) -> OverviewOverlay.Card {
-        .init(id: c.id, frame: c.frame, title: c.title, pid: c.pid, focused: c.focused)
+    func card(_ c: OverviewCard) -> OverviewOverlay.Card {
+        .init(id: c.id, frame: c.frame, title: c.title, pid: c.pid, focused: c.focused,
+              fullscreen: server.clientByWindowID(c.id).map { server.mac.nativeFullscreen($0) } ?? false)
     }
 
     func showSwitcher(panel: CGRect, tiles: [SwitcherTilePicture], look: SwitcherLook, scale: CGFloat) {
@@ -555,6 +561,7 @@ class MacWindowSystem: WindowSystem {
 
     func startWatching() {
         memory.restore(server)
+        watcher.shared.remembered = Set(memory.departed.entries.keys)
         watcher.delegate = self
         watcher.start()
         missionControl.onExit = { [weak server] in server?.arrangeAll(false) }

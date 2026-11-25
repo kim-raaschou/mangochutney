@@ -177,7 +177,7 @@ final class FakeWindowSystem: MacWindowSystem {
     var shownGroupStrips: [TabStrip] { (groupBars as! FakeBars).shown }
     var overviewCards: [OverviewCard]?, switcherTiles: [SwitcherTilePicture]?
     var specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
-    override func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
+    override func showOverviewPanel(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
     override func updateOverview(_ cards: [OverviewCard], on m: Monitor) { overviewCards = cards }
     override func captureOverviewCards(on m: Monitor, scale: CGFloat) {}
     override func closeOverview(on m: Monitor) { overviewCards = nil }

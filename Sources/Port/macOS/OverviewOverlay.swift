@@ -9,9 +9,12 @@ final class OverviewOverlay {
         var title: String
         var pid: pid_t
         var focused: Bool
+        /// In macOS fullscreen: on another Space it gives no picture, and its card keeps its app's icon.
+        var fullscreen = false
     }
 
     private let window: NSWindow
+    private var fullscreen: Set<ClientID> = []
     private let root: NSView
     private var layers: [ClientID: CALayer] = [:]
     private let workArea: CGRect
@@ -79,6 +82,7 @@ final class OverviewOverlay {
         guard let rootLayer = root.layer else { return }
         let keep = Set(cards.map(\.id))
         for (id, l) in layers where !keep.contains(id) { l.removeFromSuperlayer(); layers.removeValue(forKey: id) }
+        fullscreen = Set(cards.filter(\.fullscreen).map(\.id))
         let added = cards.map(\.id).filter { layers[$0] == nil }
         CATransaction.begin()
         CATransaction.setDisableActions(layers.isEmpty)
@@ -143,7 +147,7 @@ final class OverviewOverlay {
     private func capture(_ ids: [ClientID], scale: CGFloat) {
         var sizes: [ClientID: CGSize] = [:]
         for id in ids { if let l = layers[id] { sizes[id] = CGSize(width: l.frame.width * scale, height: l.frame.height * scale) } }
-        WindowSnapshot.capture(ids, pixelSize: sizes) { [weak self] id, image in
+        WindowSnapshot.capture(ids, pixelSize: sizes, onlyOnScreen: fullscreen) { [weak self] id, image in
             self?.setImage(image, for: id)
         }
     }

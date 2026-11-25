@@ -29,6 +29,8 @@ enum FullscreenTag {
         var wanted: [ClientID: UInt32] = [:]
         /// Each window's macOS fullscreen as the extension knows it.
         var windows: [ClientID: Window] = [:]
+        /// The windows on F tags shown on their own tags in mango's overview.
+        var inOverview: Set<ClientID> = []
 
         @MainActor subscript(c: Client) -> Window {
             get { windows[c.windowID] ?? Window() }
@@ -255,11 +257,12 @@ enum FullscreenTag {
     /// to tags with no window to focus takes macOS back to the desktop by mango's own window there.
     static func statusChanged(_ server: MangoServer) {
         guard isOn(server) || !server.mac.fullscreenTag.homes.isEmpty else { return }
+        if overview(server) { return }
         let mac = server.mac
         let f = mask(server.config)
         var changed: [Monitor] = []
         var follow: [(Monitor, UInt32)] = []
-        for (id, home) in mac.fullscreenTag.homes {
+        for (id, home) in mac.fullscreenTag.homes where !mac.fullscreenTag.inOverview.contains(id) {
             guard let c = server.clientByWindowID(id), !isglobal(c), c.tags != home.bit else { continue }
             // mango's tag replaces its tags, toggletag toggles them (with the F bit kept): its own tags.
             let own = c.tags & ~f
@@ -311,6 +314,43 @@ enum FullscreenTag {
                 mac.focusSpaceAnchor(m)
             }
         }
+    }
+
+    /// mango's overview shows mango's tags, and an F tag lies above them. As mango shows overview with
+    /// the port's pictures (which leave each window where it stands), before it views its tags and
+    /// focuses, a window on an F tag that mango backed up is put on its own tags beside its F tag, so it
+    /// has a card and a jump label, and keeps the focus as a window viewed does in mango.
+    static func overviewShown(_ server: MangoServer, _ m: Monitor) {
+        guard isOn(server) else { return }
+        let mac = server.mac
+        for (id, home) in mac.fullscreenTag.homes where !mac.fullscreenTag.inOverview.contains(id) {
+            guard let c = server.clientByWindowID(id), c.mon === m, m.isoverview, m.ovThumbnails,
+                  c.overviewBackedUp else { continue }
+            mac.fullscreenTag.inOverview.insert(id)
+            c.tags = home.bit | home.tags
+        }
+    }
+
+    /// Out of overview a window shown there is on its F tag alone again, and if it is the one chosen, its
+    /// F tag is viewed. Whether the view changed.
+    static func overview(_ server: MangoServer) -> Bool {
+        let mac = server.mac
+        var follow: (Monitor, UInt32)?
+        for id in mac.fullscreenTag.inOverview {
+            guard let c = server.clientByWindowID(id), let home = mac.fullscreenTag.homes[id] else {
+                mac.fullscreenTag.inOverview.remove(id)
+                continue
+            }
+            guard let m = c.mon, !m.isoverview else { continue }
+            mac.fullscreenTag.inOverview.remove(id)
+            c.tags = home.bit
+            if server.focused === c { follow = (m, home.bit) }
+        }
+        if let (m, bit) = follow {
+            view(server, m, bit)
+            return true
+        }
+        return false
     }
 
     /// macOS focused a window in fullscreen whose F tag is not viewed (Cmd-Tab, the Dock, the other side

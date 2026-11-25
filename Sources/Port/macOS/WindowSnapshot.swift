@@ -11,7 +11,7 @@ public enum WindowSnapshot {
         return CGSize(width: (window.width * scale).rounded(), height: (window.height * scale).rounded())
     }
 
-    public static func capture(_ ids: [CGWindowID], pixelSize: [CGWindowID: CGSize],
+    public static func capture(_ ids: [CGWindowID], pixelSize: [CGWindowID: CGSize], onlyOnScreen: Set<CGWindowID> = [],
                                onImage: @escaping @MainActor (CGWindowID, CGImage) -> Void) {
         Task.detached(priority: .userInitiated) {
             guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false) else {
@@ -19,8 +19,10 @@ public enum WindowSnapshot {
             }
             let byID = Dictionary(content.windows.map { ($0.windowID, $0) }, uniquingKeysWith: { a, _ in a })
             await withTaskGroup(of: Void.self) { group in
+                // A window in macOS fullscreen on another Space gives no picture: its card keeps its app's
+                // icon and title.
                 for id in ids {
-                    guard let w = byID[id] else { continue }
+                    guard let w = byID[id], w.isOnScreen || !onlyOnScreen.contains(id) else { continue }
                     group.addTask {
                         let filter = SCContentFilter(desktopIndependentWindow: w)
                         let cfg = SCStreamConfiguration()
