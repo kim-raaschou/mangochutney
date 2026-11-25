@@ -66,7 +66,7 @@ før verifikationens egen commit), dato og fingeraftryk (`git hash-object <fil> 
 | `src/draw/title_message_bar.c` | `draw/title_message_bar.swift` | 1:1 | fff28a6, 24. nov. | `d04032942b85` | | baren tegner porten; i overcircle under kortet (§5 Title message bar); `chutney_launch_or_focus` gennem `PortHooks` |
 | `src/ext-protocol/ext-workspace.c` | | ingen macOS-del | | | | Wayland-protokol |
 | `src/ext-protocol/foreign-toplevel.c` | | ingen macOS-del | | | | Wayland-protokol |
-| `src/ext-protocol/hdr.c` | `ext-protocol/hdr.swift` | ikke verificeret | | | | |
+| `src/ext-protocol/hdr.c` | `ext-protocol/hdr.swift` | 1:1 | 46190e3, 25. nov. | `cba7c785f9b2` | outputtets format og HDR-tilstand (DRM og wlroots): `output_set_render_format`, `output_format_in_candidates`, `bit_depth_from_format`, `output_supports_hdr`, `output_enable_hdr`, `output_state_setup_hdr`, `togglehdr_output` | `toggle_hdr` gør intet: HDR er en macOS-skærmindstilling (`MangoCompat`, §5); bindingens argumenter læses som mangos (`binding_parse.c`) |
 | `src/ext-protocol/tearing.c` | | ingen macOS-del | | | | Wayland-protokol |
 | `src/ext-protocol/text-input.c` | | ingen macOS-del | | | | Wayland-protokol |
 | `src/ext-protocol/xdg-activation.c` | | ingen macOS-del | | | | Wayland-protokol |
