@@ -139,6 +139,14 @@ Hvor koden står, når den ikke står som i mango.
   kommentarer eller mærker om, hvor vi afviger (CLAUDE.md regel 8). En funktion med andet navn
   end mangos har én linje `/// mango <funktion> (<fil>)` (52 i alt, mest typer og hjælpere fra
   mangos headere og funktioner delt i to, fordi portens tråde kalder dem hver for sig).
+- **Workspace overview (`Sources/Mango/workspace_overview`)** er mangos filer 1:1 med `internal.h`'s typer i
+  `workspace_overview.swift` (celler og poster som klasser, `wsov` global som i mango). Scenen er wlroots' noder i
+  `Sources/Boundary/Scene.swift` (træer, rects, buffere, `MangoDimNode`), som porten tegner fra
+  `server.layers[LyrSpecialOverlay]`; en celles buffer holder vinduerne som poster, porten tegner deres billeder.
+  Tider er millisekunder (`getNowInMs`) for `timespec`; frame-lytteren er `frame_active`, som `handleOutputFrame`
+  kalder efter sig selv; `wl_event_loop_add_idle` er `EventLoop.addIdle`. Mens `wsov_capture_workspace_tags`
+  arrangerer hvert tag, holder porten sine skrivninger tilbage (`holdWrites`). Knappen er macOS' nummer, og tasten
+  kommer som keysym fra porten (`KeyInput.keysym`); event tappet sluger tryk og hjul, mens overview er åben.
 - **Portens vindue i kernen:** kernen læser ikke `c.parked` eller `c.frame` (felterne er portens).
   Hvor mango spørger wlroots, spørger kernen porten: `c->scene->node.enabled`
   (`c.platform.sceneNodeEnabled`) for pointerens tjek og `node_at_point`, `client_get_geometry`
