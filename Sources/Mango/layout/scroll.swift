@@ -44,6 +44,32 @@ package extension MangoServer {
         return nil
     }
 
+    private func findScrollerStackHead(_ st: TagScrollerState?, _ c: Client?) -> ScrollerStackNode? {
+        guard let c, var node = findScrollerNode(st, c) else { return nil }
+        while let p = node.prevInStack { node = p }
+        return node
+    }
+
+    private func findScrollerFocusRoot(_ m: Monitor, _ st: TagScrollerState?) -> ScrollerStackNode? {
+        var root: ScrollerStackNode?
+
+        if let sel = m.sel, ISSCROLLTILED(sel) {
+            root = findScrollerStackHead(st, sel)
+            if let root { return root }
+        }
+
+        if m.sel != nil {
+            root = findScrollerStackHead(st, centerTiledSelect(m))
+            if let root { return root }
+        }
+
+        if let prevsel = m.prevsel, ISSCROLLTILED(prevsel) {
+            root = findScrollerStackHead(st, prevsel)
+        }
+
+        return root
+    }
+
     /* Creates a new node and inserts it into the tag state all list. */
     @discardableResult
     func scrollerNodeCreate(_ st: TagScrollerState, _ c: Client) -> ScrollerStackNode {
@@ -241,8 +267,7 @@ package extension MangoServer {
         }
     }
 
-    func scrollerArrangeStackNode(_ head: ScrollerStackNode?, _ geometry: CGRect, _ gappiv: Int32,
-                                  _ ctx: LayoutContext?) {
+    func scrollerArrangeStackNode(_ head: ScrollerStackNode?, _ geometry: CGRect, _ gappiv: Int32) {
         var stackSize: Int32 = 0
         var iter = head
         while let n = iter {
@@ -264,7 +289,7 @@ package extension MangoServer {
         while let n = iter {
             clientHeight = i32(Float(remainClientHeight) * (n.scrollerStackProportion / remainProportion))
             let clientGeom = wlrBox(Int32(geometry.minX), currentY, Int32(geometry.width), clientHeight)
-            clientTileResize(n.client, clientGeom, false, ctx)
+            clientTileResize(n.client, clientGeom, false)
             remainProportion -= n.scrollerStackProportion
             remainClientHeight -= clientHeight
             currentY += clientHeight + gappiv
@@ -272,8 +297,7 @@ package extension MangoServer {
         }
     }
 
-    func scrollerArrangeStackVerticalNode(_ head: ScrollerStackNode?, _ geometry: CGRect, _ gappih: Int32,
-                                          _ ctx: LayoutContext?) {
+    func scrollerArrangeStackVerticalNode(_ head: ScrollerStackNode?, _ geometry: CGRect, _ gappih: Int32) {
         var stackSize: Int32 = 0
         var iter = head
         while let n = iter {
@@ -295,7 +319,7 @@ package extension MangoServer {
         while let n = iter {
             clientWidth = i32(Float(remainClientWidth) * (n.scrollerStackProportion / remainProportion))
             let clientGeom = wlrBox(currentX, Int32(geometry.minY), clientWidth, Int32(geometry.height))
-            clientTileResize(n.client, clientGeom, false, ctx)
+            clientTileResize(n.client, clientGeom, false)
             remainProportion -= n.scrollerStackProportion
             remainClientWidth -= clientWidth
             currentX += clientWidth + gappih
@@ -304,7 +328,7 @@ package extension MangoServer {
     }
 
     /// not in mango: the stack heads of the visible scroll-tiled clients, in client list order
-    /// (scroller_core's two passes over server.clients)
+    /// (scroller's two passes over server.clients)
     private func scrollerHeads(_ m: Monitor, _ st: TagScrollerState) -> [ScrollerStackNode] {
         var heads: [ScrollerStackNode] = []
         for c in clients where VISIBLEON(c, m) && ISSCROLLTILED(c) {
@@ -315,7 +339,7 @@ package extension MangoServer {
         return heads
     }
 
-    private func scrollerCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func scroller(_ m: Monitor) {
         let tag = getMonCurtag(m)
         let st = ensureScrollerState(m, tag)
         let scrollerDefaultProportionSingle = m.pertag.scrollerDefaultProportionSingle[tag]
@@ -356,24 +380,15 @@ package extension MangoServer {
             targetGeom.origin.x = CGFloat(w.x + (w.width - Int32(targetGeom.width)) / 2)
             targetGeom.origin.y = CGFloat(w.y + (w.height - Int32(targetGeom.height)) / 2)
             horizontalCheckScrollerRootInsideMon(head.client, &targetGeom)
-            scrollerArrangeStackNode(head, targetGeom, curGappiv, ctx)
+            scrollerArrangeStackNode(head, targetGeom, curGappiv)
             syncScrollerStateToClients(m, tag)
             return
         }
 
-        let sel = m.sel
         let prevsel = m.prevsel
-        var rootNode: ScrollerStackNode?
-        if let sel, ISSCROLLTILED(sel) {
-            rootNode = findScrollerNode(st, sel)
-            while let p = rootNode?.prevInStack { rootNode = p }
-        }
-        if rootNode == nil, let prevsel, ISSCROLLTILED(prevsel) {
-            rootNode = findScrollerNode(st, prevsel)
-            while let p = rootNode?.prevInStack { rootNode = p }
-        }
-        if rootNode == nil {
-            rootNode = heads[Int(nHeads / 2)] /* Simple fallback. */
+        guard let rootNode = findScrollerFocusRoot(m, st) else {
+            syncScrollerStateToClients(m, tag)
+            return
         }
 
         var focusIndex: Int32 = -1
@@ -381,13 +396,16 @@ package extension MangoServer {
             focusIndex = Int32(i)
             break
         }
-        if focusIndex < 0 { focusIndex = nHeads / 2 }
+        if focusIndex < 0 {
+            syncScrollerStateToClients(m, tag)
+            return
+        }
         let fi = Int(focusIndex)
 
         /* Decides whether scrolling, overspread, or centering is needed. */
         var needScroller = false
         var overOverspreadToLeft = false
-        let rootClient = rootNode!.client
+        let rootClient = rootNode.client
         let rg = WBox(rootClient.geom)
 
         if rg.x >= w.x + structs && rg.x + rg.width <= w.x + w.width - structs {
@@ -440,11 +458,11 @@ package extension MangoServer {
         if heads[fi].client.isfullscreen {
             targetGeom.origin.x = CGFloat(mm.x)
             horizontalCheckScrollerRootInsideMon(heads[fi].client, &targetGeom)
-            scrollerArrangeStackNode(heads[fi], targetGeom, curGappiv, ctx)
+            scrollerArrangeStackNode(heads[fi], targetGeom, curGappiv)
         } else if heads[fi].client.ismaximizescreen {
             targetGeom.origin.x = CGFloat(w.x + curGappoh)
             horizontalCheckScrollerRootInsideMon(heads[fi].client, &targetGeom)
-            scrollerArrangeStackNode(heads[fi], targetGeom, curGappiv, ctx)
+            scrollerArrangeStackNode(heads[fi], targetGeom, curGappiv)
         } else if needScroller {
             if needApplyCenter {
                 targetGeom.origin.x = CGFloat(w.x + (w.width - Int32(targetGeom.width)) / 2)
@@ -462,11 +480,11 @@ package extension MangoServer {
                     : CGFloat(w.x + structs)
             }
             horizontalCheckScrollerRootInsideMon(heads[fi].client, &targetGeom)
-            scrollerArrangeStackNode(heads[fi], targetGeom, curGappiv, ctx)
+            scrollerArrangeStackNode(heads[fi], targetGeom, curGappiv)
         } else {
             targetGeom.origin.x = CGFloat(rg.x)
             horizontalCheckScrollerRootInsideMon(heads[fi].client, &targetGeom)
-            scrollerArrangeStackNode(heads[fi], targetGeom, curGappiv, ctx)
+            scrollerArrangeStackNode(heads[fi], targetGeom, curGappiv)
         }
 
         /* Arranges the left stack. */
@@ -478,7 +496,7 @@ package extension MangoServer {
                 leftGeom.size.width = CGFloat(i32(Float(maxClientWidth) * cur.scrollerProportion))
                 horizontalScrollAdjustFullandmax(cur.client, &leftGeom)
                 leftGeom.origin.x = CGFloat(Int32(heads[fi - i + 1].client.geom.minX) - curGappih - Int32(leftGeom.width))
-                scrollerArrangeStackNode(cur, leftGeom, curGappiv, ctx)
+                scrollerArrangeStackNode(cur, leftGeom, curGappiv)
             }
         }
 
@@ -492,14 +510,14 @@ package extension MangoServer {
                 horizontalScrollAdjustFullandmax(cur.client, &rightGeom)
                 let prev = WBox(heads[fi + i - 1].client.geom)
                 rightGeom.origin.x = CGFloat(prev.x + curGappih + prev.width)
-                scrollerArrangeStackNode(cur, rightGeom, curGappiv, ctx)
+                scrollerArrangeStackNode(cur, rightGeom, curGappiv)
             }
         }
 
         syncScrollerStateToClients(m, tag)
     }
 
-    private func verticalScrollerCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func verticalScroller(_ m: Monitor) {
         let tag = getMonCurtag(m)
         var barHeight: Int32 = 0
         let st = ensureScrollerState(m, tag)
@@ -539,24 +557,15 @@ package extension MangoServer {
             targetGeom.origin.y = CGFloat(w.y + (w.height - Int32(targetGeom.height)) / 2)
             targetGeom.origin.x = CGFloat(w.x + (w.width - Int32(targetGeom.width)) / 2)
             verticalCheckScrollerRootInsideMon(head.client, &targetGeom)
-            scrollerArrangeStackVerticalNode(head, targetGeom, curGappih, ctx)
+            scrollerArrangeStackVerticalNode(head, targetGeom, curGappih)
             syncScrollerStateToClients(m, tag)
             return
         }
 
-        let sel = m.sel
         let prevsel = m.prevsel
-        var rootNode: ScrollerStackNode?
-        if let sel, ISSCROLLTILED(sel) {
-            rootNode = findScrollerNode(st, sel)
-            while let p = rootNode?.prevInStack { rootNode = p }
-        }
-        if rootNode == nil, let prevsel, ISSCROLLTILED(prevsel) {
-            rootNode = findScrollerNode(st, prevsel)
-            while let p = rootNode?.prevInStack { rootNode = p }
-        }
-        if rootNode == nil {
-            rootNode = heads[Int(nHeads / 2)]
+        guard let rootNode = findScrollerFocusRoot(m, st) else {
+            syncScrollerStateToClients(m, tag)
+            return
         }
 
         var focusIndex: Int32 = -1
@@ -564,12 +573,15 @@ package extension MangoServer {
             focusIndex = Int32(i)
             break
         }
-        if focusIndex < 0 { focusIndex = nHeads / 2 }
+        if focusIndex < 0 {
+            syncScrollerStateToClients(m, tag)
+            return
+        }
         let fi = Int(focusIndex)
 
         var needScroller = false
         var overOverspreadToUp = false
-        let rootClient = rootNode!.client
+        let rootClient = rootNode.client
         let rg = WBox(rootClient.geom)
 
         if rg.y >= w.y + structs && rg.y + rg.height <= w.y + w.height - structs {
@@ -622,11 +634,11 @@ package extension MangoServer {
         if heads[fi].client.isfullscreen {
             targetGeom.origin.y = CGFloat(mm.y)
             verticalCheckScrollerRootInsideMon(heads[fi].client, &targetGeom)
-            scrollerArrangeStackVerticalNode(heads[fi], targetGeom, curGappih, ctx)
+            scrollerArrangeStackVerticalNode(heads[fi], targetGeom, curGappih)
         } else if heads[fi].client.ismaximizescreen {
             targetGeom.origin.y = CGFloat(w.y + curGappov)
             verticalCheckScrollerRootInsideMon(heads[fi].client, &targetGeom)
-            scrollerArrangeStackVerticalNode(heads[fi], targetGeom, curGappih, ctx)
+            scrollerArrangeStackVerticalNode(heads[fi], targetGeom, curGappih)
         } else if needScroller {
             if needApplyCenter {
                 targetGeom.origin.y = CGFloat(w.y + (w.height - Int32(targetGeom.height)) / 2)
@@ -644,13 +656,13 @@ package extension MangoServer {
                     : CGFloat(w.y + structs)
             }
             verticalCheckScrollerRootInsideMon(heads[fi].client, &targetGeom)
-            scrollerArrangeStackVerticalNode(heads[fi], targetGeom, curGappih, ctx)
+            scrollerArrangeStackVerticalNode(heads[fi], targetGeom, curGappih)
         } else {
             barHeight = !rootClient.isfullscreen && clientWantsGroupBar(rootClient) ? Int32(config.groupBarHeight) : 0
 
             targetGeom.origin.y = CGFloat(rg.y - barHeight)
             verticalCheckScrollerRootInsideMon(heads[fi].client, &targetGeom)
-            scrollerArrangeStackVerticalNode(heads[fi], targetGeom, curGappih, ctx)
+            scrollerArrangeStackVerticalNode(heads[fi], targetGeom, curGappih)
         }
 
         if fi >= 1 {
@@ -665,7 +677,7 @@ package extension MangoServer {
                 barHeight = !below.isfullscreen && clientWantsGroupBar(below) ? Int32(config.groupBarHeight) : 0
 
                 upGeom.origin.y = CGFloat(Int32(below.geom.minY) - curGappiv - Int32(upGeom.height) - barHeight)
-                scrollerArrangeStackVerticalNode(cur, upGeom, curGappih, ctx)
+                scrollerArrangeStackVerticalNode(cur, upGeom, curGappih)
             }
         }
 
@@ -678,7 +690,7 @@ package extension MangoServer {
                 verticalScrollAdjustFullandmax(cur.client, &downGeom)
                 let prev = WBox(heads[fi + i - 1].client.geom)
                 downGeom.origin.y = CGFloat(prev.y + curGappiv + prev.height)
-                scrollerArrangeStackVerticalNode(cur, downGeom, curGappih, ctx)
+                scrollerArrangeStackVerticalNode(cur, downGeom, curGappih)
             }
         }
 
@@ -922,7 +934,5 @@ package extension MangoServer {
         finishExchangeArrangeAndFocus(c1, c2, m1, m2)
     }
 
-    func scroller(_ m: Monitor) { scrollerCore(m, nil) }
 
-    func verticalScroller(_ m: Monitor) { verticalScrollerCore(m, nil) }
 }

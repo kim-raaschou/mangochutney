@@ -15,7 +15,7 @@
  },
  "checks": [
   {
-   "after_line": 8,
+   "after_line": 7,
    "clients": [
     {
      "title": "a",
@@ -216,7 +216,7 @@
    }
   },
   {
-   "after_line": 11,
+   "after_line": 9,
    "clients": [
     {
      "title": "a",
@@ -417,7 +417,7 @@
    }
   },
   {
-   "after_line": 14,
+   "after_line": 11,
    "clients": [
     {
      "title": "a",
@@ -618,7 +618,7 @@
    }
   },
   {
-   "after_line": 18,
+   "after_line": 14,
    "clients": [
     {
      "title": "a",
@@ -819,7 +819,7 @@
    }
   },
   {
-   "after_line": 21,
+   "after_line": 17,
    "clients": [
     {
      "title": "a",
@@ -1020,7 +1020,7 @@
    }
   },
   {
-   "after_line": 23,
+   "after_line": 19,
    "clients": [
     {
      "title": "a",

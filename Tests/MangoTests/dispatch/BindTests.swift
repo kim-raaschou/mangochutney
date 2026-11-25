@@ -42,25 +42,6 @@ final class BindTests: XCTestCase {
         XCTAssertEqual(mango.viewedTags, 1 << 1)
     }
 
-    func testMonocleInTheOverviewGoesByTheCards() throws {
-        let mango = TestMango()
-        mango.monitor.pertag.ltidxs[getMonCurtag(mango.monitor)] = .monocle
-        for title in ["a", "b", "c", "d"] { mango.map(title) }
-        mango.run("toggleoverview")
-        let cards = mango.monitor.ovCards
-        let top = cards.values.map(\.minY).min()!
-        let start = try XCTUnwrap(cards.filter { $0.value.minY == top }.max { $0.value.minX < $1.value.minX })
-        mango.server.clientFocus(mango.server.clientByWindowID(start.key)!, true)
-
-        mango.run("focusdir", "right")
-
-        XCTAssertEqual(mango.monitor.sel?.windowID, start.key, "no card to the right of the top row's last")
-        mango.run("focusdir", "left")
-        let to = try XCTUnwrap(mango.monitor.sel.flatMap { cards[$0.windowID] })
-        XCTAssertLessThan(to.midX, start.value.midX, "a card to the left")
-        XCTAssertEqual(to.minY, top, "in the same row")
-    }
-
     // MARK: focusmon
 
     func testFocusingAnEmptyMonitorClearsThePointersFocus() {

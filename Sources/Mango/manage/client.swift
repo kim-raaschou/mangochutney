@@ -1685,14 +1685,23 @@ package extension MangoServer {
         if !c.isfloating { clientSetFloating(c, true) }
 
         if !c.iscustomsize {
-            let w = m.w
-            c.geom.size = CGSize(width: CGFloat((Float(w.width) * config.scratchpadWidthRatio).rounded(.towardZero)),
-                                 height: CGFloat((Float(w.height) * config.scratchpadHeightRatio).rounded(.towardZero)))
-            // Recomputes the centered coordinates.
-            let g = clientCenterGeometry(c, m, c.geom)
-            c.floatGeom = g; c.geom = g; c.animainitGeom = g; c.animation.current = g
-            c.iscustomsize = true
-            resize(c, c.geom, ResizeOpts(interact: false))
+            let forceWidth = config.scratchpadWidthRatio > 0.0
+            let forceHeight = config.scratchpadHeightRatio > 0.0
+
+            if forceWidth || forceHeight {
+                let w = m.w
+                if forceWidth {
+                    c.geom.size.width = CGFloat((Float(w.width) * config.scratchpadWidthRatio).rounded(.towardZero))
+                }
+                if forceHeight {
+                    c.geom.size.height = CGFloat((Float(w.height) * config.scratchpadHeightRatio).rounded(.towardZero))
+                }
+                // Recomputes the centered coordinates.
+                let g = clientCenterGeometry(c, m, c.geom)
+                c.floatGeom = g; c.geom = g; c.animainitGeom = g; c.animation.current = g
+                c.iscustomsize = true
+                resize(c, c.geom, ResizeOpts(interact: false))
+            }
         }
 
         // not in mango: client_reparent_group (no macOS part)
@@ -2017,13 +2026,8 @@ package extension MangoServer {
         if config.warpcursor { pointerWarpToClient(c1) }
     }
 
-    func clientTileResize(_ c: Client, _ box: CGRect, _ interact: Bool, _ ctx: LayoutContext?) {
+    func clientTileResize(_ c: Client, _ box: CGRect, _ interact: Bool) {
         var geo = box
-        if let ctx, let probe = ctx.probe {
-            if c === probe { ctx.out = geo }
-            return
-        }
-
         guard ISFAKETILED(c), let m = c.mon else { return }
 
         if !m.isoverview && !c.isfullscreen && clientWantsGroupBar(c) {

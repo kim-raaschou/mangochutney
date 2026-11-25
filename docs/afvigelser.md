@@ -1,6 +1,6 @@
 # Afvigelser fra mango
 
-Hvor Mango Chutney gør andet end mango 0.18.5 (`~/sources/mango`, commit `21f80a9`), og hvorfor. Kun det, der
+Hvor Mango Chutney gør andet end mango 0.18.6 (`~/sources/mango`, commit `2c6a664`), og hvorfor. Kun det, der
 gælder nu; det rettede og hvordan vi kom hertil står i [afvigelser-historik.md](afvigelser-historik.md).
 Hver mango-nøgle, macOS ikke kan, står med grunden i [compatibility.md](compatibility.md) og
 i `mango -p`.
@@ -68,7 +68,6 @@ Gælder for alle. Står i koden mærket "not in mango".
 | Ingen skygge, blur, dæmpning, gennemsigtighed eller runde hjørner fra mango; ingen luk- og fade-animationer | macOS tegner andre apps' vinduer; gennemsigtighed kræver SIP slået fra |
 | Et vindue, som mango klipper ved sin skærms kant (scroller, tag-skift), tegnes helt; ligger der en anden skærm ud over kanten, parkeres det i stedet, så intet af det når nabo-skærmen, og hvor mango viser den klippede del, viser porten en plade: et stillbillede af vinduet taget ved parkeringen, klippet ved kanten (appens ikon uden Skærmoptagelse); pladen har vinduets kant, klippet ved kanten med den, og et klik fokuserer vinduet. Det parkeres også, når mango slukker det. Under en animation skifter vinduet størrelse billede for billede, hvor mango skalerer sin buffer | Andre apps' vinduer kan ikke klippes eller skaleres |
 | Animationer skrives via Accessibility (højst 60 Hz) | Ingen compositor |
-| Intet `client_negotiate_initial_size`, og derfor ingen af layouternes `*_predict` (`layout_predict_box`): mango giver et nyt vindue dets felts størrelse, før det vises; porten giver det sin plads, når mango mapper det. `LayoutContext` står i layouterne som i mango, uden kalder med `probe` | Et macOS-vindue findes med sin størrelse, før porten ser det; der er ingen første configure at svare på |
 | Overview og switcher viser billeder (Skærmoptagelse), stillbilleder taget ved åbning; de rigtige vinduer bliver under dem, så `warp_cursor` sætter markøren på kortet (mangos `geom` i overview) | Andre apps' vinduer kan ikke skaleres; en strøm pr. vindue koster meget |
 | Kantgrebet (`enable_border_resize`) tager kun et klik, som event tap'en har taget fra appen; den afgør det ud fra mangos `hover_resize_edge` ved forrige bevægelse. Er markøren lige kommet på eller af striben, kan det ene klik gå til appen, eller gå tabt | Tap'en skal afgøre klikket med det samme, før appen får det, og kan ikke vente på mango |
 | `mangonag` er ikke et eget program: dens kode (`Sources/Mango/mangonag`, 1:1) kører i mangos proces, og porten står for dens Wayland-side (`NagDisplay`): bjælken tegnes med AppKit (mangonags farver, skrift, fire linjer, ANSI-farver og knapper) og står under menulinjen (eller over Dock'en); `-y` (lag) gør intet, bjælken står over vinduerne; tilvalgene læses med macOS' `getopt`, som ikke flytter tilvalg efter et løst argument frem, som glibc's gør | mangonag er en Wayland-klient på en layer surface, tegnet med cairo og pango; et program at kalde selv har en Mac ikke brug for (macOS' notifikationer) |
@@ -105,7 +104,7 @@ Gælder for alle. Står i koden mærket "not in mango".
 
 ## 4. Mangler endnu
 
-Det af mango 0.18.5, macOS tillader, og som ikke er bygget endnu (`switch_keyboard_layout` er
+Det af mango 0.18.6, macOS tillader, og som ikke er bygget endnu (`switch_keyboard_layout` er
 fravalgt, afsnit 2):
 
 - Fokus-animationen (`client_start_focus_animation` og dens fire hjælpere): kantens farve glider
@@ -286,7 +285,7 @@ Hvor koden står, når den ikke står som i mango.
   -liste), gør kernen det samme.
 - **Frigørelse:** Swift frigør selv, hvad ingen holder (ARC): `cleanup.c`, `dwindle_free_tree`,
   `cleanup_monitor_dwindle` og mangos andre rene `free`-funktioner findes ikke. Et dwindle-blad,
-  hvis klient er væk (klienten holdes svagt), tages ud af træet i `dwindleCore` (`removeDeadLeaf`).
+  hvis klient er væk (klienten holdes svagt), tages ud af træet i `dwindle` (`removeDeadLeaf`).
 - **Mangos filtre som lister:** hvor mango går `server.clients` igennem med `VISIBLEON`,
   `ISTILED` eller special-tagget, har kernen `visibleClients`, `tiledClients` og `specialClients`
   (`common/server.swift`), og `arrangeAll` for mangos løkke over skærmene; alle mærket.
@@ -411,7 +410,6 @@ sin egen test; at resten er 1:1, kontrolleres fil for fil i `docs/verificeret.md
 |---|---|---|---|
 | Værnet mod en `source`, der læser sig selv (direkte eller gennem en anden fil): mango læser den igen og igen, til stakken løber tør | går ned | filen læses én gang, og det meldes (én linje uden `[Index]`) | `includeStack` i `Config/load.swift`; `testASourceCycleIsReadOnce` |
 | Et træk i `fair`, `vertical_fair`, `grid` og `vertical_grid` vælger naboen på den side af vinduet, man trækker i (`cursor_in_left_half`), og overskriver straks valget med tastaturets (*"Keyboard hotkey logic unchanged"*): naboen til højre, og kun for den yderste kolonne til højre den til venstre | tre kolonner, træk i midterste vindues venstre kant: dens højre kant flytter sig | venstre kant flytter sig | Tastaturets valg bruges kun ved tastaturet (`!isdrag`), og trækkets valg, som mango selv udregner, står. `resizeTileGridFair` i `Layout/arrange.swift`; `testAGridDragMovesTheEdgeItGrabs` |
-| `focus_direction` sender venstre og højre gennem `focus_stack`, når tagget er monocle, også i overview, hvor kortene ligger i et gitter; samme funktion springer stakken over i overview tre linjer længere nede (`if (!isoverview)`) | overview fra et monocle-tag: venstre/højre følger vinduernes rækkefølge, ikke kortene | venstre/højre går til kortet ved siden af | Monocle-grenen gælder ikke i overview, som mangos egen `!isoverview`. `focusDirection` i `dispatch/bind.swift`; `testMonocleInTheOverviewGoesByTheCards` |
 | `togglejump` på en skærm uden vinduer sætter `is_jump_mode` (`begin_jump_mode`), men `set_overview` vender om uden at gå i overview, så flaget bliver stående: kun at forlade overview rydder det | indtil næste overview er switcheren afvist, og Escape sluges i alle apps (`toggle_jump`) | jump-tilstanden slutter igen | Den tomme vej kalder `finish_jump_mode`, som mangos egen vej ud af overview gør. `setOverview` i `dispatch/bind.swift`; `testToggleJumpOnAnEmptyMonitorLeavesNoJumpMode` |
 | `togglejump` under et træk med musen (`grab_client`): `toggle_jump` har intet værn, så `begin_jump_mode` sætter `is_jump_mode`, og `toggle_overview` afviser bagefter | som rækken over: jump-tilstanden bliver stående uden overview | intet sker | Værnet mod `grab_client`, som `toggle_overview` selv har, står før `toggle_jump`. `toggleJump` i `dispatch/bind.swift`; `testNoOverviewWhileGrabbed` |
 | Hot area på en skærm uden vinduer: `toggle_hotarea` sætter `ov_normal_mode`, og `set_overview`s tomme vej rydder den ikke | næste `overcircle` viser gitteret, og i overview går den ud i stedet for at skifte | `ov_normal_mode` ryddes | Den tomme vej rydder den, som mangos vej ud af overview gør. `setOverview` i `dispatch/bind.swift`; `testTheHotAreaOnAnEmptyMonitorLeavesNoNormalMode` |
@@ -426,7 +424,7 @@ sin egen test; at resten er 1:1, kontrolleres fil for fil i `docs/verificeret.md
 | `client_group_leave` lægger det vindue, der forlader gruppen, med `wl_list_insert(rc->flink.next, …)`, altså to pladser bag `rc` i fokus-stakken, hvor mangos egen kommentar siger *"put tc right behind it"*; er `rc` sidst, er `rc->flink.next` listens hoved, og vinduet kommer forrest | `groupleave`: vinduet står to pladser bag `rc` (eller forrest, når `rc` er sidst) | lige bag `rc` | indsat efter `rc`, som kommentaren siger. `clientGroupLeave` i `dispatch/bind.swift`; `testGroupLeavePutsTheWindowRightBehindTheGroup` |
 | `monitor_from_cycle` går med `m->link.next`/`prev` rundt i den cirkulære liste uden at springe hovedet over, så `wl_container_of` på `&server.monitors` giver en skærm, der ikke findes, og dens `wlr_output->enabled` læses | `focusmon,next` fra listens sidste skærm (eller `prev` fra den første): udefineret, går ned eller vælger intet | den næste skærm rundt om | rundt med modulo, uden hovedet. `monitorFromCycle` i `manage/monitor.swift`; `testTheCycleWrapsAround` |
 | `set_float_malposition` læser og skriver `geom`, også når `client_set_rules` lige har gjort klienten fullscreen eller maksimeret, så `float_geom` får skærmens øverste venstre hjørne | et vindue med reglen `isfloating:1,isfullscreen:1` (eller maksimeret), der forlader fullscreen: står i skærmens hjørne | midt på skærmen, hvor `client_set_floating` satte det | springes over for `ISFULLSCREEN`. `setFloatMalposition` i `manage/client.swift`; facit `rule-float-fullscreen.mango` (`ours`) |
-| `vertical_grid_core` tæller med `(!client_is_x11_popup(c) \|\| ISFAKETILED(c))`, som er sand for alle synlige flydende vinduer, hvor `grid_core` skriver `(m->isoverview && …) \|\| ISFAKETILED(c)`; `n` er kun de flisede | et flydende vindue tager en plads i gitteret og flyttes ind i det, og et fliset vindue kan blive uden plads | de flydende står, hvor de står | `grid_core`s betingelse. `verticalGridCounts` i `Layout/vertical.swift`; facit `arrange-floating-in-layout.mango` (`ours`) |
+| `vertical_grid` tæller med `(!client_is_x11_popup(c) \|\| ISFAKETILED(c))`, som er sand for alle synlige flydende vinduer, hvor `grid` skriver `(m->isoverview && …) \|\| ISFAKETILED(c)`; `n` er kun de flisede | et flydende vindue tager en plads i gitteret og flyttes ind i det, og et fliset vindue kan blive uden plads | de flydende står, hvor de står | `grid_core`s betingelse. `verticalGridCounts` i `Layout/vertical.swift`; facit `arrange-floating-in-layout.mango` (`ours`) |
 
 ## 7. Fejl i mango, vi følger
 

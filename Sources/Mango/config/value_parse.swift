@@ -182,18 +182,39 @@ extension ValueParse {
         }
     }
 
-    static func parseFoldState(_ str: String) -> Int32 {
-        // Converts the input string to lowercase.
-        let lowerStr = String(decoding: str.utf8.prefix(9), as: UTF8.self).lowercased()
-
-        // Returns the matching enum value from the lowercased string.
-        if lowerStr == "fold" {
-            return FOLD
-        } else if lowerStr == "unfold" {
-            return UNFOLD
-        } else {
-            return INVALIDFOLD
+    static func parseSwitchAction(_ str: String, _ action: inout SwitchAction) -> Bool {
+        let len = str.utf8.count
+        if len == 0 || len >= 32 {
+            return false
         }
+
+        /* Accept both Mango's underscore spelling and Sway-style "type:state". */
+        let normalized = String(decoding: str.utf8.map { $0 == UInt8(ascii: ":") ? UInt8(ascii: "_") : UInt8(tolower(Int32($0)) & 0xff) },
+                                as: UTF8.self)
+
+        if normalized == "lid_on" {
+            action.type = .lid
+            action.state = .on
+        } else if normalized == "lid_off" {
+            action.type = .lid
+            action.state = .off
+        } else if normalized == "tablet_on" {
+            action.type = .tabletMode
+            action.state = .on
+        } else if normalized == "tablet_off" {
+            action.type = .tabletMode
+            action.state = .off
+        } else if normalized == "keypad_slide_on" {
+            action.type = .keypadSlide
+            action.state = .on
+        } else if normalized == "keypad_slide_off" {
+            action.type = .keypadSlide
+            action.state = .off
+        } else {
+            return false
+        }
+
+        return true
     }
 
     static func parseTagMask(_ str: String) -> UInt32 {

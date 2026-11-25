@@ -2,7 +2,7 @@
  * A window for the recordings: an xdg toplevel with the title and app_id it is given, which takes
  * whatever size mango configures (800x600 when mango leaves it to the client). Its first size is
  * its own, 800x600, whatever mango asks: as a macOS app opens with its own size, and as our mango's
- * tests map a window (mango's client_negotiate_initial_size has no part in the port).
+ * tests map a window.
  *
  *   facit-client <title> [<w>x<h>] [dialog]
  *

@@ -15,7 +15,7 @@
  },
  "checks": [
   {
-   "after_line": 5,
+   "after_line": 6,
    "clients": [
     {
      "title": "b",

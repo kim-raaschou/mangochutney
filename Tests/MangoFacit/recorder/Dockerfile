@@ -1,4 +1,4 @@
-# mango 0.18.5 built as its own repository has it, run headless, to record what mango does.
+# mango 0.18.6 built as its own repository has it, run headless, to record what mango does.
 #   docker build -t mango-facit Tests/MangoFacit/recorder
 # The mango source is mounted at /mango (read-only) and built at the pinned commit by build.sh.
 FROM fedora:45

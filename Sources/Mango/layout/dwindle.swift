@@ -144,18 +144,14 @@ package extension MangoServer {
     }
 
     func dwindleAssign(_ node: DwindleNode?, _ ax: Int32, _ ay: Int32, _ aw: Int32, _ ah: Int32,
-                       _ gapH: Int32, _ gapV: Int32, _ ctx: LayoutContext?) {
+                       _ gapH: Int32, _ gapV: Int32) {
         guard let node else { return }
 
         if !node.isSplit {
             if let c = node.client {
                 if !c.isfullscreen && !c.ismaximizescreen {
                     let box = wlrBox(ax, ay, MANGO_MAX(1, aw), MANGO_MAX(1, ah))
-                    if let ctx, let probe = ctx.probe {
-                        if c === probe { ctx.out = box }
-                    } else {
-                        clientTileResize(c, box, false, nil)
-                    }
+                    clientTileResize(c, box, false)
                 }
             }
             return
@@ -168,12 +164,12 @@ package extension MangoServer {
         node.containerH = ah
         if node.splitH {
             let w1 = MANGO_MAX(1, i32(Float(aw) * node.ratio) - gapH / 2)
-            dwindleAssign(node.first, ax, ay, w1, ah, gapH, gapV, ctx)
-            dwindleAssign(node.second, ax + w1 + gapH, ay, aw - w1 - gapH, ah, gapH, gapV, ctx)
+            dwindleAssign(node.first, ax, ay, w1, ah, gapH, gapV)
+            dwindleAssign(node.second, ax + w1 + gapH, ay, aw - w1 - gapH, ah, gapH, gapV)
         } else {
             let h1 = MANGO_MAX(1, i32(Float(ah) * node.ratio) - gapV / 2)
-            dwindleAssign(node.first, ax, ay, aw, h1, gapH, gapV, ctx)
-            dwindleAssign(node.second, ax, ay + h1 + gapV, aw, ah - h1 - gapV, gapH, gapV, ctx)
+            dwindleAssign(node.first, ax, ay, aw, h1, gapH, gapV)
+            dwindleAssign(node.second, ax, ay + h1 + gapV, aw, ah - h1 - gapV, gapH, gapV)
         }
     }
 
@@ -416,7 +412,7 @@ package extension MangoServer {
 
         let w = WBox(m.w)
         dwindleAssign(m.pertag.dwindleRoot[tag], w.x + gapOh, w.y + gapOv, w.width - 2 * gapOh,
-                      w.height - 2 * gapOv, gapIh, gapIv, nil)
+                      w.height - 2 * gapOv, gapIh, gapIv)
     }
 
     func dwindleResizeClientStep(_ m: Monitor, _ c: Client, _ dx: Int32, _ dy: Int32) {
@@ -457,7 +453,7 @@ package extension MangoServer {
 
         let w = WBox(m.w)
         dwindleAssign(m.pertag.dwindleRoot[tag], w.x + gapOh, w.y + gapOv, w.width - 2 * gapOh,
-                      w.height - 2 * gapOv, gapIh, gapIv, nil)
+                      w.height - 2 * gapOv, gapIh, gapIv)
     }
 
     func dwindleRemoveClient(_ c: Client) {
@@ -550,7 +546,7 @@ package extension MangoServer {
         dwindleInsert(&root, newC, focused, ratio, asFirst, splitH, lock)
     }
 
-    func dwindleCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func dwindle(_ m: Monitor) {
         let n = m.visibleTilingClients
         if n == 0 { return }
 
@@ -606,7 +602,7 @@ package extension MangoServer {
 
         let w = WBox(m.w)
         dwindleAssign(m.pertag.dwindleRoot[tag], w.x + gapOh, w.y + gapOv, w.width - 2 * gapOh,
-                      w.height - 2 * gapOv, gapIh, gapIv, ctx)
+                      w.height - 2 * gapOv, gapIh, gapIv)
     }
 
     /// Not in mango: a leaf whose Client was freed (mango removes it in handle_client_destroy first).
@@ -621,5 +617,4 @@ package extension MangoServer {
         }
     }
 
-    func dwindle(_ m: Monitor) { dwindleCore(m, nil) }
 }

@@ -1,12 +1,5 @@
 import CoreGraphics
 
-/// mango struct LayoutContext (layout/layout.h).
-package final class LayoutContext {
-    package var probe: Client?
-    package var out: CGRect = .zero
-    package init(probe: Client?) { self.probe = probe }
-}
-
 /// mango MANGO_MIN (common/util.h).
 @inline(__always) func MANGO_MIN<T: Comparable>(_ a: T, _ b: T) -> T { a < b ? a : b }
 /// mango MANGO_MAX (common/util.h).
@@ -36,7 +29,7 @@ package extension MangoServer {
         clients.first { VISIBLEON($0, m) && ISFAKETILED($0) }
     }
 
-    func tileCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func tile(_ m: Monitor) {
         var i: Int32, n: Int32 = 0, h: Int32, r: Int32, mw: Int32, my: Int32, ty: Int32
         let ie: Int32 = enableGaps ? 1 : 0
         var mfact: Double = 0
@@ -96,7 +89,7 @@ package extension MangoServer {
                     c.masterInnerPer = CGFloat(h / (w.height - my - curGappov - curGappiv * ie * (r - 1)))
                     c.masterMfactPer = CGFloat(mfact)
                 }
-                clientTileResize(c, wlrBox(w.x + curGappoh, w.y + my, mw - curGappih * ie, h), false, ctx)
+                clientTileResize(c, wlrBox(w.x + curGappoh, w.y + my, mw - curGappih * ie, h), false)
                 my += h + curGappiv * ie // Accumulates using the theoretical height.
             } else {
                 r = n - i
@@ -111,14 +104,14 @@ package extension MangoServer {
                     c.masterMfactPer = CGFloat(mfact)
                 }
 
-                clientTileResize(c, wlrBox(w.x + mw + curGappoh, w.y + ty, w.width - mw - 2 * curGappoh, h), false, ctx)
+                clientTileResize(c, wlrBox(w.x + mw + curGappoh, w.y + ty, w.width - mw - 2 * curGappoh, h), false)
                 ty += h + curGappiv * ie // Accumulates using the theoretical height.
             }
             i += 1
         }
     }
 
-    func rightTileCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func rightTile(_ m: Monitor) {
         var i: Int32, n: Int32 = 0, h: Int32, r: Int32, mw: Int32, my: Int32, ty: Int32
         let ie: Int32 = enableGaps ? 1 : 0
         var mfact: Double = 0
@@ -179,7 +172,7 @@ package extension MangoServer {
                     c.masterMfactPer = CGFloat(mfact)
                 }
                 clientTileResize(c, wlrBox(w.x + w.width - mw - curGappoh + curGappih * ie, w.y + my,
-                                           mw - curGappih * ie, h), false, ctx)
+                                           mw - curGappih * ie, h), false)
                 my += h + curGappiv * ie // Accumulates using the theoretical height.
             } else {
                 r = n - i
@@ -194,14 +187,14 @@ package extension MangoServer {
                     c.masterMfactPer = CGFloat(mfact)
                 }
 
-                clientTileResize(c, wlrBox(w.x + curGappoh, w.y + ty, w.width - mw - 2 * curGappoh, h), false, ctx)
+                clientTileResize(c, wlrBox(w.x + curGappoh, w.y + ty, w.width - mw - 2 * curGappoh, h), false)
                 ty += h + curGappiv * ie // Accumulates using the theoretical height.
             }
             i += 1
         }
     }
 
-    func centerTileCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func centerTile(_ m: Monitor) {
         var i: Int32, n: Int32 = 0, h: Int32, r: Int32, mw: Int32, mx: Int32, my: Int32, oty: Int32, ety: Int32, tw: Int32
         let ie: Int32 = enableGaps ? 1 : 0
         var mfact: Double = 0
@@ -323,7 +316,7 @@ package extension MangoServer {
                     c.masterMfactPer = CGFloat(mfact)
                 }
 
-                clientTileResize(c, wlrBox(w.x + mx, w.y + my, mw, h), false, ctx)
+                clientTileResize(c, wlrBox(w.x + mx, w.y + my, mw, h), false)
                 my += h + curGappiv * ie // Accumulates using the theoretical height.
             } else {
                 // Stack-area windows.
@@ -350,7 +343,7 @@ package extension MangoServer {
                         stackX = w.x + mx + mw + curGappih * ie
                     }
 
-                    clientTileResize(c, wlrBox(stackX, w.y + ety, tw, h), false, ctx)
+                    clientTileResize(c, wlrBox(stackX, w.y + ety, tw, h), false)
                     ety += h + curGappiv * ie
                 } else {
                     // Multiple stack windows: alternated on the left and right
@@ -374,7 +367,7 @@ package extension MangoServer {
 
                         let stackX = w.x + mx + mw + curGappih * ie
 
-                        clientTileResize(c, wlrBox(stackX, w.y + ety, tw, h), false, ctx)
+                        clientTileResize(c, wlrBox(stackX, w.y + ety, tw, h), false)
                         ety += h + curGappiv * ie
                     } else {
                         // Left stack windows.
@@ -392,7 +385,7 @@ package extension MangoServer {
                         }
 
                         let stackX = w.x + curGappoh
-                        clientTileResize(c, wlrBox(stackX, w.y + oty, tw, h), false, ctx)
+                        clientTileResize(c, wlrBox(stackX, w.y + oty, tw, h), false)
                         oty += h + curGappiv * ie
                     }
                 }
@@ -401,7 +394,7 @@ package extension MangoServer {
         }
     }
 
-    func deckCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func deck(_ m: Monitor) {
         var mw: Int32, my: Int32
         var i: Int32, n: Int32 = 0
         let tag = getMonCurtag(m)
@@ -437,19 +430,19 @@ package extension MangoServer {
             if i < nmasters {
                 c.masterMfactPer = CGFloat(mfact)
                 let h = (w.height - 2 * curGappov - my) / (MANGO_MIN(n, nmasters) - i)
-                clientTileResize(c, wlrBox(w.x + curGappoh, w.y + curGappov + my, mw, h), false, ctx)
+                clientTileResize(c, wlrBox(w.x + curGappoh, w.y + curGappov + my, mw, h), false)
                 my += h
             } else {
                 c.masterMfactPer = CGFloat(mfact)
                 clientTileResize(c, wlrBox(w.x + mw + curGappoh + curGappih, w.y + curGappov,
-                                           w.width - mw - 2 * curGappoh - curGappih, w.height - 2 * curGappov), false, ctx)
-                if ctx == nil { clientUpdateVisibility(c) }
+                                           w.width - mw - 2 * curGappoh - curGappih, w.height - 2 * curGappov), false)
+                clientUpdateVisibility(c)
             }
             i += 1
         }
     }
 
-    func monocleCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func monocle(_ m: Monitor) {
         let w = WBox(m.w)
 
         var curGappov: Int32 = enableGaps ? m.gappov : 0
@@ -466,8 +459,8 @@ package extension MangoServer {
         for c in clients {
             if !VISIBLEON(c, m) || !ISFAKETILED(c) { continue }
             let geom = wlrBox(w.x + curGappoh, w.y + curGappov, w.width - 2 * curGappoh, w.height - 2 * curGappov)
-            clientTileResize(c, geom, false, ctx)
-            if ctx == nil { clientUpdateVisibility(c) }
+            clientTileResize(c, geom, false)
+            clientUpdateVisibility(c)
         }
     }
 
@@ -477,7 +470,7 @@ package extension MangoServer {
     }
 
     // Computes grid layout window sizes and positions.
-    func gridCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func grid(_ m: Monitor) {
         var i: Int32, n: Int32
         var cw: Int32, ch: Int32
         var cols: Int32, rows: Int32, overcols: Int32
@@ -499,7 +492,7 @@ package extension MangoServer {
                     cw = i32(Float(w.width - 2 * targetGappo) * singleWidthRatio)
                     ch = i32(Float(w.height - 2 * targetGappo) * singleHeightRatio)
                     let targetGeom = wlrBox(w.x + (w.width - cw) / 2, w.y + (w.height - ch) / 2, cw, ch)
-                    clientTileResize(c, targetGeom, false, ctx)
+                    clientTileResize(c, targetGeom, false)
                     return
                 }
             }
@@ -544,7 +537,7 @@ package extension MangoServer {
                         x = i32(Float(w.x + targetGappo) + cw0 + Float(targetGappi))
                     }
                     let y = w.y + (w.height - ch) / 2 + targetGappo
-                    clientTileResize(c, wlrBox(x, y, cw, ch), false, ctx)
+                    clientTileResize(c, wlrBox(x, y, cw, ch), false)
                     i += 1
                 }
             }
@@ -622,13 +615,13 @@ package extension MangoServer {
                 let flCh = rIdx == rows - 1 ? Float(w.y + w.height - targetGappo) - flCy
                     : availH * (rowPers[Int(rIdx)] / sumRow)
 
-                clientTileResize(c, wlrBox(i32(flCx), i32(flCy), i32(flCw), i32(flCh)), false, ctx)
+                clientTileResize(c, wlrBox(i32(flCx), i32(flCy), i32(flCw), i32(flCh)), false)
                 i += 1
             }
         }
     }
 
-    func fairCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func fair(_ m: Monitor) {
         var n: Int32 = 0
         let w = WBox(m.w)
 
@@ -760,21 +753,14 @@ package extension MangoServer {
             let flCx = colX[Int(colIdx)]
             let flCw = colW[Int(colIdx)]
 
-            clientTileResize(c, wlrBox(i32(flCx), i32(flCy), i32(flCw), i32(flCh)), false, ctx)
+            clientTileResize(c, wlrBox(i32(flCx), i32(flCy), i32(flCw), i32(flCh)), false)
         }
     }
 
-    func tile(_ m: Monitor) { tileCore(m, nil) }
 
-    func rightTile(_ m: Monitor) { rightTileCore(m, nil) }
 
-    func centerTile(_ m: Monitor) { centerTileCore(m, nil) }
 
-    func deck(_ m: Monitor) { deckCore(m, nil) }
 
-    func monocle(_ m: Monitor) { monocleCore(m, nil) }
 
-    func grid(_ m: Monitor) { gridCore(m, nil) }
 
-    func fair(_ m: Monitor) { fairCore(m, nil) }
 }

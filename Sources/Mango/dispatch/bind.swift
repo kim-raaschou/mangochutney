@@ -154,15 +154,6 @@ package extension MangoServer {
     func focusDirection(_ arg: Arg) -> Int32 {
         if selectedMonitor == nil { return 0 }
 
-        let sel = focused
-        // not in mango: not in the overview, whose cards are no monocle (a mango bug, docs/afvigelser.md §6)
-        if isMonocleLayout(selectedMonitor), !selectedMonitor.isoverview, let sel, !sel.isfloating,
-           arg.i == LEFT || arg.i == RIGHT {
-            var a = arg
-            a.i = arg.i == LEFT ? PREV : NEXT
-            return focusStack(a)
-        }
-
         var c = directionSelect(arg)
 
         if let sc = c, sc.mon !== selectedMonitor && !config.focusCrossMonitor { return 0 }
@@ -1493,26 +1484,28 @@ package extension MangoServer {
         return 0
     }
 
-    func toggleView(_ arg: Arg) -> Int32 {
-        if selectedMonitor == nil { return 0 }
-        if selectedMonitor.isoverview { return 0 }
-
+    func toggleViewOnMonitor(_ arg: Arg, _ m: Monitor?) {
         let newtagset: UInt32
         let target: UInt32
 
-        target = arg.ui == 0 ? ~0 & TAGMASK : arg.ui
+        guard let m, !m.isoverview else { return }
 
-        newtagset = selectedMonitor.tagset[selectedMonitor.seltags] ^ (target & TAGMASK)
+        target = arg.ui == 0 ? ~0 & TAGMASK : arg.ui
+        newtagset = m.tagset[m.seltags] ^ (target & TAGMASK)
 
         if newtagset != 0 {
-            selectedMonitor.tagset[selectedMonitor.seltags] = newtagset
-            clientFocus(clientFocusTop(selectedMonitor), true)
-            for c in clients where VISIBLEON(c, selectedMonitor) && ISTILED(c) {
-                setSizePer(selectedMonitor, c, resetProportion: true)
+            m.tagset[m.seltags] = newtagset
+            clientFocus(clientFocusTop(m), true)
+            for c in clients where VISIBLEON(c, m) && ISTILED(c) {
+                setSizePer(m, c, resetProportion: true)
             }
-            arrange(selectedMonitor, false, false)
+            arrange(m, false, false)
         }
         printstatus(.arrangge)
+    }
+
+    func toggleView(_ arg: Arg) -> Int32 {
+        toggleViewOnMonitor(arg, selectedMonitor)
         return 0
     }
 
@@ -1796,16 +1789,19 @@ package extension MangoServer {
         !onlyCurrent || c.isglobal || c.tags & currentTags != 0
     }
 
-    /* Enter or leave overview mode on the selected monitor. */
-    private func setOverview(_ arg: Arg, _ enter: Bool) {
-        let m: Monitor = selectedMonitor
-        let sel = arg.tc ?? focused
+    /* Enter or leave overview mode on the given monitor. */
+    func setOverview(_ arg: Arg, _ enter: Bool, _ m: Monitor?) {
+        let sel: Client?
         var target: UInt32 = 0
         var visibleClientNumber = 0
-        let onlyCurrent = arg.i == 1
+        let onlyCurrent: Bool
         var currentTags: UInt32 = 0
+
+        guard let m else { return }
         defer { publishInputState() }   // not in mango: the event tap's snapshot
 
+        onlyCurrent = arg.i == 1
+        sel = arg.tc ?? m.sel
         m.isoverview = enter
 
         if !enter {
@@ -1889,7 +1885,7 @@ package extension MangoServer {
             }
         }
 
-        clientSwitchView(Arg(ui: target), false)
+        clientViewOnMonitor(Arg(ui: target), false, m, true)
 
         /* Tab layout: rearrange after entering. */
         if enter && !m.isJumpMode && !m.ovNormalMode {
@@ -1913,7 +1909,7 @@ package extension MangoServer {
     func toggleOverview(_ arg: Arg) -> Int32 {
         guard let m = selectedMonitor, grabClient == nil else { return 0 }
 
-        setOverview(arg, !m.isoverview)
+        setOverview(arg, !m.isoverview, selectedMonitor)
         return 0
     }
 
@@ -1921,7 +1917,7 @@ package extension MangoServer {
     func enterOverview(_ arg: Arg) -> Int32 {
         guard let m = selectedMonitor, grabClient == nil, !m.isoverview else { return 0 }
 
-        setOverview(arg, true)
+        setOverview(arg, true, selectedMonitor)
         return 0
     }
 
@@ -1929,7 +1925,7 @@ package extension MangoServer {
     func leaveOverview(_ arg: Arg) -> Int32 {
         guard let m = selectedMonitor, grabClient == nil, m.isoverview else { return 0 }
 
-        setOverview(arg, false)
+        setOverview(arg, false, selectedMonitor)
         return 0
     }
 

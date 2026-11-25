@@ -43,7 +43,7 @@ func testANewClientIsFocused() {
 
 ## mango's own answers (facit)
 
-`Tests/MangoFacit` holds scenarios and what mango 0.18.5 itself answered to them. A scenario is
+`Tests/MangoFacit` holds scenarios and what mango 0.18.6 itself answered to them. A scenario is
 played on real mango, run headless in a container, and `mmsg get` is asked at each `check`; the
 answers are the facit. `FacitTests` plays the same scenario on our mango and asks the same `mmsg`
 lines through our IPC: the answers must be the same.

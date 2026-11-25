@@ -111,7 +111,7 @@ final class ConfigFidelityTests: MangoTestCase {
         XCTAssertEqual(c.gestureSwipeDistance, 32)
         XCTAssertEqual(c.gestureSwipeCancelRatio, 0.95)
         XCTAssertEqual(c.gestureSwipeMinSpeedToForce, 0)
-        XCTAssertEqual(c.scratchpadWidthRatio, 0.1)
+        XCTAssertEqual(c.scratchpadWidthRatio, 0)
         XCTAssertEqual(c.scratchpadHeightRatio, 1)
         XCTAssertEqual(c.specialDim, 1)
         XCTAssertEqual(c.specialGappoh, 0)

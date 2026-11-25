@@ -1,0 +1,5 @@
+{
+ "mango": "0.18.5 (21f80a9)",
+ "exit": 1,
+ "output": "[ERROR]: Invalid switchbind format: lid_on\n\u2570\u2500[Index] /configs/switchbind-states.conf:11\n   \u2570\u2500switchbind=lid_on\n\n\n[ERROR]: Invalid switch state in switchbind: fold\n\u2570\u2500[Index] /configs/switchbind-states.conf:12\n   \u2570\u2500switchbind=fold,spawn,h\n\n\n[ERROR]: Invalid switch state in switchbind: lid\n\u2570\u2500[Index] /configs/switchbind-states.conf:13\n   \u2570\u2500switchbind=lid,spawn,i\n\n\n[ERROR]: Invalid switch state in switchbind: keypad_slide_on_and_much_longer_than_this\n\u2570\u2500[Index] /configs/switchbind-states.conf:14\n   \u2570\u2500switchbind=keypad_slide_on_and_much_longer_than_this,spawn,j\n\n\n[WARN]: switchbind conflict in keymode default:\n  File \"/configs/switchbind-states.conf\", line 3\n  File \"/configs/switchbind-states.conf\", line 9\n[WARN]: switchbind conflict in keymode default:\n  File \"/configs/switchbind-states.conf\", line 5\n  File \"/configs/switchbind-states.conf\", line 10\n"
+}

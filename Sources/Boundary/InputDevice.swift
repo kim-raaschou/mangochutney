@@ -3,6 +3,16 @@ public enum WlrInputDeviceType: Equatable, Sendable {
     case keyboard, pointer, touch, tablet, tabletPad, switchDevice
 }
 
+/// enum wlr_switch_type (wlroots)
+public enum WlrSwitchType: Hashable, Sendable {
+    case lid, tabletMode, keypadSlide
+}
+
+/// enum wlr_switch_state (wlroots)
+public enum WlrSwitchState: Hashable, Sendable {
+    case off, on, toggle
+}
+
 /// mango InputDevice (input/device.h), with what mango reads of its wlr_input_device and
 /// libinput_device. The port's.
 public struct InputDevice: Equatable, Sendable {

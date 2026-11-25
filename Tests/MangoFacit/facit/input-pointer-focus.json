@@ -22,7 +22,7 @@
  },
  "checks": [
   {
-   "after_line": 8,
+   "after_line": 7,
    "clients": [
     {
      "title": "c",
@@ -278,7 +278,7 @@
    }
   },
   {
-   "after_line": 10,
+   "after_line": 9,
    "clients": [
     {
      "title": "c",
@@ -534,7 +534,7 @@
    }
   },
   {
-   "after_line": 12,
+   "after_line": 11,
    "clients": [
     {
      "title": "c",
@@ -790,7 +790,7 @@
    }
   },
   {
-   "after_line": 14,
+   "after_line": 13,
    "clients": [
     {
      "title": "c",
@@ -1046,7 +1046,7 @@
    }
   },
   {
-   "after_line": 17,
+   "after_line": 16,
    "clients": [
     {
      "title": "d",

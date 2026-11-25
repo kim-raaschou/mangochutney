@@ -15,7 +15,7 @@
  },
  "checks": [
   {
-   "after_line": 5,
+   "after_line": 6,
    "clients": [
     {
      "title": "b",
@@ -162,7 +162,7 @@
    }
   },
   {
-   "after_line": 7,
+   "after_line": 8,
    "clients": [
     {
      "title": "b",
@@ -309,7 +309,7 @@
    }
   },
   {
-   "after_line": 10,
+   "after_line": 14,
    "clients": [
     {
      "title": "b",
@@ -456,7 +456,7 @@
    }
   },
   {
-   "after_line": 13,
+   "after_line": 17,
    "clients": [
     {
      "title": "b",
@@ -603,7 +603,7 @@
    }
   },
   {
-   "after_line": 16,
+   "after_line": 20,
    "clients": [
     {
      "title": "b",
@@ -750,7 +750,7 @@
    }
   },
   {
-   "after_line": 19,
+   "after_line": 23,
    "clients": [
     {
      "title": "b",
@@ -897,7 +897,7 @@
    }
   },
   {
-   "after_line": 22,
+   "after_line": 26,
    "clients": [
     {
      "title": "b",
@@ -1044,7 +1044,7 @@
    }
   },
   {
-   "after_line": 24,
+   "after_line": 28,
    "clients": [
     {
      "title": "b",
@@ -1191,7 +1191,7 @@
    }
   },
   {
-   "after_line": 26,
+   "after_line": 30,
    "clients": [
     {
      "title": "b",
@@ -1338,7 +1338,7 @@
    }
   },
   {
-   "after_line": 28,
+   "after_line": 32,
    "clients": [
     {
      "title": "b",
@@ -1485,7 +1485,7 @@
    }
   },
   {
-   "after_line": 30,
+   "after_line": 34,
    "clients": [
     {
      "title": "b",
@@ -1632,7 +1632,7 @@
    }
   },
   {
-   "after_line": 34,
+   "after_line": 38,
    "clients": [
     {
      "title": "c",

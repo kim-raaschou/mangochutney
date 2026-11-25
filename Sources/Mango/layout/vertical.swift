@@ -1,7 +1,7 @@
 import CoreGraphics
 
 package extension MangoServer {
-    func verticalTileCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func verticalTile(_ m: Monitor) {
         var i: Int32, n: Int32 = 0, wd: Int32, r: Int32, mh: Int32, mx: Int32, tx: Int32
         let ie: Int32 = enableGaps ? 1 : 0
         var mfact: Double = 0
@@ -61,7 +61,7 @@ package extension MangoServer {
                     c.masterInnerPer = CGFloat(wd / (w.width - mx - curGapih - curGapih * ie * (r - 1)))
                     c.masterMfactPer = CGFloat(mfact)
                 }
-                clientTileResize(c, wlrBox(w.x + mx, w.y + curGapov, wd, mh - curGapiv * ie), false, ctx)
+                clientTileResize(c, wlrBox(w.x + mx, w.y + curGapov, wd, mh - curGapiv * ie), false)
                 mx += wd + curGapih * ie // Accumulates using the theoretical width.
             } else {
                 r = n - i
@@ -76,14 +76,14 @@ package extension MangoServer {
                     c.masterMfactPer = CGFloat(mfact)
                 }
 
-                clientTileResize(c, wlrBox(w.x + tx, w.y + mh + curGapov, wd, w.height - mh - 2 * curGapov), false, ctx)
+                clientTileResize(c, wlrBox(w.x + tx, w.y + mh + curGapov, wd, w.height - mh - 2 * curGapov), false)
                 tx += wd + curGapih * ie // Accumulates using the theoretical width.
             }
             i += 1
         }
     }
 
-    func verticalDeckCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func verticalDeck(_ m: Monitor) {
         var mh: Int32, mx: Int32
         var i: Int32, n: Int32 = 0
         let tag = getMonCurtag(m)
@@ -119,13 +119,13 @@ package extension MangoServer {
             if i < nmasters {
                 c.masterMfactPer = CGFloat(mfact)
                 let wd = (w.width - 2 * curGappoh - mx) / (MANGO_MIN(n, nmasters) - i)
-                clientTileResize(c, wlrBox(w.x + curGappoh + mx, w.y + curGappov, wd, mh), false, ctx)
+                clientTileResize(c, wlrBox(w.x + curGappoh + mx, w.y + curGappov, wd, mh), false)
                 mx += wd
             } else {
                 c.masterMfactPer = CGFloat(mfact)
                 clientTileResize(c, wlrBox(w.x + curGappoh, w.y + mh + curGappov + curGappiv,
-                                           w.width - 2 * curGappoh, w.height - mh - 2 * curGappov - curGappiv), false, ctx)
-                if ctx == nil { clientUpdateVisibility(c) }
+                                           w.width - 2 * curGappoh, w.height - mh - 2 * curGappov - curGappiv), false)
+                clientUpdateVisibility(c)
             }
             i += 1
         }
@@ -133,11 +133,11 @@ package extension MangoServer {
 
     // not in mango: client_is_x11_popup is false; macOS has no X11 popups
     private func verticalGridCounts(_ c: Client, _ m: Monitor) -> Bool {
-        // not in mango: grid_core's (m->isoverview || ISFAKETILED(c)); floats count here (a mango bug, docs/afvigelser.md §6)
+        // not in mango: grid's (m->isoverview || ISFAKETILED(c)); floats count here (a mango bug, docs/afvigelser.md §6)
         VISIBLEON(c, m) && !c.isunglobal && (m.isoverview || ISFAKETILED(c))
     }
 
-    func verticalGridCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func verticalGrid(_ m: Monitor) {
         var i: Int32, n: Int32
         var cw: Int32, ch: Int32
         var rows: Int32, cols: Int32, overrows: Int32
@@ -156,7 +156,7 @@ package extension MangoServer {
                 if verticalGridCounts(c, m) {
                     ch = i32(Float(w.height - 2 * targetGappo) * singleHeightRatio)
                     cw = i32(Float(w.width - 2 * targetGappo) * singleWidthRatio)
-                    clientTileResize(c, wlrBox(w.x + (w.width - cw) / 2, w.y + (w.height - ch) / 2, cw, ch), false, ctx)
+                    clientTileResize(c, wlrBox(w.x + (w.width - cw) / 2, w.y + (w.height - ch) / 2, cw, ch), false)
                     return
                 }
             }
@@ -201,7 +201,7 @@ package extension MangoServer {
                         let ch0 = availH * (rowPers[0] / sumRow)
                         y = i32(Float(w.y + targetGappo) + ch0 + Float(targetGappi))
                     }
-                    clientTileResize(c, wlrBox(x, y, cw, ch), false, ctx)
+                    clientTileResize(c, wlrBox(x, y, cw, ch), false)
                     i += 1
                 }
             }
@@ -272,13 +272,13 @@ package extension MangoServer {
                 let flCw = cIdx == cols - 1 ? Float(w.x + w.width - targetGappo) - flCx
                     : availW * (colPers[Int(cIdx)] / sumCol)
 
-                clientTileResize(c, wlrBox(i32(flCx), i32(flCy), i32(flCw), i32(flCh)), false, ctx)
+                clientTileResize(c, wlrBox(i32(flCx), i32(flCy), i32(flCw), i32(flCh)), false)
                 i += 1
             }
         }
     }
 
-    func verticalFairCore(_ m: Monitor, _ ctx: LayoutContext?) {
+    func verticalFair(_ m: Monitor) {
         var n: Int32 = 0
         let w = WBox(m.w)
 
@@ -401,15 +401,11 @@ package extension MangoServer {
             let flCy = rowY[Int(rowIdx)]
             let flCh = rowH[Int(rowIdx)]
 
-            clientTileResize(c, wlrBox(i32(flCx), i32(flCy), i32(flCw), i32(flCh)), false, ctx)
+            clientTileResize(c, wlrBox(i32(flCx), i32(flCy), i32(flCw), i32(flCh)), false)
         }
     }
 
-    func verticalTile(_ m: Monitor) { verticalTileCore(m, nil) }
 
-    func verticalDeck(_ m: Monitor) { verticalDeckCore(m, nil) }
 
-    func verticalGrid(_ m: Monitor) { verticalGridCore(m, nil) }
 
-    func verticalFair(_ m: Monitor) { verticalFairCore(m, nil) }
 }

@@ -352,7 +352,7 @@ package extension MangoServer {
             }
 
             for k in 0..<n {
-                clientTileResize(items[k].c, overviewBoxes[k], false, nil)
+                clientTileResize(items[k].c, overviewBoxes[k], false)
             }
         }
     }
@@ -406,8 +406,7 @@ package extension MangoServer {
             let ix = Int32(x + (colW - ws[i]) / 2.0 + 0.5)
             let iy = Int32(y + 0.5)
             clientTileResize(items[i],
-                             CGRect(x: Int(ix), y: Int(iy), width: Int(Int32(ws[i])), height: Int(Int32(hs[i]))), false,
-                             nil)
+                             CGRect(x: Int(ix), y: Int(iy), width: Int(Int32(ws[i])), height: Int(Int32(hs[i]))), false)
             y += hs[i] + gap
         }
     }
@@ -500,8 +499,7 @@ package extension MangoServer {
             }
             let ix = Int32(centerX + (centerW - w) / 2.0 + 0.5)
             let iy = Int32(baseY + (availH - (h + titleBlockH)) / 2.0 + 0.5)
-            clientTileResize(focus, CGRect(x: Int(ix), y: Int(iy), width: Int(Int32(w)), height: Int(Int32(h))), false,
-                             nil)
+            clientTileResize(focus, CGRect(x: Int(ix), y: Int(iy), width: Int(Int32(w)), height: Int(Int32(h))), false)
         }
 
         // The rest split into the left/right columns; on focus change they

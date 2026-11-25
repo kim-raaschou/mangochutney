@@ -165,10 +165,9 @@ public struct Config: Sendable {
     public var keymode = "default"
 }
 
-/* Tag animation / folding / global switch state. */
+/* Tag animation / global switch state. */
 public let VERTICAL = 0
 public let HORIZONTAL = 1
-let UNFOLD: Int32 = 0, FOLD: Int32 = 1, INVALIDFOLD: Int32 = 2
 
 // not in mango: enum animation_type; ANIM_TYPE_UNSET and ANIM_TYPE_UNKNOWN are .slide, as
 // animation/client.c opens them (a window's own type is nil where it is unset)
@@ -394,12 +393,20 @@ public struct AxisBinding: Equatable, Hashable, Sendable {
     }
 }
 
+public struct SwitchAction: Equatable, Hashable, Sendable {
+    public var type: WlrSwitchType
+    public var state: WlrSwitchState
+    public init(type: WlrSwitchType, state: WlrSwitchState) {
+        self.type = type; self.state = state
+    }
+}
+
 public struct SwitchBinding: Equatable, Hashable, Sendable {
+    public var switchAction: SwitchAction
     public var mode: String
-    public var fold: Int32
     public var dispatch: Dispatch
-    public init(mode: String = "default", fold: Int32, dispatch: Dispatch) {
-        self.mode = mode; self.fold = fold; self.dispatch = dispatch
+    public init(mode: String = "default", switchAction: SwitchAction, dispatch: Dispatch) {
+        self.mode = mode; self.switchAction = switchAction; self.dispatch = dispatch
     }
 }
 

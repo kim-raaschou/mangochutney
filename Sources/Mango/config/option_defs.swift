@@ -547,19 +547,23 @@ extension ParserState {
         let mode = BindingParser.setBindingKeymode(config)
 
         let fields = BindingParser.sscanfFields(value, 7)
-        if fields.count < 3 {
+        if fields.count < 2 {
             configError("Invalid switchbind format: \(mangoHighlight(value))")
             return false
         }
         let f = fields.map { ValueParse.trimWhitespace($0) }
-        let (foldStr, funcName) = (f[0], f[1])
+        let (switchStateStr, funcName) = (f[0], f[1])
 
-        let fold = ValueParse.parseFoldState(foldStr)
+        var switchAction = SwitchAction(type: .lid, state: .off)
+        if !ValueParse.parseSwitchAction(switchStateStr, &switchAction) {
+            configError("Invalid switch state in switchbind: \(mangoHighlight(switchStateStr))")
+            return false
+        }
         guard Dispatch.isKnown(funcName) else {   // parse_func_name's name
             configError("Unknown dispatch in switchbind: \(mangoHighlight(funcName))")
             return false
         }
-        config.switchBindings.append(SwitchBinding(mode: mode, fold: fold, dispatch: Dispatch(name: funcName, args: Array(f[2...]))))
+        config.switchBindings.append(SwitchBinding(mode: mode, switchAction: switchAction, dispatch: Dispatch(name: funcName, args: Array(f[2...]))))
         switchLocs.append(BindingLocation(file: currentFile, line: lineNumber))
         note(.noEffect, key, ConfigParser.port?.optionNote(key, applied: false)?.1 ?? "")   // not in mango: the port's side
         return true
@@ -638,7 +642,7 @@ extension Config {
         c(&gestureSwipeDistance, 32, 4096)
         c(&gestureSwipeCancelRatio, 0.05, 0.95)
         gestureSwipeMinSpeedToForce = max(0, gestureSwipeMinSpeedToForce)
-        c(&scratchpadWidthRatio, 0.1, 1); c(&scratchpadHeightRatio, 0.1, 1)
+        c(&scratchpadWidthRatio, 0.0, 1); c(&scratchpadHeightRatio, 0.0, 1)
         c(&specialDim, 0, 1)
         c(&tabBarHeight, 0, 500); c(&groupBarHeight, 0, 500)
         c(&titleMessageBarHeight, 0, 500); c(&titleMessageBarGap, 0, 500)
@@ -797,8 +801,8 @@ public enum ConfigOptions {
         t["overlay_color"] = color(\.overlaycolor, "overlaycolor")
         t["drop_color"] = color(\.dropcolor, "dropcolor")
         t["split_color"] = color(\.splitcolor, "splitcolor")
-        t["scratchpad_width_ratio"] = float(\.scratchpadWidthRatio, 0.1...1)
-        t["scratchpad_height_ratio"] = float(\.scratchpadHeightRatio, 0.1...1)
+        t["scratchpad_width_ratio"] = float(\.scratchpadWidthRatio, 0.0...1)
+        t["scratchpad_height_ratio"] = float(\.scratchpadHeightRatio, 0.0...1)
         t["special_dim"] = float(\.specialDim, 0...1)
         t["special_gap_inner_horizontal"] = int(\.specialGappih, 0...1000)
         t["special_gap_inner_vertical"] = int(\.specialGappiv, 0...1000)

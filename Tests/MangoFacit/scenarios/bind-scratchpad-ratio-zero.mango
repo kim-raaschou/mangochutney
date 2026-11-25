@@ -1,0 +1,18 @@
+# scratchpad_width_ratio=0 and scratchpad_height_ratio=0 leave a scratchpad's size as it was;
+# one of them 0 forces only the other.
+config new_is_master=0
+config scratchpad_width_ratio=0
+config scratchpad_height_ratio=0
+open a
+open b
+open c 600x400 dialog
+dispatch minimized
+check
+dispatch toggle_scratchpad
+check
+dispatch toggle_scratchpad
+dispatch setoption,scratchpad_height_ratio,0.5
+dispatch minimized
+check
+dispatch toggle_scratchpad
+check

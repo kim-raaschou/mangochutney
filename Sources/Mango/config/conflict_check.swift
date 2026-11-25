@@ -40,7 +40,8 @@ extension ParserState {
     }
 
     static func sameSwitchbindKey(_ sa: SwitchBinding, _ sb: SwitchBinding) -> Bool {
-        sa.fold == sb.fold
+        sa.switchAction.type == sb.switchAction.type &&
+            sa.switchAction.state == sb.switchAction.state
     }
 
     static func sameGesturebindKey(_ ga: GestureBinding, _ gb: GestureBinding) -> Bool {

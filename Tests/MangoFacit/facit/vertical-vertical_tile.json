@@ -15,7 +15,7 @@
  },
  "checks": [
   {
-   "after_line": 6,
+   "after_line": 5,
    "clients": [
     {
      "title": "a",
@@ -135,7 +135,7 @@
    }
   },
   {
-   "after_line": 8,
+   "after_line": 7,
    "clients": [
     {
      "title": "a",
@@ -282,7 +282,7 @@
    }
   },
   {
-   "after_line": 10,
+   "after_line": 9,
    "clients": [
     {
      "title": "a",
@@ -456,7 +456,7 @@
    }
   },
   {
-   "after_line": 13,
+   "after_line": 12,
    "clients": [
     {
      "title": "a",
@@ -684,7 +684,7 @@
    }
   },
   {
-   "after_line": 15,
+   "after_line": 14,
    "clients": [
     {
      "title": "a",
@@ -912,7 +912,7 @@
    }
   },
   {
-   "after_line": 18,
+   "after_line": 16,
    "clients": [
     {
      "title": "a",
@@ -1140,7 +1140,7 @@
    }
   },
   {
-   "after_line": 22,
+   "after_line": 19,
    "clients": [
     {
      "title": "a",
@@ -1368,7 +1368,7 @@
    }
   },
   {
-   "after_line": 25,
+   "after_line": 21,
    "clients": [
     {
      "title": "a",

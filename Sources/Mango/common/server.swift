@@ -5,7 +5,7 @@ import QuartzCore
 // not in mango: the port's own version
 public let mangoVersion = "0.0.4-20261109-beta"
 // not in mango: meson.build's VERSION, with the commit of mango this port follows
-public let VERSION = "0.18.5(21f80a9)"
+public let VERSION = "0.18.6(2c6a664)"
 
 /* Scene layer ids; the scene tree keeps one tree per layer. */
 public enum Lyr: Int, Comparable {

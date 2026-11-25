@@ -439,6 +439,11 @@ package extension MangoServer {
         dropArea(dropBox.x, dropBox.y, dropBox.width, dropBox.height)
     }
 
+    // not in mango: no client_clip_source_boxes_valid (a wlroots precision check)
+    private func clientSetSurfaceClip(_ c: Client, _ clip: CGRect) {
+        system.sceneSubsurfaceTreeSetClip(c, clip)   // not in mango: the port's wlr_scene_subsurface_tree_set_clip
+    }
+
     func clientSetClip(_ c: Client, _ factor: Float) {
         if c.iskilling { return }
 
@@ -470,7 +475,7 @@ package extension MangoServer {
 
             if !shouldRenderClientSurface { return }
 
-            system.sceneSubsurfaceTreeSetClip(c, clipBox)   // not in mango: the port's wlr_scene_subsurface_tree_set_clip
+            clientSetSurfaceClip(c, clipBox)
             // not in mango: buffer_set_effect (no buffer effects on another app's window)
             return
         }
@@ -489,7 +494,7 @@ package extension MangoServer {
 
         if !shouldRenderClientSurface { return }
 
-        system.sceneSubsurfaceTreeSetClip(c, clipBox)   // not in mango: the port's wlr_scene_subsurface_tree_set_clip
+        clientSetSurfaceClip(c, clipBox)
         // not in mango: buffer_set_effect (no buffer effects on another app's window)
     }
 
@@ -749,7 +754,7 @@ package extension MangoServer {
 
             _ = clipToHide(c, &clip, offsets)
 
-            system.sceneSubsurfaceTreeSetClip(c, clip)   // not in mango: the port's wlr_scene_subsurface_tree_set_clip
+            clientSetSurfaceClip(c, clip)
             return
         }
 

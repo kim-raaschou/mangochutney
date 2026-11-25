@@ -1,5 +1,5 @@
 {
  "mango": "0.18.5 (21f80a9)",
- "exit": 0,
- "output": ""
+ "exit": 1,
+ "output": "[ERROR]: Invalid switch state in switchbind: fold\n\u2570\u2500[Index] /configs/parser-wayland-keys.conf:36\n   \u2570\u2500switchbind=fold,spawn,swaylock\n\n\n"
 }
