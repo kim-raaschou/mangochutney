@@ -219,7 +219,7 @@ package extension MangoServer {
         var n: Int32 = 0
 
         for m in monitors {
-            if m.isoverview {
+            if m.isoverview || m.isWsOverview {
                 return
             }
         }

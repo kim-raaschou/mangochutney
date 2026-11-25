@@ -36,3 +36,13 @@ public enum Screens {
 
     public static var mouseLocation: CGPoint { flip(NSEvent.mouseLocation) }
 }
+
+extension Screens {
+    /// The height of a display's notch (its safe area's top inset), 0 where it has none.
+    @MainActor public static func notchHeight(_ displayID: CGDirectDisplayID) -> Int {
+        guard let screen = NSScreen.screens.first(where: {
+            ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value == displayID
+        }) else { return 0 }
+        return Int(screen.safeAreaInsets.top.rounded(.up))
+    }
+}

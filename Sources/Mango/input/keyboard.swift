@@ -115,6 +115,7 @@ package enum KeyAction: Equatable {
     case endTagCombo
     case binding(KeyBinding, held: Bool)
     case overviewKey(OverviewKey)
+    case workspaceOverviewKey(UInt32)
     case forward(pid_t, down: Bool)
 }
 
@@ -125,9 +126,12 @@ package struct KeyInput {
     package var isDown: Bool
     package var isRepeat: Bool
     package var keyModifier: Modifiers?
-    package init(keyCode: UInt16, mods: Modifiers, isDown: Bool, isRepeat: Bool, keyModifier: Modifiers?) {
+    /// The key's keysym in the keyboard's layout (xkb_state_key_get_syms), 0 for none.
+    package var keysym: UInt32
+    package init(keyCode: UInt16, mods: Modifiers, isDown: Bool, isRepeat: Bool, keyModifier: Modifiers?,
+                 keysym: UInt32 = 0) {
         self.keyCode = keyCode; self.mods = mods; self.isDown = isDown; self.isRepeat = isRepeat
-        self.keyModifier = keyModifier
+        self.keyModifier = keyModifier; self.keysym = keysym
     }
 }
 
@@ -153,8 +157,11 @@ extension Keyboard {
     /// mango handle_keyboard_key (keyboard.c), up to the bindings
     // not in mango: what the event tap decides; the actions run on the main thread (MangoServer.handleKeyboardKey)
     package static func handleKeyboardKey(_ k: KeyInput, state: inout KeyboardState, bindings: [KeyBinding], mode: String,
-                                          virtualKeyboard: Bool) -> (actions: [KeyAction], handled: Bool, swallow: Bool) {
+                                          virtualKeyboard: Bool, workspaceOverviewActive: Bool = false)
+        -> (actions: [KeyAction], handled: Bool, swallow: Bool) {
         var actions: [KeyAction] = []
+        // not in mango: no session lock or exclusive layer focus (no layer shell)
+        let wsovIntercepts = workspaceOverviewActive
         let isModeKeycode = !(k.keyModifier ?? []).subtracting(.fn).isEmpty   // not in mango: Caps Lock and Fn are no mode keys, as in xkb
 
         // not in mango: the main thread asks overcircle, the switcher and the cursor (they may change before it runs)
@@ -203,6 +210,26 @@ extension Keyboard {
         if !k.isDown && keyboardIsBoundKey(state, k.keyCode) {
             keyboardUnmarkBoundKey(&state, k.keyCode)
             handled = true
+        }
+
+        /* Configured shortcuts keep priority while the workspace overview is open.
+         * Only unmodified keys which did not match a binding act as navigation. */
+        // not in mango: the main thread answers whether the overview took the key; it is swallowed either way
+        if wsovIntercepts && !handled &&
+            k.isDown && k.mods.subtracting(.fn).isEmpty {
+            actions.append(.workspaceOverviewKey(k.keysym))
+            handled = true
+        }
+
+        /* The workspace overview is modal. Presses which are not bindings and
+         * are not handled by its navigation must not leak to a hidden client.
+         * Mark the press so its matching release is swallowed without changing
+         * the normal handling of keys which were already held before entry. */
+        if wsovIntercepts && k.isDown {
+            state.lastHoldKeycode = nil
+            // not in mango: macOS sends the release to the frontmost app (wlroots has no focused surface)
+            keyboardMarkBoundKey(&state, k.keyCode)
+            return (actions, true, true)
         }
         return (actions, handled, handled)
     }
@@ -259,6 +286,8 @@ package extension MangoServer {
                     clientFocus(target, true)
                     toggleOverview(Arg(tc: target))
                 }
+            case .workspaceOverviewKey(let sym):
+                _ = workspaceOverviewHandleKey(sym)
             case .forward:
                 break
             }
@@ -286,7 +315,8 @@ package extension MangoServer {
                 [$0.jumpKeycodes.keycode1, $0.jumpKeycodes.keycode2, $0.jumpKeycodes.keycode3].compactMap { $0 }
             }),
             switcherActive: sw,
-            wantsMouseMoved: c.sloppyfocus || c.enableHotarea || c.cursorHideTimeout > 0 || hidden
+            workspaceOverviewActive: workspaceOverviewIsActive(),
+            wantsMouseMoved: workspaceOverviewIsActive() || c.sloppyfocus || c.enableHotarea || c.cursorHideTimeout > 0 || hidden
                 || c.windowRules.contains { $0.confinePointer == true } || c.enableBorderResize,
             hoverResizeCursor: hoverResizeEdge.isEmpty || grabClient != nil ? nil : resizeCursorName(hoverResizeEdge, hoverResizeFloating)))
         publishGlobalKeys()

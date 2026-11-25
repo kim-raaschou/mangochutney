@@ -25,6 +25,7 @@ package final class TestMango {
     /// mango started with these outputs, in the order the backend gives them.
     package init(_ config: String, screens: [Screen], file: StaticString = #filePath, line: UInt = #line) {
         server = MangoServer(configURL: URL(fileURLWithPath: "/nonexistent/config.conf"))
+        wsov = WsovState()   // mango's workspace overview is a global (struct wsov_state wsov), one per process
         let port = ConfigParser.port
         ConfigParser.port = FakeKeymap()   // the binds' keys as xkb's us keymap has them
         defer { ConfigParser.port = port }
@@ -110,9 +111,10 @@ package final class TestMango {
         let s = wlroots.input
         // keyboard.c leaves overcircle and the switcher on a mode key's release only for a real
         // keyboard (!group->virtual_keyboard)
-        let k = KeyInput(keyCode: code, mods: mods, isDown: down, isRepeat: false, keyModifier: own)
+        let k = KeyInput(keyCode: code, mods: mods, isDown: down, isRepeat: false, keyModifier: own,
+                         keysym: FakeKeymap.keysym(code))
         let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: s.bindings, mode: s.keymode,
-                                           virtualKeyboard: true)
+                                           virtualKeyboard: true, workspaceOverviewActive: s.workspaceOverviewActive)
         server.handleKeyboardKey(d.actions)
         if !d.handled {
             let u = Keyboard.handleUnboundKey(k, state: &keyboard, jumpMode: s.jumpMode, isEscape: code == FakeKeymap.code("escape"),
@@ -164,6 +166,12 @@ package final class TestMango {
         time += 1000
         server.publishInputState()
         let s = wlroots.input
+        if Pointer.workspaceOverviewTakesAxis(mods: wlroots.keyboardHardModifiers(), workspaceOverviewActive: s.workspaceOverviewActive) {
+            // a notch of a virtual pointer's wheel: discrete 120, delta 15
+            _ = server.workspaceOverviewHandleAxis(WlrPointerAxisEvent(timeMsec: time, delta: delta > 0 ? 15 : -15,
+                                                                       deltaDiscrete: delta > 0 ? 120 : -120))
+            return
+        }
         guard let axis = Pointer.handleCursorAxis(vertical: vertical, delta: delta, timeMsec: time,
                                                   mods: wlroots.keyboardHardModifiers(), axisBindings: s.axisBindings,
                                                   mode: s.keymode, axisBindApplyTimeout: s.axisBindApplyTimeout,

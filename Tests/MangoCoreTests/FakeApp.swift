@@ -251,6 +251,7 @@ final class EngineRig {
 
     init() {
         keepConfigErrorsInTests()
+        wsov = WsovState()   // mango's workspace overview is a global, one per process
         server.config.animations = false
         server.renderBorder = false
         server.rebuildMonitors(screens: [screen])

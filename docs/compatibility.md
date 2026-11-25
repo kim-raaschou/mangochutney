@@ -81,7 +81,7 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_hyper_modifier` | what HYPER means in a bind |
 | `chutney_keybindings_spotlight_launch` | the installed applications (Spotlight's Applications) in the keybindings palette's search |
 | `chutney_layout_switcher_keys` | the keys that move the layout switcher's selection: left,down,up,right (or h,j,k,l); the arrows always work |
-| `chutney_macos_appearance` | bars, switcher and jump labels in the macOS style where no decorate key is set |
+| `chutney_macos_appearance` | bars, switcher, jump labels and the workspace overview in the macOS style where no decorate key is set |
 | `chutney_menu_bar` | menu-bar item with the current tags and layout |
 | `chutney_menu_bar_layout` | the layout's icon in the menu bar |
 | `chutney_menu_bar_logo` | the mango logo in the menu bar: color, mono (the menu bar's colour) or 0 |

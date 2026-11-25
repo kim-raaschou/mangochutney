@@ -158,7 +158,7 @@ package extension MangoServer {
     private func clearTabProjection(_ m: Monitor) {
         for c in clients {
             if c.mon !== m { continue }
-            // not in mango: no workspace overview (wsov_hidden)
+            if m.isWsOverview && c.wsovHidden { continue }
             let wasHidden = c.isTabHidden
             c.tabPrev = nil
             c.tabNext = nil

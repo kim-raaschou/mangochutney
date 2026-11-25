@@ -111,15 +111,31 @@ extension MacWindowSystem {
 
     func sceneNodeSetEnabled(_ c: Client, _ enabled: Bool) {
         c.mac.sceneNodeEnabled = enabled
+        if holdingWrites { heldScenes.insert(c.windowID); return }
         showOrPark(c)
     }
 
     func sceneSurfaceSetEnabled(_ c: Client, _ enabled: Bool) {
         c.mac.sceneSurfaceEnabled = enabled
+        if holdingWrites { heldScenes.insert(c.windowID); return }
         showOrPark(c)
     }
 
     func outputScheduleFrame(_ m: Monitor) { frameClock.schedule(m) }
+
+    /// While mango measures (the workspace overview arranges every tag in turn) a window is neither shown
+    /// nor parked nor raised; what its scene is at the end is shown or parked then. Its place is written at
+    /// the frame as always, where mango last put it.
+    func holdWrites(_ hold: Bool) {
+        holdingWrites = hold
+        guard !hold else { return }
+        let ids = heldScenes
+        heldScenes.removeAll()
+        for id in ids {
+            guard let c = server.clientByWindowID(id) else { continue }
+            showOrPark(c)
+        }
+    }
 
     /// A disabled scene is parked out of sight when the frame is shown (wlroots' output commit), after
     /// the windows shown in the same frame are written; an enabled one is written where mango next puts it.

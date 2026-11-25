@@ -63,6 +63,8 @@ public final class Monitor {
     public weak var sel: Client?   // not in mango: weak, a closed client's pointer is not kept
     public weak var prevsel: Client?
     public var isoverview = false
+    public var isWsOverview = false
+    public var workspaceOverviewScope: Int32 = ALL_WORKSPACE
     public var isJumpMode = false
     public var isInHotarea = false
     public var ovNormalMode = false /* Uses the normal grid layout when entering via the
@@ -423,6 +425,8 @@ package extension MangoServer {
 
     // not in mango: no iscleanuping, and no fade-out clients, layers, workspaces or scene to tear down
     func handleOutputDestroy(_ m: Monitor) {
+        workspaceOverviewMonitorDestroy(m)
+
         monitors.removeAll { $0 === m }
 
         monitorClose(m)
@@ -540,6 +544,10 @@ package extension MangoServer {
             if started { clientFocus(clientFocusTop(sm), true) }   // not in mango: no focus before the port has its windows
         }
 
+        for m in monitors {
+            workspaceOverviewMonitorChanged(m)
+        }
+
         // not in mango: no cursor image, output manager, xdg-output or XWayland to update
     }
 
@@ -556,6 +564,9 @@ package extension MangoServer {
         for c in clients {
             needMoreFrames = clientDrawFrame(c) || needMoreFrames
         }
+        if m.isWsOverview {
+            workspaceOverviewPrepareOutputFrame(m)
+        }
 
         // not in mango: no frame skipping while clients resize; the port commits nothing
 
@@ -568,6 +579,10 @@ package extension MangoServer {
         // If more frames are needed, ensure the next frame is scheduled.
         if needMoreFrames {
             requestFreshAllMonitors()
+        }
+        // not in mango: wsov's frame listener on the output's frame (wsov_attach_frame_listener), after this one
+        if wsov.frameActive && wsov.mon === m {
+            wsovHandleFrame()
         }
     }
 

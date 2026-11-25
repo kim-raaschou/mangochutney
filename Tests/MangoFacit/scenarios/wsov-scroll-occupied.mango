@@ -1,0 +1,24 @@
+# toggleworkspaceoverview scroll_occupied, horizontal: the occupied tags in a row; the wheel and the arrows
+# step the target; enterworkspaceoverview keeps it open; Escape leaves.
+config new_is_master=0
+config workspace_overview_scroll_direction=horizontal
+open a
+dispatch view,4
+open b
+dispatch view,6
+open c
+dispatch view,1
+dispatch toggleworkspaceoverview,scroll_occupied
+check
+scroll down
+check
+scroll down
+check
+scroll down
+check
+key left
+check
+dispatch enterworkspaceoverview,scroll_occupied
+check
+key escape
+check

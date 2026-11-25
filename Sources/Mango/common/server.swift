@@ -35,6 +35,8 @@ public enum Lyr: Int, Comparable {
 @MainActor
 public final class MangoServer {
     package var system: WindowSystem!   // the boundary, not in mango: wlroots and the display server
+    // not in mango: only the scene trees mango builds its own nodes in (the workspace overview); the port draws them
+    package let layers: [WlrSceneTree] = (0...Lyr.block.rawValue).map { _ in wlrSceneTreeCreate(nil) }
     public package(set) var clients: [Client] = []    /* tiling order */
     public package(set) var focusStack: [Client] = [] /* focus order */
     package var cursorMode = CurNormal

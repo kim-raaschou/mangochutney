@@ -73,16 +73,6 @@ public enum MangoCompat {
         Group(name: "Xwayland", reason: "there is no X11 on macOS", keys: [
             "xwayland_persistence", "xwayland_ignore_scale",
         ]),
-        Group(name: "Workspace overview", reason: "the workspace overview is not ported yet", keys: [
-            "workspace_overview_border_width", "workspace_overview_drag_scroll_speed",
-            "workspace_overview_drag_threshold", "workspace_overview_focused_dim_opacity", "workspace_overview_gap",
-            "workspace_overview_occupied_keep_seen_tags", "workspace_overview_scroll_decel_gain",
-            "workspace_overview_scroll_decel_start_interval", "workspace_overview_scroll_direction",
-            "workspace_overview_scroll_ratio", "workspace_overview_unfocused_dim_opacity",
-            "animation_curve_workspace_overview_open", "animation_curve_workspace_overview_close",
-            "animation_curve_workspace_overview_move", "animation_duration_workspace_overview_open",
-            "animation_duration_workspace_overview_close", "animation_duration_workspace_overview_move",
-        ], notYet: true),
     ]
 
     public static let ignoredKeywords: [String: String] = [
@@ -188,14 +178,9 @@ public enum MangoCompat {
         "switch_keyboard_layout": "keyboard layouts are switched by macOS's input menu and its own shortcut (not built: chosen)",
         "toggle_trackpad_enable": "macOS has no API to switch the trackpad off",
         "chvt": "macOS has no virtual terminals",
-        "toggleworkspaceoverview": "the workspace overview is not ported yet",
-        "enterworkspaceoverview": "the workspace overview is not ported yet",
-        "leaveworkspaceoverview": "the workspace overview is not ported yet",
     ]
 
-    public static let dispatchersNotYet: Set<String> = [
-        "toggleworkspaceoverview", "enterworkspaceoverview", "leaveworkspaceoverview",
-    ]
+    public static let dispatchersNotYet: Set<String> = []
 
     public static let mangoWindowRuleFieldCount = 50
     public static let mangoKeywordCount = 18

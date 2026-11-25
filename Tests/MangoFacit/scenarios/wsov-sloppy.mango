@@ -1,0 +1,19 @@
+# with sloppy focus the pointer over a card makes its tag the target and views it, and focuses the window
+# under it.
+config new_is_master=0
+open a
+open b
+dispatch view,3
+open c
+dispatch view,1
+dispatch toggleworkspaceoverview,all
+pointer 160,180
+check
+pointer 480,180
+check
+pointer 1600,180
+check
+pointer 960,900
+check
+key return
+check

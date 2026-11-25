@@ -1,0 +1,26 @@
+# toggleworkspaceoverview occupied: cards for the tags with windows (and the tag in view); Return leaves on
+# the target's tag; toggling again leaves too.
+config new_is_master=0
+open a
+dispatch view,3
+open b
+open c
+dispatch view,5
+open d
+dispatch view,2
+dispatch toggleworkspaceoverview,occupied
+check
+key left
+check
+key right
+check
+key right
+check
+key return
+check
+dispatch toggleworkspaceoverview,occupied
+check
+key k
+check
+dispatch toggleworkspaceoverview,occupied
+check

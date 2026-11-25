@@ -238,6 +238,7 @@ package extension MangoServer {
         parseConfig()
         resetTag(oldTagNum)
         resetOption()
+        workspaceOverviewReload()
         // not in mango: no update_seat_capabilities and apply_primary_selection, the seat is macOS's
         printstatus(.arrangge)
         configWatcherUpdate()

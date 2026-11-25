@@ -12,6 +12,9 @@ class MacWindowSystem: WindowSystem {
         }
     }
     var heldFocus: Client?
+    /// holdWrites: the scenes mango set while the port held its writes back.
+    var holdingWrites = false
+    var heldScenes: Set<ClientID> = []
     var fullscreenTag = FullscreenTag.State()   // Port extension: chutney_fullscreen_tag
     /// Windows back from macOS fullscreen before its Space change was done: placed again at it.
     var fullscreenReturns: Set<ClientID> = []
@@ -69,6 +72,8 @@ class MacWindowSystem: WindowSystem {
     let tabBars: any BarDrawing
     let groupBars: any BarDrawing
     var overviewOverlays: [ObjectIdentifier: OverviewOverlay] = [:]
+    /// The panels of the trees mango builds under the special overlay layer (the workspace overview).
+    var scenePanels: [ObjectIdentifier: ScenePanel] = [:]
     var switcherPanel: SwitcherPanel?
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
     var swipeSent: Swipe?
@@ -81,7 +86,10 @@ class MacWindowSystem: WindowSystem {
     let watcher = AppWatcher()
     lazy var frameClock: FrameClock = {
         let clock = FrameClock(server)
-        clock.commit = { [weak self] in self?.commitFrame() }
+        clock.commit = { [weak self] in
+            self?.commitFrame()
+            self?.drawScene()
+        }
         return clock
     }()
     /// The port's time; the tests give their own.
@@ -152,7 +160,7 @@ class MacWindowSystem: WindowSystem {
         self.groupBars.onClose = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: true) }
     }
 
-    var pointer: CGPoint { Screens.mouseLocation }
+    var pointer: CGPoint { scenePointer(Screens.mouseLocation) }
 
     let eventLoop: EventLoop = MainEventLoop()
 
@@ -184,19 +192,20 @@ class MacWindowSystem: WindowSystem {
     /// A scene raise: done with the turn's focus, as one native call where it is the focused window.
     /// Whether it is parked is read at the flush, after the turn's arrange has placed it.
     func raise(_ c: Client) {
+        if holdingWrites { return }
         pendingRaises.removeAll { $0 === c }
         pendingRaises.append(c)
         scheduleFlush()
     }
 
     private func focusLater(_ c: Client) {
-        if holdFocus || !overviewOverlays.isEmpty { heldFocus = c; return }
+        if holdFocus || !overviewOverlays.isEmpty || !scenePanels.isEmpty { heldFocus = c; return }
         pendingFocus = c
         scheduleFlush()
     }
 
     func releaseHeldFocus() {
-        guard !holdFocus, overviewOverlays.isEmpty, let c = heldFocus else { return }
+        guard !holdFocus, overviewOverlays.isEmpty, scenePanels.isEmpty, let c = heldFocus else { return }
         heldFocus = nil
         if server.clientByWindowID(c.windowID) === c { focusLater(c) }
     }
@@ -709,6 +718,7 @@ class MacWindowSystem: WindowSystem {
             s.jumpMode = state.jumpMode
             s.jumpKeys = state.jumpKeycodes
             s.switcherActive = state.switcherActive
+            s.workspaceOverviewActive = state.workspaceOverviewActive
             s.hyper = hyper
             s.hyperKey = hyperKey
             s.wantsMouseMoved = state.wantsMouseMoved

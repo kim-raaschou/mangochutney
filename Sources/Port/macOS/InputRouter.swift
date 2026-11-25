@@ -18,6 +18,7 @@ final class InputRouter: @unchecked Sendable {
         var jumpMode = false
         var jumpKeys: Set<UInt16> = []
         var switcherActive = false
+        var workspaceOverviewActive = false
         var hyper: Modifiers = []
         var hyperKey = false
         var wantsMouseMoved = false
@@ -101,10 +102,11 @@ final class InputRouter: @unchecked Sendable {
         if ev.isDown && !ev.isModifierKey { lock.lock(); lastKey = ev.keyCode; lock.unlock() }
         if let opening = s.launchOrFocusPicker, !ev.isModifierKey, pickerKey(ev, opening: opening) { return true }
         let k = KeyInput(keyCode: ev.keyCode, mods: ev.mods, isDown: ev.isDown, isRepeat: ev.isRepeat,
-                         keyModifier: ev.isModifierKey ? HotkeyMatcher.modifier(forKeyCode: ev.keyCode) : nil)
+                         keyModifier: ev.isModifierKey ? HotkeyMatcher.modifier(forKeyCode: ev.keyCode) : nil,
+                         keysym: s.workspaceOverviewActive ? KeySyms.keysym(forKeyCode: ev.keyCode) : 0)
         lock.lock()
         let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: s.bindings, mode: s.keymode,
-                                           virtualKeyboard: false)
+                                           virtualKeyboard: false, workspaceOverviewActive: s.workspaceOverviewActive)
         lock.unlock()
         let age = ev.ageMs.map { String(format: "%.0f ms", $0) } ?? "?"
         if let a = ev.ageMs, a > 250, ev.isDown {
@@ -204,10 +206,14 @@ final class InputRouter: @unchecked Sendable {
         if ev.isDown {
             let decision = Pointer.pointerProcessButtonPress(button: button, at: p, mods: ev.mods, switcherActive: s.switcherActive,
                                                              overviewFrame: s.overviewFrame, mouseBindings: s.mouseBindings,
-                                                             mode: s.keymode, hoverResizeEdge: s.hoverResizeCursor != nil)
+                                                             mode: s.keymode, hoverResizeEdge: s.hoverResizeCursor != nil,
+                                                             workspaceOverviewActive: s.workspaceOverviewActive)
             let strip = decision == .borderResize
             onMain { $0.pointerProcessButtonPress(button: button, pressed: true, at: p, mods: mods, borderResizeTaken: strip) }
             switch decision {
+            case .workspaceOverview:
+                grabbing = true
+                return true
             case .switcher, .overview:
                 return true
             case .mouseBinding, .borderResize:
@@ -221,13 +227,14 @@ final class InputRouter: @unchecked Sendable {
                 return false
             }
         }
+        let wsovRelease = s.workspaceOverviewActive
         grabbing = false
         pressing = false
         onMain {
             $0.pointerProcessButtonPress(button: button, pressed: false, at: p, mods: mods)
             $0.mac.userButtonReleased(button: button, at: p)
         }
-        return false
+        return wsovRelease
     }
 
     static func eventTime() -> UInt32 {
@@ -292,6 +299,11 @@ final class InputRouter: @unchecked Sendable {
         if s.wantsMouseMoved { onMain { $0.pointerCursorActivity() } }
         var ev = event
         ev.mods = KeyboardOptions.hyperMods(ev.mods, hyper: s.hyper, keyHeld: hyperHeld)
+        if Pointer.workspaceOverviewTakesAxis(mods: ev.mods, workspaceOverviewActive: s.workspaceOverviewActive) {
+            let axis = WlrPointerAxisEvent(timeMsec: scrollTime(), delta: ev.delta, deltaDiscrete: Int32(ev.discrete * 120))
+            onMain { _ = $0.workspaceOverviewHandleAxis(axis) }
+            return true
+        }
         guard let axis = Pointer.handleCursorAxis(vertical: ev.vertical, delta: ev.delta, timeMsec: scrollTime(),
                                                   mods: ev.mods, axisBindings: s.axisBindings, mode: s.keymode,
                                                   axisBindApplyTimeout: s.axisBindApplyTimeout,

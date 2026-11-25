@@ -573,6 +573,7 @@ package extension MangoServer {
         // not in mango: client_reparent_group (no macOS part)
         clientFocus(clientFocusTop(selectedMonitor), true)
         arrange(cm, false, false)
+        workspaceOverviewClientTagsChanged(c)
         return 0
     }
 
@@ -731,6 +732,7 @@ package extension MangoServer {
         clientSetFloating(c, isfloatingBeforeScratchpad, true)
         bordersDirty = true   // not in mango: client_update_border_color; the port draws the borders at once
         clientFocus(c, true)
+        workspaceOverviewClientTagsChanged(c)
         pointerWarpToClient(c)
         return 0
     }
@@ -1292,7 +1294,7 @@ package extension MangoServer {
 
     // toggle the special workspace view on a given monitor
     func toggleSpecialTagMon(_ m: Monitor?) {
-        guard let m, !m.isoverview else { return }
+        guard let m, !m.isoverview, !workspaceOverviewIsActive() else { return }
 
         setSelectedMonitor(m)
         if isSpecialActive(m) {
@@ -1312,7 +1314,7 @@ package extension MangoServer {
     }
 
     private func tagSpecialTagInternal(_ arg: Arg, _ silent: Bool) {
-        if selectedMonitor == nil { return }
+        if selectedMonitor == nil || workspaceOverviewIsActive() { return }
         guard let c = arg.tc ?? focused else { return }
 
         let m: Monitor = c.mon ?? selectedMonitor
@@ -1408,6 +1410,9 @@ package extension MangoServer {
         }
         c.isglobal.toggle()
         updateBorders()   // not in mango: client_update_border_color; the port draws the borders at once
+        if workspaceOverviewIsActiveOn(c.mon), let m = c.mon {
+            arrange(m, false, false)
+        }
         return 0
     }
 
@@ -1456,6 +1461,9 @@ package extension MangoServer {
 
         clientRaiseLayers(m)   // not in mango: client_reparent_group; the port raises the layers
         updateBorders()   // not in mango: client_update_border_color; the port draws the borders at once
+        if workspaceOverviewIsActiveOn(c.mon) {
+            arrange(m, false, false)
+        }
         return 0
     }
 
@@ -1490,6 +1498,7 @@ package extension MangoServer {
             // not in mango: client_reparent_group (no macOS part)
             clientFocus(clientFocusTop(selectedMonitor), true)
             arrange(selectedMonitor, false, false)
+            workspaceOverviewClientTagsChanged(sel)
         }
         printstatus(.arrangge)
         return 0
@@ -1810,7 +1819,7 @@ package extension MangoServer {
         let onlyCurrent: Bool
         var currentTags: UInt32 = 0
 
-        guard let m else { return }
+        guard let m, !m.isWsOverview else { return }
         defer { publishInputState() }   // not in mango: the event tap's snapshot
 
         onlyCurrent = arg.i == 1
@@ -1945,6 +1954,10 @@ package extension MangoServer {
     @discardableResult
     func toggleJump(_ arg: Arg) -> Int32 {
         guard let m = selectedMonitor else { return 0 }
+
+        if m.isWsOverview {
+            return 0
+        }
         // not in mango: begin_jump_mode stays on when toggle_overview refuses a grab (a mango bug, docs/afvigelser.md §6)
         if grabClient != nil { return 0 }
 

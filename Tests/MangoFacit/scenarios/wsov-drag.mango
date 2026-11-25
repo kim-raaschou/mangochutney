@@ -1,0 +1,32 @@
+# a window dragged from one card to another goes to that tag (and leaves its own), and the overview views
+# the tag it was dropped on; dropped on a window it is tiled by the drop zone there.
+config new_is_master=0
+open a
+open b
+dispatch view,2
+open c
+dispatch view,1
+dispatch toggleworkspaceoverview,all
+pointer 480,180
+button left down
+move 20,0
+move 300,0
+pointer 960,180
+check
+button left up
+check
+pointer 1100,180
+button left down
+move 0,20
+move 0,300
+pointer 1100,540
+button left up
+check
+pointer 800,540
+button left down
+move -20,0
+pointer 300,180
+button left up
+check
+key return
+check

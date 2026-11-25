@@ -19,6 +19,19 @@ final class MainEventLoop: EventLoop {
         return Timer(source)
     }
 
+    /// wl_event_loop_add_idle: the main queue's next turn.
+    func addIdle(_ fire: @escaping @MainActor () -> Void) -> EventSource? {
+        let idle = Idle()
+        DispatchQueue.main.async { MainActor.assumeIsolated { if !idle.removed { fire() } } }
+        return idle
+    }
+
+    final class Idle: EventSource {
+        var removed = false
+        func remove() { removed = true }
+        func timerUpdate(_ msDelay: Int32) {}
+    }
+
     final class Source: EventSource {
         let source: DispatchSourceRead
         init(_ source: DispatchSourceRead) { self.source = source }

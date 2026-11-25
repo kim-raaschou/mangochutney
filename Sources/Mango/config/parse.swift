@@ -26,6 +26,12 @@ public struct Config: Sendable {
     public var animationCurveTag = AnimationCurve(bezier: [0.46, 1.0, 0.29, 0.99])
     public var animationCurveClose = AnimationCurve(bezier: [0.46, 1.0, 0.29, 0.99])
     public var animationCurveFocus = AnimationCurve(bezier: [0.46, 1.0, 0.29, 0.99])
+    public var animationDurationWsovOpen = 260
+    public var animationDurationWsovClose = 260
+    public var animationDurationWsovMove = 382
+    public var animationCurveWsovOpen = AnimationCurve(bezier: [1.0 / 3.0, 1.0, 2.0 / 3.0, 1.0])
+    public var animationCurveWsovClose = AnimationCurve(bezier: [1.0 / 3.0, 1.0, 2.0 / 3.0, 1.0])
+    public var animationCurveWsovMove = AnimationCurve(bezier: [0.26, 0.99, 0.26, 1.0])
 
     public var scrollerStructs = 20
     public var scrollerDefaultProportion: Float = 0.9
@@ -112,6 +118,17 @@ public struct Config: Sendable {
     public var hotareaDisableOnFullscreen = true
     public var overviewgappi = 5
     public var overviewgappo = 30
+    public var workspaceOverviewFocusedDimOpacity: Float = 0.0
+    public var workspaceOverviewUnfocusedDimOpacity: Float = 0.2
+    public var workspaceOverviewBorderWidth = 2
+    public var workspaceOverviewGap = 5
+    public var workspaceOverviewDragThreshold = 5
+    public var workspaceOverviewOccupiedKeepSeenTags = 1
+    public var workspaceOverviewScrollRatio: Float = 0.8
+    public var workspaceOverviewScrollDirection: WorkspaceOverviewScrollDirection = .vertical
+    public var workspaceOverviewDragScrollSpeed: Float = 1.5
+    public var workspaceOverviewScrollDecelStartInterval = 50
+    public var workspaceOverviewScrollDecelGain: Float = 0.5
     public var overcircleCenterRatio: Float = 0.5
     public var jumpLabels = "HJKLASDFGQWERTYUIOPZXCVBNM"
 
@@ -422,4 +439,9 @@ public struct GestureBinding: Equatable, Hashable, Sendable {
     public init(mode: String = "default", mods: Modifiers, motion: UInt32, fingersCount: UInt32, dispatch: Dispatch) {
         self.mode = mode; self.mods = mods; self.motion = motion; self.fingersCount = fingersCount; self.dispatch = dispatch
     }
+}
+
+/// mango WorkspaceOverviewScrollDirection (common/types.h)
+public enum WorkspaceOverviewScrollDirection: Sendable {
+    case horizontal, vertical
 }

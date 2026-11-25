@@ -37,6 +37,8 @@ public struct MouseButtonEvent {
 public struct ScrollEvent {
     public var vertical: Bool
     public var delta: Double
+    /// A wheel's notches (lines), 0 for a continuous scroll (trackpad), positive down and right.
+    public var discrete: Double = 0
     public var mods: Modifiers
     public var location: CGPoint
 }
@@ -163,7 +165,11 @@ public final class EventTap: @unchecked Sendable {
             if dx == 0 && dy == 0 { return false }
             // macOS's deltas are positive up and left
             let vertical = abs(dy) >= abs(dx)
-            return onScroll(ScrollEvent(vertical: vertical, delta: vertical ? -dy : -dx, mods: mods, location: loc))
+            let continuous = event.getIntegerValueField(.scrollWheelEventIsContinuous) != 0
+            let lines = vertical ? event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
+                : event.getDoubleValueField(.scrollWheelEventDeltaAxis2)
+            return onScroll(ScrollEvent(vertical: vertical, delta: vertical ? -dy : -dx, discrete: continuous ? 0 : -lines,
+                                        mods: mods, location: loc))
         default:
             return false
         }

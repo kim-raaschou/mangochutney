@@ -77,6 +77,10 @@ package protocol WindowSystem: AnyObject {
     func sceneSurfaceSetEnabled(_ c: Client, _ enabled: Bool)
     /// wlr_output_schedule_frame: the port calls handleOutputFrame(m) on the monitor's next frame.
     func outputScheduleFrame(_ m: Monitor)
+    /// Not in wlroots: while true the port keeps what mango writes to the windows (their places, scenes and
+    /// stacking) to itself, and writes only where they stand when it is set false (the workspace
+    /// overview's capture arranges every tag in turn).
+    func holdWrites(_ hold: Bool)
     var canCapture: Bool { get }
     func askToCapture()
     func keyboardHardModifiers() -> Modifiers

@@ -1,0 +1,24 @@
+# a click on a card leaves on its tag, focusing the window clicked, or none on an empty spot; a right
+# click on a window closes it.
+config new_is_master=0
+config sloppy_focus=0
+open a
+open b
+dispatch view,2
+open c
+dispatch view,1
+dispatch toggleworkspaceoverview,all
+pointer 959,541
+check
+click left
+check
+dispatch toggleworkspaceoverview,all
+pointer 160,180
+click left
+check
+dispatch toggleworkspaceoverview,all
+pointer 900,180
+click right
+check
+key escape
+check

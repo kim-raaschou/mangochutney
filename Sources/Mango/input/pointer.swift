@@ -492,6 +492,18 @@ package extension MangoServer {
 
     // not in mango: no device and no unaccelerated deltas (the relative pointer protocol)
     func pointerProcessMotion(_ time: UInt32, _ dx: Double, _ dy: Double) {
+        if workspaceOverviewIsActive() {
+            if time != 0 {
+                // not in mango: no relative pointer or wlr_cursor_move (macOS moves the pointer), and no
+                // layer-shell surface over the overview (pointer_wsov_direct_layer_at)
+                pointerCursorActivity()
+                pointerFocus(nil, nil, time)
+                let cursor = system.pointer
+                workspaceOverviewHandleMotion(cursor.x, cursor.y)
+            }
+            return
+        }
+
         var dx = dx, dy = dy
         var closetDropClient: Client?
         var shouldLock = false
@@ -842,6 +854,11 @@ package extension MangoServer {
 
         if pressed {
             cursorMode = CurPressed
+            // not in mango: no layer-shell surface over the overview (pointer_wsov_direct_layer_at)
+            if workspaceOverviewIsActive() {
+                pointerFocus(nil, nil, 0)
+                return workspaceOverviewHandleButton(button, true)
+            }
             if let m = monitorAtPoint(p) { setSelectedMonitor(m) }   // not in mango: the pointer is always on a monitor
 
             if switcherIsActive() && (button == 0 || button == 1) {
@@ -936,6 +953,10 @@ package extension MangoServer {
             return false
         }
 
+        if workspaceOverviewIsActive() {
+            return workspaceOverviewHandleButton(button, false)
+        }
+
         groupBarDragPending = false
         dropToGroup = false
         groupBarDragClient = nil
@@ -971,6 +992,7 @@ package extension MangoServer {
 /// Not in mango: mango's pointer decisions, taken on the port's event-tap thread (macOS wants the answer at once).
 package enum Pointer {
     package enum ButtonPress: Equatable {
+        case workspaceOverview
         case switcher
         case overview
         case mouseBinding(MouseBinding)
@@ -981,7 +1003,9 @@ package enum Pointer {
     /// mango pointer_process_button_press (pointer.c), what the event tap must know at once.
     package static func pointerProcessButtonPress(button: Int, at p: CGPoint, mods: Modifiers, switcherActive: Bool,
                                                   overviewFrame: CGRect?, mouseBindings: [MouseBinding],
-                                                  mode: String, hoverResizeEdge: Bool = false) -> ButtonPress {
+                                                  mode: String, hoverResizeEdge: Bool = false,
+                                                  workspaceOverviewActive: Bool = false) -> ButtonPress {
+        if workspaceOverviewActive { return .workspaceOverview }
         if switcherActive && (button == 0 || button == 1) { return .switcher }
         if let f = overviewFrame, f.contains(p), button == 0 || button == 1 { return .overview }
         let mods = mods.subtracting(.fn)
@@ -992,6 +1016,13 @@ package enum Pointer {
         }
         if button == 0 && hoverResizeEdge { return .borderResize }
         return .none
+    }
+
+    /// mango handle_cursor_axis (pointer.c), its first step: with no modifier held the workspace overview
+    /// takes the wheel (workspace_overview_handle_axis is true while it is active).
+    // not in mango: what the event tap must know at once; the axis goes to the main thread
+    package static func workspaceOverviewTakesAxis(mods: Modifiers, workspaceOverviewActive: Bool) -> Bool {
+        workspaceOverviewActive && mods.subtracting(.fn).isEmpty
     }
 
     /// mango handle_cursor_axis (pointer.c)

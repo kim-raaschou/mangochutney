@@ -168,3 +168,24 @@ public enum KeySyms {
         return r
     }()
 }
+
+extension KeySyms {
+    /// xkb_state_key_get_one_sym for the keys mango reads by keysym (the workspace overview's): the named
+    /// keys by their macOS key code, a character by the keyboard's layout (Latin-1 keysyms are the
+    /// character's code); 0 for none.
+    public static func keysym(forKeyCode code: UInt16, layout given: LayoutTable? = nil) -> UInt32 {
+        switch code {
+        case 53: return 0xff1b   // Escape
+        case 36: return 0xff0d   // Return
+        case 76: return 0xff8d   // KP_Enter
+        case 123: return 0xff51  // Left
+        case 126: return 0xff52  // Up
+        case 124: return 0xff53  // Right
+        case 125: return 0xff54  // Down
+        default: break
+        }
+        guard let ch = (given ?? layout()).reverse[code], let scalar = ch.unicodeScalars.first,
+              ch.unicodeScalars.count == 1, scalar.value < 0x100 else { return 0 }
+        return scalar.value
+    }
+}

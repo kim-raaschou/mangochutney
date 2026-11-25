@@ -26,6 +26,16 @@ package struct FakeKeymap: ConfigPort {
         125: .superKey, 126: .superKey, 42: .shift, 54: .shift, 29: .ctrl, 97: .ctrl, 56: .alt, 100: .alt,
     ]
 
+    /// The keysym xkb's us keymap gives a key with no modifier (the keys mango reads by keysym).
+    package static func keysym(_ code: UInt16) -> UInt32 {
+        let named: [String: UInt32] = ["escape": 0xff1b, "return": 0xff0d, "left": 0xff51, "up": 0xff52,
+                                       "right": 0xff53, "down": 0xff54]
+        guard let name = codes.first(where: { $0.value == code && !["prior", "next"].contains($0.key) })?.key else { return 0 }
+        if let sym = named[name] { return sym }
+        if name.count == 1, let scalar = name.unicodeScalars.first { return scalar.value }
+        return 0
+    }
+
     package static func code(_ name: String) -> UInt16? {
         let name = name.lowercased()
         return codes[["super": "super_l", "shift": "shift_l", "ctrl": "control_l", "alt": "alt_l"][name] ?? name]

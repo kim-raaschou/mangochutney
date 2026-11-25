@@ -2,6 +2,9 @@ import CoreGraphics
 
 package extension MangoServer {
     func setTaginAnimation(_ m: Monitor, _ c: Client) {
+        if workspaceOverviewIsActiveOn(m) {
+            return
+        }
         if c.animation.running {
             c.animainitGeom.origin.x = c.animation.current.minX
             c.animainitGeom.origin.y = c.animation.current.minY
@@ -40,8 +43,14 @@ package extension MangoServer {
         c.tagVisible = true
 
         let wasEnabled = c.platform.sceneNodeEnabled
+        let wsovActive = workspaceOverviewIsActiveOn(m)
+        if wsovActive {
+            c.animation.tagining = false
+            c.animation.tagouting = false
+            c.animation.tagouted = false
+        }
         let inPlace = wasEnabled && !c.animation.running && c.animation.current == c.geom
-        let tagSwitch = !inPlace && !c.animation.tagFromRule && wantAnimation && m.pertag.prevtag != 0
+        let tagSwitch = !inPlace && !c.animation.tagFromRule && wantAnimation && !wsovActive && m.pertag.prevtag != 0
             && m.pertag.curtag != 0 && clientAnimationsEnabled(c)
 
         if !ISTILED(c) || (!c.isClipToHide || !(c.mon.map(isScrollerLayout) ?? false)) {
@@ -58,7 +67,7 @@ package extension MangoServer {
             let reversing = c.animation.tagouting && c.animation.running
                 && c.animation.current != c.animation.initial
             c.animation.tagouting = false
-            if clientAnimationsEnabled(c) {
+            if !wsovActive && clientAnimationsEnabled(c) {
                 c.animation.tagining = true
                 c.animainitGeom = c.geom
                 if reversing {
@@ -81,7 +90,7 @@ package extension MangoServer {
             c.animation.tagFromRule = false
             c.animation.tagouting = false
             c.animation.tagouted = false
-            if wantAnimation && clientAnimationsEnabled(c) {
+            if wantAnimation && !wsovActive && clientAnimationsEnabled(c) {
                 c.animation.tagining = true
                 c.animainitGeom = c.geom
                 c.animainitGeom.origin.y = (c.mon?.m.minY ?? 0) - c.geom.height
@@ -108,6 +117,9 @@ package extension MangoServer {
     }
 
     func setTagoutAnimation(_ m: Monitor, _ c: Client) {
+        if workspaceOverviewIsActiveOn(m) {
+            return
+        }
         if (c.isglobal || c.isunglobal)
             || (m.pertag.prevtag > 0 && c.tags & (1 << (m.pertag.prevtag - 1)) != 0   // not in mango: prevtag 0 is not shifted
                 && m.pertag.curtag > 0 && c.tags & (1 << (m.pertag.curtag - 1)) != 0) {
@@ -142,8 +154,22 @@ package extension MangoServer {
 
     func setArrangeHidden(_ m: Monitor, _ c: Client, _ wantAnimation: Bool) {
         c.tagVisible = false
+        let wsovActive = workspaceOverviewIsActiveOn(m)
 
         // not in mango: the overview's card tree (ov_card_tree) is the port's pictures
+
+        if wsovActive {
+            c.animation.tagining = false
+            c.animation.tagouting = false
+            c.animation.tagouted = false
+            if c.animation.action == .tag {
+                c.animation.running = false
+                c.needOutputFlush = false
+                clientSetFinishGeometry(c)
+            }
+            clientUpdateVisibility(c)
+            return
+        }
 
         /* Scratchpad windows slide up and out when hidden */
         if c.tags & TAG0_MASK == 0 && c.isInScratchpad && c.isminimized {
@@ -188,7 +214,7 @@ package extension MangoServer {
             return
         }
 
-        if !c.isTabHidden && !c.animation.tagouted
+        if !workspaceOverviewIsClosingOn(m) && !c.isTabHidden && !c.animation.tagouted
             && m.pertag.prevtag != 0 && c.tags & (1 << (m.pertag.prevtag - 1)) != 0   // not in mango: prevtag 0 is not shifted
             && m.pertag.curtag != 0 && clientAnimationsEnabled(c) {
             c.animation.tagouting = true

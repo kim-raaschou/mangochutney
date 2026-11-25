@@ -1076,6 +1076,10 @@ package extension MangoServer {
         let centered = m.pertag.ltidxs[tag] == .centerTile
 
         for c in clients {
+            if m.isWsOverview && c.wsovHidden &&
+                !workspaceOverviewIsClosingOn(m) {
+                continue
+            }
             if !VISIBLEON(c, m) || !ISFAKETILED(c) {
                 continue
             }
@@ -1107,6 +1111,11 @@ package extension MangoServer {
         }
     }
 
+    func wsovHiddenFromArrange(_ m: Monitor, _ c: Client) -> Bool {
+        m.isWsOverview && c.wsovHidden &&
+            !workspaceOverviewIsClosingOn(m)
+    }
+
     func preCalculateBeforeArrange(_ m: Monitor, _ wantAnimation: Bool, _ fromView: Bool, _ onlyCalculate: Bool) {
         var totalStackWeight: CGFloat = 0
         var totalMasterWeight: CGFloat = 0
@@ -1136,7 +1145,9 @@ package extension MangoServer {
         }
 
         for c in clients {
-            // not in mango: no workspace overview (wsov_hidden_from_arrange)
+            if wsovHiddenFromArrange(m, c) {
+                continue
+            }
             // not in mango: client_check_tab_node_visible; the port draws the bars from the state
 
             if c.mon === m && (c.isglobal || c.isunglobal) {
@@ -1180,6 +1191,9 @@ package extension MangoServer {
 
         for c in clients {
             if c.iskilling {
+                continue
+            }
+            if wsovHiddenFromArrange(m, c) {
                 continue
             }
 
@@ -1453,6 +1467,7 @@ package extension MangoServer {
         }
 
         printstatus(.arrangge)
+        workspaceOverviewLayoutChanged(m)
     }
 
 

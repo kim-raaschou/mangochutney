@@ -1,0 +1,21 @@
+# toggleworkspaceoverview scroll_all: the cards in a strip; the wheel steps the target one card a notch and
+# views its tag; the arrows step it too; leaveworkspaceoverview leaves on the tag in view.
+config new_is_master=0
+open a
+dispatch view,2
+open b
+dispatch view,1
+dispatch toggleworkspaceoverview,scroll_all
+check
+scroll down
+check
+scroll down
+check
+scroll up
+check
+key down
+check
+key up
+check
+dispatch leaveworkspaceoverview
+check

@@ -1,0 +1,17 @@
+# toggleworkspaceoverview all: a card for every tag in a grid; the arrows move the target and view its tag
+# live; Escape leaves on the target's tag.
+config new_is_master=0
+open a
+open b
+dispatch view,2
+open c
+dispatch toggleworkspaceoverview,all
+check
+key right
+check
+key down
+check
+key l
+check
+key escape
+check

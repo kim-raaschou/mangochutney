@@ -475,6 +475,7 @@ package extension MangoServer {
 
     func clientSetClip(_ c: Client, _ factor: Float) {
         if c.iskilling { return }
+        workspaceOverviewClientFrame(c)
 
         // not in mango: the overview's card tree (ov_card_tree) and overview_scene_surface are the port's pictures
 

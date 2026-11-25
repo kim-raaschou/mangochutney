@@ -120,6 +120,8 @@ public final class Client {
     public var tagVisible = false
     /* per-frame: surface clipped away by the draw path */
     public var isSurfaceHidden = false
+    /* temporarily hidden while workspace overview renders offscreen previews */
+    public var wsovHidden = false
     public var overviewBackedUp = false   // not in mango: overview_backup ran (a mango bug, docs/afvigelser.md §6)
 
     package init(id: ClientID, pid: pid_t, platform: PlatformWindow, bundleId: String, appName: String, title: String,
@@ -815,7 +817,11 @@ package extension MangoServer {
 
         guard let m = c.mon, !c.iskilling else { return }   // not in mango: every Client is a mapped window
 
-        if !c.isfloating || !config.enableFloatingSnap { return }
+        /* Workspace overview keeps the drop position under the pointer. Applying
+         * edge/window snapping here shifts the final window away from the preview.
+         */
+        if !c.isfloating || !config.enableFloatingSnap ||
+            workspaceOverviewIsActiveOn(c.mon) { return }
 
         for tc in clients {
             if tc.isfloating && !tc.iskilling && VISIBLEON(tc, m) {   // not in mango: every Client is a mapped window
@@ -897,6 +903,7 @@ package extension MangoServer {
         c.tabPrev = nil
         c.tabNext = nil
         c.tagVisible = false
+        c.wsovHidden = false
         c.isSurfaceHidden = false
         c.gridColPer = 1.0
         c.gridRowPer = 1.0
@@ -1022,6 +1029,7 @@ package extension MangoServer {
         // make sure the animation is open type
         c.isPendingOpenAnimation = true
         resize(c, c.geom, ResizeOpts(interact: false))
+        workspaceOverviewClientAdded(c)
         printstatus(.arrangge)
     }
 
@@ -1076,7 +1084,11 @@ package extension MangoServer {
 
     package func handleClientUnmap(_ c: Client) {
         guard clientByIdAll(c.id) === c else { return }   // not in mango: the port may report a window gone twice
-        // not in mango: no workspace overview (workspace_overview_active_workspace_will_empty)
+        /* Capture this before removing c: the generic unmap path keeps using the
+         * now-empty active tag and can otherwise clear the overview selection. */
+        let wsovActiveWorkspaceEmptied =
+            c.mon?.isWsOverview == true &&
+            workspaceOverviewActiveWorkspaceWillEmpty(c)
         c.iskilling = true
         switcherRemoveClient(c)
         let targetNode = c.mon.flatMap { findScrollerNode($0.pertag.scrollerState[getClientTagIdx(c)], c) }
@@ -1099,7 +1111,7 @@ package extension MangoServer {
             replaced = true
         }
         if !replaced { clientTagStatesRemove(c) }
-        // not in mango: no workspace overview (workspace_overview_client_removed)
+        workspaceOverviewClientRemoved(c)
 
         if c === grabClient {
             cursorMode = CurNormal
@@ -1164,13 +1176,16 @@ package extension MangoServer {
         initClientProperties(c)
 
         // not in mango: no scene node to destroy
+        /* This must run after client_set_monitor() and the generic focus cleanup.
+         */
+        workspaceOverviewClientUnmapped(c, wsovActiveWorkspaceEmptied)
         printstatus(.arrangge)
         pointerProcessMotion(0, 0, 0)
     }
 
     package func handleClientDestroy(_ c: Client) {
         switcherRemoveClient(c)
-        // not in mango: no workspace overview (workspace_overview_client_removed)
+        workspaceOverviewClientRemoved(c)
         pointerClientDestroyed(c)
         clientTagStatesRemove(c)
     }
@@ -1190,6 +1205,7 @@ package extension MangoServer {
         guard clientByIdAll(c.id) === c, !c.iskilling else { return }   // not in mango: clientByIdAll stands for the listener
         drawBars()   // not in mango: client_update_group_bar_title and client_update_tab_bar_title; the port draws all bars
         titleMessageBarUpdateTitle(c)
+        workspaceOverviewClientTitleChanged(c)
         if let m = c.mon, c === clientFocusTop(m) { printstatus(.arrangge) }
     }
 
@@ -1357,6 +1373,10 @@ package extension MangoServer {
         var tmptag: UInt32
 
         guard let m, !(arg.ui != (~0 & TAGMASK) && m.isoverview) else { return }
+        if m.isWsOverview && arg.ui != UInt32.max &&
+            arg.ui & TAG0_MASK != 0 {
+            return
+        }
 
         if arg.ui == 0 { return }
 
@@ -1412,8 +1432,12 @@ package extension MangoServer {
     }
 
     func tagClient(_ arg: Arg, _ targetClient: Client?) {
+        var tagsChanged = false
         if let targetClient, arg.ui & (TAGMASK | TAG0_MASK) != 0 {
+
+            let oldTags = targetClient.tags
             targetClient.tags = arg.ui & TAG0_MASK != 0 ? TAG0_MASK : arg.ui & TAGMASK
+            tagsChanged = oldTags != targetClient.tags
             // not in mango: client_reparent_group (no macOS part)
             clearFullscreenForIncomingTiledClient(targetClient)
             if arg.ui & TAG0_MASK != 0, let cm = targetClient.mon {
@@ -1426,7 +1450,9 @@ package extension MangoServer {
         }
 
         clientFocus(targetClient, true)
-        // not in mango: no workspace overview (workspace_overview_client_tags_changed)
+        if tagsChanged, let targetClient {
+            workspaceOverviewClientTagsChanged(targetClient)
+        }
         printstatus(.arrangge)
     }
 
@@ -1639,7 +1665,7 @@ package extension MangoServer {
         // not in mango: check_vrr_enable and check_keep_idle_inhibit (no macOS part)
 
         if rearrange { arrange(m, false, false) }
-        // not in mango: no workspace overview (workspace_overview_client_stack_changed)
+        workspaceOverviewClientStackChanged(c)
     }
 
     func clientSetFakeFullscreen(_ c: Client, _ fakefullscreen: Bool) {
@@ -1935,7 +1961,7 @@ package extension MangoServer {
     }
 
     func clientReplace(_ c: Client, _ w: Client, isGroupChangeMember: Bool) {
-        // not in mango: no workspace overview (workspace_overview_client_replaced)
+        workspaceOverviewClientReplaced(w, c)
         pointerClientReplaced(w, c)
 
         c.bw = w.bw
@@ -1983,7 +2009,7 @@ package extension MangoServer {
         w.jumpLabelNode?.setEnabled(false)
 
         c.tagVisible = w.tagVisible
-        // not in mango: no workspace overview (wsov_hidden)
+        c.wsovHidden = w.wsovHidden
         w.tagVisible = false
         clientUpdateVisibility(w)
         clientUpdateVisibility(c)
@@ -2156,6 +2182,8 @@ package extension MangoServer {
     }
 
     func clientShouldVisible(_ c: Client) -> Bool {
+        if c.wsovHidden { return false }
+
         // not in mango: no snapshot_temp_visible (no close animation)
 
         if c.isminimized && !c.animation.tagouting { return false }
@@ -2177,6 +2205,10 @@ package extension MangoServer {
     }
 
     func clientUpdateVisibility(_ c: Client) {
+        if c.wsovHidden, let m = c.mon, !m.isWsOverview, !workspaceOverviewIsClosingOn(m) {
+            c.wsovHidden = false
+        }
+
         // not in mango: client_update_input_penetration (macOS gives a moving window its clicks)
 
         let show = clientShouldVisible(c)

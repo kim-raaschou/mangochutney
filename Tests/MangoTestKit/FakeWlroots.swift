@@ -110,6 +110,8 @@ package final class FakeWlroots: WindowSystem {
     /// The monitors mango asked to draw a frame on (wlr_output_schedule_frame).
     package private(set) var framesDue: Set<CGDirectDisplayID> = []
     package func outputScheduleFrame(_ m: Monitor) { framesDue.insert(m.screen.displayID) }
+    /// The fake writes nothing to hold back.
+    package func holdWrites(_ hold: Bool) {}
     package func takeFramesDue() -> Set<CGDirectDisplayID> {
         defer { framesDue.removeAll() }
         return framesDue
@@ -215,4 +217,6 @@ package final class FakeEventLoop: EventLoop {
     }
     package func addFd(_ fd: Int32, _ readable: @escaping @MainActor () -> Void) -> EventSource { Source() }
     package func addTimer(_ fire: @escaping @MainActor () -> Void) -> EventSource { Source() }
+    /// No idle: mango's callers run the work at once when wl_event_loop_add_idle fails.
+    package func addIdle(_ fire: @escaping @MainActor () -> Void) -> EventSource? { nil }
 }
