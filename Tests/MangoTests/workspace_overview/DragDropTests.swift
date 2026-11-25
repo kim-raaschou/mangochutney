@@ -56,4 +56,23 @@ final class DragDropTests: XCTestCase {
 
         XCTAssertEqual(mango.client("b").tags, 0b11, "c->tags |= target_bit")
     }
+
+    /// Not mango's own detail: the port has no live surfaces, so a card's buffer must show the window dropped
+    /// on an empty tag at once, as mango's live surface does.
+    func testAWindowDroppedOnAnEmptyTagIsShownInItsCard() {
+        let mango = TestMango("new_is_master=0")
+        mango.map("a")
+        mango.map("b")
+        mango.run("toggleworkspaceoverview", "all")
+
+        mango.pointer(to: CGPoint(x: 480, y: 180))
+        mango.button(0, down: true)
+        mango.pointer(to: CGPoint(x: 500, y: 180))
+        mango.pointer(to: CGPoint(x: 960, y: 540))
+        mango.button(0, down: false)
+
+        let card = wsov.cells.first { $0.tag == 5 }!
+        XCTAssertEqual(card.contents.buffer?.items.map(\.client), [mango.client("b").windowID])
+        XCTAssertTrue(card.contents.enabled)
+    }
 }

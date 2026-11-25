@@ -251,6 +251,26 @@ extension MangoServer {
         wlrSceneBufferSetBuffer(target, WlrBuffer(width: bufferW, height: bufferH, background: background,
                                                   items: items))
         wlrSceneBufferSetSourceBox(target, nil)
+        // not in mango: the buffer holds the live windows too, so it is placed at once as their surfaces would be
+        wsovPlaceCellBuffer(cell, target)
+    }
+
+    /// Not in mango: wsov_apply_camera's placing of a cell's buffer, for one buffer.
+    func wsovPlaceCellBuffer(_ cell: WsovCell, _ target: WlrSceneBuffer) {
+        var view = WsovCameraView()
+        if !wsovGetCameraView(wsov.progress, &view) {
+            return
+        }
+        let cellBox = wsovCellLayoutBox(cell)
+        let contentX = lround(
+            (Double(cellBox.x + wsovBorderWidth()) - view.x) * view.scaleX)
+        let contentY = lround(
+            (Double(cellBox.y + wsovBorderWidth()) - view.y) * view.scaleY)
+        let contentW = MANGO_MAX(
+            1, lround(Double(MANGO_MAX(1, cellBox.width - 2 * wsovBorderWidth())) * view.scaleX))
+        let contentH = MANGO_MAX(
+            1, lround(Double(MANGO_MAX(1, cellBox.height - 2 * wsovBorderWidth())) * view.scaleY))
+        wsovPlaceBufferClipped(target, nil, contentX, contentY, contentW, contentH)
     }
 
     func wsovPrepareCellForRender(_ cell: WsovCell?) {
