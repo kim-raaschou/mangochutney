@@ -22,6 +22,7 @@ class MacWindowSystem: WindowSystem {
     /// What the port asks of macOS about other apps' windows (NativeWindows): macOS's in the app, the
     /// tests' own in tests.
     lazy var native: any NativeWindows = MacNativeWindows(self)
+    lazy var host: any HostSystem = MacHostSystem(self)
 
     func fullscreenNow(_ c: Client) -> Bool? { native.fullscreenNow(c) }
     func windowOnScreen(_ id: CGWindowID) -> Bool { native.windowOnScreen(id) }
@@ -135,11 +136,11 @@ class MacWindowSystem: WindowSystem {
         self.groupBars.onClose = { [weak self] id in self?.barPress(id, isTab: false, right: false, onClose: true) }
     }
 
-    var pointer: CGPoint { scenePointer(Screens.mouseLocation) }
+    var pointer: CGPoint { host.pointer }
 
     let eventLoop: EventLoop = MainEventLoop()
 
-    func quit() { NSApp.terminate(nil) }
+    func quit() { host.quit() }
 
     /// The port's own focus: back to mango's window after the port's panel.
     func focus(_ c: Client, raise: Bool) {
@@ -221,10 +222,7 @@ class MacWindowSystem: WindowSystem {
         }
     }
 
-    func warp(to p: CGPoint) {
-        guard server.drawsOverlays else { return }
-        NativeFocus.warpCursor(to: p)
-    }
+    func warp(to p: CGPoint) { host.warp(to: p) }
 
     /// The seat's pointer focus is only remembered: on macOS the apps get the pointer from the system.
     var pointerFocusedSurface: ClientID? { seatPointerFocus }
@@ -421,10 +419,7 @@ class MacWindowSystem: WindowSystem {
         panels.jumpLabel(c, data)
     }
 
-    func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
-        let codes = KeyNames.keyCodes(forName: String(keysym))
-        return MultiKeycode(keycode1: codes.first, keycode2: codes.dropFirst().first, keycode3: codes.dropFirst(2).first)
-    }
+    func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode { host.findKeycodesForKeysym(keysym) }
 
     func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>) {
         let backmost = alpha == nil ? nil : stackingOrder().last { over.contains($0.id) }?.id
@@ -457,35 +452,17 @@ class MacWindowSystem: WindowSystem {
         }
     }
 
-    var mouseButtons: Int { Int(NSEvent.pressedMouseButtons) }
+    var mouseButtons: Int { host.mouseButtons }
 
     func ipcGetLayoutStr() -> String { KeyNames.currentLayoutName() }
 
-    var inputDevices: [InputDevice] { InputDevices.all() }
+    var inputDevices: [InputDevice] { host.inputDevices }
 
     var keyMappings: [KeyboardOptions.Mapping] = []
     var userKeyMappings: [KeyboardOptions.Mapping]?
     var appliedKeyMappings: [KeyboardOptions.Mapping]?
 
-    func setKeyboardOptions(_ options: String) {
-        var m = KeyboardOptions.mappings(KeyboardOptions.xkbOptions(options))
-        if let h = KeyboardOptions.hyperKeyMapping(server.config.chutneyHyperKey), !m.contains(where: { $0.src == h.src }) {
-            m.append(h)
-        }
-        if userKeyMappings == nil {
-            let now = KeyboardOptions.current() ?? []
-            userKeyMappings = now.filter { $0.dst != KeyboardOptions.f18 }
-            appliedKeyMappings = now
-        }
-        let all = KeyboardOptions.merged(user: userKeyMappings ?? [], mango: m)
-        keyMappings = m
-        guard all != appliedKeyMappings else { return }
-        appliedKeyMappings = all
-        KeyboardOptions.apply(all)
-        if KeyboardOptions.takesCapsLock(m) { KeyboardOptions.capsLockOff() }
-        wlrLog(.info, m.isEmpty ? "xkb_rules_options: the keyboard's key mapping cleared"
-                           : "xkb_rules_options: \(m.count) key(s) moved")
-    }
+    func setKeyboardOptions(_ options: String) { host.setKeyboardOptions(options) }
 
     func allWindowIDs() -> Set<ClientID> { AppWorker.allWindowIDs() }
 
@@ -564,13 +541,11 @@ class MacWindowSystem: WindowSystem {
         _ = restore.wait(timeout: .now() + 2)
     }
 
-    func rescan() {
-        frameClock.whenIdle { [weak self] in self?.watcher.refreshAll(recheckRejected: true) }
-    }
+    func rescan() { host.rescan() }
 
-    func spawn(_ command: String) { Spawn.run(command) }
+    func spawn(_ command: String) { host.spawn(command) }
 
-    func spawnShell(_ command: String) { Spawn.shell(command) }
+    func spawnShell(_ command: String) { host.spawnShell(command) }
 
     var animationsRunning: Bool { frameClock.animationsRunning }
     func whenAnimationsIdle(_ body: @escaping () -> Void) { frameClock.whenIdle(body) }
@@ -596,49 +571,11 @@ class MacWindowSystem: WindowSystem {
         server.handleCursorSwipeEnd(cancelled: cancelled)
     }
 
-    func startInput() {
-        CursorHider.prepareTapCursors()
-        router.server = server
-        let r = router
-        tap.onKey = { [unowned tap] ev in r.key(ev, modifierOnlySinceDown: tap.lastKeyPressWasModifierOnly) }
-        tap.onMouseButton = { ev in r.mouseButton(ev) }
-        tap.onMouseDragged = { p in r.dragged(p) }
-        tap.onMouseMoved = { p in r.mouseMoved(p) }
-        tap.onScroll = { ev in r.scroll(ev) }
-        if !tap.start() { wlrLog(.error, "could not create event tap (Accessibility permission missing?)") }
-        gestures.onEvent = { [weak self] event, time in
-            MainActor.assumeIsolated {
-                switch event {
-                case .update(let s): self?.swipeUpdate(s, time)
-                case .end(_, let cancelled): self?.swipeEnd(cancelled: cancelled)
-                }
-            }
-        }
-        let close: @Sendable (Notification) -> Void = { [weak server] _ in
-            MainActor.assumeIsolated { server?.switcherClose() }
-        }
-        let dnc = DistributedNotificationCenter.default(), ws = NSWorkspace.shared.notificationCenter
-        let layoutChanged: @Sendable (Notification) -> Void = { [weak server] _ in
-            MainActor.assumeIsolated { server?.printstatus(.kbLayout) }
-        }
-        // Behind a locked screen Accessibility gives no windows: they are read again once it is unlocked.
-        let unlocked: @Sendable (Notification) -> Void = { [weak self] _ in
-            MainActor.assumeIsolated { self?.watcher.refreshAll(recheckRejected: true) }
-        }
-        observers = [
-            dnc.addObserver(forName: Notification.Name("com.apple.screenIsLocked"), object: nil, queue: .main, using: close),
-            dnc.addObserver(forName: Notification.Name("com.apple.screenIsUnlocked"), object: nil, queue: .main, using: unlocked),
-            ws.addObserver(forName: NSWorkspace.sessionDidResignActiveNotification, object: nil, queue: .main, using: close),
-            dnc.addObserver(forName: Notification.Name("com.apple.Carbon.TISNotifySelectedKeyboardInputSourceChanged"),
-                            object: nil, queue: .main, using: layoutChanged),
-        ]
-    }
+    func startInput() { host.startInput() }
 
     func keyboardCancelPendingReleaseBind() { router.cancelPendingReleaseBind() }
 
-    func watchGestures(_ on: Bool) {
-        if on { gestures.start() } else { gestures.stop() }
-    }
+    func watchGestures(_ on: Bool) { host.watchGestures(on) }
 
     func publishInput(_ state: InputState) {
         let hyperKey = !server.config.chutneyHyperKey.isEmpty
@@ -710,16 +647,11 @@ class MacWindowSystem: WindowSystem {
         writer(for: c.pid)?.async { [el = c.element] in el.setMinimized(minimizeWindow) }
     }
 
-    var canCapture: Bool { WindowSnapshot.hasPermission }
+    var canCapture: Bool { host.canCapture }
 
-    func askToCapture() { Permissions.shared.askForCapture() }
+    func askToCapture() { host.askToCapture() }
 
-    /// keyboard_hard_modifiers: the keyboards' own modifiers, without posted events (mango leaves out
-    /// virtual keyboards).
-    func keyboardHardModifiers() -> Modifiers {
-        KeyboardOptions.hyperMods(Modifiers(cgFlags: CGEventSource.flagsState(.hidSystemState)),
-                                  hyper: KeyboardOptions.hyperSet(server.config), keyHeld: router.hyperKeyHeld)
-    }
+    func keyboardHardModifiers() -> Modifiers { host.keyboardHardModifiers() }
 
 
     func readFrame(_ c: Client, _ done: @escaping @MainActor (CGRect?) -> Void) {

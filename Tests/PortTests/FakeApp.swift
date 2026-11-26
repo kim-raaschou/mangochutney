@@ -246,12 +246,47 @@ final class FakeNativeWindows: NativeWindows {
     func focusSpaceAnchor(_ m: Monitor) { anchored += 1 }
 }
 
+/// The tests' machine (HostSystem): no hardware is read, nothing is started or spawned; what the port
+/// asked is kept, and the answers are the test's.
+@MainActor
+final class FakeHostSystem: HostSystem {
+    var pointer = CGPoint(x: 1, y: 1)
+    var modifiers: Modifiers = []
+    var quits = 0
+    var asked = 0
+    var rescans = 0
+    var canCapture = false
+    var warps: [CGPoint] = []
+    var keyboardOptions: String?
+    var inputDevices: [InputDevice] = []
+    var spawned: [String] = [], shelled: [String] = []
+
+    func warp(to p: CGPoint) { warps.append(p); pointer = p }
+    func keyboardHardModifiers() -> Modifiers { modifiers }
+    var mouseButtons: Int { 0 }
+    func setKeyboardOptions(_ options: String) { keyboardOptions = options }
+    /// A fixed keymap: a letter's key code is its place in the alphabet.
+    func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
+        guard let a = keysym.lowercased().first?.asciiValue, a >= 97, a <= 122 else { return MultiKeycode() }
+        return MultiKeycode(keycode1: UInt16(a - 97))
+    }
+    func startInput() {}
+    func watchGestures(_ on: Bool) {}
+    func askToCapture() { asked += 1 }
+    func spawn(_ command: String) { spawned.append(command) }
+    func spawnShell(_ command: String) { spawned.append(command); shelled.append(command) }
+    /// The tests reach no real app: the watcher does not scan them.
+    func rescan() { rescans += 1 }
+    func quit() { quits += 1 }
+}
+
 @MainActor
 final class FakeWindowSystem: MacWindowSystem {
     init(_ server: MangoServer) {
         super.init(server, borders: FakeBorders(), tabBars: FakeBars(), groupBars: FakeBars())
         panels = fakePanels
         native = fakeNative
+        host = fakeHost
         // the app answers which window has the keys: this one; the window under a point is the topmost shown
         fakeNative.onAskFocus = { [unowned self] id in windowFocused(id: id) }
         fakeNative.windowAt = { [unowned self] p in server.clientsAll.first { !$0.parked && $0.frame.contains(p) }?.windowID }
@@ -285,24 +320,20 @@ final class FakeWindowSystem: MacWindowSystem {
     var cursorHidden: Bool { get { fakePanels.cursorHidden } set { fakePanels.cursorHidden = newValue } }
     var cursorName: String?? { get { fakePanels.cursorName } set { fakePanels.cursorName = newValue } }
 
-    var fakePointer = CGPoint(x: 1, y: 1)
-    var fakeModifiers: Modifiers = []
-    var quits = 0
-    var asked = 0
-    var rescans = 0
-    /// The tests reach no real app: the watcher does not scan them.
-    override func rescan() { rescans += 1 }
-    override var pointer: CGPoint { fakePointer }
-    override func keyboardHardModifiers() -> Modifiers { fakeModifiers }
-    override var mouseButtons: Int { 0 }
-    override func startInput() {}
-    override func watchGestures(_ on: Bool) {}
-    var fakeCanCapture = false
-    override var canCapture: Bool { fakeCanCapture }
-    override func quit() { quits += 1 }
-    override func askToCapture() { asked += 1 }
-    var warps: [CGPoint] = []
-    override func warp(to p: CGPoint) { warps.append(p); fakePointer = p }
+    /// What the port asked of the machine (HostSystem).
+    let fakeHost = FakeHostSystem()
+    var fakePointer: CGPoint { get { fakeHost.pointer } set { fakeHost.pointer = newValue } }
+    var fakeModifiers: Modifiers { get { fakeHost.modifiers } set { fakeHost.modifiers = newValue } }
+    var quits: Int { get { fakeHost.quits } set { fakeHost.quits = newValue } }
+    var asked: Int { get { fakeHost.asked } set { fakeHost.asked = newValue } }
+    var rescans: Int { get { fakeHost.rescans } set { fakeHost.rescans = newValue } }
+    var fakeCanCapture: Bool { get { fakeHost.canCapture } set { fakeHost.canCapture = newValue } }
+    var warps: [CGPoint] { get { fakeHost.warps } set { fakeHost.warps = newValue } }
+    var keyboardOptions: String? { get { fakeHost.keyboardOptions } set { fakeHost.keyboardOptions = newValue } }
+    var fakeInputDevices: [InputDevice] { get { fakeHost.inputDevices } set { fakeHost.inputDevices = newValue } }
+    var spawned: [String] { get { fakeHost.spawned } set { fakeHost.spawned = newValue } }
+    var shelled: [String] { get { fakeHost.shelled } set { fakeHost.shelled = newValue } }
+
     /// The borders and bars as mango hands them to the port; the port then draws them as it does.
     var borderSpecs: [BorderSpec] = []
     /// How many times mango has drawn the borders.
@@ -315,18 +346,6 @@ final class FakeWindowSystem: MacWindowSystem {
     var shownBorderSpecs: [BorderSpec] { (borders as! FakeBorders).shown }
     var shownTabStrips: [TabStrip] { (tabBars as! FakeBars).shown }
     var shownGroupStrips: [TabStrip] { (groupBars as! FakeBars).shown }
-    /// A fixed keymap: a letter's key code is its place in the alphabet.
-    override func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
-        guard let a = keysym.lowercased().first?.asciiValue, a >= 97, a <= 122 else { return MultiKeycode() }
-        return MultiKeycode(keycode1: UInt16(a - 97))
-    }
-    var keyboardOptions: String?
-    override func setKeyboardOptions(_ options: String) { keyboardOptions = options }
-    var fakeInputDevices: [InputDevice] = []
-    override var inputDevices: [InputDevice] { fakeInputDevices }
-    var spawned: [String] = [], shelled: [String] = []
-    override func spawn(_ command: String) { spawned.append(command) }
-    override func spawnShell(_ command: String) { spawned.append(command); shelled.append(command) }
 }
 
 @MainActor
