@@ -44,8 +44,12 @@ Frame-løkken drives af portens frame clock. Skjulning (`wsov_hidden`) er parker
 
 ## Grænsen
 
-- `WindowSystem`: vis/opdatér/luk wsov-panelet med kortene og deres indhold (porten tegner);
-  hold skrivninger tilbage under målingen.
+- Scenen: kernen bygger wlroots' scene-noder (`Sources/Boundary/Scene.swift`) under
+  `server.layers[LyrSpecialOverlay]`, som mango gør. Porten tegner det træ ved hver frame
+  (`MacWindowSystem.drawScene`); der er ingen særlige vis/opdatér/luk-kald. Hvad der tegnes, afgør
+  `SceneDrawing` (ren, testet); `ScenePanel` lægger det ud som lag. Porten læser `wsov` ét sted
+  (`MacWindowSystem.workspaceOverview`).
+- `WindowSystem.holdWrites`: porten holder skrivninger tilbage under målingen.
 - Input: når wsov er aktiv, sender porten knapper, bevægelse, hjul og taster til kernens
   `workspace_overview_handle_*`, som mango gør i `pointer.c` og `keyboard.c`.
 
