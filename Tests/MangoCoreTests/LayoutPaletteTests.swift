@@ -53,7 +53,9 @@ final class LayoutPaletteTests: MangoTestCase {
     }
 
     func testCircleLayoutWithoutTheLayoutInViewOrAnyLayout() {
-        XCTAssertEqual(LayoutPaletteGrid(circle: ["tile", "monocle"], selecting: .grid).selected, .tile, "the first")
+        let outside = LayoutPaletteGrid(circle: ["tile", "monocle"], selecting: .grid)
+        XCTAssertEqual(outside.cells.flatMap { $0 }, [.tile, .monocle, .grid], "the layout in view is added")
+        XCTAssertEqual(outside.selected, .grid, "and chosen")
         XCTAssertEqual(LayoutPaletteGrid(circle: ["nope", "tile", "tile"], selecting: .tile).cells, [[.tile]])
         XCTAssertEqual(LayoutPaletteGrid(circle: ["nope"], selecting: .tile).cells, LayoutPaletteGrid.all, "none: all 14")
     }

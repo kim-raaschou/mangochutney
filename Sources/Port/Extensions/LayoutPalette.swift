@@ -137,7 +137,9 @@ public struct LayoutPaletteGrid: Equatable {
     public private(set) var column = 0
 
     public init(circle: [String] = [], selecting kind: LayoutKind) {
-        let kinds = CircleLayout.kinds(circle)
+        var kinds = CircleLayout.kinds(circle)
+        // the tag's own layout is shown and chosen also where it is not in circle_layout
+        if !kinds.isEmpty && !kinds.contains(kind) { kinds.append(kind) }
         let rows = (kinds.count + Self.columns - 1) / Self.columns
         let perRow = rows == 0 ? 0 : (kinds.count + rows - 1) / rows
         cells = kinds.isEmpty ? Self.all : stride(from: 0, to: kinds.count, by: perRow).map {
