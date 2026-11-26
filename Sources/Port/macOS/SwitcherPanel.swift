@@ -33,15 +33,7 @@ final class SwitcherPanel {
     init(panel: CGRect, tiles: [Tile], style: Style, scale: CGFloat) {
         origin = panel.origin
         self.style = style
-        window = NSWindow(contentRect: cocoaRect(panel), styleMask: .borderless, backing: .buffered, defer: false)
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.level = .popUpMenu
-        window.ignoresMouseEvents = true
-        window.isReleasedWhenClosed = false
-        window.hasShadow = style.macOS
-        window.animationBehavior = .none
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        window = OverlayWindow.make(frame: panel, level: .popUpMenu, shadow: style.macOS)
         let root = FlippedView(frame: CGRect(origin: .zero, size: panel.size))
         root.wantsLayer = true
         if style.macOS {
@@ -154,15 +146,7 @@ final class TitleMessageBar {
     private let view = TitleMessageBarView()
 
     init() {
-        window = NSWindow(contentRect: .zero, styleMask: .borderless, backing: .buffered, defer: false)
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.level = .popUpMenu
-        window.ignoresMouseEvents = true
-        window.isReleasedWhenClosed = false
-        window.hasShadow = true
-        window.animationBehavior = .none
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        window = OverlayWindow.make(level: .popUpMenu, shadow: true)
         window.appearance = NSAppearance(named: .vibrantDark)
         container.addContent(view)
         window.contentView = container
@@ -172,7 +156,7 @@ final class TitleMessageBar {
         view.title = title
         view.appid = appid
         view.style = style
-        window.setFrame(cocoaRect(frame), display: false)
+        window.setFrame(OverlayWindow.cocoa(frame), display: false)
         view.frame = container.bounds
         container.materialHidden = style.focusBgColor != nil
         let r = min(CGFloat(style.cornerRadius ?? TitleMessageBarView.macRadius), min(frame.width, frame.height) / 2)
@@ -365,11 +349,3 @@ func decorateFont(_ d: FontDescription) -> NSFont {
 }
 
 private func nsColor(_ c: RGBA) -> NSColor { NSColor(red: c.r, green: c.g, blue: c.b, alpha: c.a) }
-
-private func cocoaRect(_ r: CGRect) -> CGRect {
-    CGRect(x: r.minX, y: Screens.primaryHeight - r.maxY, width: r.width, height: r.height)
-}
-
-private final class FlippedView: NSView {
-    override var isFlipped: Bool { true }
-}

@@ -39,18 +39,9 @@ final class ScenePanel {
         self.icon = icon
         self.layoutIcon = layoutIcon
         self.windowSizes = windowSizes
-        let cocoa = CGRect(x: frame.minX, y: Screens.primaryHeight - frame.maxY, width: frame.width, height: frame.height)
-        window = NSWindow(contentRect: cocoa, styleMask: .borderless, backing: .buffered, defer: false)
-        window.isOpaque = false
-        window.backgroundColor = .clear
         // above the menu bar and the Dock: mango's overlay layer covers the whole output
-        window.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 1)
-        window.ignoresMouseEvents = true   // the event tap gives mango the pointer
-        window.isReleasedWhenClosed = false
-        window.hasShadow = false
-        window.animationBehavior = .none
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
-        let view = SceneFlippedView(frame: CGRect(origin: .zero, size: frame.size))
+        window = OverlayWindow.make(frame: frame, level: NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 1))
+        let view = FlippedView(frame: CGRect(origin: .zero, size: frame.size))
         view.wantsLayer = true
         root = CALayer()
         root.anchorPoint = .zero
@@ -213,10 +204,6 @@ final class ScenePanel {
         guard c.a > 0 else { return CGColor(red: 0, green: 0, blue: 0, alpha: 0) }
         return CGColor(red: min(1, c.r / c.a), green: min(1, c.g / c.a), blue: min(1, c.b / c.a), alpha: c.a)
     }
-}
-
-private final class SceneFlippedView: NSView {
-    override var isFlipped: Bool { true }
 }
 
 extension MacWindowSystem {

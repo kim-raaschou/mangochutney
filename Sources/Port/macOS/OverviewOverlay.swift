@@ -38,17 +38,8 @@ final class OverviewOverlay {
         self.focusColor = NSColor(red: focusColor.r, green: focusColor.g, blue: focusColor.b, alpha: 1).cgColor
         self.borderColor = NSColor(red: borderColor.r, green: borderColor.g, blue: borderColor.b,
                                    alpha: mango == nil ? 0.8 : borderColor.a).cgColor
-        let h = Screens.primaryHeight
-        let frame = CGRect(x: origin.x, y: h - workArea.maxY, width: workArea.width, height: workArea.maxY - origin.y)
-        window = NSWindow(contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)
-        window.isOpaque = false
-        window.backgroundColor = .clear
-        window.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1)
-        window.ignoresMouseEvents = true
-        window.isReleasedWhenClosed = false
-        window.hasShadow = false
-        window.animationBehavior = .none
-        window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
+        let frame = CGRect(x: origin.x, y: origin.y, width: workArea.width, height: workArea.maxY - origin.y)
+        window = OverlayWindow.make(frame: frame, level: NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1))
         root = FlippedView(frame: CGRect(origin: .zero, size: frame.size))
         root.wantsLayer = true
         if let mango {
@@ -165,8 +156,4 @@ final class OverviewOverlay {
         window.orderOut(nil)
         window.close()
     }
-}
-
-private final class FlippedView: NSView {
-    override var isFlipped: Bool { true }
 }
