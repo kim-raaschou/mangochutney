@@ -16,6 +16,8 @@ protocol NativeWindows: AnyObject {
     func windowServerFrame(_ id: ClientID) -> CGRect?
     /// The windows on the screen, front to back.
     func stackingOrder() -> [StackedWindow]
+    /// What writes to an app's windows (its Accessibility queue).
+    func writer(for pid: pid_t) -> (any WindowWriter)?
     /// The window under a point (the window server's answer), nil for none of mango's.
     func surfaceAt(_ p: CGPoint) -> ClientID?
     /// The app is asked which of its windows has the keys; its answer comes as a focus report.
@@ -49,6 +51,8 @@ final class MacNativeWindows: NativeWindows {
     func windowServerFrame(_ id: ClientID) -> CGRect? { AppWorker.windowServerFrame(id) }
 
     func stackingOrder() -> [StackedWindow] { AppWorker.stackingOrder() }
+
+    func writer(for pid: pid_t) -> (any WindowWriter)? { mac.watcher.writeQueue(for: pid) }
 
     func surfaceAt(_ p: CGPoint) -> ClientID? {
         if let k = surfaceAtTurn, k.p == p { return k.id }

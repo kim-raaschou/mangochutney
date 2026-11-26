@@ -107,11 +107,9 @@ class MacWindowSystem: WindowSystem {
     func hideEdgePlate(_ id: ClientID) { panels.hideEdgePlate(id) }
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
-    var writerOverride: ((pid_t) -> (any WindowWriter)?)?
 
     func writer(for pid: pid_t) -> (any WindowWriter)? {
-        if let writerOverride { return writerOverride(pid) }
-        return watcher.writeQueue(for: pid)
+        native.writer(for: pid)
     }
 
     func stackingOrder() -> [StackedWindow] { native.stackingOrder() }
