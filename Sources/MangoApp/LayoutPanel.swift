@@ -88,8 +88,6 @@ final class LayoutPanelModel: ObservableObject {
         option(key, String(max(0, px)))
     }
 
-    func tagField(_ field: String) -> String { "tag_rule id:\(server?.selectedMonitor?.pertag.curtag ?? 0) \(field)" }
-
     var accent: Color { PortAccent.color(config) }
     private var menuURL: URL? { server.flatMap { MenuSave.url($0.config, configURL: $0.configURL) } }
 
