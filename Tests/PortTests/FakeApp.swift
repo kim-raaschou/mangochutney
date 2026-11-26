@@ -231,9 +231,14 @@ final class FakeNativeWindows: NativeWindows {
     var surfaceOverride: ClientID?
     /// The window under a point where no override is set.
     var windowAt: (CGPoint) -> ClientID? = { _ in nil }
+    /// Where the window server has a window: the test's app answers.
+    var windowServerFrames: (CGWindowID) -> CGRect? = { _ in nil }
+    var stacking: [StackedWindow] = []
 
     func fullscreenNow(_ c: Client) -> Bool? { axFullscreen(c.windowID) }
     func windowOnScreen(_ id: CGWindowID) -> Bool { onScreen(id) }
+    func windowServerFrame(_ id: ClientID) -> CGRect? { windowServerFrames(id) }
+    func stackingOrder() -> [StackedWindow] { stacking }
     func surfaceAt(_ p: CGPoint) -> ClientID? { surfaceOverride ?? windowAt(p) }
     func askFocus(_ c: Client) { focusAsked.append(c.windowID); onAskFocus(c.windowID) }
     func sendNativeFocus(_ c: Client, raise: Bool) { focused.append((c.windowID, raise)) }
@@ -370,8 +375,7 @@ final class EngineRig {
         server.mac.frameClock.manual = true
         server.mac.memory.layoutURL = nil
         server.mac.writerOverride = { _ in app }
-        server.mac.windowServerOverride = { [app] id in app.frames[id] }
-        server.mac.stackingOverride = { [] }
+        (server.system as! FakeWindowSystem).fakeNative.windowServerFrames = { [app] id in app.frames[id] }
         server.started = true
         server.registerPortExtensions()
     }

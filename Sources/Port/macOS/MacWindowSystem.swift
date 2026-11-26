@@ -67,7 +67,6 @@ class MacWindowSystem: WindowSystem {
     let tap = EventTap()
     let router = InputRouter()
     let gestures = GestureRecognizer()
-    var windowServerOverride: ((CGWindowID) -> CGRect?)?
     let watcher = AppWatcher()
     lazy var frameClock: FrameClock = {
         let clock = FrameClock(server)
@@ -109,16 +108,13 @@ class MacWindowSystem: WindowSystem {
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
     var writerOverride: ((pid_t) -> (any WindowWriter)?)?
-    var stackingOverride: (() -> [StackedWindow])?
 
     func writer(for pid: pid_t) -> (any WindowWriter)? {
         if let writerOverride { return writerOverride(pid) }
         return watcher.writeQueue(for: pid)
     }
 
-    func stackingOrder() -> [StackedWindow] {
-        stackingOverride?() ?? AppWorker.stackingOrder()
-    }
+    func stackingOrder() -> [StackedWindow] { native.stackingOrder() }
     var observers: [NSObjectProtocol] = []
 
     /// The borders and bars are drawn by AppKit unless others are given (the tests').
@@ -552,10 +548,7 @@ class MacWindowSystem: WindowSystem {
 
     var screens: [Screen] { Screens.all() }
 
-    func windowServerFrame(_ id: ClientID) -> CGRect? {
-        if let windowServerOverride { return windowServerOverride(id) }
-        return AppWorker.windowServerFrame(id)
-    }
+    func windowServerFrame(_ id: ClientID) -> CGRect? { native.windowServerFrame(id) }
 
     /// macOS's tracker gives the swipe so far and no begin; mango's handlers get a begin and each step.
     func swipeUpdate(_ s: Swipe, _ time: UInt32) {

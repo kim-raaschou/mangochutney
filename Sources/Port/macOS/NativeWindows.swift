@@ -12,6 +12,10 @@ protocol NativeWindows: AnyObject {
     func fullscreenNow(_ c: Client) -> Bool?
     /// Whether a window is on the active Space.
     func windowOnScreen(_ id: CGWindowID) -> Bool
+    /// Where the window server has the window now, nil for none.
+    func windowServerFrame(_ id: ClientID) -> CGRect?
+    /// The windows on the screen, front to back.
+    func stackingOrder() -> [StackedWindow]
     /// The window under a point (the window server's answer), nil for none of mango's.
     func surfaceAt(_ p: CGPoint) -> ClientID?
     /// The app is asked which of its windows has the keys; its answer comes as a focus report.
@@ -41,6 +45,10 @@ final class MacNativeWindows: NativeWindows {
         guard let info = CGWindowListCopyWindowInfo([.optionIncludingWindow], id) as? [[String: Any]] else { return false }
         return info.first?[kCGWindowIsOnscreen as String] as? Bool ?? false
     }
+
+    func windowServerFrame(_ id: ClientID) -> CGRect? { AppWorker.windowServerFrame(id) }
+
+    func stackingOrder() -> [StackedWindow] { AppWorker.stackingOrder() }
 
     func surfaceAt(_ p: CGPoint) -> ClientID? {
         if let k = surfaceAtTurn, k.p == p { return k.id }
