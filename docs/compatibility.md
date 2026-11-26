@@ -77,6 +77,7 @@ Unset, mango behaves as mango does. In mango itself each is an unknown keyword, 
 | `chutney_fit_layout` | where a tiled window's app keeps it larger than its tile: where the layout has room for it on that side, mango's resizewin on it by what it lacks; 1: "Fit layout" in the menu bar's menu, 2: also a macOS notification with a Fit button, or one saying there is no room, 3: by itself (the dispatcher chutney_fit_layout always) |
 | `chutney_fullscreen_tag` | a window mango manages that goes into macOS fullscreen moves alone to its own tag F1–F12 after mango's tags, as macOS gives it its own Space, drawn in the menu bar as its app's icon: the tag it leaves closes up, its Space and its tag are viewed together, and out of fullscreen it is back on its tag, in its place; mango's togglefullscreen is macOS fullscreen, and macOS fullscreen is mango's |
 | `chutney_group_bar_decorate_icon` | the app's icon before each title in the group bar |
+| `chutney_workspace_overview_layout` | each tag's layout icon on its card in the workspace overview; a click opens the layout switcher |
 | `chutney_hyper_key` | the key held as HYPER, as Raycast's Hyper Key: caps_lock, a left_ or right_ control, shift, option or command, f1 … f12 (macOS's own key mapping) |
 | `chutney_hyper_modifier` | what HYPER means in a bind |
 | `chutney_keybindings_spotlight_launch` | the installed applications (Spotlight's Applications) in the keybindings palette's search |

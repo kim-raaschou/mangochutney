@@ -15,6 +15,9 @@ extension Config {
     package var chutneyTabBarDecorateIcon: Bool {
         get { bool("chutney_tab_bar_decorate_icon", false) } set { set("chutney_tab_bar_decorate_icon", newValue) }
     }
+    package var chutneyWorkspaceOverviewLayout: Bool {
+        get { bool("chutney_workspace_overview_layout", false) } set { set("chutney_workspace_overview_layout", newValue) }
+    }
     package var chutneyGroupBarDecorateIcon: Bool {
         get { bool("chutney_group_bar_decorate_icon", false) } set { set("chutney_group_bar_decorate_icon", newValue) }
     }

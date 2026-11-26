@@ -28,6 +28,10 @@ final class InputRouter: @unchecked Sendable {
         var hoverResizeCursor: String?
         var globalKeys: [RoutedGlobalKey] = []
         var launchOrFocusPicker: UInt16??   // Port extension: chutney_launch_or_focus's picture is up (its opening key)
+        /// Port extension: chutney_workspace_overview_layout. The cards' layout icons, and the layout
+        /// switcher's frame while it is up over the workspace overview (it takes its own keys and clicks).
+        var layoutBadges: [(box: CGRect, tag: UInt32)] = []
+        var layoutSwitcherFrame: CGRect?
     }
 
     private let lock = NSLock()
@@ -47,6 +51,8 @@ final class InputRouter: @unchecked Sendable {
     private var pressing = false
     private var menuBarPress = false
     private var pickerPress = false   // Port extension: a click taken by chutney_launch_or_focus's picture
+    private var badgePress = false   // Port extension: a click on a workspace overview card's layout icon
+    private var switcherPress = false   // Port extension: a click on the layout switcher over the overview
 
     private var pendingDrag: (dx: Double, dy: Double, time: UInt32)?
     private var pendingMove: (dx: Double, dy: Double, time: UInt32)?
@@ -104,6 +110,8 @@ final class InputRouter: @unchecked Sendable {
         let k = KeyInput(keyCode: ev.keyCode, mods: ev.mods, isDown: ev.isDown, isRepeat: ev.isRepeat,
                          keyModifier: ev.isModifierKey ? HotkeyMatcher.modifier(forKeyCode: ev.keyCode) : nil,
                          keysym: s.workspaceOverviewActive ? KeySyms.keysym(forKeyCode: ev.keyCode) : 0)
+        // Port extension: the layout switcher over the workspace overview takes the keys itself
+        if s.layoutSwitcherFrame != nil && s.workspaceOverviewActive { return false }
         lock.lock()
         let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: s.bindings, mode: s.keymode,
                                            virtualKeyboard: false, workspaceOverviewActive: s.workspaceOverviewActive)
@@ -198,6 +206,18 @@ final class InputRouter: @unchecked Sendable {
         if !ev.isDown, pickerPress {
             pickerPress = false
             return true
+        }
+        // Port extension: chutney_workspace_overview_layout. The layout switcher over the overview takes its
+        // own clicks; a click on a card's layout icon opens it.
+        if s.workspaceOverviewActive {
+            if ev.isDown, let f = s.layoutSwitcherFrame, f.contains(p) { switcherPress = true; return false }
+            if !ev.isDown, switcherPress { switcherPress = false; return false }
+            if ev.isDown, button == 0, let hit = s.layoutBadges.first(where: { $0.box.contains(p) }) {
+                badgePress = true
+                onMain { $0.mac.layoutBadgeClicked(tag: hit.tag) }
+                return true
+            }
+            if !ev.isDown, badgePress { badgePress = false; return true }
         }
         // node_at_point gives a press on a bar to the bar: its panel takes it (barPress), not the window under it
         if ev.isDown, (s.tabBarFrames + s.groupBarFrames).contains(where: { $0.contains(p) }) {

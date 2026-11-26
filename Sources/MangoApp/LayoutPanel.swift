@@ -555,16 +555,7 @@ struct LayoutGrid: View {
             ForEach(LayoutKind.allCases, id: \.self) { kind in
                 let on = kind == model.layout
                 Button { model.setLayout(kind) } label: {
-                    VStack(spacing: 3) {
-                        LayoutIcon(kind: kind, selected: on, tint: model.accent)
-                        Text(kind.name)
-                            .font(.system(size: 9, design: .monospaced))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                    .frame(width: 74, height: 44)
-                    .background { RoundedRectangle(cornerRadius: 6).fill(on ? model.accent : Color.primary.opacity(0.06)) }
-                    .foregroundStyle(on ? Color.white : Color.primary)
+                    LayoutCell(kind: kind, selected: on, tint: model.accent, size: CGSize(width: 74, height: 44))
                 }
                 .buttonStyle(.plain)
                 .overlay(alignment: .topTrailing) {

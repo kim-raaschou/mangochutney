@@ -47,6 +47,11 @@ public final class LayoutPalette {
         }
         (panel?.contentView as? GlassBacking)?.cornerRadius = model.look.cornerRadius
         place()
+        // over the workspace overview's panel, which takes its keys and clicks while it is up
+        let overOverview = !server.mac.scenePanels.isEmpty
+        panel?.level = overOverview ? NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 2) : .floating
+        let frame = overOverview ? panel.map { Screens.flip($0.frame, primaryHeight: Screens.primaryHeight) } : nil
+        server.mac.router.publish { $0.layoutSwitcherFrame = frame }
         server.holdNativeFocus = true
         if keyMonitor == nil {
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] e in
@@ -109,6 +114,7 @@ public final class LayoutPalette {
     func close() {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         keyMonitor = nil
+        server?.mac.router.publish { $0.layoutSwitcherFrame = nil }
         guard panel?.isVisible == true else { return }
         panel?.orderOut(nil)
         guard let server else { return }
@@ -216,15 +222,17 @@ struct LayoutPaletteView: View {
     @ViewBuilder
     private func cell(_ kind: LayoutKind?, selected: Bool) -> some View {
         let look = model.look
-        VStack(spacing: 6) {
+        Group {
             if let kind {
-                LayoutIcon(kind: kind, selected: selected, tint: look.accent, size: CGSize(width: model.cell.width * 0.58, height: model.cell.width * 0.39))
-                Text(kind.name).font(look.font(max(9, model.cell.width * 0.105))).foregroundColor(selected ? look.selectionText : look.text)
-                    .lineLimit(1)
+                LayoutCell(kind: kind, selected: selected, tint: look.accent,
+                           iconSize: CGSize(width: model.cell.width * 0.58, height: model.cell.width * 0.39),
+                           nameFont: look.font(max(9, model.cell.width * 0.105)), spacing: 6,
+                           size: CGSize(width: model.cell.width - 6, height: model.cell.height - 6), cornerRadius: 8,
+                           selectedFill: look.selectionFill, fill: .clear, text: look.text, selectedText: look.selectionText)
+            } else {
+                Color.clear.frame(width: model.cell.width - 6, height: model.cell.height - 6)
             }
         }
-        .frame(width: model.cell.width - 6, height: model.cell.height - 6)
-        .background { RoundedRectangle(cornerRadius: 8).fill(selected ? look.selectionFill : .clear) }
         .overlay(alignment: .topTrailing) {
             if model.editing, let kind {
                 let ticked = CircleLayout.contains(model.circle, kind)

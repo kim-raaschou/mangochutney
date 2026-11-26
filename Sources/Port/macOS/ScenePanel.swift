@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Mango
 
 /// wlroots' scene output for the trees mango builds its own nodes in (server.layers; the workspace
@@ -25,6 +26,10 @@ final class ScenePanel {
         var windowWidth: (ClientID) -> CGFloat?
     }
     private let macOS: MacOSLook?
+    /// The layout switcher's icon of a layout (LayoutIcon), in the given tint.
+    private let layoutIcon: (LayoutKind) -> CGImage?
+    /// A window's box in mango's layout (its size on the card's tag) and its size on the screen now.
+    private let windowSizes: (ClientID) -> (tile: CGSize, now: CGSize)?
     /// The scene is drawn inside these edges of the monitor, scaled to fit: below a notch, and with
     /// chutney_macos_appearance inside the monitor's outer gaps. The pointer is given mango in the
     /// scene's coordinates (scenePoint).
@@ -36,7 +41,11 @@ final class ScenePanel {
     private let host: CALayer?
 
     init(frame: CGRect, capture: @escaping ([ClientID], @escaping (ClientID, CGImage) -> Void) -> Void,
-         icon: @escaping (ClientID) -> NSImage?, macOS: MacOSLook? = nil, inset: Inset = Inset()) {
+         icon: @escaping (ClientID) -> NSImage?, macOS: MacOSLook? = nil, inset: Inset = Inset(),
+         layoutIcon: @escaping (LayoutKind) -> CGImage? = { _ in nil },
+         windowSizes: @escaping (ClientID) -> (tile: CGSize, now: CGSize)? = { _ in nil }) {
+        self.layoutIcon = layoutIcon
+        self.windowSizes = windowSizes
         origin = frame.origin
         size = frame.size
         let aw = max(1, frame.width - inset.left - inset.right), ah = max(1, frame.height - inset.top - inset.bottom)
@@ -91,15 +100,27 @@ final class ScenePanel {
         window.close()
     }
 
+    /// Port extension: chutney_workspace_overview_layout. A tag's layout's icon on its card: the card's box on the
+    /// monitor (the scene's coordinates, monitor-local) and the layout.
+    struct LayoutBadge {
+        var card: CGRect
+        var kind: LayoutKind
+        var tag: UInt32
+    }
+    private var badges: [LayoutBadge] = []
+    private var badgeLayers: [CALayer] = []
+
     /// The tree as the frame left it.
-    func draw(_ tree: WlrSceneTree) {
+    /// The badges stay as they were when it is drawn again for a picture (nil).
+    func draw(_ tree: WlrSceneTree, badges: [LayoutBadge]? = nil) {
         lastTree = tree
+        if let badges { self.badges = badges }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         var seen: Set<ObjectIdentifier> = []
         var order: [CALayer] = []
         let base = CGPoint(x: CGFloat(tree.x) - origin.x, y: CGFloat(tree.y) - origin.y)
-        cards = macOS != nil ? Self.cards(tree) : [:]
+        cards = macOS != nil ? Self.cards(tree, size: size) : [:]
         for node in tree.children where node.enabled {
             guard let l = layer(for: node, at: base) else { continue }
             seen.insert(ObjectIdentifier(node))
@@ -109,7 +130,7 @@ final class ScenePanel {
             l.removeFromSuperlayer()
             layers[key] = nil
         }
-        root.sublayers = order
+        root.sublayers = order + badgeLayers(base)
         CATransaction.commit()
     }
 
@@ -145,6 +166,46 @@ final class ScenePanel {
         return nil
     }
 
+    /// The badges, reused as the cards stay; above everything else in the scene: over the picture at its
+    /// card's bottom left corner, all alike.
+    private func badgeLayers(_ base: CGPoint) -> [CALayer] {
+        while badgeLayers.count < badges.count { badgeLayers.append(Self.makeBadge()) }
+        badgeLayers.removeLast(badgeLayers.count - badges.count)
+        let size = Self.badgeSize, inset = Self.badgeInset
+        for (l, b) in zip(badgeLayers, badges) {
+            l.frame = CGRect(x: base.x + b.card.minX + inset, y: base.y + b.card.maxY - inset - size.height,
+                             width: size.width, height: size.height)
+            l.isHidden = size.width + 2 * inset > b.card.width || size.height + 2 * inset > b.card.height
+            l.sublayers?.first(where: { $0.name == "icon" })?.frame = CGRect(origin: .zero, size: size)
+            l.sublayers?.first(where: { $0.name == "icon" })?.contents = layoutIcon(b.kind)
+        }
+        return badgeLayers
+    }
+
+    /// The badges' boxes on the screen (layout coordinates) and their tags, for a click.
+    var badgeHits: [(box: CGRect, tag: UInt32)] {
+        zip(badgeLayers, badges).filter { !$0.0.isHidden }.map { l, b in
+            (CGRect(x: origin.x + offset.x + l.frame.minX * scale, y: origin.y + offset.y + l.frame.minY * scale,
+                    width: l.frame.width * scale, height: l.frame.height * scale), b.tag)
+        }
+    }
+
+    static let badgeIconSize = CGSize(width: 18, height: 12)
+    /// The icon on its cell (LayoutCell's padding).
+    static let badgeSize = CGSize(width: badgeIconSize.width + 8, height: badgeIconSize.height + 6)
+    /// The room between a badge and its card's edges.
+    static let badgeInset: CGFloat = 8
+
+    private static func makeBadge() -> CALayer {
+        let l = CALayer()
+        let icon = CALayer()
+        icon.name = "icon"
+        icon.contentsGravity = .resizeAspect
+        icon.contentsScale = 2
+        l.addSublayer(icon)
+        return l
+    }
+
     /// Port extension: chutney_macos_appearance. How a node of a card is drawn: the card's frame round,
     /// with the colour of its border rects as its edge, those rects hidden, and what stands inside it
     /// (its pictures, its dim) round within the edge.
@@ -156,9 +217,10 @@ final class ScenePanel {
     }
     private var cards: [ObjectIdentifier: CardStyle] = [:]
 
-    /// A card is a rect with border rects along its edges (thin rects the length of a side), or with a
-    /// buffer inside it at most a quarter of its size in from its edges (a card without borders).
-    private static func cards(_ tree: WlrSceneTree) -> [ObjectIdentifier: CardStyle] {
+    /// A card is a rect with border rects along its edges (rects a few pixels thin, the length of a side),
+    /// or with a buffer inside it at most a quarter of its size in from its edges (a card without
+    /// borders); the backdrop over the whole monitor is none.
+    private static func cards(_ tree: WlrSceneTree, size: CGSize) -> [ObjectIdentifier: CardStyle] {
         func box(_ n: WlrSceneNode) -> CGRect? {
             if let r = n as? WlrSceneRect { return CGRect(x: r.x, y: r.y, width: r.width, height: r.height) }
             if let b = n as? WlrSceneBuffer, b.buffer != nil {
@@ -171,12 +233,15 @@ final class ScenePanel {
         let radius: CGFloat = 10
         var out: [ObjectIdentifier: CardStyle] = [:]
         for (node, frame) in nodes where node is WlrSceneRect {
+            // the tree's backdrop (a rect over the whole monitor) is no card
+            if frame.minX <= 0 && frame.minY <= 0 && frame.width >= size.width && frame.height >= size.height { continue }
             let slack = min(frame.width, frame.height) / 4
             func inset(_ r: CGRect) -> CGFloat {
                 min(r.minX - frame.minX, r.minY - frame.minY, frame.maxX - r.maxX, frame.maxY - r.maxY)
             }
             func isEdge(_ r: CGRect) -> Bool {
-                inset(r) == 0 && min(r.width, r.height) <= slack
+                // a border is a few pixels thin, not a neighbour card cut at the monitor's edge
+                inset(r) == 0 && min(r.width, r.height) <= max(6, min(frame.width, frame.height) / 40)
                     && max(r.width, r.height) >= min(frame.width, frame.height) - 1
             }
             let edges = nodes.filter { $0.0 !== node && $0.0 is WlrSceneRect && frame.contains($0.1) && isEdge($0.1) }
@@ -216,8 +281,8 @@ final class ScenePanel {
             let frame = existing.removeValue(forKey: item.client) ?? CALayer()
             frame.setValue(item.client, forKey: "client")
             frame.frame = box
-            frame.backgroundColor = Self.straight(item.borderColor)
-            let picture = frame.sublayers?.first ?? {
+            frame.backgroundColor = macOS == nil ? Self.straight(item.borderColor) : nil
+            let picture = frame.sublayers?.first(where: { $0.name != "ring" }) ?? {
                 let p = CALayer()
                 p.contentsGravity = .resize
                 p.masksToBounds = true
@@ -227,21 +292,54 @@ final class ScenePanel {
             let bx = item.borderX * sx, by = item.borderY * sy
             picture.frame = CGRect(x: bx, y: by, width: max(0, box.width - 2 * bx), height: max(0, box.height - 2 * by))
             picture.isHidden = !item.picture
+            // macOS's pictures have the windows' round, see-through corners: the border is a ring over the
+            // picture, with its corners, not a fill behind it that would show in them
+            let ring = frame.sublayers?.first(where: { $0.name == "ring" })
             if let macOS, let width = macOS.windowWidth(item.client), width > 0 {
                 let radius = macOS.cornerRadius * box.width / width
                 picture.cornerRadius = radius
-                frame.cornerRadius = radius + max(bx, by)
+                frame.cornerRadius = 0
+                let r = ring ?? {
+                    let l = CALayer()
+                    l.name = "ring"
+                    frame.addSublayer(l)
+                    return l
+                }()
+                let b = max(bx, by)
+                r.frame = CGRect(origin: .zero, size: box.size)
+                r.cornerRadius = radius + b
+                r.borderWidth = b
+                r.borderColor = Self.straight(item.borderColor)
+                r.isHidden = b <= 0
             } else {
                 picture.cornerRadius = 0
                 frame.cornerRadius = 0
+                ring?.isHidden = true
             }
             if let image = images[item.client] {
                 picture.contents = image
                 picture.contentsGravity = .resize
+                // the picture at the window's own size, scaled as the card is, anchored top left and cut where
+                // it is larger than its box: a hidden window is not resized while the overview is up, so on
+                // another tag it may have another size than its box there (never stretched or zoomed)
+                let inner = CGRect(x: bx, y: by, width: max(0, box.width - 2 * bx), height: max(0, box.height - 2 * by))
+                if let sizes = windowSizes(item.client), sizes.tile.width > 0, sizes.now.width > 0, sizes.now.height > 0 {
+                    let k = box.width / sizes.tile.width
+                    let shown = CGSize(width: sizes.now.width * k, height: sizes.now.height * k)
+                    picture.frame = CGRect(x: inner.minX, y: inner.minY, width: min(inner.width, shown.width),
+                                           height: min(inner.height, shown.height))
+                    picture.contentsRect = CGRect(x: 0, y: 0, width: picture.frame.width / max(1, shown.width),
+                                                  height: picture.frame.height / max(1, shown.height))
+                } else {
+                    picture.frame = inner
+                    picture.contentsRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+                }
                 picture.backgroundColor = nil
             } else {
+                picture.frame = CGRect(x: bx, y: by, width: max(0, box.width - 2 * bx), height: max(0, box.height - 2 * by))
                 picture.contents = icon(item.client)
                 picture.contentsGravity = .center
+                picture.contentsRect = CGRect(x: 0, y: 0, width: 1, height: 1)
                 picture.backgroundColor = Self.straight(buffer.background.a > 0 ? buffer.background
                                                         : RGBA(r: 0.2, g: 0.2, b: 0.2, a: 1))
                 if !asked.contains(item.client) { missing.append(item.client) }
@@ -288,10 +386,14 @@ extension MacWindowSystem {
             }, macOS: server.config.chutneyMacOSAppearance   // Port extension: chutney_macos_appearance
                 ? ScenePanel.MacOSLook(cornerRadius: windowCornerRadius, windowWidth: { [weak self] id in
                     self?.server.clientByWindowID(id)?.geom.width })
-                : nil, inset: sceneInset(m))
+                : nil, inset: sceneInset(m), layoutIcon: { [weak self] kind in self?.layoutIconImage(kind) },
+                windowSizes: { [weak self] id in
+                    self?.server.clientByWindowID(id).map { (tile: $0.geom.size, now: $0.frame.size) } })
             scenePanels[key] = panel
-            panel.draw(tree)
+            panel.draw(tree, badges: layoutBadges(tree, m))
         }
+        let hits = scenePanels.values.flatMap(\.badgeHits)
+        router.publish { $0.layoutBadges = hits }   // Port extension: chutney_workspace_overview_layout
         var closed = false
         for (key, panel) in scenePanels where !seen.contains(key) {
             panel.close()
@@ -308,6 +410,44 @@ extension MacWindowSystem {
         guard server.config.chutneyMacOSAppearance else { return .init(top: notch) }
         let x = CGFloat(m.gappoh), y = CGFloat(m.gappov)
         return .init(top: notch + y, left: x, bottom: y, right: x)
+    }
+
+    /// Port extension: chutney_workspace_overview_layout. Each card of the workspace overview with its tag's
+    /// layout, while the overview stands still (not opening, closing or moving its cards).
+    private func layoutBadges(_ tree: WlrSceneTree, _ m: Monitor) -> [ScenePanel.LayoutBadge] {
+        guard server.config.chutneyWorkspaceOverviewLayout, wsov.root === tree, wsov.mon === m, !wsov.closing,
+              wsov.progress >= 1 else { return [] }
+        let scrolls = wsov.layout == 1   // mango's WORKSPACE_OVERVIEW_SCROLL
+        let horizontal = scrolls && server.config.workspaceOverviewScrollDirection == .horizontal
+        let vertical = scrolls && server.config.workspaceOverviewScrollDirection == .vertical
+        return wsov.cells.map { cell in
+            var card = cell.box.cgRect
+            if horizontal { card.origin.x -= wsov.scrollOffset.rounded() }
+            if vertical { card.origin.y -= wsov.scrollOffset.rounded() }
+            return ScenePanel.LayoutBadge(card: card, kind: m.pertag.ltidxs[Int(cell.tag)], tag: cell.tag)
+        }.filter { $0.card.intersects(CGRect(origin: .zero, size: m.m.size)) }
+    }
+
+    /// The layout icon (LayoutIcon) on its cell as the menu's layout panel draws the chosen one, once per layout.
+    func layoutIconImage(_ kind: LayoutKind) -> CGImage? {
+        let theme = server.config.focuscolor
+        if layoutIconTheme != theme { layoutIconCache = [:]; layoutIconTheme = theme }
+        if let image = layoutIconCache[kind] { return image }
+        // as the menu's layout panel draws the chosen layout: white on the theme's colour
+        let renderer = ImageRenderer(content: LayoutCell(kind: kind, selected: true, tint: PortAccent.color(server.config),
+                                                         iconSize: ScenePanel.badgeIconSize, nameFont: nil,
+                                                         padding: EdgeInsets(top: 3, leading: 4, bottom: 3, trailing: 4), cornerRadius: 4))
+        renderer.scale = 2
+        let image = renderer.cgImage
+        layoutIconCache[kind] = image
+        return image
+    }
+
+    /// Port extension: chutney_workspace_overview_layout. A click on a card's layout icon: its tag is viewed
+    /// (the pointer over the card made it the target) and the layout switcher opens over the overview.
+    func layoutBadgeClicked(tag: UInt32) {
+        guard let m = wsov.mon, m.pertag.curtag == tag || m.tagset[m.seltags] == 1 << (tag - 1) else { return }
+        LayoutPalette.shared.show(server)
     }
 
     /// The pointer as mango is given it: on a scene panel, in the scene's coordinates.

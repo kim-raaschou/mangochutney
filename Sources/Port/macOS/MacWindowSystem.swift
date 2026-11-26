@@ -74,6 +74,8 @@ class MacWindowSystem: WindowSystem {
     var overviewOverlays: [ObjectIdentifier: OverviewOverlay] = [:]
     /// The panels of the trees mango builds under the special overlay layer (the workspace overview).
     var scenePanels: [ObjectIdentifier: ScenePanel] = [:]
+    var layoutIconCache: [LayoutKind: CGImage] = [:]
+    var layoutIconTheme: RGBA?
     var switcherPanel: SwitcherPanel?
     var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
     var swipeSent: Swipe?
