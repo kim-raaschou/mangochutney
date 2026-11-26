@@ -281,7 +281,8 @@ final class ScenePanel {
             let frame = existing.removeValue(forKey: item.client) ?? CALayer()
             frame.setValue(item.client, forKey: "client")
             frame.frame = box
-            frame.backgroundColor = macOS == nil ? Self.straight(item.borderColor) : nil
+            frame.backgroundColor = nil
+            frame.cornerRadius = 0
             let picture = frame.sublayers?.first(where: { $0.name != "ring" }) ?? {
                 let p = CALayer()
                 p.contentsGravity = .resize
@@ -290,39 +291,14 @@ final class ScenePanel {
                 return p
             }()
             let bx = item.borderX * sx, by = item.borderY * sy
-            picture.frame = CGRect(x: bx, y: by, width: max(0, box.width - 2 * bx), height: max(0, box.height - 2 * by))
+            let inner = CGRect(x: bx, y: by, width: max(0, box.width - 2 * bx), height: max(0, box.height - 2 * by))
             picture.isHidden = !item.picture
-            // macOS's pictures have the windows' round, see-through corners: the border is a ring over the
-            // picture, with its corners, not a fill behind it that would show in them
-            let ring = frame.sublayers?.first(where: { $0.name == "ring" })
-            if let macOS, let width = macOS.windowWidth(item.client), width > 0 {
-                let radius = macOS.cornerRadius * box.width / width
-                picture.cornerRadius = radius
-                frame.cornerRadius = 0
-                let r = ring ?? {
-                    let l = CALayer()
-                    l.name = "ring"
-                    frame.addSublayer(l)
-                    return l
-                }()
-                let b = max(bx, by)
-                r.frame = CGRect(origin: .zero, size: box.size)
-                r.cornerRadius = radius + b
-                r.borderWidth = b
-                r.borderColor = Self.straight(item.borderColor)
-                r.isHidden = b <= 0
-            } else {
-                picture.cornerRadius = 0
-                frame.cornerRadius = 0
-                ring?.isHidden = true
-            }
             if let image = images[item.client] {
                 picture.contents = image
                 picture.contentsGravity = .resize
                 // the picture at the window's own size, scaled as the card is, anchored top left and cut where
                 // it is larger than its box: a hidden window is not resized while the overview is up, so on
                 // another tag it may have another size than its box there (never stretched or zoomed)
-                let inner = CGRect(x: bx, y: by, width: max(0, box.width - 2 * bx), height: max(0, box.height - 2 * by))
                 if let sizes = windowSizes(item.client), sizes.tile.width > 0, sizes.now.width > 0, sizes.now.height > 0 {
                     let k = box.width / sizes.tile.width
                     let shown = CGSize(width: sizes.now.width * k, height: sizes.now.height * k)
@@ -336,7 +312,7 @@ final class ScenePanel {
                 }
                 picture.backgroundColor = nil
             } else {
-                picture.frame = CGRect(x: bx, y: by, width: max(0, box.width - 2 * bx), height: max(0, box.height - 2 * by))
+                picture.frame = inner
                 picture.contents = icon(item.client)
                 picture.contentsGravity = .center
                 picture.contentsRect = CGRect(x: 0, y: 0, width: 1, height: 1)
@@ -344,6 +320,25 @@ final class ScenePanel {
                                                         : RGBA(r: 0.2, g: 0.2, b: 0.2, a: 1))
                 if !asked.contains(item.client) { missing.append(item.client) }
             }
+            // the window's border, a ring around the picture as it is shown (it may be smaller than its box);
+            // over it, so it does not show in macOS's see-through window corners
+            var radius: CGFloat = 0
+            if let macOS, let width = macOS.windowWidth(item.client), width > 0 {
+                radius = macOS.cornerRadius * box.width / width
+            }
+            picture.cornerRadius = radius
+            let ring = frame.sublayers?.first(where: { $0.name == "ring" }) ?? {
+                let l = CALayer()
+                l.name = "ring"
+                frame.addSublayer(l)
+                return l
+            }()
+            let b = max(bx, by)
+            ring.frame = picture.frame.insetBy(dx: -bx, dy: -by)
+            ring.cornerRadius = radius > 0 ? radius + b : 0
+            ring.borderWidth = b
+            ring.borderColor = Self.straight(item.borderColor)
+            ring.isHidden = b <= 0 || !item.picture
             subs.append(frame)
         }
         l.sublayers = subs
