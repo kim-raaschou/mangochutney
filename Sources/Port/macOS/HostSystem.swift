@@ -2,7 +2,7 @@ import AppKit
 import Mango
 
 /// What the port asks of the machine itself, outside any window: the pointer and its buttons, the
-/// keyboard's modifiers, key codes and key mapping, the input devices, the event tap and gestures,
+/// keyboard's modifiers, key codes and key mapping, the screens, the input devices, the event tap and gestures,
 /// screen capture permission, spawning programs, scanning the apps again, and quitting. The seam
 /// between MacWindowSystem and macOS (the event system, IOKit, the process); MacHostSystem in the app;
 /// the tests give their own, which reads no hardware and starts nothing.
@@ -15,6 +15,8 @@ protocol HostSystem: AnyObject {
     /// virtual keyboards).
     func keyboardHardModifiers() -> Modifiers
     var mouseButtons: Int { get }
+    /// The screens, as the outputs mango gets.
+    var screens: [Screen] { get }
     var inputDevices: [InputDevice] { get }
     /// xkb_rules_options, and the hyper key, as the keyboard's key mapping.
     func setKeyboardOptions(_ options: String)
@@ -51,6 +53,8 @@ final class MacHostSystem: HostSystem {
     }
 
     var mouseButtons: Int { Int(NSEvent.pressedMouseButtons) }
+
+    var screens: [Screen] { Screens.all() }
 
     var inputDevices: [InputDevice] { InputDevices.all() }
 

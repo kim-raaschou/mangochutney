@@ -543,7 +543,7 @@ class MacWindowSystem: WindowSystem {
     var animationsRunning: Bool { frameClock.animationsRunning }
     func whenAnimationsIdle(_ body: @escaping () -> Void) { frameClock.whenIdle(body) }
 
-    var screens: [Screen] { Screens.all() }
+    var screens: [Screen] { host.screens }
 
     func windowServerFrame(_ id: ClientID) -> CGRect? { native.windowServerFrame(id) }
 

@@ -275,6 +275,8 @@ final class FakeHostSystem: HostSystem {
     func warp(to p: CGPoint) { warps.append(p); pointer = p }
     func keyboardHardModifiers() -> Modifiers { modifiers }
     var mouseButtons: Int { 0 }
+    /// The test's screens (EngineRig gives mango its own).
+    var screens: [Screen] = []
     func setKeyboardOptions(_ options: String) { keyboardOptions = options }
     /// A fixed keymap: a letter's key code is its place in the alphabet.
     func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
