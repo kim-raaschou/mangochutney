@@ -70,9 +70,9 @@ let package = Package(
             path: "Tests/MangoTests"
         ),
         .testTarget(
-            name: "MangoCoreTests",
+            name: "PortTests",
             dependencies: ["Mango", "Port", "MangoTestKit"],
-            path: "Tests/MangoCoreTests"
+            path: "Tests/PortTests"
         ),
     ]
 )

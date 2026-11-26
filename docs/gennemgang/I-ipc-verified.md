@@ -36,7 +36,7 @@ IS = Mango/IPC/IPCServer.swift, IJ = Mango/IPC/IPCJSON.swift, MS = Mango/Engine/
 | ✓ listet: afvigelser.md §3, IPC-rækken (trin 10): `ipc_init`s fejl kastes og logges (ipc.swift:193, Engine/MangoServer.swift:141), mango vender tavst tilbage; IS:194 `IPCServerError` | caller marked | CONFIRMED | |
 | ✓ listet: afvigelser.md §3 (IPC-socket-rækken); IS:217 `defaultSocketPath` | marked | CONFIRMED | |
 | ✓ listet: afvigelser.md §2 (`watch` sender kun ved ændring); IS:233 `lastPayload` | marked | CONFIRMED | |
-| ✓ rettet 15. nov.: begge mærket (ipc.swift:256, :258); IS:255 `isRunning`, IS:257 `watcherCount` | unmarked | CONFIRMED | Tests only use `watcherCount` (Tests/MangoCoreTests/IPCTests.swift:265, :296, :301); `isRunning` guards notifyChanged. |
+| ✓ rettet 15. nov.: begge mærket (ipc.swift:256, :258); IS:255 `isRunning`, IS:257 `watcherCount` | unmarked | CONFIRMED | Tests only use `watcherCount` (Tests/PortTests/IPCTests.swift:265, :296, :301); `isRunning` guards notifyChanged. |
 | ✓ listet: afvigelser.md §2 (linjerne én gang pr. tur), ipc.swift:505-518; IS:423 `notifyChanged` (Task coalescing) | marked in code, not in afvigelser.md | CONFIRMED | |
 | ✓ rettet 15. nov.: mærket (ipc.swift:738, :950), kan ikke nås; IS:441 "compositor unavailable" | unmarked | CONFIRMED | Reached only if the weak `server` is gone. |
 | ✓ listet: afvigelser.md §2 (`get binds`), ipc.swift:900-901; IS:536 `portHooks.ipcGets` | marked | CONFIRMED | |

@@ -5,7 +5,7 @@ The tests are split as the code is.
 | Target | What it tests | Stands on |
 |---|---|---|
 | `MangoTests` | mango's own behaviour, on the core alone | `MangoTestKit` (mango with wlroots faked); the port is not imported |
-| `MangoCoreTests` | the port and its extensions, and mango through the port | `EngineRig` (the port with the apps faked) |
+| `PortTests` | the port and its extensions, and mango through the port | `EngineRig` (the port with the apps faked) |
 
 `MangoTestKit` holds `TestMango` and `FakeWlroots`. `FakeWlroots` stands where wlroots stands: it
 does what mango asks and remembers it, nothing more.

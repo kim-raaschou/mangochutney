@@ -1,5 +1,5 @@
 # a group's shown member closes and the next takes its place; a group on another tag; group and fullscreen.
-# (groupleave's place in the focus stack is a mango bug we fix: docs/afvigelser.md §6, locked in MangoCoreTests.)
+# (groupleave's place in the focus stack is a mango bug we fix: docs/afvigelser.md §6, locked in PortTests.)
 config new_is_master=0
 config always_show_group_bar=1
 config group_bar_height=40

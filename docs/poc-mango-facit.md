@@ -256,7 +256,7 @@ felter, porten, tegning, læste værdier), er blevet.
 
 | | Før facit | Nu |
 |---|---|---|
-| Swift-testlinjer (MangoCoreTests og MangoTests) | 14.084 | 11.703 |
+| Swift-testlinjer (PortTests og MangoTests) | 14.084 | 11.703 |
 | Testfunktioner | 867 | 683 |
 | Scenarier | 0 | 292 (4.138 linjer) |
 | Config-filer | 0 | 56 |
