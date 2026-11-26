@@ -19,33 +19,18 @@ class MacWindowSystem: WindowSystem {
     /// Windows back from macOS fullscreen before its Space change was done: placed again at it.
     var fullscreenReturns: Set<ClientID> = []
 
-    /// macOS's fullscreen for the window; nil where the app does not answer.
-    func fullscreenNow(_ c: Client) -> Bool? { c.element.attribute("AXFullScreen") as Bool? }
+    /// What the port asks of macOS about other apps' windows (NativeWindows): macOS's in the app, the
+    /// tests' own in tests.
+    lazy var native: any NativeWindows = MacNativeWindows(self)
 
-    /// Whether a window is on the active Space.
-    func windowOnScreen(_ id: CGWindowID) -> Bool {
-        guard let info = CGWindowListCopyWindowInfo([.optionIncludingWindow], id) as? [[String: Any]] else { return false }
-        return info.first?[kCGWindowIsOnscreen as String] as? Bool ?? false
-    }
-
-    /// The app is asked which of its windows has the keys; its answer is mango's focus.
-    func askFocus(_ c: Client) { watcher.requestFocusReport(pid: c.pid) }
-
-    /// Port extension: chutney_fullscreen_tag. mango's own window on `m`'s desktop Space focused.
-    func focusSpaceAnchor(_ m: Monitor) { FullscreenTag.focusSpaceAnchor(server, m) }
-
-    /// Port extension: chutney_fullscreen_tag. macOS's fullscreen set for the window; `done` says whether
-    /// the app took it (false where it has no fullscreen button or cannot be set).
+    func fullscreenNow(_ c: Client) -> Bool? { native.fullscreenNow(c) }
+    func windowOnScreen(_ id: CGWindowID) -> Bool { native.windowOnScreen(id) }
+    func askFocus(_ c: Client) { native.askFocus(c) }
+    func focusSpaceAnchor(_ m: Monitor) { native.focusSpaceAnchor(m) }
     func setNativeFullscreen(_ c: Client, _ fullscreen: Bool, _ done: @escaping @MainActor (Bool) -> Void) {
-        guard let q = writer(for: c.pid) else { done(false); return }
-        q.async { [el = c.element] in
-            var settable = DarwinBoolean(false)
-            let ok = el.fullscreenButton != nil
-                && AXUIElementIsAttributeSettable(el, "AXFullScreen" as CFString, &settable) == .success && settable.boolValue
-                && el.setAttribute("AXFullScreen", fullscreen as CFBoolean) == .success
-            DispatchQueue.main.async { MainActor.assumeIsolated { done(ok) } }
-        }
+        native.setNativeFullscreen(c, fullscreen, done)
     }
+
     private var pendingFocus: Client?
     private var pendingRaises: [Client] = []
     private var flushScheduled = false
@@ -219,11 +204,9 @@ class MacWindowSystem: WindowSystem {
         sendNativeFocus(c, raise: lift)
     }
 
-    func sendNativeFocus(_ c: Client, raise: Bool) {
-        NativeFocus.focus(windowID: c.windowID, pid: c.pid, element: c.element, raise: raise) { [weak self] in self?.restack() }
-    }
+    func sendNativeFocus(_ c: Client, raise: Bool) { native.sendNativeFocus(c, raise: raise) }
 
-    func sendNativeRaise(_ c: Client) { writer(for: c.pid)?.raise(c.element) }
+    func sendNativeRaise(_ c: Client) { native.sendNativeRaise(c) }
 
     static func stillFocused(_ c: Client, in server: MangoServer) -> Bool {
         server.clientByWindowID(c.windowID) === c && server.focused === c
@@ -688,18 +671,7 @@ class MacWindowSystem: WindowSystem {
 
     func setCursor(_ name: String?) { panels.setCursor(name) }
 
-    /// The window server's answer for a point, kept for the turn: mango asks twice for one motion.
-    private var surfaceAtTurn: (p: CGPoint, id: ClientID?)?
-
-    func surfaceAt(_ p: CGPoint) -> ClientID? {
-        if let k = surfaceAtTurn, k.p == p { return k.id }
-        if surfaceAtTurn == nil {
-            DispatchQueue.main.async { [weak self] in MainActor.assumeIsolated { self?.surfaceAtTurn = nil } }
-        }
-        let id = CursorHider.windowAt(p)
-        surfaceAtTurn = (p, id)
-        return id
-    }
+    func surfaceAt(_ p: CGPoint) -> ClientID? { native.surfaceAt(p) }
 
     /// A window's owner does not change: asked for once.
     private var surfaceOwners: [ClientID: pid_t] = [:]
@@ -755,13 +727,7 @@ class MacWindowSystem: WindowSystem {
         q.readBack(c.element, completion: done)
     }
 
-    func clientSendClose(_ c: Client) {
-        let el = c.element, name = c.appName, id = c.windowID
-        writer(for: c.pid)?.async {
-            if el.closeButton == nil { wlrLog(.debug, "\(name): window \(id) has no close button to press (element invalid?)") }
-            el.close()
-        }
-    }
+    func clientSendClose(_ c: Client) { native.clientSendClose(c) }
 
     /// Port extension: chutney_fullscreen_tag (with the key off the app is not told).
     func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) { FullscreenTag.notify(server, c, fullscreen) }

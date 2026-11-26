@@ -212,12 +212,63 @@ final class FakeScenePanel: ScenePanelDrawing {
     var badgeHits: [(box: CGRect, tag: UInt32)] { [] }
 }
 
+/// The tests' macOS windows (NativeWindows): nothing reaches an app, what the port asked is kept, and the
+/// answers are the test's.
+@MainActor
+final class FakeNativeWindows: NativeWindows {
+    var closed: [ClientID] = []
+    var focused: [(id: ClientID, raise: Bool)] = []
+    var raised: [ClientID] = []
+    var axFullscreen: (ClientID) -> Bool? = { _ in false }
+    var onScreen: (CGWindowID) -> Bool = { _ in true }
+    var anchored = 0
+    /// The fullscreen written to each window, and whether the app takes it.
+    var fullscreenWrites: [(ClientID, Bool)] = []
+    var takesFullscreen: (ClientID) -> Bool = { _ in true }
+    var focusAsked: [ClientID] = []
+    /// The app's answer to which window has the keys.
+    var onAskFocus: (ClientID) -> Void = { _ in }
+    var surfaceOverride: ClientID?
+    /// The window under a point where no override is set.
+    var windowAt: (CGPoint) -> ClientID? = { _ in nil }
+
+    func fullscreenNow(_ c: Client) -> Bool? { axFullscreen(c.windowID) }
+    func windowOnScreen(_ id: CGWindowID) -> Bool { onScreen(id) }
+    func surfaceAt(_ p: CGPoint) -> ClientID? { surfaceOverride ?? windowAt(p) }
+    func askFocus(_ c: Client) { focusAsked.append(c.windowID); onAskFocus(c.windowID) }
+    func sendNativeFocus(_ c: Client, raise: Bool) { focused.append((c.windowID, raise)) }
+    func sendNativeRaise(_ c: Client) { raised.append(c.windowID) }
+    func clientSendClose(_ c: Client) { closed.append(c.windowID) }
+    func setNativeFullscreen(_ c: Client, _ fullscreen: Bool, _ done: @escaping @MainActor (Bool) -> Void) {
+        fullscreenWrites.append((c.windowID, fullscreen))
+        done(takesFullscreen(c.windowID))
+    }
+    func focusSpaceAnchor(_ m: Monitor) { anchored += 1 }
+}
+
 @MainActor
 final class FakeWindowSystem: MacWindowSystem {
     init(_ server: MangoServer) {
         super.init(server, borders: FakeBorders(), tabBars: FakeBars(), groupBars: FakeBars())
         panels = fakePanels
+        native = fakeNative
+        // the app answers which window has the keys: this one; the window under a point is the topmost shown
+        fakeNative.onAskFocus = { [unowned self] id in windowFocused(id: id) }
+        fakeNative.windowAt = { [unowned self] p in server.clientsAll.first { !$0.parked && $0.frame.contains(p) }?.windowID }
     }
+
+    /// What the port asked of macOS about the windows (NativeWindows).
+    let fakeNative = FakeNativeWindows()
+    var closed: [ClientID] { get { fakeNative.closed } set { fakeNative.closed = newValue } }
+    var focused: [(id: ClientID, raise: Bool)] { get { fakeNative.focused } set { fakeNative.focused = newValue } }
+    var raised: [ClientID] { get { fakeNative.raised } set { fakeNative.raised = newValue } }
+    var axFullscreen: (ClientID) -> Bool? { get { fakeNative.axFullscreen } set { fakeNative.axFullscreen = newValue } }
+    var onScreen: (CGWindowID) -> Bool { get { fakeNative.onScreen } set { fakeNative.onScreen = newValue } }
+    var anchored: Int { get { fakeNative.anchored } set { fakeNative.anchored = newValue } }
+    var fullscreenWrites: [(ClientID, Bool)] { get { fakeNative.fullscreenWrites } set { fakeNative.fullscreenWrites = newValue } }
+    var takesFullscreen: (ClientID) -> Bool { get { fakeNative.takesFullscreen } set { fakeNative.takesFullscreen = newValue } }
+    var focusAsked: [ClientID] { get { fakeNative.focusAsked } set { fakeNative.focusAsked = newValue } }
+    var surfaceOverride: ClientID? { get { fakeNative.surfaceOverride } set { fakeNative.surfaceOverride = newValue } }
 
     /// What the port asked of its panels (PortPanels).
     let fakePanels = FakePanels()
@@ -238,8 +289,6 @@ final class FakeWindowSystem: MacWindowSystem {
     var fakeModifiers: Modifiers = []
     var quits = 0
     var asked = 0
-    var closed: [ClientID] = []
-    override func clientSendClose(_ c: Client) { closed.append(c.windowID) }
     var rescans = 0
     /// The tests reach no real app: the watcher does not scan them.
     override func rescan() { rescans += 1 }
@@ -252,11 +301,7 @@ final class FakeWindowSystem: MacWindowSystem {
     override var canCapture: Bool { fakeCanCapture }
     override func quit() { quits += 1 }
     override func askToCapture() { asked += 1 }
-    var focused: [(id: ClientID, raise: Bool)] = []
     var warps: [CGPoint] = []
-    override func sendNativeFocus(_ c: Client, raise: Bool) { focused.append((c.windowID, raise)) }
-    var raised: [ClientID] = []
-    override func sendNativeRaise(_ c: Client) { raised.append(c.windowID) }
     override func warp(to p: CGPoint) { warps.append(p); fakePointer = p }
     /// The borders and bars as mango hands them to the port; the port then draws them as it does.
     var borderSpecs: [BorderSpec] = []
@@ -274,26 +319,6 @@ final class FakeWindowSystem: MacWindowSystem {
     override func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
         guard let a = keysym.lowercased().first?.asciiValue, a >= 97, a <= 122 else { return MultiKeycode() }
         return MultiKeycode(keycode1: UInt16(a - 97))
-    }
-    var axFullscreen: (ClientID) -> Bool? = { _ in false }
-    override func fullscreenNow(_ c: Client) -> Bool? { axFullscreen(c.windowID) }
-    var onScreen: (CGWindowID) -> Bool = { _ in true }
-    override func windowOnScreen(_ id: CGWindowID) -> Bool { onScreen(id) }
-    var anchored = 0
-    override func focusSpaceAnchor(_ m: Monitor) { anchored += 1 }
-    /// The fullscreen written to each window, and whether the app takes it.
-    var fullscreenWrites: [(ClientID, Bool)] = []
-    var takesFullscreen: (ClientID) -> Bool = { _ in true }
-    override func setNativeFullscreen(_ c: Client, _ fullscreen: Bool, _ done: @escaping @MainActor (Bool) -> Void) {
-        fullscreenWrites.append((c.windowID, fullscreen))
-        done(takesFullscreen(c.windowID))
-    }
-    var focusAsked: [ClientID] = []
-    /// The app answers which window has the keys: this one.
-    override func askFocus(_ c: Client) { focusAsked.append(c.windowID); windowFocused(id: c.windowID) }
-    var surfaceOverride: ClientID?
-    override func surfaceAt(_ p: CGPoint) -> ClientID? {
-        surfaceOverride ?? server.clientsAll.first { !$0.parked && $0.frame.contains(p) }?.windowID
     }
     var keyboardOptions: String?
     override func setKeyboardOptions(_ options: String) { keyboardOptions = options }
