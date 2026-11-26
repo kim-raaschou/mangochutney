@@ -22,6 +22,7 @@ class MacWindowSystem: WindowSystem {
     /// What the port asks of macOS about other apps' windows (NativeWindows): macOS's in the app, the
     /// tests' own in tests.
     lazy var native: any NativeWindows = MacNativeWindows(self)
+    /// What the port asks of the machine itself (HostSystem): macOS's in the app, the tests' own in tests.
     lazy var host: any HostSystem = MacHostSystem(self)
 
     func fullscreenNow(_ c: Client) -> Bool? { native.fullscreenNow(c) }
