@@ -182,3 +182,27 @@ final class SceneDrawingTests: XCTestCase {
         XCTAssertEqual(g.scenePoint(CGPoint(x: onScreen.minX, y: onScreen.minY)), CGPoint(x: 100, y: 200))
     }
 }
+
+/// The workspace overview through the port (EngineRig): its scene panel is the tests' (PortPanels), so no
+/// window is made.
+@MainActor
+final class WorkspaceOverviewPanelTests: MangoTestCase {
+    func testTheOverviewsSceneIsDrawnOnAPanelAndClosedWithIt() throws {
+        let r = EngineRig()
+        let fake = try XCTUnwrap(r.server.system as? FakeWindowSystem)
+        r.map(1)
+        r.map(2)
+
+        _ = r.server.dispatch(Dispatch(name: "toggleworkspaceoverview", args: ["all"]))
+        r.frame()
+
+        let panel = try XCTUnwrap(fake.fakePanels.scenePanels.first)
+        XCTAssertFalse(panel.list.nodes.isEmpty, "the cards are drawn")
+        XCTAssertFalse(panel.closed)
+
+        _ = r.server.dispatch(Dispatch(name: "toggleworkspaceoverview", args: ["all"]))
+        r.frame()
+
+        XCTAssertTrue(panel.closed, "closed with the overview")
+    }
+}

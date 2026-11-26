@@ -129,11 +129,110 @@ final class FakeBars: BarDrawing {
     func restack(_ ids: Set<CGWindowID>?, inPlace: (CGWindowID, CGWindowID) -> Bool) {}
 }
 
+/// The tests' panels (PortPanels): nothing is drawn, what the port asked is kept.
+@MainActor
+final class FakePanels: PortPanels {
+    var plates: [ClientID: CGRect] = [:]
+    var overviewCards: [OverviewCard]?, switcherTiles: [SwitcherTilePicture]?
+    var bars: [FakeBar] = []
+    var jumpLabels: [ClientID: FakeJumpLabel] = [:]
+    var specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = ""
+    var fitNotification: (title: String, body: String, fit: Bool)?
+    var cursorHidden = false
+    var cursorName: String??
+    var scenePanels: [FakeScenePanel] = []
+
+    /// The plate's box is kept, on its monitor.
+    func showEdgePlate(_ c: Client, box: CGRect, monitor: CGRect, border: EdgePlates.Border) {
+        plates[c.windowID] = box.intersection(monitor)
+    }
+    func setEdgePlateBorder(_ id: ClientID, _ border: EdgePlates.Border) {}
+    func hideEdgePlate(_ id: ClientID) { plates[id] = nil }
+    func hideAllEdgePlates() { plates = [:] }
+    func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
+    func updateOverview(_ cards: [OverviewCard], on m: Monitor) { overviewCards = cards }
+    func captureOverviewCards(on m: Monitor, scale: CGFloat) {}
+    func closeOverview(on m: Monitor) { overviewCards = nil }
+    var overviewShown: Bool { overviewCards != nil }
+    func showSwitcher(panel: CGRect, tiles: [SwitcherTilePicture], look: SwitcherLook, scale: CGFloat) { switcherTiles = tiles }
+    func switcherApplyHighlight(_ tiles: [SwitcherTilePicture]) { switcherTiles = tiles }
+    func closeSwitcher() { switcherTiles = nil }
+    func barDecoration(_ m: Monitor, _ data: DecorateDrawData, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
+        let bar = FakeBar(data)
+        bars.append(bar)
+        return bar
+    }
+    func jumpLabel(_ c: Client, _ data: DecorateDrawData) -> MangoJumpLabel? {
+        let label = FakeJumpLabel(data)
+        jumpLabels[c.windowID] = label
+        return label
+    }
+    func showSpecialDim(on m: Monitor, alpha: Float?, below: CGWindowID?) { specialDimAlpha = alpha.map(Double.init) }
+    func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }
+    func nagSpawn(_ argv: [String], input: String, selected: CGDirectDisplayID?, macOS: Bool) { nagArgv = argv; nagInput = input }
+    func nagKill() { nagArgv = nil }
+    func postFitNotification(title: String, body: String, fit: Bool) { fitNotification = (title, body, fit) }
+    func removeFitNotification() { fitNotification = nil }
+    func setCursorHidden(_ hidden: Bool) { cursorHidden = hidden }
+    func setCursor(_ name: String?) { cursorName = .some(name) }
+    func scenePanel(frame: CGRect, look: SceneDrawing.Look,
+                    capture: @escaping ([ClientID], @escaping (ClientID, CGImage) -> Void) -> Void,
+                    icon: @escaping (ClientID) -> NSImage?,
+                    layoutIcon: @escaping (LayoutKind) -> CGImage?,
+                    windowSizes: @escaping (ClientID) -> SceneDrawing.WindowSize?) -> any ScenePanelDrawing {
+        let panel = FakeScenePanel(frame: frame, look: look, windowSizes: windowSizes)
+        scenePanels.append(panel)
+        return panel
+    }
+}
+
+/// A scene panel with no window: it keeps SceneDrawing's draw list of the last frame.
+@MainActor
+final class FakeScenePanel: ScenePanelDrawing {
+    let frame: CGRect
+    let look: SceneDrawing.Look
+    let windowSizes: (ClientID) -> SceneDrawing.WindowSize?
+    var badges: [SceneDrawing.Badge] = []
+    private(set) var list = SceneDrawing.DrawList()
+    private(set) var closed = false
+    init(frame: CGRect, look: SceneDrawing.Look, windowSizes: @escaping (ClientID) -> SceneDrawing.WindowSize?) {
+        self.frame = frame; self.look = look; self.windowSizes = windowSizes
+    }
+    func draw(_ tree: WlrSceneTree, badges: [SceneDrawing.Badge]?) {
+        if let badges { self.badges = badges }
+        list = SceneDrawing.draw(tree, at: CGPoint(x: CGFloat(tree.x) - frame.minX, y: CGFloat(tree.y) - frame.minY),
+                                 look: look, badges: self.badges, windows: windowSizes)
+    }
+    func close() { closed = true }
+    func covers(_ p: CGPoint) -> Bool { frame.contains(p) }
+    func scenePoint(_ p: CGPoint) -> CGPoint {
+        let q = SceneDrawing.Geometry(size: look.size, inset: look.inset).scenePoint(CGPoint(x: p.x - frame.minX, y: p.y - frame.minY))
+        return CGPoint(x: frame.minX + q.x, y: frame.minY + q.y)
+    }
+    var badgeHits: [(box: CGRect, tag: UInt32)] { [] }
+}
+
 @MainActor
 final class FakeWindowSystem: MacWindowSystem {
     init(_ server: MangoServer) {
         super.init(server, borders: FakeBorders(), tabBars: FakeBars(), groupBars: FakeBars())
+        panels = fakePanels
     }
+
+    /// What the port asked of its panels (PortPanels).
+    let fakePanels = FakePanels()
+    var plates: [ClientID: CGRect] { get { fakePanels.plates } set { fakePanels.plates = newValue } }
+    var overviewCards: [OverviewCard]? { get { fakePanels.overviewCards } set { fakePanels.overviewCards = newValue } }
+    var switcherTiles: [SwitcherTilePicture]? { get { fakePanels.switcherTiles } set { fakePanels.switcherTiles = newValue } }
+    var bars: [FakeBar] { get { fakePanels.bars } set { fakePanels.bars = newValue } }
+    var jumpLabels: [ClientID: FakeJumpLabel] { get { fakePanels.jumpLabels } set { fakePanels.jumpLabels = newValue } }
+    var specialDimAlpha: Double? { get { fakePanels.specialDimAlpha } set { fakePanels.specialDimAlpha = newValue } }
+    var shownDropArea: CGRect? { get { fakePanels.shownDropArea } set { fakePanels.shownDropArea = newValue } }
+    var nagArgv: [String]? { get { fakePanels.nagArgv } set { fakePanels.nagArgv = newValue } }
+    var nagInput: String { get { fakePanels.nagInput } set { fakePanels.nagInput = newValue } }
+    var fitNotification: (title: String, body: String, fit: Bool)? { get { fakePanels.fitNotification } set { fakePanels.fitNotification = newValue } }
+    var cursorHidden: Bool { get { fakePanels.cursorHidden } set { fakePanels.cursorHidden = newValue } }
+    var cursorName: String?? { get { fakePanels.cursorName } set { fakePanels.cursorName = newValue } }
 
     var fakePointer = CGPoint(x: 1, y: 1)
     var fakeModifiers: Modifiers = []
@@ -141,10 +240,6 @@ final class FakeWindowSystem: MacWindowSystem {
     var asked = 0
     var closed: [ClientID] = []
     override func clientSendClose(_ c: Client) { closed.append(c.windowID) }
-    var plates: [ClientID: CGRect] = [:]
-    /// The tests draw nothing: the plate's box is kept.
-    override func showEdgePlate(_ c: Client, box: CGRect) { plates[c.windowID] = box.intersection(c.mon!.screen.frame) }
-    override func hideEdgePlate(_ id: ClientID) { plates[id] = nil }
     var rescans = 0
     /// The tests reach no real app: the watcher does not scan them.
     override func rescan() { rescans += 1 }
@@ -175,39 +270,11 @@ final class FakeWindowSystem: MacWindowSystem {
     var shownBorderSpecs: [BorderSpec] { (borders as! FakeBorders).shown }
     var shownTabStrips: [TabStrip] { (tabBars as! FakeBars).shown }
     var shownGroupStrips: [TabStrip] { (groupBars as! FakeBars).shown }
-    var overviewCards: [OverviewCard]?, switcherTiles: [SwitcherTilePicture]?
-    var specialDimAlpha: Double?, shownDropArea: CGRect?, nagArgv: [String]?, nagInput = "", cursorHidden = false
-    override func showOverviewPanel(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) { overviewCards = cards }
-    override func updateOverview(_ cards: [OverviewCard], on m: Monitor) { overviewCards = cards }
-    override func captureOverviewCards(on m: Monitor, scale: CGFloat) {}
-    override func closeOverview(on m: Monitor) { overviewCards = nil }
-    override func showSwitcher(panel: CGRect, tiles: [SwitcherTilePicture], look: SwitcherLook, scale: CGFloat) { switcherTiles = tiles }
-    override func switcherApplyHighlight(_ tiles: [SwitcherTilePicture]) { switcherTiles = tiles }
-    override func closeSwitcherPanel() { switcherTiles = nil }
-    var bars: [FakeBar] = []
-    override func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateDrawData, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
-        let bar = FakeBar(data)
-        bars.append(bar)
-        return bar
-    }
-    var jumpLabels: [ClientID: FakeJumpLabel] = [:]
-    override func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateDrawData) -> MangoJumpLabel? {
-        let label = FakeJumpLabel(data)
-        jumpLabels[c.windowID] = label
-        return label
-    }
     /// A fixed keymap: a letter's key code is its place in the alphabet.
     override func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
         guard let a = keysym.lowercased().first?.asciiValue, a >= 97, a <= 122 else { return MultiKeycode() }
         return MultiKeycode(keycode1: UInt16(a - 97))
     }
-    override func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>) { specialDimAlpha = alpha.map(Double.init) }
-    override func showDropArea(_ area: CGRect?, color: RGBA) { shownDropArea = area }
-    override func nagSpawn(_ argv: [String], input: String) { nagArgv = argv; nagInput = input }
-    override func nagKill() { nagArgv = nil }
-    var fitNotification: (title: String, body: String, fit: Bool)?
-    override func postFitNotification(title: String, body: String, fit: Bool) { fitNotification = (title, body, fit) }
-    override func removeFitNotification() { fitNotification = nil }
     var axFullscreen: (ClientID) -> Bool? = { _ in false }
     override func fullscreenNow(_ c: Client) -> Bool? { axFullscreen(c.windowID) }
     var onScreen: (CGWindowID) -> Bool = { _ in true }
@@ -224,9 +291,6 @@ final class FakeWindowSystem: MacWindowSystem {
     var focusAsked: [ClientID] = []
     /// The app answers which window has the keys: this one.
     override func askFocus(_ c: Client) { focusAsked.append(c.windowID); windowFocused(id: c.windowID) }
-    override func setCursorHidden(_ hidden: Bool) { cursorHidden = hidden }
-    var cursorName: String??
-    override func setCursor(_ name: String?) { cursorName = .some(name) }
     var surfaceOverride: ClientID?
     override func surfaceAt(_ p: CGPoint) -> ClientID? {
         surfaceOverride ?? server.clientsAll.first { !$0.parked && $0.frame.contains(p) }?.windowID

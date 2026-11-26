@@ -65,22 +65,19 @@ class MacWindowSystem: WindowSystem {
     var restarting = false
     var opacityWarned = false
     var fitState = FitLayout.State()   // Port extension: chutney_fit_layout
-    func postFitNotification(title: String, body: String, fit: Bool = true) { FitNotification.shared.post(server, title: title, body: body, fit: fit) }
-    func removeFitNotification() { FitNotification.shared.remove() }
+    func postFitNotification(title: String, body: String, fit: Bool = true) { panels.postFitNotification(title: title, body: body, fit: fit) }
+    func removeFitNotification() { panels.removeFitNotification() }
     var dispatchersWarned = Set<String>()
     var pressed: (client: Client, frame: CGRect)?
     let tabBars: any BarDrawing
     let groupBars: any BarDrawing
-    var overviewOverlays: [ObjectIdentifier: OverviewOverlay] = [:]
+    /// The panels the port draws (PortPanels): AppKit's in the app, the tests' own in tests.
+    lazy var panels: any PortPanels = AppKitPanels(self)
     /// The panels of the trees mango builds under the special overlay layer (the workspace overview).
-    var scenePanels: [ObjectIdentifier: ScenePanel] = [:]
+    var scenePanels: [ObjectIdentifier: any ScenePanelDrawing] = [:]
     var layoutIconCache: [LayoutKind: CGImage] = [:]
     var layoutIconTheme: RGBA?
-    var switcherPanel: SwitcherPanel?
-    var specialDims: [CGDirectDisplayID: SpecialDimView] = [:]
     var swipeSent: Swipe?
-    var dropArea: DropAreaView?
-    let nagDisplay = Nag()
     let tap = EventTap()
     let router = InputRouter()
     let gestures = GestureRecognizer()
@@ -103,19 +100,10 @@ class MacWindowSystem: WindowSystem {
     private var drawnBorders: [BorderSpec] = []
     private var drawnTabBars: (strips: [TabStrip], style: TabStripStyle)?
     private var drawnGroupBars: (strips: [TabStrip], style: TabStripStyle)?
-    lazy var edgePlates: EdgePlates = {
-        let plates = EdgePlates()
-        plates.onClick = { [weak self] id in
-            guard let self, let c = self.server.clientByWindowID(id) else { return }
-            self.server.clientFocus(c, true)
-        }
-        return plates
-    }()
-
     /// The plate for a window parked at its monitor's edge (EdgePlates).
     func showEdgePlate(_ c: Client, box: CGRect) {
         guard let m = monitor(of: c) else { return }
-        edgePlates.show(c.windowID, pid: c.pid, box: box, monitor: m.screen.frame, border: plateBorder(c))
+        panels.showEdgePlate(c, box: box, monitor: m.screen.frame, border: plateBorder(c))
     }
 
     /// The window's border as updateBorders draws it: mango's color, width and radius, and the port's
@@ -131,7 +119,7 @@ class MacWindowSystem: WindowSystem {
                                  radius: BorderGeometry.outerRadius(corner: corner, width: width), innerRadius: corner)
     }
 
-    func hideEdgePlate(_ id: ClientID) { edgePlates.hide(id) }
+    func hideEdgePlate(_ id: ClientID) { panels.hideEdgePlate(id) }
     let watchdog = MainThreadWatchdog()
     let missionControl = MissionControl()
     var writerOverride: ((pid_t) -> (any WindowWriter)?)?
@@ -201,13 +189,13 @@ class MacWindowSystem: WindowSystem {
     }
 
     private func focusLater(_ c: Client) {
-        if holdFocus || !overviewOverlays.isEmpty || !scenePanels.isEmpty { heldFocus = c; return }
+        if holdFocus || panels.overviewShown || !scenePanels.isEmpty { heldFocus = c; return }
         pendingFocus = c
         scheduleFlush()
     }
 
     func releaseHeldFocus() {
-        guard !holdFocus, overviewOverlays.isEmpty, scenePanels.isEmpty, let c = heldFocus else { return }
+        guard !holdFocus, !panels.overviewShown, scenePanels.isEmpty, let c = heldFocus else { return }
         heldFocus = nil
         if server.clientByWindowID(c.windowID) === c { focusLater(c) }
     }
@@ -326,7 +314,7 @@ class MacWindowSystem: WindowSystem {
     private func showBorders() {
         let specs = MacOSAppearance.borders(shownBorders(drawnBorders), server.config)
         borders.update(specs)
-        for c in server.clientsAll where c.mac.placed.offEdge { edgePlates.setBorder(c.windowID, plateBorder(c)) }
+        for c in server.clientsAll where c.mac.placed.offEdge { panels.setEdgePlateBorder(c.windowID, plateBorder(c)) }
     }
 
     /// The borders macOS shows now: mango's, around the window where it stands. A parked window has
@@ -422,59 +410,32 @@ class MacWindowSystem: WindowSystem {
     }
 
     func showOverviewPanel(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) {
-        overviewOverlays[ObjectIdentifier(m)]?.close()
-        let macOS = server.config.chutneyMacOSAppearance
-        let overlay = OverviewOverlay(workArea: m.screen.workArea, top: m.screen.frame.minY, focusColor: look.focusColor, borderColor: look.borderColor,
-                                      mango: macOS ? nil : .init(root: look.mango.root, borderWidth: look.mango.borderWidth,
-                                                                 cornerRadius: look.mango.cornerRadius))
-        overviewOverlays[ObjectIdentifier(m)] = overlay
-        overlay.show(cards.map(card))
+        panels.showOverview(cards, on: m, look: look)
     }
 
-    func updateOverview(_ cards: [OverviewCard], on m: Monitor) {
-        overviewOverlays[ObjectIdentifier(m)]?.update(cards.map(card))
-    }
+    func updateOverview(_ cards: [OverviewCard], on m: Monitor) { panels.updateOverview(cards, on: m) }
 
-    func captureOverviewCards(on m: Monitor, scale: CGFloat) {
-        overviewOverlays[ObjectIdentifier(m)]?.captureCards(scale: scale)
-    }
+    func captureOverviewCards(on m: Monitor, scale: CGFloat) { panels.captureOverviewCards(on: m, scale: scale) }
 
     func closeOverview(on m: Monitor) {
-        overviewOverlays.removeValue(forKey: ObjectIdentifier(m))?.close()
+        panels.closeOverview(on: m)
         releaseHeldFocus()
     }
 
-    func card(_ c: OverviewCard) -> OverviewOverlay.Card {
-        .init(id: c.id, frame: c.frame, title: c.title, pid: c.pid, focused: c.focused,
-              fullscreen: server.clientByWindowID(c.id).map { server.mac.nativeFullscreen($0) } ?? false)
-    }
-
     func showSwitcher(panel: CGRect, tiles: [SwitcherTilePicture], look: SwitcherLook, scale: CGFloat) {
-        switcherPanel?.close()
-        switcherPanel = SwitcherPanel(panel: panel, tiles: tiles.map(Self.tile),
-                                      style: .init(focus: look.focus, border: look.border, macOS: server.config.chutneyMacOSAppearance),
-                                      scale: scale)
+        panels.showSwitcher(panel: panel, tiles: tiles, look: look, scale: scale)
     }
 
-    func switcherApplyHighlight(_ tiles: [SwitcherTilePicture]) { switcherPanel?.highlight(tiles.map(Self.tile)) }
+    func switcherApplyHighlight(_ tiles: [SwitcherTilePicture]) { panels.switcherApplyHighlight(tiles) }
 
-    func closeSwitcherPanel() {
-        switcherPanel?.close()
-        switcherPanel = nil
-    }
-
-    static func tile(_ t: SwitcherTilePicture) -> SwitcherPanel.Tile {
-        .init(id: t.id, frame: t.frame, size: t.size, pid: t.pid, highlighted: t.highlighted)
-    }
+    func closeSwitcherPanel() { panels.closeSwitcher() }
 
     func mangoBarDecorationCreate(_ m: Monitor, _ data: DecorateDrawData, _ width: CGFloat, _ height: CGFloat) -> MangoBarDecoration? {
-        let bar = TitleMessageBarDecoration(data) { [unowned self] in server.config }
-        bar.setSize(width, height)
-        return bar
+        panels.barDecoration(m, data, width, height)
     }
 
     func mangoJumpLabelNodeCreate(_ c: Client, _ data: DecorateDrawData) -> MangoJumpLabel? {
-        JumpLabelNode(data) { [unowned self] in server.config }
+        panels.jumpLabel(c, data)
     }
 
     func findKeycodesForKeysym(_ keysym: Character) -> MultiKeycode {
@@ -483,28 +444,18 @@ class MacWindowSystem: WindowSystem {
     }
 
     func showSpecialDim(on m: Monitor, alpha: Float?, over: Set<ClientID>) {
-        let id = m.screen.displayID
-        guard let alpha else { specialDims[id]?.hide(); return }
-        let backmost = stackingOrder().last { over.contains($0.id) }?.id
-        let view = specialDims[id] ?? SpecialDimView()
-        specialDims[id] = view
-        view.show(frame: m.screen.frame, alpha: Double(alpha), below: backmost)
+        let backmost = alpha == nil ? nil : stackingOrder().last { over.contains($0.id) }?.id
+        panels.showSpecialDim(on: m, alpha: alpha, below: backmost)
     }
 
-    func showDropArea(_ area: CGRect?, color: RGBA) {
-        guard let area else { dropArea?.hide(); return }
-        if dropArea == nil { dropArea = DropAreaView() }
-        dropArea?.show(area, color: color)
-    }
+    func showDropArea(_ area: CGRect?, color: RGBA) { panels.showDropArea(area, color: color) }
 
     func nagSpawn(_ argv: [String], input: String) {
-        nagDisplay.spawn(argv, input: input, selected: server.selectedMonitor?.screen.displayID,
-                         macOS: server.config.chutneyMacOSAppearance)   // Port extension: not in mango (chutney_macos_appearance)
+        panels.nagSpawn(argv, input: input, selected: server.selectedMonitor?.screen.displayID,
+                        macOS: server.config.chutneyMacOSAppearance)   // Port extension: not in mango (chutney_macos_appearance)
     }
 
-    func nagKill() {
-        nagDisplay.kill()
-    }
+    func nagKill() { panels.nagKill() }
 
     func configLoaded(_ config: Config) {
         let used = config.keyBindings.map(\.dispatch.name) + config.mouseBindings.map(\.dispatch.name)
@@ -605,7 +556,7 @@ class MacWindowSystem: WindowSystem {
     func shutdown() {
         memory.save(server, final: true)
         frameClock.stop()
-        edgePlates.hideAll()
+        panels.hideAllEdgePlates()
         if let user = userKeyMappings, appliedKeyMappings != user { KeyboardOptions.apply(user) }
         let restore = DispatchGroup()
         if restarting {
@@ -733,15 +684,9 @@ class MacWindowSystem: WindowSystem {
         router.publish { $0.globalKeys = routed }
     }
 
-    func setCursorHidden(_ hidden: Bool) {
-        if hidden { CursorHider.hide() } else { CursorHider.show() }
-    }
+    func setCursorHidden(_ hidden: Bool) { panels.setCursorHidden(hidden) }
 
-    func setCursor(_ name: String?) {
-        // mango's default cursor where no client is: the port's own windows (its panels) set their own
-        if name == "default" && NSApp.isActive { return }
-        CursorHider.setCursor(name)
-    }
+    func setCursor(_ name: String?) { panels.setCursor(name) }
 
     /// The window server's answer for a point, kept for the turn: mango asks twice for one motion.
     private var surfaceAtTurn: (p: CGPoint, id: ClientID?)?

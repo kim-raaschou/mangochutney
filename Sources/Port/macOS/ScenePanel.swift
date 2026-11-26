@@ -230,7 +230,7 @@ extension MacWindowSystem {
             guard let m = server.monitors.first(where: { $0.m.contains(at) }) else { continue }
             let key = ObjectIdentifier(tree)
             seen.insert(key)
-            let panel = scenePanels[key] ?? ScenePanel(frame: m.m, look: sceneLook(m), capture: { [weak self] ids, done in
+            let panel = scenePanels[key] ?? panels.scenePanel(frame: m.m, look: sceneLook(m), capture: { [weak self] ids, done in
                 self?.captureWindows(ids, done)
             }, icon: { [weak self] id in
                 self?.server.clientByWindowID(id).flatMap { NSRunningApplication(processIdentifier: $0.pid)?.icon }
