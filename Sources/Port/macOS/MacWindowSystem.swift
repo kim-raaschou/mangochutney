@@ -460,8 +460,6 @@ class MacWindowSystem: WindowSystem {
 
     func setKeyboardOptions(_ options: String) { host.setKeyboardOptions(options) }
 
-    func allWindowIDs() -> Set<ClientID> { AppWorker.allWindowIDs() }
-
     func prepare() {
         ChutneyTheme.sync(configURL: server.configURL)
         server.registerPortExtensions()
