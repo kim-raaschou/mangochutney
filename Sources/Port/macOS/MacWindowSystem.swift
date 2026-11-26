@@ -240,8 +240,9 @@ class MacWindowSystem: WindowSystem {
     /// The window server's stacking is asked for off the main thread (it waits for the window server's
     /// pending transactions); the overlays are ordered on the main thread with what it answered.
     private func restackNow(_ pid: pid_t, reserve: Bool = true) {
+        let onScreenOrder = native.onScreenOrder
         Self.stackingQueue.async { [weak self] in
-            let order = AppWorker.onScreenOrder()
+            let order = onScreenOrder()
             DispatchQueue.main.async {
                 MainActor.assumeIsolated { self?.restackApply(pid, order, reserve: reserve) }
             }
@@ -611,8 +612,7 @@ class MacWindowSystem: WindowSystem {
         if let known = surfaceOwners[surface] {
             pid = known
         } else {
-            guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], CGWindowID(surface)) as? [[String: Any]])?.first,
-                  let p = info[kCGWindowOwnerPID as String] as? pid_t else { return nil }
+            guard let p = native.windowOwner(surface) else { return nil }
             if surfaceOwners.count > 256 { surfaceOwners.removeAll() }
             surfaceOwners[surface] = p
             pid = p

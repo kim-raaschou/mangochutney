@@ -242,6 +242,9 @@ final class FakeNativeWindows: NativeWindows {
     func windowServerFrame(_ id: ClientID) -> CGRect? { windowServerFrames(id) }
     func stackingOrder() -> [StackedWindow] { stacking }
     func writer(for pid: pid_t) -> (any WindowWriter)? { writers(pid) }
+    /// No window server: nothing is on the screen, and no window has an owner.
+    var onScreenOrder: @Sendable () -> [CGWindowID] { { [] } }
+    func windowOwner(_ id: ClientID) -> pid_t? { nil }
     func surfaceAt(_ p: CGPoint) -> ClientID? { surfaceOverride ?? windowAt(p) }
     func askFocus(_ c: Client) { focusAsked.append(c.windowID); onAskFocus(c.windowID) }
     func sendNativeFocus(_ c: Client, raise: Bool) { focused.append((c.windowID, raise)) }

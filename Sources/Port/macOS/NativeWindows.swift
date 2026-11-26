@@ -16,6 +16,10 @@ protocol NativeWindows: AnyObject {
     func windowServerFrame(_ id: ClientID) -> CGRect?
     /// The windows on the screen, front to back.
     func stackingOrder() -> [StackedWindow]
+    /// The window server's on-screen windows, front to back: read off the main thread.
+    var onScreenOrder: @Sendable () -> [CGWindowID] { get }
+    /// The process that owns a window, nil for none.
+    func windowOwner(_ id: ClientID) -> pid_t?
     /// What writes to an app's windows (its Accessibility queue).
     func writer(for pid: pid_t) -> (any WindowWriter)?
     /// The window under a point (the window server's answer), nil for none of mango's.
@@ -53,6 +57,14 @@ final class MacNativeWindows: NativeWindows {
     func stackingOrder() -> [StackedWindow] { AppWorker.stackingOrder() }
 
     func writer(for pid: pid_t) -> (any WindowWriter)? { mac.watcher.writeQueue(for: pid) }
+
+    var onScreenOrder: @Sendable () -> [CGWindowID] { { AppWorker.onScreenOrder() } }
+
+    func windowOwner(_ id: ClientID) -> pid_t? {
+        guard let info = (CGWindowListCopyWindowInfo([.optionIncludingWindow], CGWindowID(id)) as? [[String: Any]])?.first
+        else { return nil }
+        return info[kCGWindowOwnerPID as String] as? pid_t
+    }
 
     func surfaceAt(_ p: CGPoint) -> ClientID? {
         if let k = surfaceAtTurn, k.p == p { return k.id }
