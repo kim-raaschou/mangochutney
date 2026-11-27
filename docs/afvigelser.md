@@ -409,7 +409,8 @@ Hvor koden står, når den ikke står som i mango.
   (portens nøgler, modifiernavne, tastkoder) og `InputState`.
 - **Porten (`Sources/Port`):** macOS-laget (`Port/macOS`: Accessibility, parkering, fokus,
   appens egne træk, vinduer ved start og tilbage, vinduer væk i `AwayWindows`, `KeySyms`,
-  IPC's event loop) og udvidelserne (`Port/Extensions`), som kobler sig på gennem `PortHooks`.
+  IPC's event loop) og udvidelserne (`Port/Extensions`), som kobler sig på gennem `PortHooks`
+  (mangos kode) og, i macOS-laget, `MacFullscreenHooks` (`chutney_fullscreen_tag`).
 
 ## 6. Fejl i mango, rettet hos os
 
