@@ -249,7 +249,12 @@ extension MacWindowSystem: AppWatcherDelegate {
         guard !missionControl.isActive, !leftToMacOS(c) else { return }   // Port extension: chutney_fullscreen_tag (leftToMacOS)
         if c.animation.running { return }
         if server.grabClient === c && (server.cursorMode == CurMove || server.cursorMode == CurResize) { return }
-        if c.parked { keepHidden(c, seenAt: actual); return }
+        if c.parked {
+            // the app has the size it was given while parked: its picture in the scene is taken again
+            if resized { takePictureAgain(c.windowID) }
+            keepHidden(c, seenAt: actual)
+            return
+        }
         if answersPortsWrite(c) {
             if actual != c.frame {
                 c.frame = actual
