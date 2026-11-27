@@ -13,13 +13,13 @@ extension MacWindowSystem: AppWatcherDelegate {
         if w.isAppHidden { reasons.insert(.hidden) }
         // Port extension: chutney_fullscreen_tag. In fullscreen it is mapped onto its F tag; with another
         // reason, when it is back from that.
-        let onFTag = reasons.contains(.fullscreen) && FullscreenTag.isOn(server)
+        let onFTag = reasons.contains(.fullscreen) && fullscreenHooks.takesWindows
         if onFTag { reasons.remove(.fullscreen) }
         if !reasons.isEmpty {
             foundAway(c, reasons)
             return
         }
-        FullscreenTag.mapInFullscreen(server, c, onFTag) {
+        fullscreenHooks.mapInFullscreen(c, onFTag) {
             let initial = w.isInitial || !server.started
             if let d = memory.back(c) {
                 mapBack(c, d, initial: initial)
@@ -151,7 +151,7 @@ extension MacWindowSystem: AppWatcherDelegate {
             return
         }
         if server.clientIsParked(c) { server.clientFocusGroupMember(c); return }
-        if nativeFullscreen(c), !VISIBLEON(c, m) { FullscreenTag.focusedByMacOS(server, c); return }   // Port extension: chutney_fullscreen_tag
+        if nativeFullscreen(c), !VISIBLEON(c, m) { fullscreenHooks.focusedByMacOS(c); return }   // Port extension: chutney_fullscreen_tag
         if VISIBLEON(c, m) {
             if m.sel?.windowID == id && server.selectedMonitor === m { seatFocus = c; restack(); return }
             macOSFocused = c.windowID

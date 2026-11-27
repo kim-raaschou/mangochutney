@@ -457,17 +457,32 @@ enum FullscreenTag {
     }
 }
 
-/// Port extension: chutney_fullscreen_tag. What the macOS layer asks of a window's macOS fullscreen.
-extension MacWindowSystem {
-    /// On its F tag in macOS fullscreen.
-    func nativeFullscreen(_ c: Client) -> Bool { fullscreenTag[c].native }
-    /// Told to go into or out of macOS fullscreen, and macOS has yet to answer.
-    func fullscreenPending(_ c: Client) -> Bool { fullscreenTag[c].pending }
-    /// In macOS fullscreen, or told to go in or out: macOS places it.
-    func leftToMacOS(_ c: Client) -> Bool { fullscreenTag[c].native || fullscreenTag[c].pending }
-    /// While an F tag is viewed the desktop's windows are in another Space: they stay where they are.
-    func fullscreenTagViewed(_ c: Client) -> Bool {
-        guard let m = monitor(of: c) else { return false }
+/// Port extension: chutney_fullscreen_tag. The extension as the macOS layer asks it about a window in macOS
+/// fullscreen (MacFullscreenHooks).
+@MainActor
+final class FullscreenTagHooks: MacFullscreenHooks {
+    private unowned let server: MangoServer
+
+    init(_ server: MangoServer) { self.server = server }
+
+    var takesWindows: Bool { FullscreenTag.isOn(server) }
+    func mapInFullscreen(_ c: Client, _ taken: Bool, map: () -> Void) { FullscreenTag.mapInFullscreen(server, c, taken, map: map) }
+    func enter(_ c: Client, discovered: Bool) -> Bool { FullscreenTag.enter(server, c, discovered: discovered) }
+    func leave(_ c: Client) { FullscreenTag.leave(server, c) }
+    func notTaken(_ c: Client) { FullscreenTag.notTaken(server, c) }
+    func focusedByMacOS(_ c: Client) { FullscreenTag.focusedByMacOS(server, c) }
+    func followSpace() { FullscreenTag.followSpace(server) }
+    func statusChanged() { FullscreenTag.statusChanged(server) }
+    func overviewShown(_ m: Monitor) { FullscreenTag.overviewShown(server, m) }
+    func notify(_ c: Client, _ fullscreen: Bool) { FullscreenTag.notify(server, c, fullscreen) }
+    func focusSpaceAnchor(_ m: Monitor) { FullscreenTag.focusSpaceAnchor(server, m) }
+    func savedTags(_ c: Client) -> UInt32 { FullscreenTag.savedTags(server, c) }
+    func savedView(_ m: Monitor) -> (now: UInt32, before: UInt32) { FullscreenTag.savedView(server, m) }
+    func native(_ c: Client) -> Bool { server.mac.fullscreenTag[c].native }
+    func pending(_ c: Client) -> Bool { server.mac.fullscreenTag[c].pending }
+    /// While an F tag is viewed the desktop's windows are in another Space.
+    func desktopAway(_ c: Client) -> Bool {
+        guard let m = server.mac.monitor(of: c) else { return false }
         return FullscreenTag.isFullscreenView(m, server.config)
     }
 }

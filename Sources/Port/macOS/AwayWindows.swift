@@ -38,8 +38,8 @@ extension MacWindowSystem {
         let d = memory.back(c)
         memory.departed.away.remove(id)
         // Port extension: chutney_fullscreen_tag. Back from another reason still in fullscreen: onto its F tag.
-        let onFTag = reason != .fullscreen && FullscreenTag.isOn(server) && fullscreenNow(c) == true
-        FullscreenTag.mapInFullscreen(server, c, onFTag) {
+        let onFTag = reason != .fullscreen && fullscreenHooks.takesWindows && fullscreenNow(c) == true
+        fullscreenHooks.mapInFullscreen(c, onFTag) {
             if let d {
                 mapBack(c, d, initial: false)
             } else {

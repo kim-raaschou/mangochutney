@@ -1,9 +1,78 @@
 import CoreGraphics
 import Mango
 
+/// What the macOS layer asks about a window in macOS fullscreen, and tells: whether it takes such a
+/// window (onto a tag of its own), its state while macOS has it, what is saved for it, and the views
+/// around it. NoFullscreenTag answers as plain mango, a window in fullscreen out of the layout;
+/// chutney_fullscreen_tag hooks in its own (FullscreenTagHooks).
+@MainActor
+protocol MacFullscreenHooks: AnyObject {
+    /// Whether a window in macOS fullscreen is taken onto a tag of its own.
+    var takesWindows: Bool { get }
+    /// A window mapped (`map`) while macOS has it in fullscreen (`taken`).
+    func mapInFullscreen(_ c: Client, _ taken: Bool, map: () -> Void)
+    /// Into macOS fullscreen: whether it is taken, rather than out of the layout.
+    func enter(_ c: Client, discovered: Bool) -> Bool
+    func leave(_ c: Client)
+    /// After a Space change macOS has the window out of fullscreen, though it was told to go in.
+    func notTaken(_ c: Client)
+    /// macOS focused a window in fullscreen whose own view is not shown.
+    func focusedByMacOS(_ c: Client)
+    /// The active Space changed.
+    func followSpace()
+    /// mango said what it shows.
+    func statusChanged()
+    /// mango shows overview on `m`.
+    func overviewShown(_ m: Monitor)
+    /// mango tells the app it is fullscreen or not (client_notify_fullscreen).
+    func notify(_ c: Client, _ fullscreen: Bool)
+    /// mango's own window on `m`'s desktop Space focused, so macOS leaves a fullscreen Space.
+    func focusSpaceAnchor(_ m: Monitor)
+    /// The tags a window is saved on, and the views a monitor is saved with.
+    func savedTags(_ c: Client) -> UInt32
+    func savedView(_ m: Monitor) -> (now: UInt32, before: UInt32)
+    /// In macOS fullscreen and taken: macOS places it.
+    func native(_ c: Client) -> Bool
+    /// Told to go into or out of macOS fullscreen, and macOS has yet to answer.
+    func pending(_ c: Client) -> Bool
+    /// While a fullscreen window's own view is shown the desktop's windows are in another Space.
+    func desktopAway(_ c: Client) -> Bool
+}
+
+/// No window in macOS fullscreen is taken: it is out of the layout till it is back.
+@MainActor
+final class NoFullscreenTag: MacFullscreenHooks {
+    var takesWindows: Bool { false }
+    func mapInFullscreen(_ c: Client, _ taken: Bool, map: () -> Void) { map() }
+    func enter(_ c: Client, discovered: Bool) -> Bool { false }
+    func leave(_ c: Client) {}
+    func notTaken(_ c: Client) {}
+    func focusedByMacOS(_ c: Client) {}
+    func followSpace() {}
+    func statusChanged() {}
+    func overviewShown(_ m: Monitor) {}
+    func notify(_ c: Client, _ fullscreen: Bool) {}
+    func focusSpaceAnchor(_ m: Monitor) {}
+    func savedTags(_ c: Client) -> UInt32 { c.tags }
+    func savedView(_ m: Monitor) -> (now: UInt32, before: UInt32) { (m.tagset[m.seltags], m.tagset[m.seltags ^ 1]) }
+    func native(_ c: Client) -> Bool { false }
+    func pending(_ c: Client) -> Bool { false }
+    func desktopAway(_ c: Client) -> Bool { false }
+}
+
 /// A window mango manages in macOS fullscreen: read into it or out of it, away from the layout (or on
 /// its own tag, chutney_fullscreen_tag) while there, and placed again once macOS has moved it back.
 extension MacWindowSystem {
+    /// In macOS fullscreen and taken onto a tag of its own (fullscreenHooks).
+    func nativeFullscreen(_ c: Client) -> Bool { fullscreenHooks.native(c) }
+    /// Told to go into or out of macOS fullscreen, and macOS has yet to answer.
+    func fullscreenPending(_ c: Client) -> Bool { fullscreenHooks.pending(c) }
+    /// In macOS fullscreen, or told to go in or out: macOS places it.
+    func leftToMacOS(_ c: Client) -> Bool { fullscreenHooks.native(c) || fullscreenHooks.pending(c) }
+    /// While a fullscreen window's own view is shown the desktop's windows are in another Space: they stay
+    /// where they are.
+    func fullscreenTagViewed(_ c: Client) -> Bool { fullscreenHooks.desktopAway(c) }
+
     /// macOS's fullscreen read again after a Space change: the resize that tells it can come while the
     /// port writes the window, and be missed.
     func windowFullscreen(id: CGWindowID, fullscreen: Bool) {
@@ -20,7 +89,7 @@ extension MacWindowSystem {
         }
         guard let c = server.clientByWindowID(id) else { return false }
         if late, !fullscreen, fullscreenPending(c), !nativeFullscreen(c) {   // Port extension: chutney_fullscreen_tag
-            FullscreenTag.notTaken(server, c)
+            fullscreenHooks.notTaken(c)
             return true
         }
         guard fullscreen != nativeFullscreen(c) else { return false }
@@ -31,7 +100,7 @@ extension MacWindowSystem {
     /// The active Space changed: each window back from fullscreen meanwhile is placed again, now that
     /// macOS has finished moving it.
     func spaceChanged() {
-        FullscreenTag.followSpace(server)   // Port extension: chutney_fullscreen_tag
+        fullscreenHooks.followSpace()   // Port extension: chutney_fullscreen_tag
         let back = fullscreenReturns
         fullscreenReturns.removeAll()
         for id in back { placeAgain(id) }
@@ -40,10 +109,10 @@ extension MacWindowSystem {
     /// A window mango manages went into macOS fullscreen (out of the layout, or to its own tag) or out of it.
     func fullscreenChanged(_ c: Client, _ fullscreen: Bool, late: Bool = false) {
         if fullscreen {
-            if FullscreenTag.enter(server, c, discovered: late) { return }   // Port extension: chutney_fullscreen_tag
+            if fullscreenHooks.enter(c, discovered: late) { return }   // Port extension: chutney_fullscreen_tag
             goAway(c, .fullscreen)
         } else {
-            FullscreenTag.leave(server, c)   // Port extension: chutney_fullscreen_tag
+            fullscreenHooks.leave(c)   // Port extension: chutney_fullscreen_tag
             returnedFromFullscreen(c)
         }
     }

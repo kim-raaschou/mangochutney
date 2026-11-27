@@ -103,5 +103,5 @@ final class MacNativeWindows: NativeWindows {
         }
     }
 
-    func focusSpaceAnchor(_ m: Monitor) { FullscreenTag.focusSpaceAnchor(mac.server, m) }
+    func focusSpaceAnchor(_ m: Monitor) { mac.fullscreenHooks.focusSpaceAnchor(m) }
 }

@@ -33,6 +33,7 @@ extension MangoServer {
             return nil
         }
         func memory(_ server: MangoServer) -> WindowMemory? { (server.system as? MacWindowSystem)?.memory }
+        (system as? MacWindowSystem)?.fullscreenHooks = FullscreenTagHooks(self)   // chutney_fullscreen_tag
         portHooks.windowLeaving = { server, c, group, focus, order in
             FullscreenTag.unmapped(server, c)   // before the memory, which keeps its own tags
             memory(server)?.leaving(server, c, group: group, groupFocus: focus, order: order)

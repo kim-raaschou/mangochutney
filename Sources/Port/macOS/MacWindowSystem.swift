@@ -16,6 +16,9 @@ class MacWindowSystem: WindowSystem {
     var holdingWrites = false
     var heldScenes: Set<ClientID> = []
     var fullscreenTag = FullscreenTag.State()   // Port extension: chutney_fullscreen_tag
+    /// A window in macOS fullscreen as the port takes it (MacFullscreenHooks): out of the layout, or as an
+    /// extension hooks in (chutney_fullscreen_tag).
+    var fullscreenHooks: any MacFullscreenHooks = NoFullscreenTag()
     /// Windows back from macOS fullscreen before its Space change was done: placed again at it.
     var fullscreenReturns: Set<ClientID> = []
 
@@ -169,7 +172,7 @@ class MacWindowSystem: WindowSystem {
 
     func showOverview(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) {
         showOverviewPanel(cards, on: m, look: look)
-        FullscreenTag.overviewShown(server, m)   // Port extension: chutney_fullscreen_tag
+        fullscreenHooks.overviewShown(m)   // Port extension: chutney_fullscreen_tag
     }
 
     func showOverviewPanel(_ cards: [OverviewCard], on m: Monitor, look: OverviewLook) {
@@ -257,7 +260,7 @@ class MacWindowSystem: WindowSystem {
     func statusChanged() {
         memory.save(server)
         FitLayout.statusChanged(server)   // Port extension: chutney_fit_layout
-        FullscreenTag.statusChanged(server)   // Port extension: chutney_fullscreen_tag
+        fullscreenHooks.statusChanged()   // Port extension: chutney_fullscreen_tag
         onStatusChange?()
     }
 
@@ -438,7 +441,7 @@ class MacWindowSystem: WindowSystem {
     func clientSendClose(_ c: Client) { native.clientSendClose(c) }
 
     /// Port extension: chutney_fullscreen_tag (with the key off the app is not told).
-    func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) { FullscreenTag.notify(server, c, fullscreen) }
+    func clientNotifyFullscreen(_ c: Client, _ fullscreen: Bool) { fullscreenHooks.notify(c, fullscreen) }   // Port extension: chutney_fullscreen_tag
 
     func settle(_ c: Client) {
         guard let q = writer(for: c.pid) else { return }
