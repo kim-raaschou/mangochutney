@@ -57,8 +57,8 @@ protocol ScenePanelDrawing: AnyObject {
     func covers(_ p: CGPoint) -> Bool
     func scenePoint(_ p: CGPoint) -> CGPoint
     var badgeHits: [(box: CGRect, tag: UInt32)] { get }
-    /// The window's picture taken again (its size changed), if the panel has one.
-    func takePictureAgain(_ id: ClientID)
+    /// The windows shown live (their size changes); the others keep their picture.
+    func stream(_ ids: Set<ClientID>)
 }
 
 extension ScenePanel: ScenePanelDrawing {}

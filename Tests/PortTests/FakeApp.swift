@@ -210,7 +210,8 @@ final class FakeScenePanel: ScenePanelDrawing {
         return CGPoint(x: frame.minX + q.x, y: frame.minY + q.y)
     }
     var badgeHits: [(box: CGRect, tag: UInt32)] { [] }
-    func takePictureAgain(_ id: ClientID) {}
+    private(set) var live: Set<ClientID> = []
+    func stream(_ ids: Set<ClientID>) { live = ids }
 }
 
 /// The tests' macOS windows (NativeWindows): nothing reaches an app, what the port asked is kept, and the

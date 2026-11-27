@@ -220,6 +220,7 @@ final class EngineWriteTests: MangoTestCase {
         let r = EngineRig()
         r.window(1)
         let hidden = r.window(2, tags: 1 << 1, frame: CGRect(x: 100, y: 100, width: 300, height: 200))
+        (r.server.system as? FakeWindowSystem)?.fakeCanCapture = true
         r.arrange()
         r.settle()
         XCTAssertTrue(hidden.parked)
@@ -230,6 +231,11 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertEqual(r.app.frames[2]?.size, tile)
         XCTAssertTrue(hidden.parked)
         XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame))
+        r.frame()
+        XCTAssertEqual((r.server.system as? FakeWindowSystem)?.fakePanels.scenePanels.last?.live, [2], "shown live while the overview is up")
+        _ = r.server.dispatch(Dispatch(name: "toggleworkspaceoverview", args: []))
+        r.settle(1)
+        XCTAssertTrue(r.server.mac.resizedInScene.isEmpty)
     }
 
     /// mango's clip_to_hide: a scroller column wholly off its monitor is hidden, not drawn on the next

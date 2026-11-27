@@ -15,6 +15,8 @@ class MacWindowSystem: WindowSystem {
     /// holdWrites: the scenes mango set while the port held its writes back.
     var holdingWrites = false
     var heldScenes: Set<ClientID> = []
+    /// The parked windows given a new size while the scene is up: shown live till it closes.
+    var resizedInScene: Set<ClientID> = []
     var fullscreenTag = FullscreenTag.State()   // Port extension: chutney_fullscreen_tag
     /// A window in macOS fullscreen as the port takes it (MacFullscreenHooks): out of the layout, or as an
     /// extension hooks in (chutney_fullscreen_tag).

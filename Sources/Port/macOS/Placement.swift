@@ -28,6 +28,8 @@ final class PlacedWindow {
     fileprivate(set) var retryTarget: CGRect?
     fileprivate(set) var retryCount = 0
     fileprivate(set) var parkRetries = 0
+    /// The size last asked of the window while parked (sizeParked): not asked again till it is shown.
+    fileprivate(set) var parkedSize: CGSize?
     /// The display whose corner the window is parked in.
     fileprivate(set) var parkedOn: CGDirectDisplayID?
     fileprivate(set) var deferredRetryPending = false
@@ -139,25 +141,25 @@ extension MacWindowSystem {
         }
     }
 
-    /// A parked window given the size of mango's box without the border, still parked; its picture in
-    /// the scene is taken again once the app has it.
+    /// A parked window given the size of mango's box without the border, still parked; it is shown live in
+    /// the scene while the scene is up.
     func sizeParked(_ c: Client) {
         guard c.parked, !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled, let m = monitor(of: c),
               let q = writer(for: c.pid) else { return }
         let size = CGSize(width: (c.geom.width - 2 * c.bw).rounded(), height: (c.geom.height - 2 * c.bw).rounded())
-        guard size.width > 0, size.height > 0,
+        guard size.width > 0, size.height > 0, size != c.mac.placed.parkedSize,
               abs(size.width - c.frame.width) > 0.5 || abs(size.height - c.frame.height) > 0.5 else { return }
-        if let rs = c.mac.placed.refusedSize, rs.width > size.width + 0.5 || rs.height > size.height + 0.5 { return }
+        c.mac.placed.parkedSize = size
         let was = c.frame
         c.frame.size = size
         c.frame.origin = parkedOrigin(c, on: m)
         holdMoves(c, for: 0.5, atSource: 0.5)
         send(c, q, c.frame, from: was, setSize: true)
+        resizedInScene.insert(c.windowID)
         q.readBack(c.element) { [weak self] actual in
             guard let self, self.server.clientByWindowID(c.windowID) === c, c.parked else { return }
             if let actual { c.frame.size = actual.size }
             self.keepHidden(c, seenAt: actual)
-            self.takePictureAgain(c.windowID)
         }
     }
 
@@ -326,6 +328,7 @@ extension MacWindowSystem {
             c.parked = false
             p.parkRetries = 0
         }
+        p.parkedSize = nil
         guard let q = writer(for: c.pid) else { return }
         var target = box.rounded()
         let final = !c.animation.running

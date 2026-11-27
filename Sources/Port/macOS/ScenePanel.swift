@@ -17,11 +17,18 @@ final class ScenePanel {
     private var layers: [ObjectIdentifier: CALayer] = [:]
     private var badgeLayers: [CALayer] = []
     /// The pictures of the windows and each window's size when it was taken: taken once each while the
-    /// panel is up, and again when the window's size changes.
+    /// panel is up, or live from a stream while the window's size changes.
     private var images: [ClientID: (image: CGImage, size: CGSize)] = [:]
-    private var asked: [ClientID: Int] = [:]
-    /// The pictures taken again of a window whose app had not yet drawn its new size.
-    private var early: [ClientID: Int] = [:]
+    private var asked: Set<ClientID> = []
+    private lazy var streams: WindowStreams = WindowStreams { [weak self] id, image, size in
+        guard let self, self.streams.ids.contains(id) else { return }
+        self.images[id] = (image, size)
+        self.streamed.insert(id)
+        self.drawAgain()
+    }
+    /// The windows a stream has given a picture: a still is no longer taken over it.
+    private var streamed: Set<ClientID> = []
+    private var drawQueued = false
     private let capture: ([ClientID], @escaping (ClientID, CGImage, CGSize) -> Void) -> Void
     private let icon: (ClientID) -> NSImage?
     private let layoutIcon: (LayoutKind) -> CGImage?
@@ -81,6 +88,7 @@ final class ScenePanel {
     }
 
     func close() {
+        streams.stopAll()
         window.orderOut(nil)
         window.close()
     }
@@ -130,28 +138,34 @@ final class ScenePanel {
         if !missing.isEmpty { take(missing) }
     }
 
-    func takePictureAgain(_ id: ClientID) {
-        guard asked[id] != nil else { return }
-        early[id] = 0
-        take([id])
+    /// The windows shown live; the others keep the picture they have. The streams give pictures no larger
+    /// than the panel's monitor at a third of its pixels.
+    func stream(_ ids: Set<ClientID>) {
+        let scale = window.backingScaleFactor / 3
+        streams.stream(ids, pixelSize: CGSize(width: (look.size.width * scale).rounded(),
+                                              height: (look.size.height * scale).rounded()))
     }
 
-    /// The pictures asked for; a picture asked for before a later one of the same window is dropped. A
-    /// picture at another size than the window was given was taken before its app drew it: it is shown, and
-    /// taken again (at most five times).
-    private func take(_ ids: [ClientID]) {
-        var round: [ClientID: Int] = [:]
-        for id in ids { round[id] = (asked[id] ?? 0) + 1 }
-        asked.merge(round) { $1 }
-        capture(ids) { [weak self] id, image, size in
-            guard let self, self.asked[id] == round[id] else { return }
-            self.images[id] = (image, size)
-            if let given = self.windowSizes(id)?.now, abs(given.width - size.width) > 1 || abs(given.height - size.height) > 1,
-               case let n = self.early[id] ?? 0, n < 5 {
-                self.early[id] = n + 1
-                self.take([id])
+    /// The tree drawn again once per main-queue turn for all the pictures that came in it (a flag, no timer).
+    private func drawAgain() {
+        guard !drawQueued else { return }
+        drawQueued = true
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.drawQueued = false
+                if let tree = self.lastTree { self.draw(tree) }
             }
-            if let tree = self.lastTree { self.draw(tree) }
+        }
+    }
+
+    /// The pictures asked for, once each; once a window's stream has given a picture, it gives newer ones.
+    private func take(_ ids: [ClientID]) {
+        asked.formUnion(ids)
+        capture(ids) { [weak self] id, image, size in
+            guard let self, !self.streamed.contains(id) else { return }
+            self.images[id] = (image, size)
+            self.drawAgain()
         }
     }
 
@@ -195,7 +209,7 @@ final class ScenePanel {
                 picture.backgroundColor = Self.straight(buffer.background.a > 0 ? buffer.background
                                                         : RGBA(r: 0.2, g: 0.2, b: 0.2, a: 1))
                 ring.frame = item.iconRing
-                if asked[item.client] == nil { missing.append(item.client) }
+                if !asked.contains(item.client) { missing.append(item.client) }
             }
             ring.cornerRadius = item.ringRadius
             ring.borderWidth = item.border
@@ -252,6 +266,7 @@ extension MacWindowSystem {
             })
             scenePanels[key] = panel
             panel.draw(tree, badges: layoutBadges(tree, m, workspaceOverview()))
+            panel.stream(!canCapture ? [] : resizedInScene.filter { id in server.clientByWindowID(id).map { monitor(of: $0) === m } ?? false })
         }
         let hits = scenePanels.values.flatMap(\.badgeHits)
         router.publish { $0.layoutBadges = hits }   // Port extension: chutney_workspace_overview_layout
@@ -262,6 +277,7 @@ extension MacWindowSystem {
             closed = true
         }
         if closed { releaseHeldFocus() }
+        if scenePanels.isEmpty && workspaceOverview().root == nil { resizedInScene.removeAll() }
     }
 
     /// The scene's look on a monitor: below a notch (nothing shows under it), and with
@@ -349,10 +365,5 @@ extension MacWindowSystem {
             if nativeFullscreen(c) { fullscreen.insert(id) }
         }
         WindowSnapshot.capture(ids, pixelSize: sizes, onlyOnScreen: fullscreen) { id, image, size in done(id, image, size) }
-    }
-
-    /// A window's picture in the scene taken again: its size changed.
-    func takePictureAgain(_ id: ClientID) {
-        for panel in scenePanels.values { panel.takePictureAgain(id) }
     }
 }
