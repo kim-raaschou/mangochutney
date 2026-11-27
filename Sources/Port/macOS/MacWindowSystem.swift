@@ -21,6 +21,8 @@ class MacWindowSystem: WindowSystem {
     /// A window in macOS fullscreen as the port takes it (MacFullscreenHooks): out of the layout, or as an
     /// extension hooks in (chutney_fullscreen_tag).
     var fullscreenHooks: any MacFullscreenHooks = NoFullscreenTag()
+    /// The port's extensions that follow mango's status (printstatus), as they hook in (chutney_fit_layout).
+    var statusFollowers: [@MainActor (MangoServer) -> Void] = []
     /// Windows back from macOS fullscreen before its Space change was done: placed again at it.
     var fullscreenReturns: Set<ClientID> = []
 
@@ -261,7 +263,7 @@ class MacWindowSystem: WindowSystem {
 
     func statusChanged() {
         memory.save(server)
-        FitLayout.statusChanged(server)   // Port extension: chutney_fit_layout
+        for follow in statusFollowers { follow(server) }
         fullscreenHooks.statusChanged()   // Port extension: chutney_fullscreen_tag
         onStatusChange?()
     }
