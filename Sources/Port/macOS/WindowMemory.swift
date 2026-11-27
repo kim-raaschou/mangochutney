@@ -11,6 +11,8 @@ final class WindowMemory {
     var lastSaved: SavedLayout?
     let queue = DispatchQueue(label: "mango.layout", qos: .utility)
     private var pruning = false
+    /// The managed windows when the saved entries were last pruned.
+    private var prunedWith: Set<ClientID>?
 
     func back(_ c: Client) -> DepartedWindow? {
         let back = departed.take(c.windowID).flatMap { d in d.bundleId.isEmpty || d.bundleId == c.bundleId ? d : nil }
@@ -117,9 +119,13 @@ final class WindowMemory {
             return
         }
         // The window server's list is asked for on the memory's queue: on the main thread it is a round trip
-        // at every status change while saved entries remain.
-        if departed.hasSavedEntries && !pruning {
+        // at every status change while saved entries remain. It is asked for only when the managed windows
+        // changed: asked off the main thread while the main thread commits its windows (a drag moves the
+        // borders at every frame), the window server holds both for up to 400 ms.
+        let managed = Set(server.clientsAll.map(\.windowID))
+        if departed.hasSavedEntries && !pruning && managed != prunedWith {
             pruning = true
+            prunedWith = managed
             queue.async { [weak self] in
                 let ids = AppWorker.allWindowIDs()
                 DispatchQueue.main.async {
