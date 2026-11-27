@@ -33,6 +33,8 @@ final class PlacedWindow {
     /// The display whose corner the window is parked in.
     fileprivate(set) var parkedOn: CGDirectDisplayID?
     fileprivate(set) var deferredRetryPending = false
+    /// The late read of the window's last write (verifyFrame), replaced by a newer write's.
+    fileprivate var verifyTimer: PortTimer?
 }
 
 /// What the next frame writes and parks, and the windows leaving that wait for those coming back.
@@ -399,14 +401,23 @@ extension MacWindowSystem {
         }
     }
 
+    /// While a grab writes at every frame, one late read per window, of its last write: a late read for
+    /// every write would queue behind the writes in the app. The grab's own window is not read at once
+    /// (reconcileFrame leaves it to the grab).
     func verifyFrame(_ c: Client) {
         guard let q = writer(for: c.pid) else { return }
-        readBack(c, q)
-        let late = max(0.6, c.mac.placed.ignoreMovesUntil - clock.now + 0.15)
-        clock.after(late) { [weak self] in
+        let p = c.mac.placed
+        let grab = server.grabClient != nil
+        if server.grabClient !== c { readBack(c, q) }
+        let late = max(0.6, p.ignoreMovesUntil - clock.now + 0.15)
+        if grab { p.verifyTimer?.cancel() }
+        var timer: PortTimer?
+        timer = clock.after(late) { [weak self] in
+            if p.verifyTimer === timer { p.verifyTimer = nil }
             guard let self, self.server.clientByWindowID(c.windowID) === c else { return }
             self.readBack(c, q)
         }
+        p.verifyTimer = timer
     }
 
     func readBack(_ c: Client, _ q: WindowWriter) {

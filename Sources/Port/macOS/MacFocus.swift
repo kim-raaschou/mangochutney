@@ -125,7 +125,7 @@ extension MacWindowSystem {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self, self.restackGeneration == gen else { return }
-                self.restackNow(pid, reserve: false)
+                self.frameClock.whenIdle { [weak self] in self?.restackNow(pid, reserve: false) }
             }
         }
     }

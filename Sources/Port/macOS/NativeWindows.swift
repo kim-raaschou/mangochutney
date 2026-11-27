@@ -42,6 +42,8 @@ final class MacNativeWindows: NativeWindows {
     private unowned let mac: MacWindowSystem
     /// The window server's answer for a point, kept for the turn: mango asks twice for one motion.
     private var surfaceAtTurn: (p: CGPoint, id: ClientID?)?
+    /// The window under the pointer as the window server answered it in the current grab.
+    private var surfaceInGrab: (grab: ObjectIdentifier, id: ClientID?)?
 
     init(_ mac: MacWindowSystem) { self.mac = mac }
 
@@ -68,11 +70,16 @@ final class MacNativeWindows: NativeWindows {
 
     func surfaceAt(_ p: CGPoint) -> ClientID? {
         if let k = surfaceAtTurn, k.p == p { return k.id }
+        // a move or resize grab holds the pointer's window: the window server is not asked at each motion
+        let grab = mac.server.cursorMode == CurMove || mac.server.cursorMode == CurResize
+            ? mac.server.grabClient.map(ObjectIdentifier.init) : nil
+        if let grab, let k = surfaceInGrab, k.grab == grab { return k.id }
         if surfaceAtTurn == nil {
             DispatchQueue.main.async { [weak self] in MainActor.assumeIsolated { self?.surfaceAtTurn = nil } }
         }
         let id = CursorHider.windowAt(p)
         surfaceAtTurn = (p, id)
+        surfaceInGrab = grab.map { ($0, id) }
         return id
     }
 

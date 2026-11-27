@@ -38,10 +38,12 @@ final class FrameClock {
         (s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }
 
-    /// The body runs once no client is moving.
+    /// The body runs once no client is moving and no grab holds one.
     func whenIdle(_ body: @escaping () -> Void) {
-        if !animationsRunning { body() } else { idleWaiters.append(body) }
+        if !busy { body() } else { idleWaiters.append(body) }
     }
+
+    private var busy: Bool { animationsRunning || server?.grabClient != nil }
 
     func screensChanged() {
         guard link != nil else { return }
@@ -67,22 +69,29 @@ final class FrameClock {
         let ms = (CACurrentMediaTime() - start) * 1000
         if ms > 50 { wlrLog(.info, String(format: "slow on the main thread: a frame took %.0f ms", ms)) }
         guard scheduled.isEmpty else { return }
-        link?.invalidate(); link = nil; linkDisplay = nil
+        link?.isPaused = true
         timer?.cancel(); timer = nil
-        if !animationsRunning && !idleWaiters.isEmpty {
+        if !busy && !idleWaiters.isEmpty {
             let waiters = idleWaiters
             idleWaiters.removeAll()
             for w in waiters { w() }
         }
     }
 
+    /// The link is kept, paused, between frames: a new one's first frame may wait past the next refresh.
     private func start(on display: CGDirectDisplayID) {
-        guard !manual, link == nil, timer == nil else { return }
+        guard !manual, timer == nil else { return }
+        // a running link serves every scheduled monitor; a paused one moves to the display that asks
+        if let link, linkDisplay == display || !link.isPaused {
+            link.isPaused = false
+            return
+        }
+        link?.invalidate(); link = nil; linkDisplay = nil
         if let screen = NSScreen.screens.first(where: { Self.displayID($0) == display }) ?? NSScreen.screens.first {
             linkDisplay = Self.displayID(screen)
             let l = screen.displayLink(target: linkTarget, selector: #selector(DisplayLinkTarget.fire))
             let rate = Float(fps)
-            l.preferredFrameRateRange = CAFrameRateRange(minimum: rate / 2, maximum: rate, preferred: rate)
+            l.preferredFrameRateRange = CAFrameRateRange(minimum: rate, maximum: rate, preferred: rate)
             l.add(to: .main, forMode: .common)
             link = l
             return

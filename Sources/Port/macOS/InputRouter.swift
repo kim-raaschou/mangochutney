@@ -253,6 +253,8 @@ final class InputRouter: @unchecked Sendable {
         onMain {
             $0.pointerProcessButtonPress(button: button, pressed: false, at: p, mods: mods)
             $0.mac.userButtonReleased(button: button, at: p)
+            // wlroots' cursor event asks for a frame: what waited for the grab to end runs at it
+            if let m = $0.selectedMonitor { $0.system.outputScheduleFrame(m) }
         }
         return wsovRelease
     }
