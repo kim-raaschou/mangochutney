@@ -113,14 +113,10 @@ package final class TestMango {
         // keyboard (!group->virtual_keyboard)
         let k = KeyInput(keyCode: code, mods: mods, isDown: down, isRepeat: false, keyModifier: own,
                          keysym: FakeKeymap.keysym(code))
-        let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: s.bindings, mode: s.keymode,
-                                           virtualKeyboard: true, workspaceOverviewActive: s.workspaceOverviewActive)
-        server.handleKeyboardKey(d.actions)
-        if !d.handled {
-            let u = Keyboard.handleUnboundKey(k, state: &keyboard, jumpMode: s.jumpMode, isEscape: code == FakeKeymap.code("escape"),
-                                              isJumpKey: s.jumpKeycodes.contains(code), globalKeys: [])
-            if let a = u.action { server.handleKeyboardKey([a]) }
-        }
+        let out = SeatInput.key(k, state: &keyboard, bindings: s.bindings, mode: s.keymode, virtualKeyboard: true,
+                                workspaceOverviewActive: s.workspaceOverviewActive, jumpMode: s.jumpMode,
+                                isEscape: code == FakeKeymap.code("escape"), isJumpKey: s.jumpKeycodes.contains(code), globalKeys: [])
+        server.handleKeyboardKey(out.actions)
         held = mods
     }
 
@@ -136,21 +132,14 @@ package final class TestMango {
         time += 1000
         let from = wlroots.pointer
         wlroots.pointer = p
-        cursorMoved()
-        server.pointerProcessMotion(time, p.x - from.x, p.y - from.y)
-    }
-
-    /// wlroots draws the cursor itself on a headless output: a move damages the output it is on.
-    private func cursorMoved() {
-        if let m = server.monitorAtPoint(wlroots.pointer) { wlroots.outputScheduleFrame(m) }
+        SeatInput.motionAbsolute(server, time: time, dx: p.x - from.x, dy: p.y - from.y)
     }
 
     /// The pointer moved by `d`, as mango's handle_cursor_motion takes a relative motion.
     package func move(by d: CGVector) {
         time += 1000
         wlroots.pointer = CGPoint(x: wlroots.pointer.x + d.dx, y: wlroots.pointer.y + d.dy)
-        cursorMoved()
-        server.handleCursorMotion(time, d.dx, d.dy)
+        SeatInput.motion(server, time: time, dx: d.dx, dy: d.dy)
     }
 
     /// A button down or up where the pointer is (0 left, 1 right, 2 middle). A virtual keyboard's
@@ -166,18 +155,19 @@ package final class TestMango {
         time += 1000
         server.publishInputState()
         let s = wlroots.input
-        if Pointer.workspaceOverviewTakesAxis(mods: wlroots.keyboardHardModifiers(), workspaceOverviewActive: s.workspaceOverviewActive) {
-            // a notch of a virtual pointer's wheel: discrete 120, delta 15
-            _ = server.workspaceOverviewHandleAxis(WlrPointerAxisEvent(timeMsec: time, delta: delta > 0 ? 15 : -15,
-                                                                       deltaDiscrete: delta > 0 ? 120 : -120))
-            return
+        // a notch of a virtual pointer's wheel: discrete 120, delta 15
+        switch SeatInput.axis(vertical: vertical, delta: delta > 0 ? 15 : -15, discrete: delta > 0 ? 1 : -1, timeMsec: time,
+                              mods: wlroots.keyboardHardModifiers(), workspaceOverviewActive: s.workspaceOverviewActive,
+                              axisBindings: s.axisBindings, mode: s.keymode, axisBindApplyTimeout: s.axisBindApplyTimeout,
+                              applyTime: &axisApplyTime, applyDir: &axisApplyDir) {
+        case .workspaceOverview(let axis):
+            _ = server.workspaceOverviewHandleAxis(axis)
+        case .binding(let fires):
+            wlroots.keyboardCancelPendingReleaseBind()
+            if let d = fires { _ = server.dispatch(d) }
+        case nil:
+            break
         }
-        guard let axis = Pointer.handleCursorAxis(vertical: vertical, delta: delta, timeMsec: time,
-                                                  mods: wlroots.keyboardHardModifiers(), axisBindings: s.axisBindings,
-                                                  mode: s.keymode, axisBindApplyTimeout: s.axisBindApplyTimeout,
-                                                  axisApplyTime: &axisApplyTime, axisApplyDir: &axisApplyDir) else { return }
-        wlroots.keyboardCancelPendingReleaseBind()
-        if axis.fires { _ = server.dispatch(axis.binding.dispatch) }
     }
 
     // MARK: mmsg

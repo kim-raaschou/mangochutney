@@ -113,23 +113,17 @@ final class InputRouter: @unchecked Sendable {
         // Port extension: the layout switcher over the workspace overview takes the keys itself
         if s.layoutSwitcherFrame != nil && s.workspaceOverviewActive { return false }
         lock.lock()
-        let d = Keyboard.handleKeyboardKey(k, state: &keyboard, bindings: s.bindings, mode: s.keymode,
-                                           virtualKeyboard: false, workspaceOverviewActive: s.workspaceOverviewActive)
+        let out = SeatInput.key(k, state: &keyboard, bindings: s.bindings, mode: s.keymode, virtualKeyboard: false,
+                                workspaceOverviewActive: s.workspaceOverviewActive, jumpMode: s.jumpMode,
+                                isEscape: ev.keyCode == 53, isJumpKey: s.jumpKeys.contains(ev.keyCode),
+                                globalKeys: s.globalKeys.map { ($0.mods, $0.keyCodes, $0.pid) })
         lock.unlock()
         let age = ev.ageMs.map { String(format: "%.0f ms", $0) } ?? "?"
         if let a = ev.ageMs, a > 250, ev.isDown {
             wlrLog(.info, "input lag: a key event reached mango \(age) after it was pressed")
         }
-        run(d.actions, ev, age: age)
-        if d.handled { return d.swallow && !ev.isModifierKey }
-
-        lock.lock()
-        let u = Keyboard.handleUnboundKey(k, state: &keyboard, jumpMode: s.jumpMode,
-                                          isEscape: ev.keyCode == 53, isJumpKey: s.jumpKeys.contains(ev.keyCode),
-                                          globalKeys: s.globalKeys.map { ($0.mods, $0.keyCodes, $0.pid) })
-        lock.unlock()
-        if let a = u.action { run([a], ev, age: age) }
-        return (u.swallow || d.swallow) && !ev.isModifierKey
+        run(out.actions, ev, age: age)
+        return out.swallow && !ev.isModifierKey
     }
 
     /// Port extension: a key while chutney_launch_or_focus's picture is up. The picker's own keys
@@ -287,9 +281,7 @@ final class InputRouter: @unchecked Sendable {
             MainActor.assumeIsolated {
                 guard let latest, let server = self.server else { return }
                 let mangos = server.cursorMode == CurMove || server.cursorMode == CurResize || server.groupBarDragPending
-                server.handleCursorMotion(latest.time, latest.dx, latest.dy)
-                // wlroots' cursor move asks its output for a frame: mango's grab resizes once per frame (frame_serial)
-                if let m = server.grabClient?.mon ?? server.selectedMonitor { server.system.outputScheduleFrame(m) }
+                SeatInput.motion(server, time: latest.time, dx: latest.dx, dy: latest.dy)
                 if !mangos { server.mac.followUserDrag() }
             }
         }
@@ -312,7 +304,7 @@ final class InputRouter: @unchecked Sendable {
             self.pendingMove = nil
             self.lock.unlock()
             MainActor.assumeIsolated {
-                if let latest, let server = self.server { server.handleCursorMotion(latest.time, latest.dx, latest.dy) }
+                if let latest, let server = self.server { SeatInput.motion(server, time: latest.time, dx: latest.dx, dy: latest.dy) }
             }
         }
     }
@@ -323,21 +315,18 @@ final class InputRouter: @unchecked Sendable {
         if s.wantsMouseMoved { onMain { $0.pointerCursorActivity() } }
         var ev = event
         ev.mods = KeyboardOptions.hyperMods(ev.mods, hyper: s.hyper, keyHeld: hyperHeld)
-        if Pointer.workspaceOverviewTakesAxis(mods: ev.mods, workspaceOverviewActive: s.workspaceOverviewActive) {
-            let axis = WlrPointerAxisEvent(timeMsec: scrollTime(), delta: ev.delta, deltaDiscrete: Int32(ev.discrete * 120))
+        switch SeatInput.axis(vertical: ev.vertical, delta: ev.delta, discrete: ev.discrete, timeMsec: scrollTime(), mods: ev.mods,
+                              workspaceOverviewActive: s.workspaceOverviewActive, axisBindings: s.axisBindings, mode: s.keymode,
+                              axisBindApplyTimeout: s.axisBindApplyTimeout, applyTime: &axisApplyTime, applyDir: &axisApplyDir) {
+        case .workspaceOverview(let axis):
             onMain { _ = $0.workspaceOverviewHandleAxis(axis) }
             return true
+        case .binding(let fires):
+            cancelPendingReleaseBind()
+            if let d = fires { onMain { _ = $0.dispatch(d) } }
+            return true
+        case nil:
+            return false
         }
-        guard let axis = Pointer.handleCursorAxis(vertical: ev.vertical, delta: ev.delta, timeMsec: scrollTime(),
-                                                  mods: ev.mods, axisBindings: s.axisBindings, mode: s.keymode,
-                                                  axisBindApplyTimeout: s.axisBindApplyTimeout,
-                                                  axisApplyTime: &axisApplyTime, axisApplyDir: &axisApplyDir)
-        else { return false }
-        cancelPendingReleaseBind()
-        if axis.fires {
-            let d = axis.binding.dispatch
-            onMain { _ = $0.dispatch(d) }
-        }
-        return true
     }
 }

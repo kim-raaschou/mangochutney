@@ -407,7 +407,8 @@ Hvor koden står, når den ikke står som i mango.
   output-events), `MangoBarDecoration` og `MangoJumpLabel` (mangos tekstnoder), `Decorations`,
   `NagDisplay` (mangonags Wayland-side), `EventLoop` (`wl_event_loop_add_fd` og `_add_timer`, til
   IPC og config-watcheren), `Screen`, `InputDevice`, `Swipe`, `WlrLog`, `PortHooks`, `ConfigPort`
-  (portens nøgler, modifiernavne, tastkoder) og `InputState`.
+  (portens nøgler, modifiernavne, tastkoder), `InputState` og `SeatInput` (wlroots' sædes trin med en
+  tast, en bevægelse og et hjul, fælles for portens event tap og testenes virtuelle enheder).
 - **Porten (`Sources/Port`):** macOS-laget (`Port/macOS`: Accessibility, parkering, fokus,
   appens egne træk, vinduer ved start og tilbage, vinduer væk i `AwayWindows`, `KeySyms`,
   IPC's event loop) og udvidelserne (`Port/Extensions`), som kobler sig på gennem `PortHooks`
