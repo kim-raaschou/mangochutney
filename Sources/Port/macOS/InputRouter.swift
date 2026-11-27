@@ -286,6 +286,8 @@ final class InputRouter: @unchecked Sendable {
                 guard let latest, let server = self.server else { return }
                 let mangos = server.cursorMode == CurMove || server.cursorMode == CurResize || server.groupBarDragPending
                 server.handleCursorMotion(latest.time, latest.dx, latest.dy)
+                // wlroots' cursor move asks its output for a frame: mango's grab resizes once per frame (frame_serial)
+                if let m = server.grabClient?.mon ?? server.selectedMonitor { server.system.outputScheduleFrame(m) }
                 if !mangos { server.mac.followUserDrag() }
             }
         }

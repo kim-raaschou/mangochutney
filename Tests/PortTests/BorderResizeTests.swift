@@ -146,6 +146,31 @@ final class BorderResizeTests: MangoTestCase {
         XCTAssertNil(r.server.grabClient)
     }
 
+    /// The tap's drag on a tiled strip, with no frame but the ones the drag asks for: the split follows.
+    func testTheTapsDragOnAStripMovesTheSplitFrameByFrame() throws {
+        let r = EngineRig()
+        r.server.renderBorder = true
+        let w1 = r.map(1), w2 = r.map(2)
+        r.arrange()
+        r.settle()
+        let (a, _) = w1.geom.minX < w2.geom.minX ? (w1, w2) : (w2, w1)
+        let width = a.geom.width
+        let strip = CGPoint(x: a.frame.maxX - 2, y: a.frame.midY)
+        let router = fake(r).router
+        router.server = r.server
+        r.server.cursorMotion(to: strip)
+        XCTAssertTrue(router.mouseButton(MouseButtonEvent(button: 0, mods: [], isDown: true, location: strip)))
+        r.settle(until: { r.server.cursorMode == CurResize })
+        XCTAssertEqual(r.server.cursorMode, CurResize)
+        for i in 1...6 {
+            let p = CGPoint(x: strip.x + CGFloat(i * 20), y: strip.y)
+            fake(r).fakePointer = p
+            router.dragged(p)
+            r.settle()
+        }
+        XCTAssertGreaterThan(a.geom.width, width + 60, "the split followed the drag")
+    }
+
     func testAPressTheTapLetThroughIsTheApps() {
         let (r, _, _) = sideBySide()
         XCTAssertFalse(r.server.press(at: CGPoint(x: 496, y: 400), mods: [],
