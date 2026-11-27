@@ -214,6 +214,24 @@ final class EngineWriteTests: MangoTestCase {
         XCTAssertEqual(r.app.writes.last { $0.id == 2 }?.setSize, false, "parking moves, it does not resize")
     }
 
+    /// mango's workspace overview arranges every tag, which configures each client to its tile there; a
+    /// window parked on a tag not viewed is given that size and stays parked.
+    func testTheWorkspaceOverviewGivesAParkedWindowItsTileSize() {
+        let r = EngineRig()
+        r.window(1)
+        let hidden = r.window(2, tags: 1 << 1, frame: CGRect(x: 100, y: 100, width: 300, height: 200))
+        r.arrange()
+        r.settle()
+        XCTAssertTrue(hidden.parked)
+        XCTAssertEqual(r.app.frames[2]?.size, CGSize(width: 300, height: 200))
+        _ = r.server.dispatch(Dispatch(name: "toggleworkspaceoverview", args: []))
+        r.settle()
+        let tile = CGSize(width: hidden.geom.width - 2 * hidden.bw, height: hidden.geom.height - 2 * hidden.bw)
+        XCTAssertEqual(r.app.frames[2]?.size, tile)
+        XCTAssertTrue(hidden.parked)
+        XCTAssertTrue(Hider.isParked(r.app.frames[2]!, in: r.screen.frame))
+    }
+
     /// mango's clip_to_hide: a scroller column wholly off its monitor is hidden, not drawn on the next
     /// monitor (its clip box has a negative width, which CGRect's width would hide).
     func testAScrollerColumnWhollyOffItsMonitorIsHidden() {

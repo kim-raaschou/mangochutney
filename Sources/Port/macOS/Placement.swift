@@ -125,7 +125,8 @@ extension MacWindowSystem {
 
     /// While mango measures (the workspace overview arranges every tag in turn) a window is neither shown
     /// nor parked nor raised; what its scene is at the end is shown or parked then. Its place is written at
-    /// the frame as always, where mango last put it.
+    /// the frame as always, where mango last put it; a parked one is given its size on its tag, as
+    /// mango's arrange configures every client it measures.
     func holdWrites(_ hold: Bool) {
         holdingWrites = hold
         guard !hold else { return }
@@ -134,6 +135,29 @@ extension MacWindowSystem {
         for id in ids {
             guard let c = server.clientByWindowID(id) else { continue }
             showOrPark(c)
+            sizeParked(c)
+        }
+    }
+
+    /// A parked window given the size of mango's box without the border, still parked; its picture in
+    /// the scene is taken again once the app has it.
+    func sizeParked(_ c: Client) {
+        guard c.parked, !c.mac.sceneNodeEnabled || !c.mac.sceneSurfaceEnabled, let m = monitor(of: c),
+              let q = writer(for: c.pid) else { return }
+        let size = CGSize(width: (c.geom.width - 2 * c.bw).rounded(), height: (c.geom.height - 2 * c.bw).rounded())
+        guard size.width > 0, size.height > 0,
+              abs(size.width - c.frame.width) > 0.5 || abs(size.height - c.frame.height) > 0.5 else { return }
+        if let rs = c.mac.placed.refusedSize, rs.width > size.width + 0.5 || rs.height > size.height + 0.5 { return }
+        let was = c.frame
+        c.frame.size = size
+        c.frame.origin = parkedOrigin(c, on: m)
+        holdMoves(c, for: 0.5, atSource: 0.5)
+        send(c, q, c.frame, from: was, setSize: true)
+        q.readBack(c.element) { [weak self] actual in
+            guard let self, self.server.clientByWindowID(c.windowID) === c, c.parked else { return }
+            if let actual { c.frame.size = actual.size }
+            self.keepHidden(c, seenAt: actual)
+            self.takePictureAgain(c.windowID)
         }
     }
 

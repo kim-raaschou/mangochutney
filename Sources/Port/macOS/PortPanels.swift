@@ -42,7 +42,7 @@ protocol PortPanels: AnyObject {
 
     /// A panel that draws a scene tree on a monitor (the workspace overview).
     func scenePanel(frame: CGRect, look: SceneDrawing.Look,
-                    capture: @escaping ([ClientID], @escaping (ClientID, CGImage) -> Void) -> Void,
+                    capture: @escaping ([ClientID], @escaping (ClientID, CGImage, CGSize) -> Void) -> Void,
                     icon: @escaping (ClientID) -> NSImage?,
                     layoutIcon: @escaping (LayoutKind) -> CGImage?,
                     windowSizes: @escaping (ClientID) -> SceneDrawing.WindowSize?) -> any ScenePanelDrawing
@@ -57,6 +57,8 @@ protocol ScenePanelDrawing: AnyObject {
     func covers(_ p: CGPoint) -> Bool
     func scenePoint(_ p: CGPoint) -> CGPoint
     var badgeHits: [(box: CGRect, tag: UInt32)] { get }
+    /// The window's picture taken again (its size changed), if the panel has one.
+    func takePictureAgain(_ id: ClientID)
 }
 
 extension ScenePanel: ScenePanelDrawing {}
@@ -183,7 +185,7 @@ final class AppKitPanels: PortPanels {
     }
 
     func scenePanel(frame: CGRect, look: SceneDrawing.Look,
-                    capture: @escaping ([ClientID], @escaping (ClientID, CGImage) -> Void) -> Void,
+                    capture: @escaping ([ClientID], @escaping (ClientID, CGImage, CGSize) -> Void) -> Void,
                     icon: @escaping (ClientID) -> NSImage?,
                     layoutIcon: @escaping (LayoutKind) -> CGImage?,
                     windowSizes: @escaping (ClientID) -> SceneDrawing.WindowSize?) -> any ScenePanelDrawing {

@@ -16,10 +16,11 @@ final class ScenePanel {
     private let geometry: SceneDrawing.Geometry
     private var layers: [ObjectIdentifier: CALayer] = [:]
     private var badgeLayers: [CALayer] = []
-    /// The pictures of the windows, taken once each while the panel is up.
-    private var images: [ClientID: CGImage] = [:]
-    private var asked: Set<ClientID> = []
-    private let capture: ([ClientID], @escaping (ClientID, CGImage) -> Void) -> Void
+    /// The pictures of the windows and each window's size when it was taken: taken once each while the
+    /// panel is up, and again when the window's size changes.
+    private var images: [ClientID: (image: CGImage, size: CGSize)] = [:]
+    private var asked: [ClientID: Int] = [:]
+    private let capture: ([ClientID], @escaping (ClientID, CGImage, CGSize) -> Void) -> Void
     private let icon: (ClientID) -> NSImage?
     private let layoutIcon: (LayoutKind) -> CGImage?
     private let windowSizes: (ClientID) -> SceneDrawing.WindowSize?
@@ -28,7 +29,7 @@ final class ScenePanel {
     private(set) var list = SceneDrawing.DrawList()
 
     init(frame: CGRect, look: SceneDrawing.Look,
-         capture: @escaping ([ClientID], @escaping (ClientID, CGImage) -> Void) -> Void,
+         capture: @escaping ([ClientID], @escaping (ClientID, CGImage, CGSize) -> Void) -> Void,
          icon: @escaping (ClientID) -> NSImage?,
          layoutIcon: @escaping (LayoutKind) -> CGImage?,
          windowSizes: @escaping (ClientID) -> SceneDrawing.WindowSize?) {
@@ -87,7 +88,12 @@ final class ScenePanel {
         lastTree = tree
         if let badges { self.badges = badges }
         let base = CGPoint(x: CGFloat(tree.x) - origin.x, y: CGFloat(tree.y) - origin.y)
-        list = SceneDrawing.draw(tree, at: base, look: look, badges: self.badges, windows: windowSizes)
+        // a picture is shown at the size its window had when it was taken
+        list = SceneDrawing.draw(tree, at: base, look: look, badges: self.badges) { [images, windowSizes] id in
+            guard var size = windowSizes(id) else { return nil }
+            if let shot = images[id] { size.now = shot.size }
+            return size
+        }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         if let backdrop = list.backdrop { host?.backgroundColor = Self.straight(backdrop) }
@@ -119,13 +125,23 @@ final class ScenePanel {
         }
         root.sublayers = order + layoutBadges()
         CATransaction.commit()
-        if !missing.isEmpty {
-            asked.formUnion(missing)
-            capture(missing) { [weak self] id, image in
-                guard let self else { return }
-                self.images[id] = image
-                if let tree = self.lastTree { self.draw(tree) }
-            }
+        if !missing.isEmpty { take(missing) }
+    }
+
+    func takePictureAgain(_ id: ClientID) {
+        guard asked[id] != nil else { return }
+        take([id])
+    }
+
+    /// The pictures asked for; a picture asked for before a later one of the same window is dropped.
+    private func take(_ ids: [ClientID]) {
+        var round: [ClientID: Int] = [:]
+        for id in ids { round[id] = (asked[id] ?? 0) + 1 }
+        asked.merge(round) { $1 }
+        capture(ids) { [weak self] id, image, size in
+            guard let self, self.asked[id] == round[id] else { return }
+            self.images[id] = (image, size)
+            if let tree = self.lastTree { self.draw(tree) }
         }
     }
 
@@ -154,7 +170,7 @@ final class ScenePanel {
             }()
             picture.isHidden = !item.showsPicture
             picture.cornerRadius = item.radius
-            if let image = images[item.client] {
+            if let image = images[item.client]?.image {
                 picture.frame = item.picture
                 picture.contents = image
                 picture.contentsGravity = .resize
@@ -169,7 +185,7 @@ final class ScenePanel {
                 picture.backgroundColor = Self.straight(buffer.background.a > 0 ? buffer.background
                                                         : RGBA(r: 0.2, g: 0.2, b: 0.2, a: 1))
                 ring.frame = item.iconRing
-                if !asked.contains(item.client) { missing.append(item.client) }
+                if asked[item.client] == nil { missing.append(item.client) }
             }
             ring.cornerRadius = item.ringRadius
             ring.borderWidth = item.border
@@ -312,7 +328,7 @@ extension MacWindowSystem {
     }
 
     /// The windows' pictures at their own size (ScreenCaptureKit).
-    private func captureWindows(_ ids: [ClientID], _ done: @escaping (ClientID, CGImage) -> Void) {
+    private func captureWindows(_ ids: [ClientID], _ done: @escaping (ClientID, CGImage, CGSize) -> Void) {
         guard canCapture else { return }
         var sizes: [ClientID: CGSize] = [:]
         var fullscreen: Set<ClientID> = []
@@ -322,6 +338,11 @@ extension MacWindowSystem {
             sizes[id] = CGSize(width: c.frame.width * scale, height: c.frame.height * scale)
             if nativeFullscreen(c) { fullscreen.insert(id) }
         }
-        WindowSnapshot.capture(ids, pixelSize: sizes, onlyOnScreen: fullscreen) { id, image in done(id, image) }
+        WindowSnapshot.capture(ids, pixelSize: sizes, onlyOnScreen: fullscreen) { id, image, size in done(id, image, size) }
+    }
+
+    /// A window's picture in the scene taken again: its size changed.
+    func takePictureAgain(_ id: ClientID) {
+        for panel in scenePanels.values { panel.takePictureAgain(id) }
     }
 }

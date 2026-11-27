@@ -13,6 +13,12 @@ public enum WindowSnapshot {
 
     public static func capture(_ ids: [CGWindowID], pixelSize: [CGWindowID: CGSize], onlyOnScreen: Set<CGWindowID> = [],
                                onImage: @escaping @MainActor (CGWindowID, CGImage) -> Void) {
+        capture(ids, pixelSize: pixelSize, onlyOnScreen: onlyOnScreen) { id, image, _ in onImage(id, image) }
+    }
+
+    /// The pictures with the size each window had when it was taken.
+    public static func capture(_ ids: [CGWindowID], pixelSize: [CGWindowID: CGSize], onlyOnScreen: Set<CGWindowID> = [],
+                               onShot: @escaping @MainActor (CGWindowID, CGImage, CGSize) -> Void) {
         Task.detached(priority: .userInitiated) {
             guard let content = try? await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false) else {
                 return
@@ -32,7 +38,7 @@ public enum WindowSnapshot {
                         cfg.showsCursor = false
                         cfg.ignoreShadowsSingleWindow = true
                         if let img = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: cfg) {
-                            await MainActor.run { onImage(id, img) }
+                            await MainActor.run { onShot(id, img, w.frame.size) }
                         }
                     }
                 }

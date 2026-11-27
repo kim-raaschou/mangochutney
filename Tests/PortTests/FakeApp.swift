@@ -176,7 +176,7 @@ final class FakePanels: PortPanels {
     func setCursorHidden(_ hidden: Bool) { cursorHidden = hidden }
     func setCursor(_ name: String?) { cursorName = .some(name) }
     func scenePanel(frame: CGRect, look: SceneDrawing.Look,
-                    capture: @escaping ([ClientID], @escaping (ClientID, CGImage) -> Void) -> Void,
+                    capture: @escaping ([ClientID], @escaping (ClientID, CGImage, CGSize) -> Void) -> Void,
                     icon: @escaping (ClientID) -> NSImage?,
                     layoutIcon: @escaping (LayoutKind) -> CGImage?,
                     windowSizes: @escaping (ClientID) -> SceneDrawing.WindowSize?) -> any ScenePanelDrawing {
@@ -210,6 +210,7 @@ final class FakeScenePanel: ScenePanelDrawing {
         return CGPoint(x: frame.minX + q.x, y: frame.minY + q.y)
     }
     var badgeHits: [(box: CGRect, tag: UInt32)] { [] }
+    func takePictureAgain(_ id: ClientID) {}
 }
 
 /// The tests' macOS windows (NativeWindows): nothing reaches an app, what the port asked is kept, and the
